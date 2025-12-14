@@ -118,7 +118,7 @@ class Domain extends Model
      */
     public function platform(): HasOne
     {
-        return $this->hasOne(WebsitePlatform::class);
+        return $this->hasOne(WebsitePlatform::class, 'domain_id', 'id');
     }
 
     /**
