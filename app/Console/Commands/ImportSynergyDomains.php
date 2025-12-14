@@ -50,7 +50,7 @@ class ImportSynergyDomains extends Command
         try {
             $domains = $client->listDomains();
 
-            if (empty($domains)) {
+            if ($domains->isEmpty()) {
                 $this->warn('No domains found in Synergy Wholesale account.');
 
                 return Command::SUCCESS;
@@ -109,7 +109,7 @@ class ImportSynergyDomains extends Command
                 } catch (\Exception $e) {
                     $errors++;
                     Log::error('Error importing domain', [
-                        'domain' => $domainData->domainName ?? 'unknown',
+                        'domain' => $domainName ?? 'unknown',
                         'error' => $e->getMessage(),
                     ]);
                 }
