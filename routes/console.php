@@ -18,10 +18,10 @@ Schedule::command('horizon:snapshot')
     ->everyMinute()
     ->timezone('UTC');
 
-// Weekly platform detection for all active domains
-Schedule::command('domains:detect-platforms --all')
-    ->weekly()
-    ->sundays()
+// Daily platform detection - queue jobs for domains that need checking
+// This runs daily and queues jobs for domains not checked in the last 24 hours
+Schedule::command('domains:queue-platform-detection --hours=24')
+    ->daily()
     ->at('02:00')
     ->timezone('UTC');
 

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\DetectPlatformJob;
 use App\Models\Domain;
 use App\Services\PlatformDetector;
 use Illuminate\Console\Command;
@@ -15,7 +16,8 @@ class DetectPlatforms extends Command
      */
     protected $signature = 'domains:detect-platforms 
                             {--domain= : Specific domain to detect (optional)}
-                            {--all : Detect for all active domains}';
+                            {--all : Detect for all active domains}
+                            {--queue : Queue jobs instead of running synchronously (recommended for --all)}';
 
     /**
      * The console command description.
@@ -53,6 +55,32 @@ class DetectPlatforms extends Command
                 return Command::SUCCESS;
             }
 
+            $useQueue = $this->option('queue');
+
+            if ($useQueue) {
+                // Queue jobs for each domain
+                $this->info("Queueing platform detection jobs for {$domains->count()} domain(s)...");
+                $this->newLine();
+
+                $bar = $this->output->createProgressBar($domains->count());
+                $bar->start();
+
+                $queuedCount = 0;
+                foreach ($domains as $domain) {
+                    DetectPlatformJob::dispatch($domain->id);
+                    $queuedCount++;
+                    $bar->advance();
+                }
+
+                $bar->finish();
+                $this->newLine(2);
+                $this->info("Queued {$queuedCount} platform detection job(s).");
+                $this->info('Jobs will be processed by Horizon queue workers.');
+
+                return Command::SUCCESS;
+            }
+
+            // Run synchronously (original behavior)
             $this->info("Detecting platforms for {$domains->count()} domain(s)...");
             $this->newLine();
 
@@ -101,6 +129,9 @@ class DetectPlatforms extends Command
                     'last_detected' => now(),
                 ]
             );
+
+            // Also update the platform string field on the domain for filtering
+            $domain->update(['platform' => $result['platform_type']]);
 
             if ($verbose) {
                 $this->line("  Platform: {$platform->platform_type} ({$platform->detection_confidence} confidence)");

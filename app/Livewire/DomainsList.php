@@ -184,7 +184,8 @@ class DomainsList extends Component
         $this->detectingPlatforms = true;
 
         try {
-            $exitCode = Artisan::call('domains:detect-platforms', ['--all' => true]);
+            // Use --queue flag to avoid timeouts when detecting many domains
+            $exitCode = Artisan::call('domains:detect-platforms', ['--all' => true, '--queue' => true]);
             $output = Artisan::output();
 
             // Extract error message from output if command failed
@@ -207,10 +208,15 @@ class DomainsList extends Component
             }
 
             if ($exitCode === 0) {
-                $message = $successCount
-                    ? "Platform detection completed successfully for {$successCount} domain(s)!"
-                    : 'Platform detection completed successfully!';
-                $this->dispatch('flash-message', message: $message, type: 'success');
+                // When using --queue, jobs are queued, not completed immediately
+                if (str_contains($output, 'Queued') || str_contains($output, 'queued')) {
+                    $this->dispatch('flash-message', message: 'Platform detection jobs have been queued. They will be processed by Horizon queue workers.', type: 'success');
+                } else {
+                    $message = $successCount
+                        ? "Platform detection completed successfully for {$successCount} domain(s)!"
+                        : 'Platform detection completed successfully!';
+                    $this->dispatch('flash-message', message: $message, type: 'success');
+                }
             } else {
                 $errorMessage = $errorLine ?: (trim($output) ?: 'Platform detection failed. Check logs for details.');
                 // Truncate long error messages
