@@ -19,6 +19,16 @@ class DomainsList extends Component
 
     public bool $filterExcludeParked = false;
 
+    public bool $filterRecentFailures = false;
+
+    public function mount(): void
+    {
+        // Read query parameters from URL
+        $this->filterActive = request()->boolean('filterActive') ? true : (request()->has('filterActive') ? false : null);
+        $this->filterExpiring = request()->boolean('filterExpiring');
+        $this->filterRecentFailures = request()->boolean('filterRecentFailures');
+    }
+
     public bool $syncingExpiry = false;
 
     public bool $syncingDns = false;
@@ -38,6 +48,7 @@ class DomainsList extends Component
         $this->filterActive = null;
         $this->filterExpiring = false;
         $this->filterExcludeParked = false;
+        $this->filterRecentFailures = false;
         $this->resetPage();
     }
 
@@ -264,6 +275,12 @@ class DomainsList extends Component
                 $query->where(function ($q) {
                     $q->where('platform', '!=', 'Parked')
                         ->orWhereNull('platform');
+                });
+            })
+            ->when($this->filterRecentFailures, function ($query) {
+                $query->whereHas('checks', function ($q) {
+                    $q->where('status', 'fail')
+                        ->where('created_at', '>=', now()->subDays(7));
                 });
             })
             ->orderBy('updated_at', 'desc')
