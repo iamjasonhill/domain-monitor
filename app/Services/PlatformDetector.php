@@ -261,6 +261,8 @@ class PlatformDetector
             'domain is parked',
             'parked domain',
             'this domain name is parked',
+            'this domain name is currently parked',
+            'domain name is currently parked',
             'domain parking',
             'parked by',
             'parking page',
@@ -273,10 +275,12 @@ class PlatformDetector
             'parkingcrew',
             'domain parking service',
             'parked free',
-            'parking page',
             'this domain is available',
             'domain is available',
             'domain name is available',
+            'synergywholesale.com/manage', // Synergy Wholesale parking pages
+            'static.synergywholesale.com', // Synergy Wholesale static assets
+            'manage.synergywholesale.com', // Synergy Wholesale management
         ];
 
         // Check for parked page indicators
@@ -284,6 +288,12 @@ class PlatformDetector
             if (str_contains($htmlLower, $indicator)) {
                 return true;
             }
+        }
+
+        // Additional flexible check for "domain name" + "parked" variations
+        // This catches "this domain name is currently parked", "domain name is parked", etc.
+        if (preg_match('/domain\s+name.*parked|parked.*domain\s+name/i', $html)) {
+            return true;
         }
 
         // Check for common parked page providers
@@ -296,6 +306,9 @@ class PlatformDetector
             'domainsponsor',
             'namedrive',
             'trafficz',
+            'synergywholesale.com',
+            'ventraip.com.au',
+            'static.ventraip.com.au',
         ];
 
         foreach ($parkedProviders as $provider) {
