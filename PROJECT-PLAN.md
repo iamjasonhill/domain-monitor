@@ -106,9 +106,10 @@ Track and monitor domains with health checks, uptime monitoring, SSL certificate
 
 **Note:** The SOAP method names and response structure may need adjustment based on actual API documentation. The implementation follows the previous TypeScript pattern but should be verified with real API credentials.
 
-## Next Step
+## Next Steps
 
-### Step 8: API Authentication
+### Step 8: API Authentication (Deferred)
+**Status:** Deferred - Using Brain events for monitoring for now. Will implement when external API integrations are needed.
 
 ## Future Steps
 
@@ -160,8 +161,10 @@ Track and monitor domains with health checks, uptime monitoring, SSL certificate
 - [ ] Create notification system (email, webhook, etc.)
 - [ ] Add alert acknowledgment system
 
-### Step 8: API Authentication
+### Step 8: API Authentication (Deferred)
 **Goal:** Add API key authentication for external integrations
+
+**Status:** Deferred - Using Brain events for monitoring. Will implement when external API integrations (Jarvis, etc.) are needed.
 
 **Tasks:**
 - [ ] Create `api_keys` table
@@ -169,6 +172,8 @@ Track and monitor domains with health checks, uptime monitoring, SSL certificate
 - [ ] Add API key generation endpoint
 - [ ] Secure API endpoints
 - [ ] Add API key usage tracking
+
+**Note:** Detailed plan available in `STEP-8-PLAN.md`
 
 ### Step 9: Synergy Wholesale Integration
 **Goal:** Automated expiry date syncing for .com.au domains
