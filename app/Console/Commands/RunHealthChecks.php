@@ -107,10 +107,33 @@ class RunHealthChecks extends Command
             $payload = [];
 
             if ($type === 'http') {
+                // Check if domain is parked - parked domains should not fail HTTP checks
+                $isParked = $domain->platform === 'Parked' ||
+                           ($domain->platform && $domain->platform->platform_type === 'Parked');
+
                 $result = $httpCheck->check($domain->domain);
-                $status = $result['is_up'] ? 'ok' : 'fail';
-                if ($result['status_code'] && $result['status_code'] >= 400 && $result['status_code'] < 500) {
-                    $status = 'warn';
+
+                // For parked domains, if we get any response (even error), mark as ok
+                // Parked domains often have SSL issues but still serve content
+                if ($isParked) {
+                    // If we got a status code (even if it's an error), consider it ok for parked domains
+                    // They're serving a parked page, which is expected behavior
+                    if ($result['status_code'] !== null) {
+                        $status = 'ok';
+                    } else {
+                        // No response at all - try HTTP fallback
+                        $result = $httpCheck->check('http://'.$domain->domain);
+                        if ($result['status_code'] !== null) {
+                            $status = 'ok';
+                        } else {
+                            $status = 'warn'; // Can't reach even via HTTP, but don't fail
+                        }
+                    }
+                } else {
+                    $status = $result['is_up'] ? 'ok' : 'fail';
+                    if ($result['status_code'] && $result['status_code'] >= 400 && $result['status_code'] < 500) {
+                        $status = 'warn';
+                    }
                 }
                 $responseCode = $result['status_code'];
                 $errorMessage = $result['error_message'];
