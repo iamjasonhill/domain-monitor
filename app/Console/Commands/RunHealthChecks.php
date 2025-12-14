@@ -121,17 +121,27 @@ class RunHealthChecks extends Command
                 // Parked domains often have SSL issues but still serve content
                 // Email-only domains don't have web hosting, so HTTP failures are expected
                 if ($isParked || $isEmailOnly) {
-                    // If we got a status code (even if it's an error), consider it ok for parked domains
-                    // They're serving a parked page, which is expected behavior
-                    if ($result['status_code'] !== null) {
+                    // For email-only domains, always mark as 'ok' - they don't have web hosting
+                    if ($isEmailOnly) {
                         $status = 'ok';
+                        // Still try to get response code for logging, but status is always ok
+                        if ($result['status_code'] === null) {
+                            // Try HTTP fallback to see if we can get any response
+                            $result = $httpCheck->check('http://'.$domain->domain);
+                        }
                     } else {
-                        // No response at all - try HTTP fallback
-                        $result = $httpCheck->check('http://'.$domain->domain);
+                        // For parked domains, if we got a status code (even if it's an error), consider it ok
+                        // They're serving a parked page, which is expected behavior
                         if ($result['status_code'] !== null) {
                             $status = 'ok';
                         } else {
-                            $status = 'warn'; // Can't reach even via HTTP, but don't fail
+                            // No response at all - try HTTP fallback
+                            $result = $httpCheck->check('http://'.$domain->domain);
+                            if ($result['status_code'] !== null) {
+                                $status = 'ok';
+                            } else {
+                                $status = 'warn'; // Can't reach even via HTTP, but don't fail
+                            }
                         }
                     }
                 } else {
