@@ -120,4 +120,12 @@ class Domain extends Model
     {
         return $this->hasOne(WebsitePlatform::class);
     }
+
+    /**
+     * @return HasMany<DnsRecord, Domain>
+     */
+    public function dnsRecords(): HasMany
+    {
+        return $this->hasMany(DnsRecord::class);
+    }
 }

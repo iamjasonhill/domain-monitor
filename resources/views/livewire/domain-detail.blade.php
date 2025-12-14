@@ -320,6 +320,78 @@
                 @endif
             </div>
         </div>
+
+        <!-- DNS Records -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">DNS Records</h3>
+                    @if(str_ends_with($domain->domain, '.com.au'))
+                        <button wire:click="syncDnsRecords" wire:loading.attr="disabled" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 disabled:opacity-50">
+                            <span wire:loading.remove wire:target="syncDnsRecords">Sync DNS Records</span>
+                            <span wire:loading wire:target="syncDnsRecords">Syncing...</span>
+                        </button>
+                    @endif
+                </div>
+                @if($domain->dnsRecords && $domain->dnsRecords->count() > 0)
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-900">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Host</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Value</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">TTL</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Priority</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                @foreach($domain->dnsRecords as $record)
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 font-mono">
+                                            {{ $record->host }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                                @if($record->type === 'A') bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
+                                                @elseif($record->type === 'CNAME') bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                                @elseif($record->type === 'MX') bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200
+                                                @elseif($record->type === 'TXT') bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                                @else bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300
+                                                @endif">
+                                                {{ $record->type }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100 font-mono break-all">
+                                            {{ $record->value }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                            {{ $record->ttl ?? 'N/A' }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                            {{ $record->priority ?? 'N/A' }}
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @if($domain->dnsRecords->first()?->synced_at)
+                        <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
+                            Last synced: {{ $domain->dnsRecords->first()->synced_at->diffForHumans() }}
+                        </p>
+                    @endif
+                @else
+                    <p class="text-gray-500 dark:text-gray-400">
+                        @if(str_ends_with($domain->domain, '.com.au'))
+                            No DNS records synced yet. Click "Sync DNS Records" to retrieve them from Synergy Wholesale.
+                        @else
+                            DNS records are only available for .com.au domains via Synergy Wholesale.
+                        @endif
+                    </p>
+                @endif
+            </div>
+        </div>
     @else
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
             <div class="p-6 text-center">

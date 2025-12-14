@@ -38,9 +38,15 @@ class DomainDetail extends Component
 
     public function loadDomain(): void
     {
-        $this->domain = Domain::with(['platform', 'checks' => function ($query) {
-            $query->latest()->limit(20);
-        }])->findOrFail($this->domainId);
+        $this->domain = Domain::with([
+            'platform',
+            'checks' => function ($query) {
+                $query->latest()->limit(20);
+            },
+            'dnsRecords' => function ($query) {
+                $query->orderBy('type')->orderBy('host');
+            },
+        ])->findOrFail($this->domainId);
 
         // Sync simple platform field with relationship if relationship exists but field is empty
         $platformModel = $this->domain->getRelation('platform');
@@ -170,6 +176,29 @@ class DomainDetail extends Component
             session()->flash('message', "Hosting detected: {$result['provider']} ({$result['confidence']} confidence)");
         } catch (\Exception $e) {
             session()->flash('error', 'Hosting detection failed: '.$e->getMessage());
+        }
+    }
+
+    public function syncDnsRecords(): void
+    {
+        if (! str_ends_with($this->domain->domain, '.com.au')) {
+            session()->flash('error', 'Only .com.au domains can sync DNS records from Synergy Wholesale.');
+            $this->dispatch('dns-sync-complete');
+
+            return;
+        }
+
+        try {
+            Artisan::call('domains:sync-dns-records', [
+                '--domain' => $this->domain->domain,
+            ]);
+
+            $this->loadDomain();
+            session()->flash('message', 'DNS records synced successfully!');
+            $this->dispatch('dns-sync-complete');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Error syncing DNS records: '.$e->getMessage());
+            $this->dispatch('dns-sync-complete');
         }
     }
 
