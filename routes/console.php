@@ -8,6 +8,11 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+// Horizon metrics snapshot - run every minute to collect queue metrics
+Schedule::command('horizon:snapshot')
+    ->everyMinute()
+    ->timezone('UTC');
+
 // Weekly platform detection for all active domains
 Schedule::command('domains:detect-platforms --all')
     ->weekly()
