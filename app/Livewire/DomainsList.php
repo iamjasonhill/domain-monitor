@@ -222,7 +222,10 @@ class DomainsList extends Component
         } finally {
             $this->detectingPlatforms = false;
             // Force component refresh to show updated platform data
+            // Clear any cached relationships and refresh
             $this->resetPage();
+            // Dispatch browser event to force full page refresh if needed
+            $this->dispatch('platform-detection-complete');
         }
     }
 
