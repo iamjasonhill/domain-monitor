@@ -361,11 +361,15 @@
                                         </td>
                                         <td class="px-3 py-2 whitespace-nowrap">
                                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                                @if($record->type === 'A') bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
-                                                @elseif($record->type === 'CNAME') bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
-                                                @elseif($record->type === 'MX') bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200
-                                                @elseif($record->type === 'TXT') bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
-                                                @else bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300
+                                                @if($record->type === 'A') bg-blue-100 text-blue-800 dark:bg-blue-500 dark:text-white
+                                                @elseif($record->type === 'AAAA') bg-cyan-100 text-cyan-800 dark:bg-cyan-500 dark:text-white
+                                                @elseif($record->type === 'CNAME') bg-green-100 text-green-800 dark:bg-green-500 dark:text-white
+                                                @elseif($record->type === 'MX') bg-purple-100 text-purple-800 dark:bg-purple-500 dark:text-white
+                                                @elseif($record->type === 'NS') bg-indigo-100 text-indigo-800 dark:bg-indigo-500 dark:text-white
+                                                @elseif($record->type === 'SOA') bg-pink-100 text-pink-800 dark:bg-pink-500 dark:text-white
+                                                @elseif($record->type === 'TXT') bg-yellow-100 text-yellow-800 dark:bg-yellow-500 dark:text-gray-900
+                                                @elseif($record->type === 'SRV') bg-orange-100 text-orange-800 dark:bg-orange-500 dark:text-white
+                                                @else bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-100
                                                 @endif">
                                                 {{ $record->type }}
                                             </span>
