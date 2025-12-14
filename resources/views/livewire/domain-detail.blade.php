@@ -618,7 +618,7 @@
 
                         <div>
                             <x-input-label for="subdomain_notes" value="Notes (optional)" />
-                            <x-textarea wire:model="subdomainNotes" id="subdomain_notes" class="mt-1 block w-full" rows="3" placeholder="Optional notes about this subdomain..." />
+                            <textarea wire:model="subdomainNotes" id="subdomain_notes" rows="3" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm" placeholder="Optional notes about this subdomain..."></textarea>
                             <x-input-error :messages="$errors->get('subdomainNotes')" class="mt-2" />
                         </div>
                     </div>
