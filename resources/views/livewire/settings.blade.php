@@ -43,6 +43,25 @@
             </div>
         </a>
 
+        <!-- Horizon Queue Dashboard Card -->
+        <a href="/horizon" target="_blank" class="block">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-purple-100 dark:bg-purple-900 rounded-lg p-3">
+                            <svg class="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Queue Dashboard</h3>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Monitor queue jobs and workers with Horizon</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+
         <!-- Placeholder for future cards -->
         <!-- Add more cards here as needed -->
     </div>
