@@ -39,9 +39,11 @@ Use this checklist before deploying to Laravel Forge to ensure everything is rea
 - [x] Asset compilation (`npm run build`) in deployment script
 - [x] Verify `public/storage` symlink works - ✅ Fixed: Now points to shared storage directory
 
-### 6. Queue Workers (Optional)
-- [ ] Decide if queue workers are needed (currently using `database` driver)
-- [ ] If needed, configure daemon in Forge for `php artisan queue:work`
+### 6. Queue Workers (REQUIRED for Brain Events)
+- [x] Queue workers are REQUIRED - Brain events use async dispatch
+- [ ] Configure daemon in Forge for `php artisan queue:work --sleep=3 --tries=3 --max-time=3600`
+- [ ] Verify queue worker is running: `ps aux | grep 'queue:work'`
+- [ ] Test that Brain events are being sent (check pending jobs count)
 
 ### 7. External Services
 - [ ] Brain API credentials configured
