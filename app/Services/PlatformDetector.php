@@ -15,6 +15,17 @@ class PlatformDetector
      */
     public function detect(string $domain): array
     {
+        // Check for email-only domains first (before HTTP check)
+        // Email-only domains have MX records but no A/AAAA records for web hosting
+        if ($this->isEmailOnly($domain)) {
+            return [
+                'platform_type' => 'Email Only',
+                'platform_version' => null,
+                'admin_url' => null,
+                'detection_confidence' => 'high',
+            ];
+        }
+
         $url = $this->normalizeUrl($domain);
 
         try {
@@ -493,5 +504,77 @@ class PlatformDetector
         }
 
         return false;
+    }
+
+    /**
+     * Check if domain is email-only (has MX records but no A/AAAA records for web)
+     *
+     * @param  string  $domain  Domain name
+     * @return bool True if domain appears to be email-only
+     */
+    private function isEmailOnly(string $domain): bool
+    {
+        $domainOnly = $this->extractDomainForDns($domain);
+
+        try {
+            // Get MX records (email)
+            $mxRecords = @dns_get_record($domainOnly, DNS_MX);
+            $hasMxRecord = ! empty($mxRecords);
+
+            // Get A records (IPv4 web hosting)
+            $aRecords = @dns_get_record($domainOnly, DNS_A);
+            $hasARecord = ! empty($aRecords);
+
+            // Get AAAA records (IPv6 web hosting)
+            $aaaaRecords = @dns_get_record($domainOnly, DNS_AAAA);
+            $hasAaaaRecord = ! empty($aaaaRecords);
+
+            // Get CNAME records (might point to web hosting)
+            $cnameRecords = @dns_get_record($domainOnly, DNS_CNAME);
+            $hasCnameRecord = ! empty($cnameRecords);
+
+            // Check for www subdomain A records (common web hosting indicator)
+            $wwwARecords = @dns_get_record('www.'.$domainOnly, DNS_A);
+            $hasWwwARecord = ! empty($wwwARecords);
+
+            // Domain is email-only if:
+            // 1. Has MX records (email configured)
+            // 2. No A or AAAA records for root domain (no web hosting)
+            // 3. No CNAME records pointing to web services
+            // 4. No www subdomain A records
+            if ($hasMxRecord && ! $hasARecord && ! $hasAaaaRecord && ! $hasCnameRecord && ! $hasWwwARecord) {
+                return true;
+            }
+
+            // Also check if nameservers are missing or minimal (often indicates email-only setup)
+            $nsRecords = @dns_get_record($domainOnly, DNS_NS);
+            $hasNsRecords = ! empty($nsRecords);
+
+            // If has MX but no nameservers or very minimal DNS, likely email-only
+            if ($hasMxRecord && (! $hasNsRecords || count($nsRecords) < 2) && ! $hasARecord && ! $hasAaaaRecord) {
+                return true;
+            }
+
+            return false;
+        } catch (\Exception $e) {
+            Log::debug('Email-only check failed', [
+                'domain' => $domain,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Extract domain from URL for DNS lookups
+     */
+    private function extractDomainForDns(string $domain): string
+    {
+        $domain = str_replace(['http://', 'https://'], '', $domain);
+        $domain = explode('/', $domain)[0];
+        $domain = explode('?', $domain)[0];
+
+        return $domain;
     }
 }
