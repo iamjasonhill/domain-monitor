@@ -44,7 +44,7 @@ class DomainsList extends Component
             // Check if credentials exist
             $credential = \App\Models\SynergyCredential::where('is_active', true)->first();
             if (! $credential) {
-                $this->dispatch('flash-message', message: 'No active Synergy Wholesale credentials found. Please configure credentials first.', type: 'error')->to('domains-list');
+                $this->dispatch('flash-message', message: 'No active Synergy Wholesale credentials found. Please configure credentials first.', type: 'error');
                 $this->syncingExpiry = false;
 
                 return;
@@ -64,18 +64,18 @@ class DomainsList extends Component
             }
 
             if ($exitCode === 0) {
-                $this->dispatch('flash-message', message: 'Domain information synced successfully from Synergy Wholesale!', type: 'success')->to('domains-list');
+                $this->dispatch('flash-message', message: 'Domain information synced successfully from Synergy Wholesale!', type: 'success');
             } else {
                 $errorMessage = $errorLine ?: (trim($output) ?: 'Sync failed. Check logs for details.');
                 // Truncate long error messages
                 if (strlen($errorMessage) > 200) {
                     $errorMessage = substr($errorMessage, 0, 197).'...';
                 }
-                $this->dispatch('flash-message', message: $errorMessage, type: 'error')->to('domains-list');
+                $this->dispatch('flash-message', message: $errorMessage, type: 'error');
             }
         } catch (\Exception $e) {
             \Log::error('Sync Synergy Expiry Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            $this->dispatch('flash-message', message: 'Error syncing domain information: '.$e->getMessage(), type: 'error')->to('domains-list');
+            $this->dispatch('flash-message', message: 'Error syncing domain information: '.$e->getMessage(), type: 'error');
         } finally {
             $this->syncingExpiry = false;
             $this->resetPage();
@@ -90,7 +90,7 @@ class DomainsList extends Component
             // Check if credentials exist
             $credential = \App\Models\SynergyCredential::where('is_active', true)->first();
             if (! $credential) {
-                $this->dispatch('flash-message', message: 'No active Synergy Wholesale credentials found. Please configure credentials first.', type: 'error')->to('domains-list');
+                $this->dispatch('flash-message', message: 'No active Synergy Wholesale credentials found. Please configure credentials first.', type: 'error');
                 $this->syncingDns = false;
 
                 return;
@@ -110,18 +110,18 @@ class DomainsList extends Component
             }
 
             if ($exitCode === 0) {
-                $this->dispatch('flash-message', message: 'DNS records synced successfully from Synergy Wholesale!', type: 'success')->to('domains-list');
+                $this->dispatch('flash-message', message: 'DNS records synced successfully from Synergy Wholesale!', type: 'success');
             } else {
                 $errorMessage = $errorLine ?: (trim($output) ?: 'DNS sync failed. Check logs for details.');
                 // Truncate long error messages
                 if (strlen($errorMessage) > 200) {
                     $errorMessage = substr($errorMessage, 0, 197).'...';
                 }
-                $this->dispatch('flash-message', message: $errorMessage, type: 'error')->to('domains-list');
+                $this->dispatch('flash-message', message: $errorMessage, type: 'error');
             }
         } catch (\Exception $e) {
             \Log::error('Sync DNS Records Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            $this->dispatch('flash-message', message: 'Error syncing DNS records: '.$e->getMessage(), type: 'error')->to('domains-list');
+            $this->dispatch('flash-message', message: 'Error syncing DNS records: '.$e->getMessage(), type: 'error');
         } finally {
             $this->syncingDns = false;
             $this->resetPage();
@@ -136,7 +136,7 @@ class DomainsList extends Component
             // Check if credentials exist
             $credential = \App\Models\SynergyCredential::where('is_active', true)->first();
             if (! $credential) {
-                $this->dispatch('flash-message', message: 'No active Synergy Wholesale credentials found. Please configure credentials first.', type: 'error')->to('domains-list');
+                $this->dispatch('flash-message', message: 'No active Synergy Wholesale credentials found. Please configure credentials first.', type: 'error');
                 $this->importingDomains = false;
 
                 return;
@@ -156,18 +156,18 @@ class DomainsList extends Component
             }
 
             if ($exitCode === 0) {
-                $this->dispatch('flash-message', message: 'Domains imported successfully from Synergy Wholesale!', type: 'success')->to('domains-list');
+                $this->dispatch('flash-message', message: 'Domains imported successfully from Synergy Wholesale!', type: 'success');
             } else {
                 $errorMessage = $errorLine ?: (trim($output) ?: 'Import failed. Check logs for details.');
                 // Truncate long error messages
                 if (strlen($errorMessage) > 200) {
                     $errorMessage = substr($errorMessage, 0, 197).'...';
                 }
-                $this->dispatch('flash-message', message: $errorMessage, type: 'error')->to('domains-list');
+                $this->dispatch('flash-message', message: $errorMessage, type: 'error');
             }
         } catch (\Exception $e) {
             \Log::error('Import Synergy Domains Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            $this->dispatch('flash-message', message: 'Error importing domains: '.$e->getMessage(), type: 'error')->to('domains-list');
+            $this->dispatch('flash-message', message: 'Error importing domains: '.$e->getMessage(), type: 'error');
         } finally {
             $this->importingDomains = false;
             $this->resetPage();
