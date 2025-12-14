@@ -378,6 +378,192 @@ class SynergyWholesaleClient
     }
 
     /**
+     * Add a DNS record
+     *
+     * @param  string  $domain  Domain name
+     * @param  string  $recordName  Record name (host/subdomain)
+     * @param  string  $recordType  Record type (A, AAAA, CNAME, MX, NS, TXT, SRV)
+     * @param  string  $recordContent  Record value/content
+     * @param  int  $recordTTL  TTL in seconds
+     * @param  int  $recordPrio  Priority (for MX records, typically 10-100)
+     * @return array{status: string, error_message: string|null, record_id: string|null}|null
+     */
+    public function addDnsRecord(string $domain, string $recordName, string $recordType, string $recordContent, int $recordTTL = 300, int $recordPrio = 0): ?array
+    {
+        $this->initialize();
+
+        try {
+            $request = [
+                'resellerID' => $this->resellerId,
+                'apiKey' => $this->apiKey,
+                'domainName' => $domain,
+                'recordName' => $recordName,
+                'recordType' => strtoupper($recordType),
+                'recordContent' => $recordContent,
+                'recordTTL' => $recordTTL,
+                'recordPrio' => $recordPrio,
+            ];
+
+            $result = $this->client->addDNSRecord($request);
+
+            // Check for errors
+            if (isset($result->status) && $result->status !== 'OK' && str_starts_with($result->status, 'ERR_')) {
+                Log::warning('Synergy Wholesale addDNSRecord returned error', [
+                    'domain' => $domain,
+                    'record_name' => $recordName,
+                    'status' => $result->status,
+                    'error_message' => $result->errorMessage ?? null,
+                ]);
+
+                return [
+                    'status' => $result->status,
+                    'error_message' => $result->errorMessage ?? null,
+                    'record_id' => null,
+                ];
+            }
+
+            return [
+                'status' => $result->status ?? 'OK',
+                'error_message' => $result->errorMessage ?? null,
+                'record_id' => $result->id ?? null,
+            ];
+        } catch (SoapFault $e) {
+            Log::error('Synergy Wholesale addDNSRecord failed', [
+                'domain' => $domain,
+                'record_name' => $recordName,
+                'error' => $e->getMessage(),
+                'fault_code' => $e->faultcode ?? null,
+            ]);
+
+            return [
+                'status' => 'ERROR',
+                'error_message' => $e->getMessage(),
+                'record_id' => null,
+            ];
+        }
+    }
+
+    /**
+     * Update a DNS record
+     *
+     * @param  string  $domain  Domain name
+     * @param  string  $recordId  Record ID from Synergy Wholesale
+     * @param  string  $recordName  Record name (host/subdomain)
+     * @param  string  $recordType  Record type (A, AAAA, CNAME, MX, NS, TXT, SRV)
+     * @param  string  $recordContent  Record value/content
+     * @param  int  $recordTTL  TTL in seconds
+     * @param  int  $recordPrio  Priority (for MX records, typically 10-100)
+     * @return array{status: string, error_message: string|null}|null
+     */
+    public function updateDnsRecord(string $domain, string $recordId, string $recordName, string $recordType, string $recordContent, int $recordTTL = 300, int $recordPrio = 0): ?array
+    {
+        $this->initialize();
+
+        try {
+            $request = [
+                'resellerID' => $this->resellerId,
+                'apiKey' => $this->apiKey,
+                'domainName' => $domain,
+                'recordName' => $recordName,
+                'recordType' => strtoupper($recordType),
+                'recordContent' => $recordContent,
+                'recordTTL' => (string) $recordTTL, // API expects string for TTL in update
+                'recordPrio' => $recordPrio,
+                'recordID' => $recordId,
+            ];
+
+            $result = $this->client->updateDNSRecord($request);
+
+            // Check for errors
+            if (isset($result->status) && $result->status !== 'OK' && str_starts_with($result->status, 'ERR_')) {
+                Log::warning('Synergy Wholesale updateDNSRecord returned error', [
+                    'domain' => $domain,
+                    'record_id' => $recordId,
+                    'status' => $result->status,
+                    'error_message' => $result->errorMessage ?? null,
+                ]);
+
+                return [
+                    'status' => $result->status,
+                    'error_message' => $result->errorMessage ?? null,
+                ];
+            }
+
+            return [
+                'status' => $result->status ?? 'OK',
+                'error_message' => $result->errorMessage ?? null,
+            ];
+        } catch (SoapFault $e) {
+            Log::error('Synergy Wholesale updateDNSRecord failed', [
+                'domain' => $domain,
+                'record_id' => $recordId,
+                'error' => $e->getMessage(),
+                'fault_code' => $e->faultcode ?? null,
+            ]);
+
+            return [
+                'status' => 'ERROR',
+                'error_message' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Delete a DNS record
+     *
+     * @param  string  $domain  Domain name
+     * @param  string  $recordId  Record ID from Synergy Wholesale
+     * @return array{status: string, error_message: string|null}|null
+     */
+    public function deleteDnsRecord(string $domain, string $recordId): ?array
+    {
+        $this->initialize();
+
+        try {
+            $request = [
+                'resellerID' => $this->resellerId,
+                'apiKey' => $this->apiKey,
+                'domainName' => $domain,
+                'recordID' => $recordId,
+            ];
+
+            $result = $this->client->deleteDNSRecord($request);
+
+            // Check for errors
+            if (isset($result->status) && $result->status !== 'OK' && str_starts_with($result->status, 'ERR_')) {
+                Log::warning('Synergy Wholesale deleteDNSRecord returned error', [
+                    'domain' => $domain,
+                    'record_id' => $recordId,
+                    'status' => $result->status,
+                    'error_message' => $result->errorMessage ?? null,
+                ]);
+
+                return [
+                    'status' => $result->status,
+                    'error_message' => $result->errorMessage ?? null,
+                ];
+            }
+
+            return [
+                'status' => $result->status ?? 'OK',
+                'error_message' => $result->errorMessage ?? null,
+            ];
+        } catch (SoapFault $e) {
+            Log::error('Synergy Wholesale deleteDNSRecord failed', [
+                'domain' => $domain,
+                'record_id' => $recordId,
+                'error' => $e->getMessage(),
+                'fault_code' => $e->faultcode ?? null,
+            ]);
+
+            return [
+                'status' => 'ERROR',
+                'error_message' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
      * Create client from encrypted credentials
      */
     public static function fromEncryptedCredentials(string $resellerId, string $encryptedApiKey, ?string $apiUrl = null): self

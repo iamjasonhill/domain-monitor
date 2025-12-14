@@ -20,6 +20,20 @@ class DomainDetail extends Component
 
     public bool $showDeleteModal = false;
 
+    public bool $showDnsRecordModal = false;
+
+    public ?string $editingDnsRecordId = null;
+
+    public string $dnsRecordHost = '';
+
+    public string $dnsRecordType = 'A';
+
+    public string $dnsRecordValue = '';
+
+    public int $dnsRecordTtl = 300;
+
+    public int $dnsRecordPriority = 0;
+
     public function mount(): void
     {
         $this->loadDomain();
