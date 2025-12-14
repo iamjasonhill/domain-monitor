@@ -17,6 +17,11 @@
                         <span wire:loading wire:target="syncFromSynergy">Syncing...</span>
                     </button>
                 @endif
+                <button 
+                    wire:click="confirmDelete" 
+                    class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700">
+                    Delete Domain
+                </button>
             </div>
         </div>
 
@@ -286,4 +291,33 @@
             </div>
         </div>
     @endif
+
+    <!-- Delete Confirmation Modal -->
+    <x-modal name="delete-domain" :show="$showDeleteModal" focusable>
+        <form wire:submit="deleteDomain" class="p-6">
+            <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                {{ __('Are you sure you want to delete this domain?') }}
+            </h2>
+
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                {{ __('Once this domain is deleted, all of its health checks and alerts will be permanently removed. This action cannot be undone.') }}
+            </p>
+
+            @if($domain)
+                <p class="mt-4 text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Domain: <span class="font-bold">{{ $domain->domain }}</span>
+                </p>
+            @endif
+
+            <div class="mt-6 flex justify-end gap-4">
+                <x-secondary-button wire:click="closeDeleteModal" type="button">
+                    {{ __('Cancel') }}
+                </x-secondary-button>
+
+                <x-danger-button type="submit">
+                    {{ __('Delete Domain') }}
+                </x-danger-button>
+            </div>
+        </form>
+    </x-modal>
 </div>

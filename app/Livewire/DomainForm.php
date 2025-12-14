@@ -105,6 +105,9 @@ class DomainForm extends Component
 
         $this->domain->save();
 
+        $action = $this->domainId ? 'updated' : 'created';
+        session()->flash('message', "Domain '{$this->domain->domain}' has been {$action} successfully!");
+
         $this->redirect(route('domains.show', $this->domain->id), navigate: true);
     }
 

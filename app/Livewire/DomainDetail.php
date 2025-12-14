@@ -16,6 +16,8 @@ class DomainDetail extends Component
 
     public string $syncMessage = '';
 
+    public bool $showDeleteModal = false;
+
     public function mount(): void
     {
         $this->loadDomain();
@@ -58,9 +60,11 @@ class DomainDetail extends Component
 
             $this->loadDomain();
             $this->syncMessage = 'Domain information synced successfully!';
+            session()->flash('message', 'Domain information synced successfully from Synergy Wholesale!');
             $this->dispatch('sync-complete');
         } catch (\Exception $e) {
             $this->syncMessage = 'Error syncing: '.$e->getMessage();
+            session()->flash('error', 'Error syncing from Synergy Wholesale: '.$e->getMessage());
             $this->dispatch('sync-complete');
         } finally {
             $this->syncing = false;
@@ -76,10 +80,35 @@ class DomainDetail extends Component
             ]);
 
             $this->loadDomain();
+            session()->flash('message', ucfirst($type).' health check completed successfully!');
             $this->dispatch('health-check-complete', type: $type);
         } catch (\Exception $e) {
+            session()->flash('error', 'Health check failed: '.$e->getMessage());
             $this->dispatch('health-check-error', message: $e->getMessage());
         }
+    }
+
+    public function confirmDelete(): void
+    {
+        $this->showDeleteModal = true;
+    }
+
+    public function deleteDomain(): void
+    {
+        if (! $this->domain) {
+            return;
+        }
+
+        $domainName = $this->domain->domain;
+        $this->domain->delete();
+
+        session()->flash('message', "Domain '{$domainName}' has been deleted successfully.");
+        $this->redirect(route('domains.index'), navigate: true);
+    }
+
+    public function closeDeleteModal(): void
+    {
+        $this->showDeleteModal = false;
     }
 
     public function render(): \Illuminate\Contracts\View\View
