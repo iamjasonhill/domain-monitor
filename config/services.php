@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'brain' => [
+        'base_url' => env('BRAIN_BASE_URL'),
+        'api_key' => env('BRAIN_API_KEY'),
+    ],
+
 ];

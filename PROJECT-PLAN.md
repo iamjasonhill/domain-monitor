@@ -41,16 +41,28 @@ Track and monitor domains with health checks, uptime monitoring, SSL certificate
 - **domain_checks**: UUID primary, domain_id (FK), check_type, status, response_code, started_at, finished_at, duration_ms, error_message, payload (jsonb), metadata (jsonb), retry_count
 - **domain_alerts**: UUID primary, domain_id (FK), alert_type, severity, triggered_at, resolved_at, notification_sent_at, acknowledged_at, auto_resolve, payload (jsonb)
 
+## Completed Steps
+
+### ✅ Step 2: Core Database Schema + Models (Domains, Checks, Alerts)
+- [x] Create migrations for: `domains`, `domain_checks`, `domain_alerts`
+- [x] Create Eloquent models with UUID support
+- [x] Set up relationships (hasMany/belongsTo)
+- [x] Configure JSONB payload casting
+- [x] Add proper indexes (including composite)
+- [x] Add soft deletes to Domain model
+- [x] Create model factories for testing
+- [x] Run migrations and verify
+- [x] Test with Tinker
+
+### ✅ Step 3: BrainClient Service + Event Emission
+- [x] Create BrainClient service class
+- [x] Set up event emission for domain checks
+- [x] Configure event envelope format
+- [x] Test event emission
+
 ## Next Step
 
-### Step 3: BrainClient Service + Event Emission
-**Goal:** Integrate with BrainClient service and emit `domain.check.*` events using the exact event envelope format.
-
-**Tasks:**
-- [ ] Create BrainClient service class
-- [ ] Set up event emission for domain checks
-- [ ] Configure event envelope format
-- [ ] Test event emission
+### Step 4: Platform Detection Service
 
 ## Future Steps
 
