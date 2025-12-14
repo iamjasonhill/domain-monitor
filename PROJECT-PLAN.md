@@ -77,9 +77,20 @@ Track and monitor domains with health checks, uptime monitoring, SSL certificate
 - [x] Create scheduled job for hosting detection (weekly)
 - [x] Create artisan command for manual detection
 
+### ✅ Step 6: Health Check Services (HTTP)
+- [x] Create HTTP health check service
+- [x] Implement HTTP check logic (status code, response time, error handling)
+- [x] Store results in `domain_checks` table
+- [x] Create scheduled job for HTTP checks (hourly)
+- [x] Create artisan command for manual checks
+- [x] Automatic event emission via DomainCheck model
+- [ ] SSL certificate check service (next)
+- [ ] DNS record check service (next)
+- [ ] Uptime monitoring service (next)
+
 ## Next Step
 
-### Step 6: HTTP Health Checks
+### Step 6 (continued): SSL, DNS, and Uptime Checks
 
 ## Future Steps
 
