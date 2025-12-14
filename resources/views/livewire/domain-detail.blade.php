@@ -423,6 +423,72 @@
         </div>
     @endif
 
+    <!-- DNS Record Add/Edit Modal -->
+    <x-modal name="dns-record-modal" :show="$showDnsRecordModal" focusable>
+        <form wire:submit="saveDnsRecord" class="p-6">
+            <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+                {{ $editingDnsRecordId ? 'Edit DNS Record' : 'Add DNS Record' }}
+            </h2>
+
+            <div class="space-y-4">
+                <!-- Host -->
+                <div>
+                    <x-input-label for="dns_record_host" value="Host/Subdomain" />
+                    <x-text-input wire:model="dnsRecordHost" id="dns_record_host" type="text" class="mt-1 block w-full" placeholder="e.g., www, mail, @ for root" required />
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave empty or use @ for root domain</p>
+                    <x-input-error :messages="$errors->get('dnsRecordHost')" class="mt-2" />
+                </div>
+
+                <!-- Type -->
+                <div>
+                    <x-input-label for="dns_record_type" value="Type" />
+                    <select wire:model="dnsRecordType" id="dns_record_type" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm">
+                        <option value="A">A (IPv4 Address)</option>
+                        <option value="AAAA">AAAA (IPv6 Address)</option>
+                        <option value="CNAME">CNAME (Canonical Name)</option>
+                        <option value="MX">MX (Mail Exchange)</option>
+                        <option value="NS">NS (Name Server)</option>
+                        <option value="TXT">TXT (Text Record)</option>
+                        <option value="SRV">SRV (Service Record)</option>
+                    </select>
+                    <x-input-error :messages="$errors->get('dnsRecordType')" class="mt-2" />
+                </div>
+
+                <!-- Value -->
+                <div>
+                    <x-input-label for="dns_record_value" value="Value" />
+                    <x-text-input wire:model="dnsRecordValue" id="dns_record_value" type="text" class="mt-1 block w-full" placeholder="e.g., 192.0.2.1 or example.com" required />
+                    <x-input-error :messages="$errors->get('dnsRecordValue')" class="mt-2" />
+                </div>
+
+                <!-- TTL -->
+                <div>
+                    <x-input-label for="dns_record_ttl" value="TTL (seconds)" />
+                    <x-text-input wire:model="dnsRecordTtl" id="dns_record_ttl" type="number" min="60" max="86400" class="mt-1 block w-full" required />
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Common values: 300 (5 min), 3600 (1 hour), 86400 (1 day)</p>
+                    <x-input-error :messages="$errors->get('dnsRecordTtl')" class="mt-2" />
+                </div>
+
+                <!-- Priority (for MX records) -->
+                <div>
+                    <x-input-label for="dns_record_priority" value="Priority" />
+                    <x-text-input wire:model="dnsRecordPriority" id="dns_record_priority" type="number" min="0" max="65535" class="mt-1 block w-full" />
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Required for MX records (typically 10-100)</p>
+                    <x-input-error :messages="$errors->get('dnsRecordPriority')" class="mt-2" />
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <x-secondary-button type="button" wire:click="closeDnsRecordModal">
+                    Cancel
+                </x-secondary-button>
+                <x-primary-button type="submit">
+                    {{ $editingDnsRecordId ? 'Update' : 'Add' }} Record
+                </x-primary-button>
+            </div>
+        </form>
+    </x-modal>
+
     <!-- Delete Confirmation Modal -->
     <x-modal name="delete-domain" :show="$showDeleteModal" focusable>
         <form wire:submit="deleteDomain" class="p-6">
