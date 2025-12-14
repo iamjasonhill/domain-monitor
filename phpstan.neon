@@ -1,0 +1,26 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    # Include baseline after generating it:
+    # - phpstan-baseline.neon
+
+parameters:
+    paths:
+        - app
+        - config
+        - database/factories
+        - database/seeders
+    
+    # Level 7 (high strictness) - appropriate for new projects
+    # Level 8 is maximum strictness if you want even more checks
+    level: 7
+    
+    # Cache directory for performance
+    tmpDir: storage/phpstan
+    
+    # Ignore errors from third-party code
+    excludePaths:
+        - vendor/
+        - bootstrap/cache/
+        - storage/
+        - public/
+
