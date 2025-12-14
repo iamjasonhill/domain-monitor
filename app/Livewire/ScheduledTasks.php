@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use Illuminate\Support\Facades\Artisan;
 use Livewire\Component;
 
 class ScheduledTasks extends Component
@@ -15,34 +16,71 @@ class ScheduledTasks extends Component
 
     public function loadScheduledTasks(): void
     {
-        // Get scheduled tasks from Laravel's scheduler
-        $schedule = app(\Illuminate\Console\Scheduling\Schedule::class);
-        $events = $schedule->events();
+        // Get scheduled tasks by running schedule:list command
+        Artisan::call('schedule:list');
+        $output = Artisan::output();
 
-        $this->tasks = collect($events)->map(function ($event) {
-            $description = $event->description ?? 'No description';
-            $command = $event->command ?? 'N/A';
-            $expression = $event->expression ?? 'N/A';
-            $timezone = $event->timezone ?? config('app.timezone', 'UTC');
+        // Parse the output to extract task information
+        $lines = explode("\n", trim($output));
+        $this->tasks = [];
 
-            // Parse the cron expression to get a human-readable schedule
-            $scheduleText = $this->parseCronExpression($expression, $timezone);
+        foreach ($lines as $line) {
+            // Skip header lines and empty lines
+            if (empty(trim($line)) || str_contains($line, 'Next Due') || str_contains($line, 'Command') || str_contains($line, '---')) {
+                continue;
+            }
 
-            // Get next run time
-            $nextRun = $event->nextRunDate();
-            $nextRunFormatted = $nextRun ? $nextRun->format('Y-m-d H:i:s T') : 'N/A';
-            $nextRunRelative = $nextRun ? $nextRun->diffForHumans() : 'N/A';
+            // Parse the schedule:list output format
+            // Format: "0  *   * * *  php artisan domains:health-check --all --type=http  Next Due: 16 minutes from now"
+            if (preg_match('/^(\S+\s+\S+\s+\S+\s+\S+\s+\S+)\s+php artisan (.+?)(?:\s+Next Due:\s+(.+))?$/', $line, $matches)) {
+                $expression = trim($matches[1]);
+                $command = 'php artisan '.trim($matches[2]);
+                $nextRun = isset($matches[3]) ? trim($matches[3]) : 'N/A';
 
-            return [
-                'description' => $description,
-                'command' => $command,
-                'expression' => $expression,
-                'schedule' => $scheduleText,
-                'timezone' => $timezone,
-                'next_run' => $nextRunFormatted,
-                'next_run_relative' => $nextRunRelative,
-            ];
-        })->sortBy('next_run')->values()->toArray();
+                // Extract description from command
+                $description = $this->getCommandDescription($command);
+                $scheduleText = $this->parseCronExpression($expression, 'UTC');
+
+                $this->tasks[] = [
+                    'description' => $description,
+                    'command' => $command,
+                    'expression' => $expression,
+                    'schedule' => $scheduleText,
+                    'timezone' => 'UTC',
+                    'next_run' => 'N/A',
+                    'next_run_relative' => $nextRun,
+                ];
+            }
+        }
+
+        // Sort by next run relative time
+        usort($this->tasks, function ($a, $b) {
+            return strcmp($a['next_run_relative'], $b['next_run_relative']);
+        });
+    }
+
+    /**
+     * Get human-readable description for command
+     */
+    private function getCommandDescription(string $command): string
+    {
+        $descriptions = [
+            'domains:detect-platforms' => 'Platform Detection',
+            'domains:detect-hosting' => 'Hosting Detection',
+            'domains:health-check --all --type=http' => 'HTTP Health Checks',
+            'domains:health-check --all --type=ssl' => 'SSL Certificate Checks',
+            'domains:health-check --all --type=dns' => 'DNS Health Checks',
+            'domains:sync-synergy-expiry' => 'Synergy Wholesale Expiry Sync',
+            'domains:sync-dns-records' => 'DNS Records Sync',
+        ];
+
+        foreach ($descriptions as $cmd => $desc) {
+            if (str_contains($command, $cmd)) {
+                return $desc;
+            }
+        }
+
+        return 'Scheduled Task';
     }
 
     /**
