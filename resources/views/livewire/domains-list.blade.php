@@ -1,4 +1,4 @@
-<div>
+<div wire:id="domains-list">
     <!-- Flash Message -->
     <div x-data="{ showFlash: false, flashMessage: '', flashType: '' }"
          @flash-message.window="
