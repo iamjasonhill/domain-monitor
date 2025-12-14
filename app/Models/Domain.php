@@ -156,19 +156,50 @@ class Domain extends Model
     }
 
     /**
-     * Scope a query to search domains by domain name, project key, or registrar.
+     * Scope a query to search domains by domain name, project key, registrar, hosting provider, or notes.
+     * Supports case-insensitive search and multiple search terms.
+     * Requires minimum 2 characters to avoid performance issues.
      */
     public function scopeSearch($query, string $term): void
     {
         $searchTerm = trim($term);
-        if (empty($searchTerm)) {
+        // Require minimum 2 characters for search to avoid performance issues
+        if (empty($searchTerm) || mb_strlen($searchTerm) < 2) {
             return;
         }
 
-        $query->where(function ($q) use ($searchTerm) {
-            $q->where('domain', 'like', '%'.$searchTerm.'%')
-                ->orWhere('project_key', 'like', '%'.$searchTerm.'%')
-                ->orWhere('registrar', 'like', '%'.$searchTerm.'%');
+        // Escape special LIKE characters
+        $searchTerm = str_replace(['%', '_'], ['\%', '\_'], $searchTerm);
+
+        // Split search term into individual words for better matching
+        $searchTerms = array_filter(explode(' ', $searchTerm), fn ($word) => ! empty(trim($word)));
+
+        // Get database connection type
+        $connection = $query->getConnection()->getDriverName();
+
+        $query->where(function ($q) use ($searchTerms, $connection) {
+            foreach ($searchTerms as $term) {
+                $q->where(function ($subQuery) use ($term, $connection) {
+                    if ($connection === 'pgsql') {
+                        // PostgreSQL: Use ILIKE for case-insensitive search
+                        $subQuery->where('domain', 'ilike', '%'.$term.'%')
+                            ->orWhere('project_key', 'ilike', '%'.$term.'%')
+                            ->orWhere('registrar', 'ilike', '%'.$term.'%')
+                            ->orWhere('hosting_provider', 'ilike', '%'.$term.'%')
+                            ->orWhere('notes', 'ilike', '%'.$term.'%')
+                            ->orWhere('registrant_name', 'ilike', '%'.$term.'%');
+                    } else {
+                        // MySQL/SQLite: Use LOWER() for case-insensitive search
+                        $lowerTerm = mb_strtolower($term);
+                        $subQuery->whereRaw('LOWER(domain) LIKE ?', ['%'.$lowerTerm.'%'])
+                            ->orWhereRaw('LOWER(project_key) LIKE ?', ['%'.$lowerTerm.'%'])
+                            ->orWhereRaw('LOWER(registrar) LIKE ?', ['%'.$lowerTerm.'%'])
+                            ->orWhereRaw('LOWER(hosting_provider) LIKE ?', ['%'.$lowerTerm.'%'])
+                            ->orWhereRaw('LOWER(notes) LIKE ?', ['%'.$lowerTerm.'%'])
+                            ->orWhereRaw('LOWER(registrant_name) LIKE ?', ['%'.$lowerTerm.'%']);
+                    }
+                });
+            }
         });
     }
 
