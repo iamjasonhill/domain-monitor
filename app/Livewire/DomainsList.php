@@ -41,10 +41,17 @@ class DomainsList extends Component
         $this->syncingExpiry = true;
 
         try {
-            Artisan::call('domains:sync-synergy-expiry', ['--all' => true]);
-            session()->flash('message', 'Domain information synced successfully from Synergy Wholesale!');
+            $exitCode = Artisan::call('domains:sync-synergy-expiry', ['--all' => true]);
+            $output = Artisan::output();
+
+            if ($exitCode === 0) {
+                $this->dispatch('flash-message', message: 'Domain information synced successfully from Synergy Wholesale!', type: 'success');
+            } else {
+                $this->dispatch('flash-message', message: 'Sync completed with warnings. Check logs for details.', type: 'warning');
+            }
         } catch (\Exception $e) {
-            session()->flash('error', 'Error syncing domain information: '.$e->getMessage());
+            \Log::error('Sync Synergy Expiry Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            $this->dispatch('flash-message', message: 'Error syncing domain information: '.$e->getMessage(), type: 'error');
         } finally {
             $this->syncingExpiry = false;
             $this->resetPage();
@@ -56,10 +63,17 @@ class DomainsList extends Component
         $this->syncingDns = true;
 
         try {
-            Artisan::call('domains:sync-dns-records', ['--all' => true]);
-            session()->flash('message', 'DNS records synced successfully from Synergy Wholesale!');
+            $exitCode = Artisan::call('domains:sync-dns-records', ['--all' => true]);
+            $output = Artisan::output();
+
+            if ($exitCode === 0) {
+                $this->dispatch('flash-message', message: 'DNS records synced successfully from Synergy Wholesale!', type: 'success');
+            } else {
+                $this->dispatch('flash-message', message: 'DNS sync completed with warnings. Check logs for details.', type: 'warning');
+            }
         } catch (\Exception $e) {
-            session()->flash('error', 'Error syncing DNS records: '.$e->getMessage());
+            \Log::error('Sync DNS Records Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            $this->dispatch('flash-message', message: 'Error syncing DNS records: '.$e->getMessage(), type: 'error');
         } finally {
             $this->syncingDns = false;
             $this->resetPage();
@@ -71,10 +85,17 @@ class DomainsList extends Component
         $this->importingDomains = true;
 
         try {
-            Artisan::call('domains:import-synergy');
-            session()->flash('message', 'Domains imported successfully from Synergy Wholesale!');
+            $exitCode = Artisan::call('domains:import-synergy');
+            $output = Artisan::output();
+
+            if ($exitCode === 0) {
+                $this->dispatch('flash-message', message: 'Domains imported successfully from Synergy Wholesale!', type: 'success');
+            } else {
+                $this->dispatch('flash-message', message: 'Import completed with warnings. Check logs for details.', type: 'warning');
+            }
         } catch (\Exception $e) {
-            session()->flash('error', 'Error importing domains: '.$e->getMessage());
+            \Log::error('Import Synergy Domains Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            $this->dispatch('flash-message', message: 'Error importing domains: '.$e->getMessage(), type: 'error');
         } finally {
             $this->importingDomains = false;
             $this->resetPage();
