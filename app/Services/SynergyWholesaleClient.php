@@ -21,10 +21,9 @@ class SynergyWholesaleClient
     {
         $this->resellerId = $resellerId;
         $this->apiKey = $apiKey;
-        // Default API URL - verify with actual Synergy Wholesale API documentation
-        // The WSDL may require authentication or IP whitelisting to access
-        // Check the API documentation PDF for the correct endpoint
-        $this->apiUrl = $apiUrl ?? config('services.synergy.api_url', 'https://api.synergywholesale.com/soap');
+        // Default API URL - base URL for NuSOAP server
+        // WSDL is accessible at: https://api.synergywholesale.com?wsdl
+        $this->apiUrl = $apiUrl ?? config('services.synergy.api_url', 'https://api.synergywholesale.com');
     }
 
     /**
@@ -37,7 +36,6 @@ class SynergyWholesaleClient
         }
 
         try {
-            // Try with WSDL first
             $options = [
                 'soap_version' => SOAP_1_1,
                 'trace' => true,
@@ -50,7 +48,7 @@ class SynergyWholesaleClient
                 ]),
             ];
 
-            // If URL doesn't end with ?wsdl, try adding it
+            // WSDL URL - append ?wsdl if not present
             $wsdlUrl = $this->apiUrl;
             if (! str_contains($wsdlUrl, '?wsdl') && ! str_contains($wsdlUrl, '&wsdl')) {
                 $wsdlUrl = rtrim($wsdlUrl, '/').'?wsdl';
@@ -87,24 +85,38 @@ class SynergyWholesaleClient
         $this->initialize();
 
         try {
-            // Method name may vary - check Synergy Wholesale API docs for exact method name
-            // Common method names: GetDomainInfo, QueryDomain, DomainInfo
-            $result = $this->client->__soapCall('GetDomainInfo', [
-                [
-                    'ResellerID' => $this->resellerId,
-                    'APIKey' => $this->apiKey,
-                    'Domain' => $domain,
-                ],
-            ]);
+            // Use domainInfo method with correct parameter structure
+            // Parameters: resellerID, apiKey, domainName, associationID
+            $request = [
+                'resellerID' => $this->resellerId,
+                'apiKey' => $this->apiKey,
+                'domainName' => $domain,
+                'associationID' => '', // Optional, can be empty
+            ];
 
-            // Parse SOAP response - structure depends on API
-            if (isset($result->Domain)) {
+            $result = $this->client->domainInfo($request);
+
+            // Check for errors in response
+            if (isset($result->status) && $result->status !== 'OK' && str_starts_with($result->status, 'ERR_')) {
+                Log::warning('Synergy Wholesale API returned error', [
+                    'domain' => $domain,
+                    'status' => $result->status,
+                    'error_message' => $result->errorMessage ?? null,
+                ]);
+
+                return null;
+            }
+
+            // Parse SOAP response
+            if (isset($result->domainInfoResult)) {
+                $domainInfo = $result->domainInfoResult;
+
                 return [
-                    'domain' => $result->Domain,
-                    'expiry_date' => $result->ExpiryDate ?? null,
-                    'registrar' => $result->Registrar ?? null,
-                    'status' => $result->Status ?? null,
-                    'nameservers' => $result->Nameservers ?? [],
+                    'domain' => $domainInfo->domainName ?? $domain,
+                    'expiry_date' => $domainInfo->expiryDate ?? null,
+                    'registrar' => $domainInfo->registrar ?? null,
+                    'status' => $domainInfo->status ?? null,
+                    'nameservers' => $domainInfo->nameservers ?? [],
                 ];
             }
 
