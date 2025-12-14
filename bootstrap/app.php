@@ -7,7 +7,6 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
-use Throwable;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
