@@ -7,19 +7,112 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
-## About Laravel
+# Domain Monitor
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+A comprehensive domain monitoring and management platform built with Laravel 12, PostgreSQL, and Laravel Boost MCP.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Features
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Domain Management**: Track and manage domains with comprehensive metadata
+- **Health Checks**: Automated HTTP, SSL, and DNS health checks
+- **Platform Detection**: Automatic detection of website platforms (WordPress, Laravel, Next.js, etc.)
+- **Hosting Detection**: Identify hosting providers and store admin links
+- **Synergy Wholesale Integration**: Automated expiry date syncing for .com.au domains
+- **DNS Management**: View and manage DNS records for .com.au domains
+- **Brain Integration**: Event emission to Brain Nucleus for monitoring
+- **Livewire UI**: Modern, responsive admin interface
+
+## Requirements
+
+- PHP 8.2+
+- PostgreSQL 12+
+- Composer
+- Node.js & NPM
+- Laravel 12
+
+## Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/your-username/domain-monitor.git
+cd domain-monitor
+```
+
+2. Install dependencies:
+```bash
+composer install
+npm install
+```
+
+3. Configure environment:
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+
+4. Set up database:
+```bash
+# Update .env with your database credentials
+php artisan migrate
+php artisan db:seed --class=SuperadminSeeder
+```
+
+5. Build assets:
+```bash
+npm run build
+```
+
+6. Start the development server:
+```bash
+php artisan serve
+```
+
+## Environment Variables
+
+See `DEPLOYMENT.md` for a complete list of required environment variables.
+
+### Required
+- `APP_NAME` - Application name
+- `APP_ENV` - Environment (local/production)
+- `APP_DEBUG` - Debug mode (false in production)
+- `APP_URL` - Application URL
+- `DB_*` - Database configuration
+- `BRAIN_BASE_URL` - Brain API base URL
+- `BRAIN_API_KEY` - Brain API key
+
+### Optional
+- `SYNERGY_WHOLESALE_*` - Synergy Wholesale API credentials (for .com.au domains)
+
+## Scheduled Tasks
+
+The application includes several scheduled tasks configured in `routes/console.php`:
+
+- **Platform Detection**: Weekly on Sundays at 02:00 UTC
+- **Hosting Detection**: Weekly on Sundays at 02:30 UTC
+- **HTTP Health Checks**: Every hour
+- **SSL Certificate Checks**: Daily at 03:00 UTC
+- **DNS Checks**: Every 6 hours
+- **Synergy Wholesale Sync**: Daily at 04:00 UTC
+
+Ensure Laravel's scheduler is running:
+```bash
+* * * * * cd /path-to-your-project && php artisan schedule:run >> /dev/null 2>&1
+```
+
+## Deployment
+
+See `DEPLOYMENT.md` for detailed deployment instructions for Laravel Forge.
+
+## Documentation
+
+- `PROJECT-PLAN.md` - Project overview and completed steps
+- `DEPLOYMENT.md` - Deployment guide for Laravel Forge
+- `SYNERGY-SETUP.md` - Synergy Wholesale API setup
+- `SYNERGY-API-FIELDS.md` - Available API fields and methods
+
+## License
+
+The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
 
 ## Learning Laravel
 
