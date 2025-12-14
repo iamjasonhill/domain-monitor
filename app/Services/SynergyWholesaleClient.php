@@ -78,7 +78,7 @@ class SynergyWholesaleClient
     /**
      * Get domain information including expiry date and additional fields
      *
-     * @return array{domain: string, expiry_date: string|null, created_date: string|null, domain_status: string|null, auto_renew: string|null, nameservers: array<int, string>, dns_config_name: string|null, registrant_name: string|null, registrant_id_type: string|null, registrant_id: string|null, eligibility_type: string|null, eligibility_valid: bool|null, eligibility_last_check: string|null, registrar: string|null, status: string|null}|null
+     * @return array{domain: string, expiry_date: string|null, created_date: string|null, domain_status: string|null, auto_renew: string|null, nameservers: array<int, string>|null, nameserver_details: array<int, array{hostname: string|null, ip: string|null, subdomain: string|null}>|null, dns_config_name: string|null, registrant_name: string|null, registrant_id_type: string|null, registrant_id: string|null, eligibility_type: string|null, eligibility_valid: bool|null, eligibility_last_check: string|null, registrar: string|null, status: string|null}|null
      */
     public function getDomainInfo(string $domain): ?array
     {
@@ -109,12 +109,70 @@ class SynergyWholesaleClient
 
             // Parse SOAP response - response structure is flat, not wrapped in domainInfoResult
             if (isset($result->domainName) || isset($result->status)) {
-                // Extract nameservers - can be array or object
+                // Extract nameservers - can be array, object, or structured data
                 $nameservers = [];
-                if (isset($result->nameServers) && is_array($result->nameServers)) {
-                    $nameservers = $result->nameServers;
+                $nameserverDetails = [];
+
+                // Check for nameServers (array of strings)
+                if (isset($result->nameServers)) {
+                    if (is_array($result->nameServers)) {
+                        // Could be array of strings or array of objects
+                        foreach ($result->nameServers as $ns) {
+                            if (is_string($ns)) {
+                                $nameservers[] = $ns;
+                            } elseif (is_object($ns)) {
+                                // Structured nameserver object
+                                $nsData = [
+                                    'hostname' => $ns->hostname ?? $ns->name ?? $ns->nameserver ?? null,
+                                    'ip' => $ns->ip ?? $ns->ipAddress ?? null,
+                                    'subdomain' => $ns->subdomain ?? null,
+                                ];
+                                if ($nsData['hostname']) {
+                                    $nameservers[] = $nsData['hostname'];
+                                }
+                                $nameserverDetails[] = $nsData;
+                            }
+                        }
+                    } elseif (is_object($result->nameServers)) {
+                        // Single nameserver object
+                        $nsData = [
+                            'hostname' => $result->nameServers->hostname ?? $result->nameServers->name ?? $result->nameServers->nameserver ?? null,
+                            'ip' => $result->nameServers->ip ?? $result->nameServers->ipAddress ?? null,
+                            'subdomain' => $result->nameServers->subdomain ?? null,
+                        ];
+                        if ($nsData['hostname']) {
+                            $nameservers[] = $nsData['hostname'];
+                        }
+                        $nameserverDetails[] = $nsData;
+                    }
                 } elseif (isset($result->nameservers) && is_array($result->nameservers)) {
+                    // Alternative field name
                     $nameservers = $result->nameservers;
+                }
+
+                // Also check for individual nameserver fields (ns1, ns2, ns3, etc.)
+                for ($i = 1; $i <= 10; $i++) {
+                    $nsField = "ns{$i}";
+                    $nsHostnameField = "ns{$i}Hostname";
+                    $nsIpField = "ns{$i}Ip";
+                    $nsSubdomainField = "ns{$i}Subdomain";
+
+                    if (isset($result->$nsField) || isset($result->$nsHostnameField)) {
+                        $nsHostname = $result->$nsHostnameField ?? $result->$nsField ?? null;
+                        $nsIp = $result->$nsIpField ?? null;
+                        $nsSubdomain = $result->$nsSubdomainField ?? null;
+
+                        if ($nsHostname) {
+                            if (! in_array($nsHostname, $nameservers)) {
+                                $nameservers[] = $nsHostname;
+                            }
+                            $nameserverDetails[] = [
+                                'hostname' => $nsHostname,
+                                'ip' => $nsIp,
+                                'subdomain' => $nsSubdomain,
+                            ];
+                        }
+                    }
                 }
 
                 // Parse auto_renew (can be 'on', 'off', or boolean)
@@ -140,7 +198,8 @@ class SynergyWholesaleClient
                     'created_date' => $result->createdDate ?? null,
                     'domain_status' => $result->domain_status ?? null,
                     'auto_renew' => $autoRenew,
-                    'nameservers' => $nameservers,
+                    'nameservers' => $nameservers, // Array of hostname strings
+                    'nameserver_details' => ! empty($nameserverDetails) ? $nameserverDetails : null, // Detailed nameserver info with IP, subdomain, etc.
                     'dns_config_name' => $result->dnsConfigName ?? null,
                     'registrant_name' => $result->auRegistrantName ?? null,
                     'registrant_id_type' => $result->auRegistrantIDType ?? null,

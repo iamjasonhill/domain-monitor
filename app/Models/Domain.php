@@ -22,6 +22,7 @@ use Illuminate\Support\Str;
  * @property string|null $domain_status
  * @property bool|null $auto_renew
  * @property array|null $nameservers
+ * @property array|null $nameserver_details
  * @property string|null $dns_config_name
  * @property string|null $registrant_name
  * @property string|null $registrant_id_type
@@ -57,6 +58,7 @@ class Domain extends Model
         'domain_status',
         'auto_renew',
         'nameservers',
+        'nameserver_details',
         'dns_config_name',
         'registrant_name',
         'registrant_id_type',
@@ -77,6 +79,7 @@ class Domain extends Model
             'created_at_synergy' => 'datetime',
             'auto_renew' => 'boolean',
             'nameservers' => 'array',
+            'nameserver_details' => 'array',
             'eligibility_valid' => 'boolean',
             'eligibility_last_check' => 'date',
             'last_checked_at' => 'datetime',

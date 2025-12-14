@@ -156,8 +156,11 @@ class SyncSynergyExpiry extends Command
             }
 
             // DNS & Nameservers
-            if (isset($domainInfo['nameservers']) && is_array($domainInfo['nameservers'])) {
+            if (! empty($domainInfo['nameservers']) && is_array($domainInfo['nameservers'])) {
                 $updateData['nameservers'] = $domainInfo['nameservers'];
+            }
+            if (! empty($domainInfo['nameserver_details']) && is_array($domainInfo['nameserver_details'])) {
+                $updateData['nameserver_details'] = $domainInfo['nameserver_details'];
             }
             if (isset($domainInfo['dns_config_name'])) {
                 $updateData['dns_config_name'] = $domainInfo['dns_config_name'];
