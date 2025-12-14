@@ -172,7 +172,16 @@
                             <div>
                                 <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Platform</dt>
                                 <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">
-                                    {{ $platform?->platform_type ?? $platformString }}
+                                    @php
+                                        $platformType = $platform?->platform_type ?? $platformString;
+                                    @endphp
+                                    @if($platformType === 'Parked')
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Parked</span>
+                                    @elseif($platformType === 'Email Only')
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Email Only</span>
+                                    @else
+                                        {{ $platformType }}
+                                    @endif
                                     @if($platform?->platform_version)
                                         <span class="text-gray-500">({{ $platform->platform_version }})</span>
                                     @endif
