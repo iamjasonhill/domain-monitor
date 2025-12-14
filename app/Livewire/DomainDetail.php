@@ -555,15 +555,84 @@ class DomainDetail extends Component
         }
 
         try {
-            Artisan::call('domains:update-ip-info', [
-                '--domain' => $subdomain->full_domain,
-            ]);
+            // Use the UpdateIpInfo service directly for subdomains
+            $ipApiService = app(\App\Services\IpApiService::class);
 
-            $this->loadDomain();
-            session()->flash('message', 'Subdomain IP information updated!');
+            // Get IP address first (from DNS or resolve)
+            $ipAddresses = $this->getIpAddresses($subdomain->full_domain);
+
+            if (empty($ipAddresses)) {
+                session()->flash('error', 'Could not resolve IP address for subdomain.');
+
+                return;
+            }
+
+            $primaryIp = $ipAddresses[0];
+
+            // Query IP-API.com
+            $ipApiData = $ipApiService->query($primaryIp);
+
+            if ($ipApiData) {
+                $updateData = [
+                    'ip_address' => $primaryIp,
+                    'ip_checked_at' => now(),
+                    'ip_isp' => $ipApiData['isp'] ?? null,
+                    'ip_organization' => $ipApiData['org'] ?? null,
+                    'ip_as_number' => $ipApiData['as'] ?? null,
+                    'ip_country' => $ipApiData['country'] ?? null,
+                    'ip_city' => $ipApiData['city'] ?? null,
+                    'ip_hosting_flag' => $ipApiData['hosting'] ?? null,
+                ];
+
+                // Also update hosting provider if IP-API suggests one
+                $ipApiProvider = $ipApiService->extractHostingProvider($ipApiData);
+                if ($ipApiProvider && ! $subdomain->hosting_provider) {
+                    $updateData['hosting_provider'] = $ipApiProvider;
+                }
+
+                $subdomain->update($updateData);
+                $this->loadDomain();
+                session()->flash('message', 'Subdomain IP information updated!');
+            } else {
+                session()->flash('error', 'Could not retrieve IP information from IP-API.com.');
+            }
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to update subdomain IP: '.$e->getMessage());
         }
+    }
+
+    /**
+     * Get IP addresses for domain/subdomain
+     *
+     * @return array<int, string>
+     */
+    private function getIpAddresses(string $domain): array
+    {
+        $ipAddresses = [];
+
+        try {
+            // Get A records (IPv4)
+            $aRecords = @dns_get_record($domain, DNS_A);
+            if ($aRecords) {
+                foreach ($aRecords as $record) {
+                    if (isset($record['ip']) && filter_var($record['ip'], FILTER_VALIDATE_IP)) {
+                        $ipAddresses[] = $record['ip'];
+                    }
+                }
+            }
+
+            // Also try gethostbyname as fallback
+            $ip = @gethostbyname($domain);
+            if ($ip && $ip !== $domain && filter_var($ip, FILTER_VALIDATE_IP)) {
+                if (! in_array($ip, $ipAddresses)) {
+                    $ipAddresses[] = $ip;
+                }
+            }
+        } catch (\Exception $e) {
+            // Silently fail
+        }
+
+        return array_unique($ipAddresses);
     }
 
     public function discoverSubdomainsFromDns(): void
@@ -611,7 +680,7 @@ class DomainDetail extends Component
                 return;
             }
 
-            // Create subdomain entries
+            // Create subdomain entries and populate IP from DNS records
             $created = 0;
             foreach ($discoveredSubdomains as $subdomainName) {
                 $fullDomain = "{$subdomainName}.{$this->domain->domain}";
@@ -622,10 +691,14 @@ class DomainDetail extends Component
                     ->exists();
 
                 if (! $exists) {
+                    // Find IP address from DNS A records for this subdomain
+                    $ipAddress = $this->findIpFromDnsRecords($fullDomain, $dnsRecords);
+
                     Subdomain::create([
                         'domain_id' => $this->domain->id,
                         'subdomain' => $subdomainName,
                         'full_domain' => $fullDomain,
+                        'ip_address' => $ipAddress,
                         'is_active' => true,
                     ]);
                     $created++;
@@ -672,6 +745,65 @@ class DomainDetail extends Component
             if (preg_match('/^[a-z0-9]([a-z0-9\-_]*[a-z0-9])?$/i', $host)) {
                 return $host;
             }
+        }
+
+        return null;
+    }
+
+    /**
+     * Find IP address from DNS records for a subdomain
+     *
+     * @param  string  $fullDomain  Full subdomain (e.g., "www.again.com.au")
+     * @param  \Illuminate\Database\Eloquent\Collection  $dnsRecords  DNS records collection
+     * @return string|null IP address or null if not found
+     */
+    private function findIpFromDnsRecords(string $fullDomain, $dnsRecords): ?string
+    {
+        // Look for A record with matching host
+        foreach ($dnsRecords as $record) {
+            $host = trim($record->host ?? '');
+            $host = rtrim($host, '.'); // Remove trailing dot
+
+            // Check if this record is for our subdomain
+            if (($host === $fullDomain || $host === rtrim($fullDomain, '.')) && $record->type === 'A') {
+                // A record value should be an IP address
+                $value = trim($record->value ?? '');
+                if (filter_var($value, FILTER_VALIDATE_IP)) {
+                    return $value;
+                }
+            }
+
+            // Also check CNAME records - they might point to another record with an A record
+            if (($host === $fullDomain || $host === rtrim($fullDomain, '.')) && $record->type === 'CNAME') {
+                $cnameTarget = trim($record->value ?? '');
+                $cnameTarget = rtrim($cnameTarget, '.');
+
+                // Look for A record for the CNAME target
+                foreach ($dnsRecords as $targetRecord) {
+                    $targetHost = trim($targetRecord->host ?? '');
+                    $targetHost = rtrim($targetHost, '.');
+
+                    if (($targetHost === $cnameTarget || $targetHost === rtrim($cnameTarget, '.')) && $targetRecord->type === 'A') {
+                        $value = trim($targetRecord->value ?? '');
+                        if (filter_var($value, FILTER_VALIDATE_IP)) {
+                            return $value;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fallback: try DNS lookup
+        try {
+            $aRecords = @dns_get_record($fullDomain, DNS_A);
+            if ($aRecords && ! empty($aRecords)) {
+                $ip = $aRecords[0]['ip'] ?? null;
+                if ($ip && filter_var($ip, FILTER_VALIDATE_IP)) {
+                    return $ip;
+                }
+            }
+        } catch (\Exception $e) {
+            // Silently fail
         }
 
         return null;
