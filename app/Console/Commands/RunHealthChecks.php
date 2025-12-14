@@ -55,7 +55,7 @@ class RunHealthChecks extends Command
         }
 
         if ($allOption) {
-            $domains = Domain::where('is_active', true)->get();
+            $domains = Domain::with('platform')->where('is_active', true)->get();
 
             if ($domains->isEmpty()) {
                 $this->warn('No active domains found.');
