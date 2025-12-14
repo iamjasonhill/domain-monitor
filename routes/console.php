@@ -49,3 +49,9 @@ Schedule::command('domains:sync-dns-records --all')
     ->daily()
     ->at('04:30')
     ->timezone('UTC');
+
+// Check for expiring domains - run daily to send alerts at 30, 14, and 7 days
+Schedule::command('domains:check-expiring')
+    ->daily()
+    ->at('05:00')
+    ->timezone('UTC');
