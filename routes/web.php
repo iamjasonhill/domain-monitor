@@ -16,11 +16,25 @@ Route::view('profile', 'profile')
 
 // Domain routes (protected)
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/domains', \App\Livewire\DomainsList::class)->name('domains.index');
-    Route::get('/domains/create', \App\Livewire\DomainForm::class)->name('domains.create');
-    Route::get('/domains/{domain}', \App\Livewire\DomainDetail::class)->name('domains.show');
-    Route::get('/domains/{domain}/edit', \App\Livewire\DomainForm::class)->name('domains.edit');
-    Route::get('/health-checks', \App\Livewire\HealthChecksList::class)->name('health-checks.index');
+    Route::get('/domains', function () {
+        return view('domains.index');
+    })->name('domains.index');
+
+    Route::get('/domains/create', function () {
+        return view('domains.create');
+    })->name('domains.create');
+
+    Route::get('/domains/{domain}', function (string $domain) {
+        return view('domains.show', ['domainId' => $domain]);
+    })->name('domains.show');
+
+    Route::get('/domains/{domain}/edit', function (string $domain) {
+        return view('domains.edit', ['domainId' => $domain]);
+    })->name('domains.edit');
+
+    Route::get('/health-checks', function () {
+        return view('health-checks.index');
+    })->name('health-checks.index');
 });
 
 require __DIR__.'/auth.php';
