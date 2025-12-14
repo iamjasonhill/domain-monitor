@@ -24,3 +24,7 @@ parameters:
         - storage/
         - public/
 
+    ignoreErrors:
+        # Laravel relationship covariance issues (known limitation)
+        - '#Template type TDeclaringModel.*is not covariant#'
+
