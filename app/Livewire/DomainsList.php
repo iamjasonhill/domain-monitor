@@ -255,45 +255,53 @@ class DomainsList extends Component
 
     public function render(): \Illuminate\Contracts\View\View
     {
-        $domains = Domain::with([
+        $query = Domain::with([
             'checks' => function ($query) {
                 $query->latest()->limit(1);
             },
             'platform',
-        ])
-            ->when(! empty(trim($this->search)), function ($query) {
-                $searchTerm = trim($this->search);
-                $query->where(function ($q) use ($searchTerm) {
-                    $q->where('domain', 'like', '%'.$searchTerm.'%')
-                        ->orWhere('project_key', 'like', '%'.$searchTerm.'%')
-                        ->orWhere('registrar', 'like', '%'.$searchTerm.'%');
-                });
-            })
-            ->when($this->filterActive !== null, function ($query) {
-                $query->where('is_active', $this->filterActive);
-            })
-            ->when($this->filterExpiring, function ($query) {
-                $query->where('is_active', true)
-                    ->whereNotNull('expires_at')
-                    ->where('expires_at', '<=', now()->addDays(30))
-                    ->where('expires_at', '>', now());
-            })
-            ->when($this->filterExcludeParked, function ($query) {
-                $query->where(function ($q) {
-                    $q->where('platform', '!=', 'Parked')
-                        ->orWhereNull('platform');
-                });
-            })
-            ->when($this->filterRecentFailures, function ($query) {
-                $query->whereHas('checks', function ($q) {
-                    $q->where('status', 'fail')
-                        ->where('created_at', '>=', now()->subDays(7));
-                });
-            })
-            ->when($this->filterFailedEligibility, function ($query) {
-                $query->where('eligibility_valid', false);
-            })
-            ->orderBy('updated_at', 'desc')
+        ]);
+
+        // Apply search filter
+        if (! empty(trim($this->search))) {
+            $searchTerm = trim($this->search);
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('domain', 'like', '%'.$searchTerm.'%')
+                    ->orWhere('project_key', 'like', '%'.$searchTerm.'%')
+                    ->orWhere('registrar', 'like', '%'.$searchTerm.'%');
+            });
+        }
+        // Apply other filters
+        if ($this->filterActive !== null) {
+            $query->where('is_active', $this->filterActive);
+        }
+
+        if ($this->filterExpiring) {
+            $query->where('is_active', true)
+                ->whereNotNull('expires_at')
+                ->where('expires_at', '<=', now()->addDays(30))
+                ->where('expires_at', '>', now());
+        }
+
+        if ($this->filterExcludeParked) {
+            $query->where(function ($q) {
+                $q->where('platform', '!=', 'Parked')
+                    ->orWhereNull('platform');
+            });
+        }
+
+        if ($this->filterRecentFailures) {
+            $query->whereHas('checks', function ($q) {
+                $q->where('status', 'fail')
+                    ->where('created_at', '>=', now()->subDays(7));
+            });
+        }
+
+        if ($this->filterFailedEligibility) {
+            $query->where('eligibility_valid', false);
+        }
+
+        $domains = $query->orderBy('updated_at', 'desc')
             ->paginate(20);
 
         return view('livewire.domains-list', [
