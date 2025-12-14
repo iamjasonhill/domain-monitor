@@ -24,6 +24,25 @@
             </div>
         </a>
 
+        <!-- Scheduled Tasks Card -->
+        <a href="{{ route('settings.scheduled-tasks') }}" wire:navigate class="block">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-green-100 dark:bg-green-900 rounded-lg p-3">
+                            <svg class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Scheduled Tasks</h3>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">View all scheduled tasks and their next run times</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+
         <!-- Placeholder for future cards -->
         <!-- Add more cards here as needed -->
     </div>
