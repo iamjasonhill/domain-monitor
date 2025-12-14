@@ -2,7 +2,6 @@
 
 namespace App\Livewire;
 
-use Illuminate\Support\Facades\Artisan;
 use Livewire\Component;
 
 class ScheduledTasks extends Component
@@ -16,47 +15,44 @@ class ScheduledTasks extends Component
 
     public function loadScheduledTasks(): void
     {
-        // Get scheduled tasks by running schedule:list command
-        Artisan::call('schedule:list');
-        $output = Artisan::output();
+        // Get scheduled tasks from Laravel's scheduler
+        $schedule = app(\Illuminate\Console\Scheduling\Schedule::class);
+        $events = $schedule->events();
 
-        // Parse the output to extract task information
-        $lines = explode("\n", trim($output));
-        $this->tasks = [];
+        $this->tasks = collect($events)->map(function ($event) {
+            $description = $event->description ?? 'No description';
+            $command = $event->command ?? 'N/A';
+            $expression = $event->expression ?? 'N/A';
+            $timezone = $event->timezone ?? config('app.timezone', 'UTC');
 
-        foreach ($lines as $line) {
-            // Skip header lines and empty lines
-            if (empty(trim($line)) || str_contains($line, 'Next Due') || str_contains($line, 'Command') || str_contains($line, '---')) {
-                continue;
-            }
-
-            // Parse the schedule:list output format
-            // Format: "0  *   * * *  php artisan domains:health-check --all --type=http  Next Due: 16 minutes from now"
-            if (preg_match('/^(\S+\s+\S+\s+\S+\s+\S+\s+\S+)\s+php artisan (.+?)(?:\s+Next Due:\s+(.+))?$/', $line, $matches)) {
-                $expression = trim($matches[1]);
-                $command = 'php artisan '.trim($matches[2]);
-                $nextRun = isset($matches[3]) ? trim($matches[3]) : 'N/A';
-
-                // Extract description from command
+            // If no description, try to extract from command
+            if ($description === 'No description' || empty($description)) {
                 $description = $this->getCommandDescription($command);
-                $scheduleText = $this->parseCronExpression($expression, 'UTC');
-
-                $this->tasks[] = [
-                    'description' => $description,
-                    'command' => $command,
-                    'expression' => $expression,
-                    'schedule' => $scheduleText,
-                    'timezone' => 'UTC',
-                    'next_run' => 'N/A',
-                    'next_run_relative' => $nextRun,
-                ];
             }
-        }
 
-        // Sort by next run relative time
-        usort($this->tasks, function ($a, $b) {
-            return strcmp($a['next_run_relative'], $b['next_run_relative']);
-        });
+            // Parse the cron expression to get a human-readable schedule
+            $scheduleText = $this->parseCronExpression($expression, $timezone);
+
+            // Get next run time
+            try {
+                $nextRun = $event->nextRunDate();
+                $nextRunFormatted = $nextRun ? $nextRun->format('Y-m-d H:i:s T') : 'N/A';
+                $nextRunRelative = $nextRun ? $nextRun->diffForHumans() : 'N/A';
+            } catch (\Exception $e) {
+                $nextRunFormatted = 'N/A';
+                $nextRunRelative = 'N/A';
+            }
+
+            return [
+                'description' => $description,
+                'command' => $command,
+                'expression' => $expression,
+                'schedule' => $scheduleText,
+                'timezone' => $timezone,
+                'next_run' => $nextRunFormatted,
+                'next_run_relative' => $nextRunRelative,
+            ];
+        })->sortBy('next_run')->values()->toArray();
     }
 
     /**
