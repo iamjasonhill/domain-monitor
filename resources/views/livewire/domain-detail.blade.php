@@ -112,34 +112,43 @@
                         </div>
                     </div>
                     <dl class="grid grid-cols-1 gap-4">
-                        @if($domain->platform)
+                        @php
+                            $platformModel = $domain->platform; // This is the relationship
+                            $platformString = $domain->getAttribute('platform'); // This is the string field
+                        @endphp
+                        @if($platformModel || $platformString)
                             <div>
                                 <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Platform</dt>
                                 <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">
-                                    {{ $domain->platform->platform_type ?? $domain->platform }}
-                                    @if($domain->platform && $domain->platform->platform_version)
-                                        <span class="text-gray-500">({{ $domain->platform->platform_version }})</span>
+                                    {{ $platformModel?->platform_type ?? $platformString }}
+                                    @if($platformModel?->platform_version)
+                                        <span class="text-gray-500">({{ $platformModel->platform_version }})</span>
                                     @endif
-                                    @if($domain->platform && $domain->platform->detection_confidence)
+                                    @if($platformModel?->detection_confidence)
                                         <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                            @if($domain->platform->detection_confidence === 'high') bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
-                                            @elseif($domain->platform->detection_confidence === 'medium') bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                            @if($platformModel->detection_confidence === 'high') bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                            @elseif($platformModel->detection_confidence === 'medium') bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
                                             @else bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300
                                             @endif">
-                                            {{ ucfirst($domain->platform->detection_confidence) }} confidence
+                                            {{ ucfirst($platformModel->detection_confidence) }} confidence
                                         </span>
                                     @endif
-                                    @if($domain->platform && $domain->platform->admin_url)
+                                    @if($platformModel?->admin_url)
                                         <div class="mt-1">
-                                            <a href="{{ $domain->platform->admin_url }}" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline text-xs">Admin URL →</a>
+                                            <a href="{{ $platformModel->admin_url }}" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline text-xs">Admin URL →</a>
                                         </div>
                                     @endif
-                                    @if($domain->platform && $domain->platform->last_detected)
+                                    @if($platformModel?->last_detected)
                                         <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                            Last detected: {{ $domain->platform->last_detected->diffForHumans() }}
+                                            Last detected: {{ $platformModel->last_detected->diffForHumans() }}
                                         </div>
                                     @endif
                                 </dd>
+                            </div>
+                        @else
+                            <div>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Platform</dt>
+                                <dd class="mt-1 text-sm text-gray-500 dark:text-gray-400 italic">Not detected yet. Click "Detect Platform" to run detection.</dd>
                             </div>
                         @endif
                         @if($domain->hosting_provider)
