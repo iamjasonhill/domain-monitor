@@ -23,6 +23,8 @@ class DomainsList extends Component
 
     public bool $importingDomains = false;
 
+    public bool $detectingPlatforms = false;
+
     public function updatingSearch()
     {
         $this->resetPage();
