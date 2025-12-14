@@ -18,12 +18,27 @@ class PlatformDetector
         $url = $this->normalizeUrl($domain);
 
         try {
-            $response = Http::timeout(10)
-                ->withoutVerifying() // Allow self-signed certificates for parked domains
-                ->withHeaders([
-                    'User-Agent' => 'DomainMonitor/1.0',
-                ])
-                ->get($url);
+            // Try HTTPS first
+            try {
+                $response = Http::timeout(10)
+                    ->withoutVerifying() // Allow self-signed certificates for parked domains
+                    ->withHeaders([
+                        'User-Agent' => 'DomainMonitor/1.0',
+                    ])
+                    ->get($url);
+            } catch (\Exception $e) {
+                // If HTTPS fails with SSL error, try HTTP
+                Log::debug('PlatformDetector HTTPS failed, trying HTTP', [
+                    'domain' => $domain,
+                    'error' => $e->getMessage(),
+                ]);
+                $url = $this->tryHttpFallback($url);
+                $response = Http::timeout(10)
+                    ->withHeaders([
+                        'User-Agent' => 'DomainMonitor/1.0',
+                    ])
+                    ->get($url);
+            }
 
             if (! $response->successful()) {
                 return [
@@ -153,6 +168,7 @@ class PlatformDetector
 
     /**
      * Normalize URL to include protocol
+     * Try HTTPS first, but allow fallback to HTTP if SSL fails
      */
     private function normalizeUrl(string $domain): string
     {
@@ -161,6 +177,21 @@ class PlatformDetector
         }
 
         return "https://{$domain}";
+    }
+
+    /**
+     * Try HTTP if HTTPS fails (for parked domains with SSL issues)
+     */
+    private function tryHttpFallback(string $domain): string
+    {
+        if (str_starts_with($domain, 'http://')) {
+            return $domain;
+        }
+        if (str_starts_with($domain, 'https://')) {
+            return str_replace('https://', 'http://', $domain);
+        }
+
+        return "http://{$domain}";
     }
 
     /**
