@@ -107,16 +107,22 @@ class SynergyWholesaleClient
                 return null;
             }
 
-            // Parse SOAP response
-            if (isset($result->domainInfoResult)) {
-                $domainInfo = $result->domainInfoResult;
+            // Parse SOAP response - response structure is flat, not wrapped in domainInfoResult
+            if (isset($result->domainName) || isset($result->status)) {
+                // Extract nameservers - can be array or object
+                $nameservers = [];
+                if (isset($result->nameServers) && is_array($result->nameServers)) {
+                    $nameservers = $result->nameServers;
+                } elseif (isset($result->nameservers) && is_array($result->nameservers)) {
+                    $nameservers = $result->nameservers;
+                }
 
                 return [
-                    'domain' => $domainInfo->domainName ?? $domain,
-                    'expiry_date' => $domainInfo->expiryDate ?? null,
-                    'registrar' => $domainInfo->registrar ?? null,
-                    'status' => $domainInfo->status ?? null,
-                    'nameservers' => $domainInfo->nameservers ?? [],
+                    'domain' => $result->domainName ?? $domain,
+                    'expiry_date' => $result->domain_expiry ?? $result->expiryDate ?? null,
+                    'registrar' => $result->registrar ?? null,
+                    'status' => $result->domain_status ?? $result->status ?? null,
+                    'nameservers' => $nameservers,
                 ];
             }
 
