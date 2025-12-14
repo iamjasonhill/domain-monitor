@@ -274,12 +274,23 @@ class SynergyWholesaleClient
             $result = $this->client->listDomains($request);
 
             // Extract domains from response
+            // The SOAP response structure is: $result->domainList->item (array)
             $domains = [];
-            if (isset($result->listDomainsResult) && is_array($result->listDomainsResult)) {
-                $domains = $result->listDomainsResult;
+
+            if (isset($result->domainList->item)) {
+                // Convert to array if it's a single item (SoapClient sometimes returns single objects)
+                $items = is_array($result->domainList->item)
+                    ? $result->domainList->item
+                    : [$result->domainList->item];
+
+                $domains = $items;
             } elseif (isset($result->listDomainsResult)) {
-                // If it's a single object, wrap it in an array
-                $domains = [$result->listDomainsResult];
+                // Fallback to old structure if present
+                if (is_array($result->listDomainsResult)) {
+                    $domains = $result->listDomainsResult;
+                } else {
+                    $domains = [$result->listDomainsResult];
+                }
             }
 
             // Filter out domains with errors and return as collection
