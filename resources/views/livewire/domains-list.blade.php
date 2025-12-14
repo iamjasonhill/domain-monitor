@@ -226,8 +226,9 @@
                                                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">Inactive</span>
                                                         @endif
                                                         @php
-                                                            $latestCheck = $domain->checks->first();
-                                                            $healthStatus = $latestCheck ? $latestCheck->status : null;
+                                                            // Get the latest HTTP check only (not DNS)
+                                                            $latestHttpCheck = $domain->checks->where('check_type', 'http')->first();
+                                                            $healthStatus = $latestHttpCheck ? $latestHttpCheck->status : null;
                                                         @endphp
                                                         @if($healthStatus)
                                                             @if($healthStatus === 'ok')
