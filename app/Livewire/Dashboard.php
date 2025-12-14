@@ -22,6 +22,7 @@ class Dashboard extends Component
                 ->where('created_at', '>=', now()->subDays(7))
                 ->distinct('domain_id')
                 ->count('domain_id'),
+            'failed_eligibility' => Domain::where('eligibility_valid', false)->count(),
         ];
 
         $recentDomains = Domain::where('is_active', true)

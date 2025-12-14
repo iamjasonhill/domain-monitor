@@ -21,12 +21,15 @@ class DomainsList extends Component
 
     public bool $filterRecentFailures = false;
 
+    public bool $filterFailedEligibility = false;
+
     public function mount(): void
     {
         // Read query parameters from URL
         $this->filterActive = request()->boolean('filterActive') ? true : (request()->has('filterActive') ? false : null);
         $this->filterExpiring = request()->boolean('filterExpiring');
         $this->filterRecentFailures = request()->boolean('filterRecentFailures');
+        $this->filterFailedEligibility = request()->boolean('filterFailedEligibility');
     }
 
     public bool $syncingExpiry = false;
@@ -49,6 +52,7 @@ class DomainsList extends Component
         $this->filterExpiring = false;
         $this->filterExcludeParked = false;
         $this->filterRecentFailures = false;
+        $this->filterFailedEligibility = false;
         $this->resetPage();
     }
 
@@ -282,6 +286,9 @@ class DomainsList extends Component
                     $q->where('status', 'fail')
                         ->where('created_at', '>=', now()->subDays(7));
                 });
+            })
+            ->when($this->filterFailedEligibility, function ($query) {
+                $query->where('eligibility_valid', false);
             })
             ->orderBy('updated_at', 'desc')
             ->paginate(20);
