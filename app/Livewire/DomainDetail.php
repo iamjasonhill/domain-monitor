@@ -545,6 +545,74 @@ class DomainDetail extends Component
         $this->loadDomain();
     }
 
+    public function updateAllSubdomainsIp(): void
+    {
+        if (! $this->domain) {
+            session()->flash('error', 'Domain not found.');
+
+            return;
+        }
+
+        $subdomains = $this->domain->subdomains()->where('is_active', true)->get();
+
+        if ($subdomains->isEmpty()) {
+            session()->flash('info', 'No active subdomains to update.');
+
+            return;
+        }
+
+        $updated = 0;
+        $ipApiService = app(\App\Services\IpApiService::class);
+
+        foreach ($subdomains as $subdomain) {
+            try {
+                // Get IP address first (from existing or resolve)
+                $ipAddress = $subdomain->ip_address;
+
+                if (! $ipAddress) {
+                    $ipAddresses = $this->getIpAddresses($subdomain->full_domain);
+                    $ipAddress = $ipAddresses[0] ?? null;
+                }
+
+                if (! $ipAddress) {
+                    continue;
+                }
+
+                // Query IP-API.com
+                $ipApiData = $ipApiService->query($ipAddress);
+
+                if ($ipApiData) {
+                    $updateData = [
+                        'ip_address' => $ipAddress,
+                        'ip_checked_at' => now(),
+                        'ip_isp' => $ipApiData['isp'] ?? null,
+                        'ip_organization' => $ipApiData['org'] ?? null,
+                        'ip_as_number' => $ipApiData['as'] ?? null,
+                        'ip_country' => $ipApiData['country'] ?? null,
+                        'ip_city' => $ipApiData['city'] ?? null,
+                        'ip_hosting_flag' => $ipApiData['hosting'] ?? null,
+                    ];
+
+                    $ipApiProvider = $ipApiService->extractHostingProvider($ipApiData);
+                    if ($ipApiProvider && ! $subdomain->hosting_provider) {
+                        $updateData['hosting_provider'] = $ipApiProvider;
+                    }
+
+                    $subdomain->update($updateData);
+                    $updated++;
+
+                    // Rate limiting: wait 2 seconds between requests
+                    sleep(2);
+                }
+            } catch (\Exception $e) {
+                // Continue with next subdomain
+            }
+        }
+
+        $this->loadDomain();
+        session()->flash('message', "Updated IP information for {$updated}/{$subdomains->count()} subdomain(s).");
+    }
+
     public function updateSubdomainIp(string $subdomainId): void
     {
         $subdomain = Subdomain::find($subdomainId);
@@ -694,13 +762,43 @@ class DomainDetail extends Component
                     // Find IP address from DNS A records for this subdomain
                     $ipAddress = $this->findIpFromDnsRecords($fullDomain, $dnsRecords);
 
-                    Subdomain::create([
+                    $subdomain = Subdomain::create([
                         'domain_id' => $this->domain->id,
                         'subdomain' => $subdomainName,
                         'full_domain' => $fullDomain,
                         'ip_address' => $ipAddress,
                         'is_active' => true,
                     ]);
+
+                    // If we have an IP address, try to get IP-API info
+                    if ($ipAddress) {
+                        try {
+                            $ipApiService = app(\App\Services\IpApiService::class);
+                            $ipApiData = $ipApiService->query($ipAddress);
+
+                            if ($ipApiData) {
+                                $updateData = [
+                                    'ip_checked_at' => now(),
+                                    'ip_isp' => $ipApiData['isp'] ?? null,
+                                    'ip_organization' => $ipApiData['org'] ?? null,
+                                    'ip_as_number' => $ipApiData['as'] ?? null,
+                                    'ip_country' => $ipApiData['country'] ?? null,
+                                    'ip_city' => $ipApiData['city'] ?? null,
+                                    'ip_hosting_flag' => $ipApiData['hosting'] ?? null,
+                                ];
+
+                                $ipApiProvider = $ipApiService->extractHostingProvider($ipApiData);
+                                if ($ipApiProvider) {
+                                    $updateData['hosting_provider'] = $ipApiProvider;
+                                }
+
+                                $subdomain->update($updateData);
+                            }
+                        } catch (\Exception $e) {
+                            // Silently fail - IP-API update is optional
+                        }
+                    }
+
                     $created++;
                 }
             }

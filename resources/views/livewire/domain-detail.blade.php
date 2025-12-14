@@ -354,6 +354,12 @@
                                 <span wire:loading wire:target="discoverSubdomainsFromDns">Discovering...</span>
                             </button>
                         @endif
+                        @if($domain->subdomains && $domain->subdomains->count() > 0)
+                            <button wire:click="updateAllSubdomainsIp" wire:loading.attr="disabled" class="inline-flex items-center px-3 py-1.5 bg-purple-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-purple-700 disabled:opacity-50">
+                                <span wire:loading.remove wire:target="updateAllSubdomainsIp">Update All IPs</span>
+                                <span wire:loading wire:target="updateAllSubdomainsIp">Updating...</span>
+                            </button>
+                        @endif
                         <button wire:click="openAddSubdomainModal" class="inline-flex items-center px-3 py-1.5 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700">
                             Add Subdomain
                         </button>
