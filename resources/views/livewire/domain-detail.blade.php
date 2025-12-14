@@ -113,34 +113,38 @@
                     </div>
                     <dl class="grid grid-cols-1 gap-4">
                         @php
-                            $platformModel = $domain->platform; // This is the relationship
+                            // Get the relationship model (if loaded) and the string attribute separately
+                            $platformModel = $domain->relationLoaded('platform') ? $domain->getRelation('platform') : null;
                             $platformString = $domain->getAttribute('platform'); // This is the string field
+                            
+                            // If we have a relationship model, use it; otherwise use the string
+                            $platform = $platformModel instanceof \App\Models\WebsitePlatform ? $platformModel : null;
                         @endphp
-                        @if($platformModel || $platformString)
+                        @if($platform || $platformString)
                             <div>
                                 <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Platform</dt>
                                 <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">
-                                    {{ $platformModel?->platform_type ?? $platformString }}
-                                    @if($platformModel?->platform_version)
-                                        <span class="text-gray-500">({{ $platformModel->platform_version }})</span>
+                                    {{ $platform?->platform_type ?? $platformString }}
+                                    @if($platform?->platform_version)
+                                        <span class="text-gray-500">({{ $platform->platform_version }})</span>
                                     @endif
-                                    @if($platformModel?->detection_confidence)
+                                    @if($platform?->detection_confidence)
                                         <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                            @if($platformModel->detection_confidence === 'high') bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
-                                            @elseif($platformModel->detection_confidence === 'medium') bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                            @if($platform->detection_confidence === 'high') bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                            @elseif($platform->detection_confidence === 'medium') bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
                                             @else bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300
                                             @endif">
-                                            {{ ucfirst($platformModel->detection_confidence) }} confidence
+                                            {{ ucfirst($platform->detection_confidence) }} confidence
                                         </span>
                                     @endif
-                                    @if($platformModel?->admin_url)
+                                    @if($platform?->admin_url)
                                         <div class="mt-1">
-                                            <a href="{{ $platformModel->admin_url }}" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline text-xs">Admin URL →</a>
+                                            <a href="{{ $platform->admin_url }}" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline text-xs">Admin URL →</a>
                                         </div>
                                     @endif
-                                    @if($platformModel?->last_detected)
+                                    @if($platform?->last_detected)
                                         <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                            Last detected: {{ $platformModel->last_detected->diffForHumans() }}
+                                            Last detected: {{ $platform->last_detected->diffForHumans() }}
                                         </div>
                                     @endif
                                 </dd>
