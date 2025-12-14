@@ -26,3 +26,14 @@ Schedule::command('domains:detect-hosting --all')
 Schedule::command('domains:health-check --all --type=http')
     ->hourly()
     ->timezone('UTC');
+
+// SSL certificate checks - run daily for active domains
+Schedule::command('domains:health-check --all --type=ssl')
+    ->daily()
+    ->at('03:00')
+    ->timezone('UTC');
+
+// DNS checks - run every 6 hours for active domains
+Schedule::command('domains:health-check --all --type=dns')
+    ->everySixHours()
+    ->timezone('UTC');

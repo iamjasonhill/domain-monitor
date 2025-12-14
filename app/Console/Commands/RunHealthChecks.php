@@ -3,7 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Models\Domain;
+use App\Services\DnsHealthCheck;
 use App\Services\HttpHealthCheck;
+use App\Services\SslHealthCheck;
 use Illuminate\Console\Command;
 
 class RunHealthChecks extends Command
@@ -28,7 +30,7 @@ class RunHealthChecks extends Command
     /**
      * Execute the console command.
      */
-    public function handle(HttpHealthCheck $httpCheck): int
+    public function handle(HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck): int
     {
         $domainOption = $this->option('domain');
         $allOption = $this->option('all');
@@ -49,7 +51,7 @@ class RunHealthChecks extends Command
                 return Command::FAILURE;
             }
 
-            return $this->runCheckForDomain($domain, $type, $httpCheck);
+            return $this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck);
         }
 
         if ($allOption) {
@@ -69,7 +71,7 @@ class RunHealthChecks extends Command
 
             $successCount = 0;
             foreach ($domains as $domain) {
-                if ($this->runCheckForDomain($domain, $type, $httpCheck, false) === Command::SUCCESS) {
+                if ($this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, false) === Command::SUCCESS) {
                     $successCount++;
                 }
                 $bar->advance();
@@ -90,7 +92,7 @@ class RunHealthChecks extends Command
     /**
      * Run health check for a single domain
      */
-    private function runCheckForDomain(Domain $domain, string $type, HttpHealthCheck $httpCheck, bool $verbose = true): int
+    private function runCheckForDomain(Domain $domain, string $type, HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, bool $verbose = true): int
     {
         if ($verbose) {
             $this->info("Running {$type} check for: {$domain->domain}");
@@ -98,51 +100,85 @@ class RunHealthChecks extends Command
 
         try {
             $startedAt = now();
+            $result = null;
+            $status = 'fail';
+            $responseCode = null;
+            $errorMessage = null;
+            $payload = [];
 
-            // For now, only HTTP checks are implemented
             if ($type === 'http') {
                 $result = $httpCheck->check($domain->domain);
-
                 $status = $result['is_up'] ? 'ok' : 'fail';
                 if ($result['status_code'] && $result['status_code'] >= 400 && $result['status_code'] < 500) {
                     $status = 'warn';
                 }
-
-                $check = $domain->checks()->create([
-                    'check_type' => 'http',
-                    'status' => $status,
-                    'response_code' => $result['status_code'],
-                    'started_at' => $startedAt,
-                    'finished_at' => now(),
-                    'duration_ms' => $result['duration_ms'],
-                    'error_message' => $result['error_message'],
-                    'payload' => $result['payload'],
-                    'retry_count' => 0,
-                ]);
-
-                // Update domain's last_checked_at
-                $domain->update(['last_checked_at' => now()]);
-
+                $responseCode = $result['status_code'];
+                $errorMessage = $result['error_message'];
+                $payload = $result['payload'];
+            } elseif ($type === 'ssl') {
+                $result = $sslCheck->check($domain->domain);
+                $status = $result['is_valid'] ? 'ok' : 'fail';
+                // Warn if certificate expires within 30 days
+                if ($result['is_valid'] && $result['days_until_expiry'] !== null && $result['days_until_expiry'] <= 30) {
+                    $status = 'warn';
+                }
+                $errorMessage = $result['error_message'];
+                $payload = $result['payload'];
+            } elseif ($type === 'dns') {
+                $result = $dnsCheck->check($domain->domain);
+                $status = $result['is_valid'] ? 'ok' : 'fail';
+                $errorMessage = $result['error_message'];
+                $payload = $result['payload'];
+            } else {
                 if ($verbose) {
-                    $this->line("  Status: {$status}");
-                    if ($result['status_code']) {
-                        $this->line("  Response Code: {$result['status_code']}");
-                    }
-                    $this->line("  Duration: {$result['duration_ms']}ms");
-                    if ($result['error_message']) {
-                        $this->line("  Error: {$result['error_message']}");
-                    }
+                    $this->warn("  Check type '{$type}' not yet implemented");
                 }
 
-                return Command::SUCCESS;
+                return Command::FAILURE;
             }
 
-            // Placeholder for other check types
+            $duration = $payload['duration_ms'] ?? (int) ((microtime(true) - $startedAt->getTimestamp()) * 1000);
+
+            $check = $domain->checks()->create([
+                'check_type' => $type,
+                'status' => $status,
+                'response_code' => $responseCode,
+                'started_at' => $startedAt,
+                'finished_at' => now(),
+                'duration_ms' => $duration,
+                'error_message' => $errorMessage,
+                'payload' => $payload,
+                'retry_count' => 0,
+            ]);
+
+            // Update domain's last_checked_at
+            $domain->update(['last_checked_at' => now()]);
+
             if ($verbose) {
-                $this->warn("  Check type '{$type}' not yet implemented");
+                $this->line("  Status: {$status}");
+                if ($type === 'http' && $responseCode) {
+                    $this->line("  Response Code: {$responseCode}");
+                }
+                if ($type === 'ssl' && isset($result['days_until_expiry'])) {
+                    $this->line("  Days Until Expiry: {$result['days_until_expiry']}");
+                    if ($result['issuer']) {
+                        $this->line("  Issuer: {$result['issuer']}");
+                    }
+                }
+                if ($type === 'dns') {
+                    $this->line('  Has A Record: '.($result['has_a_record'] ? 'Yes' : 'No'));
+                    $this->line('  Has MX Record: '.($result['has_mx_record'] ? 'Yes' : 'No'));
+                    if (! empty($result['nameservers'])) {
+                        $this->line('  Nameservers: '.count($result['nameservers']));
+                    }
+                }
+                $this->line("  Duration: {$duration}ms");
+                if ($errorMessage) {
+                    $this->line("  Error: {$errorMessage}");
+                }
             }
 
-            return Command::FAILURE;
+            return Command::SUCCESS;
         } catch (\Exception $e) {
             if ($verbose) {
                 $this->error("  Failed: {$e->getMessage()}");
