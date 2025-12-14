@@ -21,3 +21,8 @@ Schedule::command('domains:detect-hosting --all')
     ->sundays()
     ->at('02:30')
     ->timezone('UTC');
+
+// HTTP health checks - run every hour for active domains
+Schedule::command('domains:health-check --all --type=http')
+    ->hourly()
+    ->timezone('UTC');
