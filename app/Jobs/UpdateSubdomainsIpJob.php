@@ -85,6 +85,11 @@ class UpdateSubdomainsIpJob implements ShouldQueue
                     $ipApiProvider = $ipApiService->extractHostingProvider($ipApiData);
                     if ($ipApiProvider && ! $subdomain->hosting_provider) {
                         $updateData['hosting_provider'] = $ipApiProvider;
+                        // Get suggested login URL for the provider
+                        $suggestedUrl = \App\Services\HostingProviderUrls::getLoginUrl($ipApiProvider);
+                        if ($suggestedUrl && ! $subdomain->hosting_admin_url) {
+                            $updateData['hosting_admin_url'] = $suggestedUrl;
+                        }
                     }
 
                     $subdomain->update($updateData);

@@ -122,6 +122,11 @@ class DiscoverSubdomainsJob implements ShouldQueue
                                 $ipApiProvider = $ipApiService->extractHostingProvider($ipApiData);
                                 if ($ipApiProvider) {
                                     $updateData['hosting_provider'] = $ipApiProvider;
+                                    // Get suggested login URL for the provider
+                                    $suggestedUrl = \App\Services\HostingProviderUrls::getLoginUrl($ipApiProvider);
+                                    if ($suggestedUrl) {
+                                        $updateData['hosting_admin_url'] = $suggestedUrl;
+                                    }
                                 }
 
                                 $subdomain->update($updateData);

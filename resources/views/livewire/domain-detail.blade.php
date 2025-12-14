@@ -178,9 +178,21 @@
                                 <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Hosting Provider</dt>
                                 <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">
                                     {{ $domain->hosting_provider }}
-                                    @if($domain->hosting_admin_url)
+                                    @php
+                                        $adminUrl = $domain->hosting_admin_url;
+                                        if (!$adminUrl && $domain->hosting_provider) {
+                                            $adminUrl = \App\Services\HostingProviderUrls::getLoginUrl($domain->hosting_provider);
+                                        }
+                                    @endphp
+                                    @if($adminUrl)
                                         <div class="mt-1">
-                                            <a href="{{ $domain->hosting_admin_url }}" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline text-xs">Admin URL →</a>
+                                            <a href="{{ $adminUrl }}" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline text-xs">
+                                                @if($domain->hosting_admin_url)
+                                                    Admin URL →
+                                                @else
+                                                    Suggested Login →
+                                                @endif
+                                            </a>
                                         </div>
                                     @endif
                                 </dd>
@@ -388,7 +400,27 @@
                                             {{ $subdomain->ip_address ?? 'N/A' }}
                                         </td>
                                         <td class="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
-                                            {{ $subdomain->hosting_provider ?? ($subdomain->ip_organization ?? 'N/A') }}
+                                            <div>
+                                                {{ $subdomain->hosting_provider ?? ($subdomain->ip_organization ?? 'N/A') }}
+                                                @php
+                                                    $subdomainProvider = $subdomain->hosting_provider ?? $subdomain->ip_organization;
+                                                    $subdomainAdminUrl = $subdomain->hosting_admin_url;
+                                                    if (!$subdomainAdminUrl && $subdomainProvider) {
+                                                        $subdomainAdminUrl = \App\Services\HostingProviderUrls::getLoginUrl($subdomainProvider);
+                                                    }
+                                                @endphp
+                                                @if($subdomainAdminUrl)
+                                                    <div class="mt-1">
+                                                        <a href="{{ $subdomainAdminUrl }}" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline text-xs">
+                                                            @if($subdomain->hosting_admin_url)
+                                                                Login →
+                                                            @else
+                                                                Suggested Login →
+                                                            @endif
+                                                        </a>
+                                                    </div>
+                                                @endif
+                                            </div>
                                         </td>
                                         <td class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
                                             {{ $subdomain->ip_organization ?? 'N/A' }}

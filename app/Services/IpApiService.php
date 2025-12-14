@@ -182,4 +182,15 @@ class IpApiService
 
         return $name;
     }
+
+    /**
+     * Get suggested login URL for hosting provider
+     *
+     * @param  string|null  $providerName  Hosting provider name
+     * @return string|null Suggested login URL or null
+     */
+    public function getSuggestedLoginUrl(?string $providerName): ?string
+    {
+        return \App\Services\HostingProviderUrls::getLoginUrl($providerName);
+    }
 }
