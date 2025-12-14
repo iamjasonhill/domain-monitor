@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\DnsRecord;
 use App\Models\Domain;
+use App\Models\Subdomain;
 use App\Models\SynergyCredential;
 use App\Services\HostingDetector;
 use App\Services\PlatformDetector;
@@ -37,6 +38,14 @@ class DomainDetail extends Component
 
     public int $dnsRecordPriority = 0;
 
+    public bool $showSubdomainModal = false;
+
+    public ?string $editingSubdomainId = null;
+
+    public string $subdomainName = '';
+
+    public string $subdomainNotes = '';
+
     public function mount(): void
     {
         $this->loadDomain();
@@ -58,6 +67,9 @@ class DomainDetail extends Component
     {
         $this->domain = Domain::with([
             'platform',
+            'subdomains' => function ($query) {
+                $query->where('is_active', true)->orderBy('subdomain');
+            },
             'checks' => function ($query) {
                 $query->latest()->limit(20);
             },
@@ -413,6 +425,144 @@ class DomainDetail extends Component
             }
         } catch (\Exception $e) {
             session()->flash('error', 'Error deleting DNS record: '.$e->getMessage());
+        }
+    }
+
+    public function openAddSubdomainModal(): void
+    {
+        $this->editingSubdomainId = null;
+        $this->subdomainName = '';
+        $this->subdomainNotes = '';
+        $this->showSubdomainModal = true;
+    }
+
+    public function openEditSubdomainModal(string $subdomainId): void
+    {
+        $subdomain = Subdomain::find($subdomainId);
+        if (! $subdomain || $subdomain->domain_id !== $this->domain->id) {
+            session()->flash('error', 'Subdomain not found.');
+
+            return;
+        }
+
+        $this->editingSubdomainId = $subdomainId;
+        $this->subdomainName = $subdomain->subdomain;
+        $this->subdomainNotes = $subdomain->notes ?? '';
+        $this->showSubdomainModal = true;
+    }
+
+    public function closeSubdomainModal(): void
+    {
+        $this->showSubdomainModal = false;
+        $this->editingSubdomainId = null;
+        $this->subdomainName = '';
+        $this->subdomainNotes = '';
+    }
+
+    public function saveSubdomain(): void
+    {
+        if (empty($this->subdomainName)) {
+            session()->flash('error', 'Subdomain name is required.');
+
+            return;
+        }
+
+        // Validate subdomain format (alphanumeric, hyphens, underscores)
+        if (! preg_match('/^[a-z0-9]([a-z0-9\-_]*[a-z0-9])?$/i', $this->subdomainName)) {
+            session()->flash('error', 'Invalid subdomain format. Use only letters, numbers, hyphens, and underscores.');
+
+            return;
+        }
+
+        $fullDomain = "{$this->subdomainName}.{$this->domain->domain}";
+
+        if ($this->editingSubdomainId) {
+            // Update existing subdomain
+            $subdomain = Subdomain::find($this->editingSubdomainId);
+            if (! $subdomain || $subdomain->domain_id !== $this->domain->id) {
+                session()->flash('error', 'Subdomain not found.');
+
+                return;
+            }
+
+            // Check if another subdomain with this name exists
+            $existing = Subdomain::where('domain_id', $this->domain->id)
+                ->where('subdomain', $this->subdomainName)
+                ->where('id', '!=', $this->editingSubdomainId)
+                ->first();
+
+            if ($existing) {
+                session()->flash('error', 'A subdomain with this name already exists.');
+
+                return;
+            }
+
+            $subdomain->update([
+                'subdomain' => $this->subdomainName,
+                'full_domain' => $fullDomain,
+                'notes' => $this->subdomainNotes ?: null,
+            ]);
+
+            session()->flash('message', 'Subdomain updated successfully!');
+        } else {
+            // Create new subdomain
+            $existing = Subdomain::where('domain_id', $this->domain->id)
+                ->where('subdomain', $this->subdomainName)
+                ->first();
+
+            if ($existing) {
+                session()->flash('error', 'A subdomain with this name already exists.');
+
+                return;
+            }
+
+            Subdomain::create([
+                'domain_id' => $this->domain->id,
+                'subdomain' => $this->subdomainName,
+                'full_domain' => $fullDomain,
+                'notes' => $this->subdomainNotes ?: null,
+                'is_active' => true,
+            ]);
+
+            session()->flash('message', 'Subdomain added successfully!');
+        }
+
+        $this->closeSubdomainModal();
+        $this->loadDomain();
+    }
+
+    public function deleteSubdomain(string $subdomainId): void
+    {
+        $subdomain = Subdomain::find($subdomainId);
+        if (! $subdomain || $subdomain->domain_id !== $this->domain->id) {
+            session()->flash('error', 'Subdomain not found.');
+
+            return;
+        }
+
+        $subdomain->delete();
+        session()->flash('message', 'Subdomain deleted successfully!');
+        $this->loadDomain();
+    }
+
+    public function updateSubdomainIp(string $subdomainId): void
+    {
+        $subdomain = Subdomain::find($subdomainId);
+        if (! $subdomain || $subdomain->domain_id !== $this->domain->id) {
+            session()->flash('error', 'Subdomain not found.');
+
+            return;
+        }
+
+        try {
+            Artisan::call('domains:update-ip-info', [
+                '--domain' => $subdomain->full_domain,
+            ]);
+
+            $this->loadDomain();
+            session()->flash('message', 'Subdomain IP information updated!');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Failed to update subdomain IP: '.$e->getMessage());
         }
     }
 

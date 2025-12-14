@@ -7,6 +7,12 @@ use Illuminate\Support\Facades\Log;
 
 class HostingDetector
 {
+    public function __construct(
+        private ?IpApiService $ipApiService = null
+    ) {
+        $this->ipApiService = $ipApiService ?? app(IpApiService::class);
+    }
+
     /**
      * Detect hosting provider for a given domain
      *
@@ -24,6 +30,17 @@ class HostingDetector
 
             // Get IP address(es) for the domain
             $ipAddresses = $this->getIpAddresses($domainOnly);
+
+            // Query IP-API.com for hosting provider info (use first IP)
+            $ipApiData = null;
+            $ipApiProvider = null;
+            if (! empty($ipAddresses)) {
+                $primaryIp = $ipAddresses[0];
+                $ipApiData = $this->ipApiService->query($primaryIp);
+                if ($ipApiData) {
+                    $ipApiProvider = $this->ipApiService->extractHostingProvider($ipApiData);
+                }
+            }
 
             // Get HTTP response
             $httpHeaders = $this->getHttpHeaders($url);
@@ -112,15 +129,57 @@ class HostingDetector
                 ];
             }
 
+            // If IP-API provided a provider and we don't have a high-confidence detection, use it
+            if ($ipApiProvider && empty($detections)) {
+                return [
+                    'provider' => $ipApiProvider,
+                    'confidence' => 'medium',
+                    'admin_url' => null,
+                    'ip_api_data' => $ipApiData,
+                ];
+            }
+
+            // If IP-API provider matches one of our detections, boost confidence
+            if ($ipApiProvider && ! empty($detections)) {
+                foreach ($detections as &$detection) {
+                    if (stripos($ipApiProvider, $detection['provider']) !== false ||
+                        stripos($detection['provider'], $ipApiProvider) !== false) {
+                        $detection['confidence'] = 'high';
+                        $detection['ip_api_data'] = $ipApiData;
+                        break;
+                    }
+                }
+            }
+
             // Return primary provider (first high confidence, or first if none)
             if (! empty($detections)) {
                 // Prefer high confidence providers
                 $highConfidence = array_filter($detections, fn ($d) => $d['confidence'] === 'high');
                 if (! empty($highConfidence)) {
-                    return reset($highConfidence);
+                    $result = reset($highConfidence);
+                    if ($ipApiData && ! isset($result['ip_api_data'])) {
+                        $result['ip_api_data'] = $ipApiData;
+                    }
+
+                    return $result;
                 }
 
-                return reset($detections);
+                $result = reset($detections);
+                if ($ipApiData && ! isset($result['ip_api_data'])) {
+                    $result['ip_api_data'] = $ipApiData;
+                }
+
+                return $result;
+            }
+
+            // If we have IP-API data but no other detection, use IP-API provider
+            if ($ipApiProvider) {
+                return [
+                    'provider' => $ipApiProvider,
+                    'confidence' => 'medium',
+                    'admin_url' => null,
+                    'ip_api_data' => $ipApiData,
+                ];
             }
 
             return [

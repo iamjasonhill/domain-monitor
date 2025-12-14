@@ -342,6 +342,70 @@
             </div>
         </div>
 
+        <!-- Subdomains -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Subdomains</h3>
+                    <button wire:click="openAddSubdomainModal" class="inline-flex items-center px-3 py-1.5 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700">
+                        Add Subdomain
+                    </button>
+                </div>
+                @if($domain->subdomains && $domain->subdomains->count() > 0)
+                    <div class="overflow-x-auto">
+                        <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-900">
+                                <tr>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Subdomain</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">IP Address</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Hosting Provider</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Organization</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last Checked</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                @foreach($domain->subdomains as $subdomain)
+                                    <tr>
+                                        <td class="px-3 py-2 text-xs text-gray-900 dark:text-gray-100 font-mono">
+                                            {{ $subdomain->full_domain }}
+                                        </td>
+                                        <td class="px-3 py-2 text-xs text-gray-900 dark:text-gray-100 font-mono">
+                                            {{ $subdomain->ip_address ?? 'N/A' }}
+                                        </td>
+                                        <td class="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
+                                            {{ $subdomain->hosting_provider ?? ($subdomain->ip_organization ?? 'N/A') }}
+                                        </td>
+                                        <td class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
+                                            {{ $subdomain->ip_organization ?? 'N/A' }}
+                                        </td>
+                                        <td class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
+                                            {{ $subdomain->ip_checked_at ? $subdomain->ip_checked_at->diffForHumans() : 'Never' }}
+                                        </td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-xs">
+                                            <div class="flex gap-1">
+                                                <button wire:click="updateSubdomainIp('{{ $subdomain->id }}')" class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs">
+                                                    Update IP
+                                                </button>
+                                                <button wire:click="openEditSubdomainModal('{{ $subdomain->id }}')" class="px-2 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-xs">
+                                                    Edit
+                                                </button>
+                                                <button wire:click="deleteSubdomain('{{ $subdomain->id }}')" wire:confirm="Are you sure you want to delete this subdomain?" class="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs">
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <p class="text-gray-500 dark:text-gray-400">No subdomains added yet. Click "Add Subdomain" to add one.</p>
+                @endif
+            </div>
+        </div>
+
         <!-- DNS Records -->
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
             <div class="p-6">
@@ -522,6 +586,49 @@
                         </x-secondary-button>
                         <x-primary-button type="submit">
                             {{ $editingDnsRecordId ? 'Update' : 'Add' }} Record
+                        </x-primary-button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
+    <!-- Subdomain Add/Edit Modal -->
+    @if($showSubdomainModal)
+        <div class="fixed inset-0 overflow-y-auto px-4 py-6 sm:px-0 z-50" style="display: block;">
+            <div class="fixed inset-0 bg-gray-500 dark:bg-gray-900 opacity-75" wire:click="closeSubdomainModal"></div>
+
+            <div class="mb-6 bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-xl transform transition-all sm:w-full sm:max-w-2xl sm:mx-auto relative">
+                <form wire:submit="saveSubdomain" class="p-6">
+                    <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+                        {{ $editingSubdomainId ? 'Edit Subdomain' : 'Add Subdomain' }}
+                    </h2>
+
+                    <div class="space-y-4">
+                        <div>
+                            <x-input-label for="subdomain_name" value="Subdomain Name" />
+                            <x-text-input wire:model="subdomainName" id="subdomain_name" type="text" class="mt-1 block w-full" placeholder="www, api, blog, etc." />
+                            <x-input-error :messages="$errors->get('subdomainName')" class="mt-2" />
+                            @if($domain && $subdomainName)
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Full domain: <span class="font-mono">{{ $subdomainName }}.{{ $domain->domain }}</span>
+                                </p>
+                            @endif
+                        </div>
+
+                        <div>
+                            <x-input-label for="subdomain_notes" value="Notes (optional)" />
+                            <x-textarea wire:model="subdomainNotes" id="subdomain_notes" class="mt-1 block w-full" rows="3" placeholder="Optional notes about this subdomain..." />
+                            <x-input-error :messages="$errors->get('subdomainNotes')" class="mt-2" />
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end gap-4">
+                        <x-secondary-button wire:click="closeSubdomainModal" type="button">
+                            Cancel
+                        </x-secondary-button>
+                        <x-primary-button type="submit">
+                            {{ $editingSubdomainId ? 'Update' : 'Add' }} Subdomain
                         </x-primary-button>
                     </div>
                 </form>

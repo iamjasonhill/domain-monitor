@@ -91,10 +91,29 @@ class DetectHosting extends Command
         try {
             $result = $detector->detect($domain->domain);
 
-            $domain->update([
+            $updateData = [
                 'hosting_provider' => $result['provider'],
                 'hosting_admin_url' => $result['admin_url'],
-            ]);
+            ];
+
+            // Save IP-API data if available
+            if (isset($result['ip_api_data']) && is_array($result['ip_api_data'])) {
+                $ipApiData = $result['ip_api_data'];
+                $ipAddresses = $detector->getIpAddresses($domain->domain);
+
+                if (! empty($ipAddresses)) {
+                    $updateData['ip_address'] = $ipAddresses[0];
+                    $updateData['ip_checked_at'] = now();
+                    $updateData['ip_isp'] = $ipApiData['isp'] ?? null;
+                    $updateData['ip_organization'] = $ipApiData['org'] ?? null;
+                    $updateData['ip_as_number'] = $ipApiData['as'] ?? null;
+                    $updateData['ip_country'] = $ipApiData['country'] ?? null;
+                    $updateData['ip_city'] = $ipApiData['city'] ?? null;
+                    $updateData['ip_hosting_flag'] = $ipApiData['hosting'] ?? null;
+                }
+            }
+
+            $domain->update($updateData);
 
             if ($verbose) {
                 $this->line("  Provider: {$result['provider']} ({$result['confidence']} confidence)");

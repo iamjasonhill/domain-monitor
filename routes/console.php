@@ -32,6 +32,12 @@ Schedule::command('domains:detect-hosting --all')
     ->at('02:30')
     ->timezone('UTC');
 
+// Daily IP information update - update domains and subdomains not checked in last 24 hours
+Schedule::command('domains:update-ip-info --all --hours=24')
+    ->daily()
+    ->at('03:00')
+    ->timezone('UTC');
+
 // HTTP health checks - run every hour for active domains
 Schedule::command('domains:health-check --all --type=http')
     ->hourly()

@@ -34,6 +34,14 @@ use Illuminate\Support\Str;
  * @property int $check_frequency_minutes
  * @property string|null $notes
  * @property bool $is_active
+ * @property string|null $ip_address
+ * @property \Illuminate\Support\Carbon|null $ip_checked_at
+ * @property string|null $ip_isp
+ * @property string|null $ip_organization
+ * @property string|null $ip_as_number
+ * @property string|null $ip_country
+ * @property string|null $ip_city
+ * @property bool|null $ip_hosting_flag
  *
  * @method static \Database\Factories\DomainFactory factory()
  */
@@ -70,6 +78,14 @@ class Domain extends Model
         'check_frequency_minutes',
         'notes',
         'is_active',
+        'ip_address',
+        'ip_checked_at',
+        'ip_isp',
+        'ip_organization',
+        'ip_as_number',
+        'ip_country',
+        'ip_city',
+        'ip_hosting_flag',
     ];
 
     protected function casts(): array
@@ -85,6 +101,8 @@ class Domain extends Model
             'last_checked_at' => 'datetime',
             'is_active' => 'boolean',
             'check_frequency_minutes' => 'integer',
+            'ip_checked_at' => 'datetime',
+            'ip_hosting_flag' => 'boolean',
         ];
     }
 
@@ -127,5 +145,13 @@ class Domain extends Model
     public function dnsRecords(): HasMany
     {
         return $this->hasMany(DnsRecord::class);
+    }
+
+    /**
+     * @return HasMany<Subdomain, Domain>
+     */
+    public function subdomains(): HasMany
+    {
+        return $this->hasMany(Subdomain::class);
     }
 }
