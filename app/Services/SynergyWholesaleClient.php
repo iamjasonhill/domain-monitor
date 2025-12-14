@@ -96,6 +96,14 @@ class SynergyWholesaleClient
 
             $result = $this->client->domainInfo($request);
 
+            // Debug: Log raw response structure to understand available fields
+            Log::debug('Synergy Wholesale API raw response', [
+                'domain' => $domain,
+                'response_keys' => is_object($result) ? array_keys(get_object_vars($result)) : 'not_object',
+                'nameServers_type' => isset($result->nameServers) ? gettype($result->nameServers) : 'not_set',
+                'nameServers_value' => isset($result->nameServers) ? (is_array($result->nameServers) ? json_encode($result->nameServers) : (string) $result->nameServers) : 'not_set',
+            ]);
+
             // Check for errors in response
             if (isset($result->status) && $result->status !== 'OK' && str_starts_with($result->status, 'ERR_')) {
                 Log::warning('Synergy Wholesale API returned error', [
@@ -285,6 +293,87 @@ class SynergyWholesaleClient
             ]);
 
             return collect([]);
+        }
+    }
+
+    /**
+     * Get DNS records for a domain
+     *
+     * @return array<int, array{host: string, type: string, value: string, ttl: int|null}>|null
+     */
+    public function getDnsRecords(string $domain): ?array
+    {
+        $this->initialize();
+
+        try {
+            // Try listDNSZone first (might return all records)
+            $request = [
+                'resellerID' => $this->resellerId,
+                'apiKey' => $this->apiKey,
+                'domainName' => $domain,
+            ];
+
+            $result = $this->client->listDNSZone($request);
+
+            // Check for errors
+            if (isset($result->status) && $result->status !== 'OK' && str_starts_with($result->status, 'ERR_')) {
+                Log::warning('Synergy Wholesale listDNSZone returned error', [
+                    'domain' => $domain,
+                    'status' => $result->status,
+                    'error_message' => $result->errorMessage ?? null,
+                ]);
+
+                return null;
+            }
+
+            // Parse DNS records from response
+            // Response structure: listDNSZoneResponse contains 'records' which is listDNSZoneArray (array of singleDNSZoneEntry)
+            $records = [];
+
+            // Check for records array (could be 'records' or 'dnsRecords')
+            $recordsArray = $result->records ?? $result->dnsRecords ?? null;
+
+            if ($recordsArray && is_array($recordsArray)) {
+                foreach ($recordsArray as $record) {
+                    if (is_object($record)) {
+                        // singleDNSZoneEntry structure: hostName, type, content, ttl, prio, id
+                        $records[] = [
+                            'host' => $record->hostName ?? $record->recordName ?? $record->host ?? $record->hostname ?? '',
+                            'type' => $record->type ?? $record->recordType ?? '',
+                            'value' => $record->content ?? $record->recordContent ?? $record->value ?? $record->target ?? $record->data ?? '',
+                            'ttl' => isset($record->ttl) ? (int) $record->ttl : (isset($record->recordTTL) ? (int) $record->recordTTL : null),
+                            'priority' => isset($record->prio) ? (int) $record->prio : (isset($record->recordPrio) ? (int) $record->recordPrio : (isset($record->priority) ? (int) $record->priority : null)),
+                            'id' => $record->id ?? $record->recordID ?? null,
+                        ];
+                    } elseif (is_array($record)) {
+                        $records[] = [
+                            'host' => $record['hostName'] ?? $record['recordName'] ?? $record['host'] ?? $record['hostname'] ?? '',
+                            'type' => $record['type'] ?? $record['recordType'] ?? '',
+                            'value' => $record['content'] ?? $record['recordContent'] ?? $record['value'] ?? $record['target'] ?? $record['data'] ?? '',
+                            'ttl' => isset($record['ttl']) ? (int) $record['ttl'] : (isset($record['recordTTL']) ? (int) $record['recordTTL'] : null),
+                            'priority' => isset($record['prio']) ? (int) $record['prio'] : (isset($record['recordPrio']) ? (int) $record['recordPrio'] : (isset($record['priority']) ? (int) $record['priority'] : null)),
+                            'id' => $record['id'] ?? $record['recordID'] ?? null,
+                        ];
+                    }
+                }
+            }
+
+            // Log raw response for debugging
+            Log::debug('Synergy Wholesale DNS records response', [
+                'domain' => $domain,
+                'response_keys' => is_object($result) ? array_keys(get_object_vars($result)) : 'not_object',
+                'records_count' => count($records),
+            ]);
+
+            return ! empty($records) ? $records : null;
+        } catch (SoapFault $e) {
+            Log::warning('Synergy Wholesale getDnsRecords failed', [
+                'domain' => $domain,
+                'error' => $e->getMessage(),
+                'fault_code' => $e->faultcode ?? null,
+            ]);
+
+            return null;
         }
     }
 
