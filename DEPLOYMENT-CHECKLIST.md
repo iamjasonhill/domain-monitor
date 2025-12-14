@@ -35,9 +35,9 @@ Use this checklist before deploying to Laravel Forge to ensure everything is rea
   - [x] `php artisan domains:sync-dns-records --all` - ✅ Scheduled: Daily at 04:30 UTC (added)
 
 ### 5. Storage & Assets
-- [ ] `storage:link` command included in deployment script
-- [ ] Asset compilation (`npm run build`) in deployment script
-- [ ] Verify `public/storage` symlink works
+- [x] `storage:link` command included in deployment script
+- [x] Asset compilation (`npm run build`) in deployment script
+- [x] Verify `public/storage` symlink works - ✅ Fixed: Now points to shared storage directory
 
 ### 6. Queue Workers (Optional)
 - [ ] Decide if queue workers are needed (currently using `database` driver)
