@@ -15,6 +15,9 @@ class ScheduledTasks extends Component
 
     public function loadScheduledTasks(): void
     {
+        // Load console routes to ensure scheduled tasks are registered
+        require base_path('routes/console.php');
+
         // Get scheduled tasks from Laravel's scheduler
         $schedule = app(\Illuminate\Console\Scheduling\Schedule::class);
         $events = $schedule->events();
