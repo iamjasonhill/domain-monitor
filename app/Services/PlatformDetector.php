@@ -37,6 +37,21 @@ class PlatformDetector
             /** @var array<string, array<int, string>|string> $headers */
             $headers = $response->headers();
 
+            // Debug: Log HTML content for parked domain detection (first 500 chars)
+            if (strlen($html) > 0) {
+                Log::debug('PlatformDetector HTML sample', [
+                    'domain' => $domain,
+                    'html_length' => strlen($html),
+                    'html_sample' => substr($html, 0, 500),
+                    'status_code' => $response->status(),
+                ]);
+            } else {
+                Log::warning('PlatformDetector received empty HTML', [
+                    'domain' => $domain,
+                    'status_code' => $response->status(),
+                ]);
+            }
+
             // Check headers first (most reliable)
             // Laravel HTTP client returns headers as arrays, get first value
             $poweredByHeader = $headers['X-Powered-By'] ?? $headers['x-powered-by'] ?? [];
@@ -88,7 +103,14 @@ class PlatformDetector
             }
 
             // Parked domain detection (check before static site)
-            if ($this->isParked($html, $domain)) {
+            $isParkedResult = $this->isParked($html, $domain);
+            Log::debug('PlatformDetector parked check', [
+                'domain' => $domain,
+                'is_parked' => $isParkedResult,
+                'html_length' => strlen($html),
+            ]);
+
+            if ($isParkedResult) {
                 return [
                     'platform_type' => 'Parked',
                     'platform_version' => null,
