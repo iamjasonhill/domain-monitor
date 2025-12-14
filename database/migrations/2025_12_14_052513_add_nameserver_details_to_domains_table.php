@@ -11,10 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('domains', function (Blueprint $table) {
-            // Store detailed nameserver information (hostname, IP, subdomain, etc.)
-            $table->json('nameserver_details')->nullable()->after('nameservers')->comment('Detailed nameserver information with IP addresses and subdomains');
-        });
+        if (Schema::hasTable('domains') && ! Schema::hasColumn('domains', 'nameserver_details')) {
+            Schema::table('domains', function (Blueprint $table) {
+                // Store detailed nameserver information (hostname, IP, subdomain, etc.)
+                $table->json('nameserver_details')->nullable()->after('nameservers')->comment('Detailed nameserver information with IP addresses and subdomains');
+            });
+        }
     }
 
     /**

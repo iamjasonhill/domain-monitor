@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('domains', function (Blueprint $table) {
-            $table->text('hosting_admin_url')->nullable()->after('hosting_provider');
-        });
+        if (Schema::hasTable('domains') && ! Schema::hasColumn('domains', 'hosting_admin_url')) {
+            Schema::table('domains', function (Blueprint $table) {
+                $table->text('hosting_admin_url')->nullable()->after('hosting_provider');
+            });
+        }
     }
 
     /**

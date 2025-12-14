@@ -11,22 +11,24 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('dns_records', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->uuid('domain_id');
-            $table->string('host')->index();
-            $table->string('type', 10)->index(); // A, AAAA, CNAME, MX, NS, SOA, TXT, etc.
-            $table->text('value');
-            $table->integer('ttl')->nullable();
-            $table->integer('priority')->nullable(); // For MX records
-            $table->string('record_id')->nullable()->comment('API record ID from Synergy Wholesale');
-            $table->timestamp('synced_at')->nullable();
-            $table->timestamps();
+        if (! Schema::hasTable('dns_records')) {
+            Schema::create('dns_records', function (Blueprint $table) {
+                $table->uuid('id')->primary();
+                $table->uuid('domain_id');
+                $table->string('host')->index();
+                $table->string('type', 10)->index(); // A, AAAA, CNAME, MX, NS, SOA, TXT, etc.
+                $table->text('value');
+                $table->integer('ttl')->nullable();
+                $table->integer('priority')->nullable(); // For MX records
+                $table->string('record_id')->nullable()->comment('API record ID from Synergy Wholesale');
+                $table->timestamp('synced_at')->nullable();
+                $table->timestamps();
 
-            $table->foreign('domain_id')->references('id')->on('domains')->onDelete('cascade');
-            $table->index(['domain_id', 'type']);
-            $table->index(['domain_id', 'host']);
-        });
+                $table->foreign('domain_id')->references('id')->on('domains')->onDelete('cascade');
+                $table->index(['domain_id', 'type']);
+                $table->index(['domain_id', 'host']);
+            });
+        }
     }
 
     /**

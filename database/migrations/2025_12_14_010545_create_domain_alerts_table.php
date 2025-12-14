@@ -11,26 +11,28 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('domain_alerts', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->uuid('domain_id');
-            $table->string('alert_type')->index(); // downtime|ssl_expiring|dns_changed
-            $table->string('severity')->index(); // info|warn|critical
-            $table->timestampTz('triggered_at');
-            $table->timestampTz('resolved_at')->nullable()->index();
-            $table->timestampTz('notification_sent_at')->nullable();
-            $table->timestampTz('acknowledged_at')->nullable();
-            $table->boolean('auto_resolve')->default(false);
-            $table->jsonb('payload')->nullable();
-            $table->timestamps();
+        if (! Schema::hasTable('domain_alerts')) {
+            Schema::create('domain_alerts', function (Blueprint $table) {
+                $table->uuid('id')->primary();
+                $table->uuid('domain_id');
+                $table->string('alert_type')->index(); // downtime|ssl_expiring|dns_changed
+                $table->string('severity')->index(); // info|warn|critical
+                $table->timestampTz('triggered_at');
+                $table->timestampTz('resolved_at')->nullable()->index();
+                $table->timestampTz('notification_sent_at')->nullable();
+                $table->timestampTz('acknowledged_at')->nullable();
+                $table->boolean('auto_resolve')->default(false);
+                $table->jsonb('payload')->nullable();
+                $table->timestamps();
 
-            // Foreign key with cascade delete
-            $table->foreign('domain_id')->references('id')->on('domains')->onDelete('cascade');
+                // Foreign key with cascade delete
+                $table->foreign('domain_id')->references('id')->on('domains')->onDelete('cascade');
 
-            // Composite indexes
-            $table->index(['domain_id', 'alert_type', 'resolved_at']);
-            $table->index(['severity', 'resolved_at']); // For critical unresolved alerts
-        });
+                // Composite indexes
+                $table->index(['domain_id', 'alert_type', 'resolved_at']);
+                $table->index(['severity', 'resolved_at']); // For critical unresolved alerts
+            });
+        }
     }
 
     /**
