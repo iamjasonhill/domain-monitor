@@ -3,6 +3,8 @@
 namespace App\Livewire;
 
 use App\Models\Domain;
+use App\Services\HostingDetector;
+use App\Services\PlatformDetector;
 use Livewire\Component;
 
 class DomainForm extends Component
@@ -34,13 +36,14 @@ class DomainForm extends Component
         $this->domainId = $domainId;
 
         if ($this->domainId) {
-            $this->domain = Domain::findOrFail($this->domainId);
+            $this->domain = Domain::with('platform')->findOrFail($this->domainId);
             $this->domain_name = $this->domain->domain;
             $this->project_key = $this->domain->project_key;
             $this->registrar = $this->domain->registrar;
             $this->hosting_provider = $this->domain->hosting_provider;
             $this->hosting_admin_url = $this->domain->hosting_admin_url;
-            $this->platform = $this->domain->platform;
+            // Use platform from relationship if available, otherwise fallback to simple field
+            $this->platform = $this->domain->platform?->platform_type ?? $this->domain->platform;
             $this->notes = $this->domain->notes;
             $this->is_active = $this->domain->is_active;
             $this->check_frequency_minutes = $this->domain->check_frequency_minutes;
@@ -100,6 +103,14 @@ class DomainForm extends Component
         $this->domain->hosting_admin_url = $this->hosting_admin_url;
         $this->domain->platform = $this->platform;
         $this->domain->notes = $this->notes;
+
+        // If we have a platform relationship, sync the simple platform field
+        if ($this->domain->platform && $this->platform) {
+            $this->domain->platform()->updateOrCreate(
+                ['domain_id' => $this->domain->id],
+                ['platform_type' => $this->platform]
+            );
+        }
         $this->domain->is_active = $this->is_active;
         $this->domain->check_frequency_minutes = $this->check_frequency_minutes;
 
@@ -109,6 +120,51 @@ class DomainForm extends Component
         session()->flash('message', "Domain '{$this->domain->domain}' has been {$action} successfully!");
 
         $this->redirect(route('domains.show', $this->domain->id), navigate: true);
+    }
+
+    public function detectPlatform(PlatformDetector $detector): void
+    {
+        if (! $this->domain_name) {
+            session()->flash('error', 'Please enter a domain name first.');
+
+            return;
+        }
+
+        try {
+            $result = $detector->detect($this->domain_name);
+            $this->platform = $result['platform_type'] ?? null;
+
+            if ($this->platform) {
+                session()->flash('message', "Platform detected: {$this->platform} ({$result['detection_confidence']} confidence)");
+            } else {
+                session()->flash('error', 'Could not detect platform. Please enter manually.');
+            }
+        } catch (\Exception $e) {
+            session()->flash('error', 'Platform detection failed: '.$e->getMessage());
+        }
+    }
+
+    public function detectHosting(HostingDetector $detector): void
+    {
+        if (! $this->domain_name) {
+            session()->flash('error', 'Please enter a domain name first.');
+
+            return;
+        }
+
+        try {
+            $result = $detector->detect($this->domain_name);
+            $this->hosting_provider = $result['provider'] ?? null;
+            $this->hosting_admin_url = $result['admin_url'] ?? null;
+
+            if ($this->hosting_provider) {
+                session()->flash('message', "Hosting detected: {$this->hosting_provider} ({$result['confidence']} confidence)");
+            } else {
+                session()->flash('error', 'Could not detect hosting provider. Please enter manually.');
+            }
+        } catch (\Exception $e) {
+            session()->flash('error', 'Hosting detection failed: '.$e->getMessage());
+        }
     }
 
     public function render(): \Illuminate\Contracts\View\View

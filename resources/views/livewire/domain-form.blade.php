@@ -35,8 +35,17 @@
 
                 <!-- Hosting Provider -->
                 <div class="mb-4">
-                    <x-input-label for="hosting_provider" value="Hosting Provider" />
-                    <x-text-input wire:model="hosting_provider" id="hosting_provider" type="text" class="mt-1 block w-full" />
+                    <div class="flex justify-between items-center mb-1">
+                        <x-input-label for="hosting_provider" value="Hosting Provider" />
+                        @if($domainId)
+                            <button type="button" wire:click="detectHosting" wire:loading.attr="disabled" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                                <span wire:loading.remove wire:target="detectHosting">Auto-detect</span>
+                                <span wire:loading wire:target="detectHosting">Detecting...</span>
+                            </button>
+                        @endif
+                    </div>
+                    <x-text-input wire:model="hosting_provider" id="hosting_provider" type="text" class="mt-1 block w-full" placeholder="Vercel, Render, Cloudflare, AWS, Netlify, Other" />
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Manually enter hosting provider or use auto-detect</p>
                     <x-input-error :messages="$errors->get('hosting_provider')" class="mt-2" />
                 </div>
 
@@ -49,8 +58,17 @@
 
                 <!-- Platform -->
                 <div class="mb-4">
-                    <x-input-label for="platform" value="Platform" />
-                    <x-text-input wire:model="platform" id="platform" type="text" class="mt-1 block w-full" />
+                    <div class="flex justify-between items-center mb-1">
+                        <x-input-label for="platform" value="Platform" />
+                        @if($domainId)
+                            <button type="button" wire:click="detectPlatform" wire:loading.attr="disabled" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                                <span wire:loading.remove wire:target="detectPlatform">Auto-detect</span>
+                                <span wire:loading wire:target="detectPlatform">Detecting...</span>
+                            </button>
+                        @endif
+                    </div>
+                    <x-text-input wire:model="platform" id="platform" type="text" class="mt-1 block w-full" placeholder="WordPress, Laravel, Next.js, Shopify, Static, Other" />
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Manually enter platform or use auto-detect</p>
                     <x-input-error :messages="$errors->get('platform')" class="mt-2" />
                 </div>
 

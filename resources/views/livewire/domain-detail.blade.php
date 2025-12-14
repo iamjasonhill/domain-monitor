@@ -98,24 +98,45 @@
             <!-- Platform & Hosting -->
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6">
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Platform & Hosting</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Platform & Hosting</h3>
+                        <div class="flex gap-2">
+                            <button wire:click="detectPlatform" wire:loading.attr="disabled" class="inline-flex items-center px-3 py-1.5 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 disabled:opacity-50">
+                                <span wire:loading.remove wire:target="detectPlatform">Detect Platform</span>
+                                <span wire:loading wire:target="detectPlatform">Detecting...</span>
+                            </button>
+                            <button wire:click="detectHosting" wire:loading.attr="disabled" class="inline-flex items-center px-3 py-1.5 bg-purple-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-purple-700 disabled:opacity-50">
+                                <span wire:loading.remove wire:target="detectHosting">Detect Hosting</span>
+                                <span wire:loading wire:target="detectHosting">Detecting...</span>
+                            </button>
+                        </div>
+                    </div>
                     <dl class="grid grid-cols-1 gap-4">
                         @if($domain->platform)
                             <div>
                                 <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Platform</dt>
-                                <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $domain->platform }}</dd>
-                            </div>
-                        @elseif($domain->platform)
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Platform</dt>
                                 <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">
-                                    {{ $domain->platform->platform_type }}
-                                    @if($domain->platform->platform_version)
+                                    {{ $domain->platform->platform_type ?? $domain->platform }}
+                                    @if($domain->platform && $domain->platform->platform_version)
                                         <span class="text-gray-500">({{ $domain->platform->platform_version }})</span>
                                     @endif
-                                    @if($domain->platform->admin_url)
+                                    @if($domain->platform && $domain->platform->detection_confidence)
+                                        <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                            @if($domain->platform->detection_confidence === 'high') bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                            @elseif($domain->platform->detection_confidence === 'medium') bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                            @else bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300
+                                            @endif">
+                                            {{ ucfirst($domain->platform->detection_confidence) }} confidence
+                                        </span>
+                                    @endif
+                                    @if($domain->platform && $domain->platform->admin_url)
                                         <div class="mt-1">
                                             <a href="{{ $domain->platform->admin_url }}" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline text-xs">Admin URL →</a>
+                                        </div>
+                                    @endif
+                                    @if($domain->platform && $domain->platform->last_detected)
+                                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                            Last detected: {{ $domain->platform->last_detected->diffForHumans() }}
                                         </div>
                                     @endif
                                 </dd>
@@ -132,6 +153,11 @@
                                         </div>
                                     @endif
                                 </dd>
+                            </div>
+                        @else
+                            <div>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Hosting Provider</dt>
+                                <dd class="mt-1 text-sm text-gray-500 dark:text-gray-400 italic">Not detected yet. Click "Detect Hosting" to run detection.</dd>
                             </div>
                         @endif
                         @if($domain->dns_config_name)

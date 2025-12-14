@@ -3,6 +3,8 @@
 namespace App\Livewire;
 
 use App\Models\Domain;
+use App\Services\HostingDetector;
+use App\Services\PlatformDetector;
 use Illuminate\Support\Facades\Artisan;
 use Livewire\Component;
 
@@ -39,6 +41,12 @@ class DomainDetail extends Component
         $this->domain = Domain::with(['platform', 'checks' => function ($query) {
             $query->latest()->limit(20);
         }])->findOrFail($this->domainId);
+
+        // Sync simple platform field with relationship
+        if ($this->domain->platform && $this->domain->platform->platform_type && ! $this->domain->platform) {
+            $this->domain->update(['platform' => $this->domain->platform->platform_type]);
+            $this->domain->refresh();
+        }
     }
 
     public function syncFromSynergy(): void
@@ -109,6 +117,57 @@ class DomainDetail extends Component
     public function closeDeleteModal(): void
     {
         $this->showDeleteModal = false;
+    }
+
+    public function detectPlatform(PlatformDetector $detector): void
+    {
+        if (! $this->domain) {
+            return;
+        }
+
+        try {
+            $result = $detector->detect($this->domain->domain);
+
+            $platform = $this->domain->platform()->updateOrCreate(
+                ['domain_id' => $this->domain->id],
+                [
+                    'platform_type' => $result['platform_type'],
+                    'platform_version' => $result['platform_version'],
+                    'admin_url' => $result['admin_url'],
+                    'detection_confidence' => $result['detection_confidence'],
+                    'last_detected' => now(),
+                ]
+            );
+
+            // Sync the simple platform field
+            $this->domain->update(['platform' => $platform->platform_type]);
+
+            $this->loadDomain();
+            session()->flash('message', "Platform detected: {$platform->platform_type} ({$platform->detection_confidence} confidence)");
+        } catch (\Exception $e) {
+            session()->flash('error', 'Platform detection failed: '.$e->getMessage());
+        }
+    }
+
+    public function detectHosting(HostingDetector $detector): void
+    {
+        if (! $this->domain) {
+            return;
+        }
+
+        try {
+            $result = $detector->detect($this->domain->domain);
+
+            $this->domain->update([
+                'hosting_provider' => $result['provider'],
+                'hosting_admin_url' => $result['admin_url'],
+            ]);
+
+            $this->loadDomain();
+            session()->flash('message', "Hosting detected: {$result['provider']} ({$result['confidence']} confidence)");
+        } catch (\Exception $e) {
+            session()->flash('error', 'Hosting detection failed: '.$e->getMessage());
+        }
     }
 
     public function render(): \Illuminate\Contracts\View\View
