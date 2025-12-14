@@ -21,13 +21,15 @@ class SynergyWholesaleClient
      * Check if a domain is an Australian TLD that Synergy Wholesale handles
      *
      * @param  string  $domain  Domain name to check
-     * @return bool True if domain is an Australian TLD (.com.au, .net.au, .org.au, etc.)
+     * @return bool True if domain is an Australian TLD (.au, .com.au, .net.au, .org.au, etc.)
      */
     public static function isAustralianTld(string $domain): bool
     {
         // Australian TLDs that Synergy Wholesale handles
-        // Common ones: .com.au, .net.au, .org.au, .edu.au, .gov.au, .asn.au, .id.au
-        return (bool) preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$/', $domain);
+        // Direct .au domains: .au
+        // Two-part TLDs: .com.au, .net.au, .org.au, .edu.au, .gov.au, .asn.au, .id.au
+        // Match either two-part TLDs OR direct .au (but not .com.au when checking for .au)
+        return (bool) preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$|\.au$/', $domain);
     }
 
     public function __construct(string $resellerId, string $apiKey, ?string $apiUrl = null)

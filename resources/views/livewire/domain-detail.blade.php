@@ -12,7 +12,7 @@
                     Edit Domain
                 </a>
                 @php
-                    $isAustralianTld = preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$/', $domain->domain);
+                    $isAustralianTld = preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$|\.au$/', $domain->domain);
                 @endphp
                 @if($isAustralianTld)
                     <button wire:click="syncFromSynergy" wire:loading.attr="disabled" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 disabled:opacity-50">
