@@ -37,19 +37,17 @@ class CheckExpiringDomains extends Command
         $this->newLine();
 
         foreach ($thresholds as $days) {
-            $expiryDate = $now->copy()->addDays($days);
-            $nextThreshold = $days === 7 ? 0 : ($thresholds[array_search($days, $thresholds) + 1] ?? null);
+            // Calculate the target expiry date (X days from now)
+            $targetDate = $now->copy()->addDays($days);
 
-            // Find domains expiring within this threshold range
-            // For 30 days: domains expiring between 30 and 14 days
-            // For 14 days: domains expiring between 14 and 7 days
-            // For 7 days: domains expiring between 7 and 0 days
-            $query = Domain::where('is_active', true)
+            // Find domains expiring on or around this threshold date (within ±1 day to account for timezone differences)
+            $domains = Domain::where('is_active', true)
                 ->whereNotNull('expires_at')
-                ->where('expires_at', '>=', $now->copy()->addDays($nextThreshold ?? 0)->startOfDay())
-                ->where('expires_at', '<=', $expiryDate->copy()->endOfDay());
-
-            $domains = $query->get();
+                ->whereBetween('expires_at', [
+                    $targetDate->copy()->subDay()->startOfDay(),
+                    $targetDate->copy()->addDay()->endOfDay(),
+                ])
+                ->get();
 
             if ($domains->isEmpty()) {
                 $this->line("  No domains expiring in {$days} days.");
