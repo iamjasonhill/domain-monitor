@@ -100,7 +100,15 @@ This application uses **Laravel Horizon** for queue management, which provides:
 - Metrics and monitoring
 - Automatic process management
 
-**Prerequisites**: Horizon requires Redis for its metadata storage. Ensure Redis is installed and configured.
+**Prerequisites**: 
+- **Redis is REQUIRED** - Horizon uses Redis for its metadata storage (dashboard, metrics, job history)
+- Ensure Redis is installed on your server: `redis-cli ping` should return `PONG`
+- Configure Redis connection in `.env`:
+  ```env
+  REDIS_HOST=127.0.0.1
+  REDIS_PASSWORD=null
+  REDIS_PORT=6379
+  ```
 
 **Set up Horizon daemon in Forge**:
 
