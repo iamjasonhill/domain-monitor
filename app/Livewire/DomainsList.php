@@ -262,9 +262,11 @@ class DomainsList extends Component
             'platform',
         ])
             ->when($this->search, function ($query) {
-                $query->where('domain', 'like', '%'.$this->search.'%')
-                    ->orWhere('project_key', 'like', '%'.$this->search.'%')
-                    ->orWhere('registrar', 'like', '%'.$this->search.'%');
+                $query->where(function ($q) {
+                    $q->where('domain', 'like', '%'.$this->search.'%')
+                        ->orWhere('project_key', 'like', '%'.$this->search.'%')
+                        ->orWhere('registrar', 'like', '%'.$this->search.'%');
+                });
             })
             ->when($this->filterActive !== null, function ($query) {
                 $query->where('is_active', $this->filterActive);
