@@ -47,7 +47,7 @@ class DomainsList extends Component
             session()->flash('error', 'Error syncing domain information: '.$e->getMessage());
         } finally {
             $this->syncingExpiry = false;
-            $this->dispatch('$refresh');
+            $this->resetPage();
         }
     }
 
@@ -62,7 +62,7 @@ class DomainsList extends Component
             session()->flash('error', 'Error syncing DNS records: '.$e->getMessage());
         } finally {
             $this->syncingDns = false;
-            $this->dispatch('$refresh');
+            $this->resetPage();
         }
     }
 
@@ -77,7 +77,7 @@ class DomainsList extends Component
             session()->flash('error', 'Error importing domains: '.$e->getMessage());
         } finally {
             $this->importingDomains = false;
-            $this->dispatch('$refresh');
+            $this->resetPage();
         }
     }
 
