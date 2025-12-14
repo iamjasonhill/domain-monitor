@@ -163,9 +163,17 @@
                                     <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Exclude Parked Domains</span>
                                 </label>
                             </div>
+
+                            <!-- Recent Failures Filter -->
+                            <div>
+                                <label class="flex items-center">
+                                    <input type="checkbox" wire:model.live="filterRecentFailures" class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-sm focus:ring-blue-500">
+                                    <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Recent Failures (7 days)</span>
+                                </label>
+                            </div>
                         </div>
 
-                        @if($search || $filterActive !== null || $filterExpiring || $filterExcludeParked)
+                        @if($search || $filterActive !== null || $filterExpiring || $filterExcludeParked || $filterRecentFailures)
                             <div class="mt-4">
                                 <button wire:click="clearFilters" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
                                     Clear Filters
