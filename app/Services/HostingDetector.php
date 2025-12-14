@@ -22,6 +22,9 @@ class HostingDetector
             // Get DNS records
             $dnsRecords = $this->getDnsRecords($domainOnly);
 
+            // Get IP address(es) for the domain
+            $ipAddresses = $this->getIpAddresses($domainOnly);
+
             // Get HTTP response
             $httpHeaders = $this->getHttpHeaders($url);
 
@@ -29,7 +32,7 @@ class HostingDetector
             $detections = [];
 
             // Vercel detection
-            if ($this->isVercel($dnsRecords, $httpHeaders)) {
+            if ($this->isVercel($dnsRecords, $httpHeaders, $ipAddresses)) {
                 $detections[] = [
                     'provider' => 'Vercel',
                     'confidence' => 'high',
@@ -38,7 +41,7 @@ class HostingDetector
             }
 
             // Render detection
-            if ($this->isRender($dnsRecords, $httpHeaders)) {
+            if ($this->isRender($dnsRecords, $httpHeaders, $ipAddresses)) {
                 $detections[] = [
                     'provider' => 'Render',
                     'confidence' => 'high',
@@ -47,7 +50,7 @@ class HostingDetector
             }
 
             // Cloudflare detection
-            if ($this->isCloudflare($dnsRecords, $httpHeaders)) {
+            if ($this->isCloudflare($dnsRecords, $httpHeaders, $ipAddresses)) {
                 $detections[] = [
                     'provider' => 'Cloudflare',
                     'confidence' => 'high',
@@ -56,20 +59,56 @@ class HostingDetector
             }
 
             // AWS detection
-            if ($this->isAws($dnsRecords, $httpHeaders)) {
+            if ($this->isAws($dnsRecords, $httpHeaders, $ipAddresses)) {
                 $detections[] = [
                     'provider' => 'AWS',
-                    'confidence' => 'medium',
+                    'confidence' => 'high',
                     'admin_url' => 'https://console.aws.amazon.com',
                 ];
             }
 
             // Netlify detection
-            if ($this->isNetlify($dnsRecords, $httpHeaders)) {
+            if ($this->isNetlify($dnsRecords, $httpHeaders, $ipAddresses)) {
                 $detections[] = [
                     'provider' => 'Netlify',
                     'confidence' => 'high',
                     'admin_url' => 'https://app.netlify.com',
+                ];
+            }
+
+            // DigitalOcean detection (via IP ranges)
+            if ($this->isDigitalOcean($ipAddresses, $httpHeaders)) {
+                $detections[] = [
+                    'provider' => 'DigitalOcean',
+                    'confidence' => 'high',
+                    'admin_url' => 'https://cloud.digitalocean.com',
+                ];
+            }
+
+            // Linode detection (via IP ranges)
+            if ($this->isLinode($ipAddresses, $httpHeaders)) {
+                $detections[] = [
+                    'provider' => 'Linode',
+                    'confidence' => 'high',
+                    'admin_url' => 'https://cloud.linode.com',
+                ];
+            }
+
+            // Google Cloud detection
+            if ($this->isGoogleCloud($ipAddresses, $httpHeaders)) {
+                $detections[] = [
+                    'provider' => 'Google Cloud',
+                    'confidence' => 'high',
+                    'admin_url' => 'https://console.cloud.google.com',
+                ];
+            }
+
+            // Azure detection
+            if ($this->isAzure($ipAddresses, $httpHeaders)) {
+                $detections[] = [
+                    'provider' => 'Azure',
+                    'confidence' => 'high',
+                    'admin_url' => 'https://portal.azure.com',
                 ];
             }
 
@@ -162,6 +201,138 @@ class HostingDetector
     }
 
     /**
+     * Get IP addresses for domain
+     *
+     * @return array<int, string>
+     */
+    private function getIpAddresses(string $domain): array
+    {
+        $ipAddresses = [];
+
+        try {
+            // Get A records (IPv4)
+            $aRecords = @dns_get_record($domain, DNS_A);
+            if ($aRecords) {
+                foreach ($aRecords as $record) {
+                    if (isset($record['ip']) && filter_var($record['ip'], FILTER_VALIDATE_IP)) {
+                        $ipAddresses[] = $record['ip'];
+                    }
+                }
+            }
+
+            // Also try gethostbyname as fallback
+            $ip = @gethostbyname($domain);
+            if ($ip && $ip !== $domain && filter_var($ip, FILTER_VALIDATE_IP)) {
+                if (! in_array($ip, $ipAddresses)) {
+                    $ipAddresses[] = $ip;
+                }
+            }
+
+            // Get AAAA records (IPv6)
+            $aaaaRecords = @dns_get_record($domain, DNS_AAAA);
+            if ($aaaaRecords) {
+                foreach ($aaaaRecords as $record) {
+                    if (isset($record['ipv6']) && filter_var($record['ipv6'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+                        $ipAddresses[] = $record['ipv6'];
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            Log::debug('IP lookup failed', ['domain' => $domain, 'error' => $e->getMessage()]);
+        }
+
+        return array_unique($ipAddresses);
+    }
+
+    /**
+     * Get reverse DNS (PTR) record for IP address
+     */
+    private function getReverseDns(string $ip): ?string
+    {
+        try {
+            $hostname = @gethostbyaddr($ip);
+            if ($hostname && $hostname !== $ip) {
+                return $hostname;
+            }
+        } catch (\Exception $e) {
+            Log::debug('Reverse DNS lookup failed', ['ip' => $ip, 'error' => $e->getMessage()]);
+        }
+
+        return null;
+    }
+
+    /**
+     * Check if IP belongs to a known hosting provider range
+     *
+     * @param  array<int, string>  $ipAddresses
+     */
+    private function checkIpRanges(array $ipAddresses, string $providerName): bool
+    {
+        foreach ($ipAddresses as $ip) {
+            // Check reverse DNS first (often contains provider name)
+            $reverseDns = $this->getReverseDns($ip);
+            if ($reverseDns && stripos($reverseDns, $providerName) !== false) {
+                return true;
+            }
+
+            // Check known IP ranges (simplified - could be expanded with full CIDR ranges)
+            // This is a basic check; for production, you'd want a comprehensive IP range database
+            if ($this->matchesIpRange($ip, $providerName)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if IP matches known ranges for a provider
+     * Note: This is simplified. For production, use a proper IP geolocation/ASN database
+     */
+    private function matchesIpRange(string $ip, string $providerName): bool
+    {
+        // Convert IP to long for range checking
+        $ipLong = ip2long($ip);
+        if ($ipLong === false) {
+            return false;
+        }
+
+        // Known IP ranges (simplified examples - expand as needed)
+        $ranges = [
+            'digitalocean' => [
+                ['start' => ip2long('104.131.0.0'), 'end' => ip2long('104.131.255.255')],
+                ['start' => ip2long('159.89.0.0'), 'end' => ip2long('159.89.255.255')],
+                ['start' => ip2long('167.99.0.0'), 'end' => ip2long('167.99.255.255')],
+                ['start' => ip2long('188.166.0.0'), 'end' => ip2long('188.166.255.255')],
+            ],
+            'linode' => [
+                ['start' => ip2long('45.33.0.0'), 'end' => ip2long('45.33.255.255')],
+                ['start' => ip2long('50.116.0.0'), 'end' => ip2long('50.116.255.255')],
+                ['start' => ip2long('172.104.0.0'), 'end' => ip2long('172.104.255.255')],
+            ],
+            'aws' => [
+                // AWS has many ranges, this is just a sample
+                ['start' => ip2long('3.0.0.0'), 'end' => ip2long('3.255.255.255')],
+                ['start' => ip2long('52.0.0.0'), 'end' => ip2long('52.255.255.255')],
+                ['start' => ip2long('54.0.0.0'), 'end' => ip2long('54.255.255.255')],
+            ],
+        ];
+
+        $providerKey = strtolower(str_replace(' ', '', $providerName));
+        if (! isset($ranges[$providerKey])) {
+            return false;
+        }
+
+        foreach ($ranges[$providerKey] as $range) {
+            if ($ipLong >= $range['start'] && $ipLong <= $range['end']) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Get HTTP headers for domain
      *
      * @return array<string, array<int, string>|string>
@@ -196,8 +367,9 @@ class HostingDetector
      *
      * @param  array<int, array<string, mixed>>  $dnsRecords
      * @param  array<string, array<int, string>|string>  $httpHeaders
+     * @param  array<int, string>  $ipAddresses
      */
-    private function isVercel(array $dnsRecords, array $httpHeaders): bool
+    private function isVercel(array $dnsRecords, array $httpHeaders, array $ipAddresses = []): bool
     {
         // Check DNS records
         foreach ($dnsRecords as $record) {
@@ -223,8 +395,9 @@ class HostingDetector
      *
      * @param  array<int, array<string, mixed>>  $dnsRecords
      * @param  array<string, array<int, string>|string>  $httpHeaders
+     * @param  array<int, string>  $ipAddresses
      */
-    private function isRender(array $dnsRecords, array $httpHeaders): bool
+    private function isRender(array $dnsRecords, array $httpHeaders, array $ipAddresses = []): bool
     {
         // Check HTTP headers
         $renderHeader = $httpHeaders['X-Render'] ?? $httpHeaders['x-render'] ?? [];
@@ -254,8 +427,9 @@ class HostingDetector
      *
      * @param  array<int, array<string, mixed>>  $dnsRecords
      * @param  array<string, array<int, string>|string>  $httpHeaders
+     * @param  array<int, string>  $ipAddresses
      */
-    private function isCloudflare(array $dnsRecords, array $httpHeaders): bool
+    private function isCloudflare(array $dnsRecords, array $httpHeaders, array $ipAddresses = []): bool
     {
         // Check DNS records (NS records)
         foreach ($dnsRecords as $record) {
@@ -289,8 +463,9 @@ class HostingDetector
      *
      * @param  array<int, array<string, mixed>>  $dnsRecords
      * @param  array<string, array<int, string>|string>  $httpHeaders
+     * @param  array<int, string>  $ipAddresses
      */
-    private function isAws(array $dnsRecords, array $httpHeaders): bool
+    private function isAws(array $dnsRecords, array $httpHeaders, array $ipAddresses = []): bool
     {
         // Check DNS records
         foreach ($dnsRecords as $record) {
@@ -308,6 +483,11 @@ class HostingDetector
             return true;
         }
 
+        // Check IP ranges
+        if ($this->checkIpRanges($ipAddresses, 'aws')) {
+            return true;
+        }
+
         return false;
     }
 
@@ -316,8 +496,9 @@ class HostingDetector
      *
      * @param  array<int, array<string, mixed>>  $dnsRecords
      * @param  array<string, array<int, string>|string>  $httpHeaders
+     * @param  array<int, string>  $ipAddresses
      */
-    private function isNetlify(array $dnsRecords, array $httpHeaders): bool
+    private function isNetlify(array $dnsRecords, array $httpHeaders, array $ipAddresses = []): bool
     {
         // Check HTTP headers
         $nfRequestId = $httpHeaders['X-Nf-Request-Id'] ?? $httpHeaders['x-nf-request-id'] ?? [];
@@ -335,6 +516,110 @@ class HostingDetector
         foreach ($dnsRecords as $record) {
             $value = strtolower($record['target'] ?? $record['host'] ?? '');
             if (str_contains($value, 'netlify')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if domain is hosted on DigitalOcean
+     *
+     * @param  array<int, string>  $ipAddresses
+     * @param  array<string, array<int, string>|string>  $httpHeaders
+     */
+    private function isDigitalOcean(array $ipAddresses, array $httpHeaders): bool
+    {
+        // Check IP ranges
+        if ($this->checkIpRanges($ipAddresses, 'digitalocean')) {
+            return true;
+        }
+
+        // Check reverse DNS
+        foreach ($ipAddresses as $ip) {
+            $reverseDns = $this->getReverseDns($ip);
+            if ($reverseDns && (stripos($reverseDns, 'digitalocean') !== false || stripos($reverseDns, 'droplet') !== false)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if domain is hosted on Linode
+     *
+     * @param  array<int, string>  $ipAddresses
+     * @param  array<string, array<int, string>|string>  $httpHeaders
+     */
+    private function isLinode(array $ipAddresses, array $httpHeaders): bool
+    {
+        // Check IP ranges
+        if ($this->checkIpRanges($ipAddresses, 'linode')) {
+            return true;
+        }
+
+        // Check reverse DNS
+        foreach ($ipAddresses as $ip) {
+            $reverseDns = $this->getReverseDns($ip);
+            if ($reverseDns && (stripos($reverseDns, 'linode') !== false || stripos($reverseDns, 'members.linode.com') !== false)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if domain is hosted on Google Cloud
+     *
+     * @param  array<int, string>  $ipAddresses
+     * @param  array<string, array<int, string>|string>  $httpHeaders
+     */
+    private function isGoogleCloud(array $ipAddresses, array $httpHeaders): bool
+    {
+        // Check HTTP headers
+        $server = $httpHeaders['Server'] ?? $httpHeaders['server'] ?? [];
+        $serverValue = is_array($server) ? ($server[0] ?? '') : $server;
+        if (stripos($serverValue, 'gfe') !== false || stripos($serverValue, 'Google') !== false) {
+            return true;
+        }
+
+        // Check reverse DNS
+        foreach ($ipAddresses as $ip) {
+            $reverseDns = $this->getReverseDns($ip);
+            if ($reverseDns && (stripos($reverseDns, 'googleusercontent.com') !== false ||
+                stripos($reverseDns, 'google.com') !== false ||
+                stripos($reverseDns, 'cloud.google.com') !== false)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if domain is hosted on Azure
+     *
+     * @param  array<int, string>  $ipAddresses
+     * @param  array<string, array<int, string>|string>  $httpHeaders
+     */
+    private function isAzure(array $ipAddresses, array $httpHeaders): bool
+    {
+        // Check HTTP headers
+        $server = $httpHeaders['Server'] ?? $httpHeaders['server'] ?? [];
+        $serverValue = is_array($server) ? ($server[0] ?? '') : $server;
+        if (stripos($serverValue, 'Microsoft-IIS') !== false || stripos($serverValue, 'Azure') !== false) {
+            return true;
+        }
+
+        // Check reverse DNS
+        foreach ($ipAddresses as $ip) {
+            $reverseDns = $this->getReverseDns($ip);
+            if ($reverseDns && (stripos($reverseDns, 'azurewebsites.net') !== false ||
+                stripos($reverseDns, 'cloudapp.net') !== false ||
+                stripos($reverseDns, 'azure.com') !== false)) {
                 return true;
             }
         }
