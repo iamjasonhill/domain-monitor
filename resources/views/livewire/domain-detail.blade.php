@@ -216,7 +216,7 @@
 
         <!-- Synergy Wholesale Information (for Australian TLD domains) -->
         @php
-            $isAustralianTld = preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$/', $domain->domain);
+            $isAustralianTld = preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$|\.au$/', $domain->domain);
         @endphp
         @if($isAustralianTld && ($domain->registrant_name || $domain->eligibility_type))
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
@@ -348,7 +348,7 @@
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">DNS Records</h3>
                     @php
-                        $isAustralianTld = preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$/', $domain->domain);
+                        $isAustralianTld = preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$|\.au$/', $domain->domain);
                     @endphp
                     @if($isAustralianTld)
                         <div class="flex gap-2">
@@ -435,7 +435,7 @@
                 @else
                     <p class="text-gray-500 dark:text-gray-400">
                         @php
-                            $isAustralianTld = preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$/', $domain->domain);
+                            $isAustralianTld = preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$|\.au$/', $domain->domain);
                         @endphp
                         @if($isAustralianTld)
                             No DNS records synced yet. Click "Sync DNS Records" to retrieve them from Synergy Wholesale.
