@@ -16,9 +16,8 @@ class DomainDetail extends Component
 
     public string $syncMessage = '';
 
-    public function mount(string $domain): void
+    public function mount(): void
     {
-        $this->domainId = $domain;
         $this->loadDomain();
     }
 
