@@ -265,7 +265,7 @@
             </div>
         </div>
 
-        <!-- Synergy Wholesale Information (for Australian TLD domains) -->
+        <!-- Domain Information (for Australian TLD domains) -->
         @php
             $isAustralianTld = preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$|\.au$/', $domain->domain);
         @endphp
@@ -587,9 +587,9 @@
                             $isAustralianTld = preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$|\.au$/', $domain->domain);
                         @endphp
                         @if($isAustralianTld)
-                            No DNS records synced yet. Click "Sync DNS Records" to retrieve them from Synergy Wholesale.
+                            No DNS records synced yet. Click "Sync DNS Records" to retrieve them.
                         @else
-                            DNS records are only available for Australian TLD domains (.com.au, .net.au, etc.) via Synergy Wholesale.
+                            DNS records are only available for Australian TLD domains (.com.au, .net.au, etc.).
                         @endif
                     </p>
                 @endif

@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Domain;
 use Illuminate\Support\Facades\Artisan;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -11,25 +12,30 @@ class DomainsList extends Component
 {
     use WithPagination;
 
+    #[Url(as: 'search', history: true, keep: false)]
     public string $search = '';
 
-    public ?bool $filterActive = null;
+    #[Url(as: 'active', history: true, keep: false)]
+    public ?string $filterActive = null;
 
+    #[Url(as: 'expiring', history: true, keep: false)]
     public bool $filterExpiring = false;
 
+    #[Url(as: 'excludeParked', history: true, keep: false)]
     public bool $filterExcludeParked = false;
 
+    #[Url(as: 'recentFailures', history: true, keep: false)]
     public bool $filterRecentFailures = false;
 
+    #[Url(as: 'failedEligibility', history: true, keep: false)]
     public bool $filterFailedEligibility = false;
 
     public function mount(): void
     {
-        // Read query parameters from URL
-        $this->filterActive = request()->boolean('filterActive') ? true : (request()->has('filterActive') ? false : null);
-        $this->filterExpiring = request()->boolean('filterExpiring');
-        $this->filterRecentFailures = request()->boolean('filterRecentFailures');
-        $this->filterFailedEligibility = request()->boolean('filterFailedEligibility');
+        // Convert URL string values to proper types
+        if ($this->filterActive !== null) {
+            $this->filterActive = $this->filterActive === '1' ? '1' : ($this->filterActive === '0' ? '0' : null);
+        }
     }
 
     public bool $syncingExpiry = false;
@@ -40,12 +46,7 @@ class DomainsList extends Component
 
     public bool $detectingPlatforms = false;
 
-    public function updatingSearch()
-    {
-        $this->resetPage();
-    }
-
-    public function clearFilters()
+    public function clearFilters(): void
     {
         $this->search = '';
         $this->filterActive = null;
@@ -53,6 +54,36 @@ class DomainsList extends Component
         $this->filterExcludeParked = false;
         $this->filterRecentFailures = false;
         $this->filterFailedEligibility = false;
+        $this->resetPage();
+    }
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterActive(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterExpiring(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterExcludeParked(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterRecentFailures(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterFailedEligibility(): void
+    {
         $this->resetPage();
     }
 
@@ -84,7 +115,7 @@ class DomainsList extends Component
             }
 
             if ($exitCode === 0) {
-                $this->dispatch('flash-message', message: 'Domain information synced successfully from Synergy Wholesale!', type: 'success');
+                $this->dispatch('flash-message', message: 'Domain information synced successfully!', type: 'success');
             } else {
                 $errorMessage = $errorLine ?: (trim($output) ?: 'Sync failed. Check logs for details.');
                 // Truncate long error messages
@@ -130,7 +161,7 @@ class DomainsList extends Component
             }
 
             if ($exitCode === 0) {
-                $this->dispatch('flash-message', message: 'DNS records synced successfully from Synergy Wholesale!', type: 'success');
+                $this->dispatch('flash-message', message: 'DNS records synced successfully!', type: 'success');
             } else {
                 $errorMessage = $errorLine ?: (trim($output) ?: 'DNS sync failed. Check logs for details.');
                 // Truncate long error messages
@@ -176,7 +207,7 @@ class DomainsList extends Component
             }
 
             if ($exitCode === 0) {
-                $this->dispatch('flash-message', message: 'Domains imported successfully from Synergy Wholesale!', type: 'success');
+                $this->dispatch('flash-message', message: 'Domains imported successfully!', type: 'success');
             } else {
                 $errorMessage = $errorLine ?: (trim($output) ?: 'Import failed. Check logs for details.');
                 // Truncate long error messages
@@ -255,54 +286,28 @@ class DomainsList extends Component
 
     public function render(): \Illuminate\Contracts\View\View
     {
-        $query = Domain::with([
+        // Convert filterActive string to boolean for scope
+        $isActive = null;
+        if ($this->filterActive === '1') {
+            $isActive = true;
+        } elseif ($this->filterActive === '0') {
+            $isActive = false;
+        }
+
+        $domains = Domain::with([
             'checks' => function ($query) {
                 // Load both HTTP and DNS checks (view will filter to HTTP only for status display)
                 $query->whereIn('check_type', ['http', 'dns'])->latest()->limit(5);
             },
             'platform',
-        ]);
-
-        // Apply search filter
-        if (! empty(trim($this->search))) {
-            $searchTerm = trim($this->search);
-            $query->where(function ($q) use ($searchTerm) {
-                $q->where('domain', 'like', '%'.$searchTerm.'%')
-                    ->orWhere('project_key', 'like', '%'.$searchTerm.'%')
-                    ->orWhere('registrar', 'like', '%'.$searchTerm.'%');
-            });
-        }
-        // Apply other filters
-        if ($this->filterActive !== null) {
-            $query->where('is_active', $this->filterActive);
-        }
-
-        if ($this->filterExpiring) {
-            $query->where('is_active', true)
-                ->whereNotNull('expires_at')
-                ->where('expires_at', '<=', now()->addDays(30))
-                ->where('expires_at', '>', now());
-        }
-
-        if ($this->filterExcludeParked) {
-            $query->where(function ($q) {
-                $q->where('platform', '!=', 'Parked')
-                    ->orWhereNull('platform');
-            });
-        }
-
-        if ($this->filterRecentFailures) {
-            $query->whereHas('checks', function ($q) {
-                $q->where('status', 'fail')
-                    ->where('created_at', '>=', now()->subDays(7));
-            });
-        }
-
-        if ($this->filterFailedEligibility) {
-            $query->where('eligibility_valid', false);
-        }
-
-        $domains = $query->orderBy('updated_at', 'desc')
+        ])
+            ->search($this->search)
+            ->filterActive($isActive)
+            ->filterExpiring($this->filterExpiring)
+            ->excludeParked($this->filterExcludeParked)
+            ->filterRecentFailures($this->filterRecentFailures)
+            ->filterFailedEligibility($this->filterFailedEligibility)
+            ->orderBy('updated_at', 'desc')
             ->paginate(20);
 
         return view('livewire.domains-list', [

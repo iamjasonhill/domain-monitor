@@ -154,4 +154,87 @@ class Domain extends Model
     {
         return $this->hasMany(Subdomain::class);
     }
+
+    /**
+     * Scope a query to search domains by domain name, project key, or registrar.
+     */
+    public function scopeSearch($query, string $term): void
+    {
+        $searchTerm = trim($term);
+        if (empty($searchTerm)) {
+            return;
+        }
+
+        $query->where(function ($q) use ($searchTerm) {
+            $q->where('domain', 'like', '%'.$searchTerm.'%')
+                ->orWhere('project_key', 'like', '%'.$searchTerm.'%')
+                ->orWhere('registrar', 'like', '%'.$searchTerm.'%');
+        });
+    }
+
+    /**
+     * Scope a query to filter by active status.
+     */
+    public function scopeFilterActive($query, ?bool $isActive): void
+    {
+        if ($isActive !== null) {
+            $query->where('is_active', $isActive);
+        }
+    }
+
+    /**
+     * Scope a query to filter domains expiring soon (within 30 days).
+     */
+    public function scopeFilterExpiring($query, bool $expiring): void
+    {
+        if ($expiring) {
+            $query->where('is_active', true)
+                ->whereNotNull('expires_at')
+                ->where('expires_at', '<=', now()->addDays(30))
+                ->where('expires_at', '>', now());
+        }
+    }
+
+    /**
+     * Scope a query to exclude parked domains.
+     * Checks both the platform column and the platform relationship.
+     */
+    public function scopeExcludeParked($query, bool $exclude): void
+    {
+        if ($exclude) {
+            // Exclude domains where:
+            // 1. platform column is 'Parked', OR
+            // 2. platform relationship has platform_type = 'Parked'
+            $query->where(function ($q) {
+                $q->where('platform', '!=', 'Parked')
+                    ->orWhereNull('platform');
+            })
+                ->whereDoesntHave('platform', function ($platformQ) {
+                    $platformQ->where('platform_type', 'Parked');
+                });
+        }
+    }
+
+    /**
+     * Scope a query to filter domains with recent failures (within last 7 days).
+     */
+    public function scopeFilterRecentFailures($query, bool $recentFailures): void
+    {
+        if ($recentFailures) {
+            $query->whereHas('checks', function ($q) {
+                $q->where('status', 'fail')
+                    ->where('created_at', '>=', now()->subDays(7));
+            });
+        }
+    }
+
+    /**
+     * Scope a query to filter domains with failed eligibility status.
+     */
+    public function scopeFilterFailedEligibility($query, bool $failedEligibility): void
+    {
+        if ($failedEligibility) {
+            $query->where('eligibility_valid', false);
+        }
+    }
 }

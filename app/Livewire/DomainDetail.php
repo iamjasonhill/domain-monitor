@@ -91,7 +91,7 @@ class DomainDetail extends Component
     public function syncFromSynergy(): void
     {
         if (! \App\Services\SynergyWholesaleClient::isAustralianTld($this->domain->domain)) {
-            $this->syncMessage = 'Only Australian TLD domains (.com.au, .net.au, etc.) can be synced from Synergy Wholesale.';
+            $this->syncMessage = 'Only Australian TLD domains (.com.au, .net.au, etc.) can be synced.';
             $this->dispatch('sync-complete');
 
             return;
@@ -107,11 +107,11 @@ class DomainDetail extends Component
 
             $this->loadDomain();
             $this->syncMessage = 'Domain information synced successfully!';
-            session()->flash('message', 'Domain information synced successfully from Synergy Wholesale!');
+            session()->flash('message', 'Domain information synced successfully!');
             $this->dispatch('sync-complete');
         } catch (\Exception $e) {
             $this->syncMessage = 'Error syncing: '.$e->getMessage();
-            session()->flash('error', 'Error syncing from Synergy Wholesale: '.$e->getMessage());
+            session()->flash('error', 'Error syncing domain information: '.$e->getMessage());
             $this->dispatch('sync-complete');
         } finally {
             $this->syncing = false;
@@ -212,7 +212,7 @@ class DomainDetail extends Component
     public function syncDnsRecords(): void
     {
         if (! \App\Services\SynergyWholesaleClient::isAustralianTld($this->domain->domain)) {
-            session()->flash('error', 'Only Australian TLD domains (.com.au, .net.au, etc.) can sync DNS records from Synergy Wholesale.');
+            session()->flash('error', 'Only Australian TLD domains (.com.au, .net.au, etc.) can sync DNS records.');
             $this->dispatch('dns-sync-complete');
 
             return;
@@ -282,7 +282,7 @@ class DomainDetail extends Component
     public function saveDnsRecord(): void
     {
         if (! $this->domain || ! \App\Services\SynergyWholesaleClient::isAustralianTld($this->domain->domain)) {
-            session()->flash('error', 'Only Australian TLD domains (.com.au, .net.au, etc.) can manage DNS records via Synergy Wholesale.');
+            session()->flash('error', 'Only Australian TLD domains (.com.au, .net.au, etc.) can manage DNS records.');
 
             return;
         }
@@ -296,7 +296,7 @@ class DomainDetail extends Component
 
         $credential = SynergyCredential::where('is_active', true)->first();
         if (! $credential) {
-            session()->flash('error', 'No active Synergy Wholesale credentials found.');
+            session()->flash('error', 'No active domain registrar credentials found.');
 
             return;
         }
@@ -385,7 +385,7 @@ class DomainDetail extends Component
     public function deleteDnsRecord(string $recordId): void
     {
         if (! $this->domain || ! \App\Services\SynergyWholesaleClient::isAustralianTld($this->domain->domain)) {
-            session()->flash('error', 'Only Australian TLD domains (.com.au, .net.au, etc.) can manage DNS records via Synergy Wholesale.');
+            session()->flash('error', 'Only Australian TLD domains (.com.au, .net.au, etc.) can manage DNS records.');
 
             return;
         }
@@ -402,7 +402,7 @@ class DomainDetail extends Component
 
         $credential = SynergyCredential::where('is_active', true)->first();
         if (! $credential) {
-            session()->flash('error', 'No active Synergy Wholesale credentials found.');
+            session()->flash('error', 'No active domain registrar credentials found.');
 
             return;
         }
