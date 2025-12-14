@@ -174,6 +174,55 @@ class DomainsList extends Component
         }
     }
 
+    public function detectPlatforms(): void
+    {
+        $this->detectingPlatforms = true;
+
+        try {
+            $exitCode = Artisan::call('domains:detect-platforms', ['--all' => true]);
+            $output = Artisan::output();
+
+            // Extract error message from output if command failed
+            $outputLines = explode("\n", trim($output));
+            $errorLine = null;
+            foreach ($outputLines as $line) {
+                if (stripos($line, 'error') !== false || stripos($line, 'failed') !== false || stripos($line, 'exception') !== false) {
+                    $errorLine = trim($line);
+                    break;
+                }
+            }
+
+            // Extract success count from output
+            $successCount = null;
+            foreach ($outputLines as $line) {
+                if (preg_match('/Successfully detected platforms for (\d+)\/(\d+) domain/', $line, $matches)) {
+                    $successCount = $matches[1].'/'.$matches[2];
+                    break;
+                }
+            }
+
+            if ($exitCode === 0) {
+                $message = $successCount
+                    ? "Platform detection completed successfully for {$successCount} domain(s)!"
+                    : 'Platform detection completed successfully!';
+                $this->dispatch('flash-message', message: $message, type: 'success');
+            } else {
+                $errorMessage = $errorLine ?: (trim($output) ?: 'Platform detection failed. Check logs for details.');
+                // Truncate long error messages
+                if (strlen($errorMessage) > 200) {
+                    $errorMessage = substr($errorMessage, 0, 197).'...';
+                }
+                $this->dispatch('flash-message', message: $errorMessage, type: 'error');
+            }
+        } catch (\Exception $e) {
+            \Log::error('Detect Platforms Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            $this->dispatch('flash-message', message: 'Error detecting platforms: '.$e->getMessage(), type: 'error');
+        } finally {
+            $this->detectingPlatforms = false;
+            $this->resetPage();
+        }
+    }
+
     public function render(): \Illuminate\Contracts\View\View
     {
         $domains = Domain::with(['checks' => function ($query) {
