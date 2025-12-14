@@ -60,9 +60,17 @@ Track and monitor domains with health checks, uptime monitoring, SSL certificate
 - [x] Configure event envelope format
 - [x] Test event emission
 
+### ✅ Step 4: Platform Detection Service
+- [x] Create platform detection service
+- [x] Add `website_platform` table
+- [x] Implement detection logic for major platforms (WordPress, Laravel, Next.js, Shopify, Static)
+- [x] Store detection results with confidence levels
+- [x] Create scheduled job for platform detection (weekly)
+- [x] Create artisan command for manual detection
+
 ## Next Step
 
-### Step 4: Platform Detection Service
+### Step 5: Hosting Detection Service
 
 ## Future Steps
 

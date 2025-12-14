@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -78,5 +79,13 @@ class Domain extends Model
     public function alerts(): HasMany
     {
         return $this->hasMany(DomainAlert::class);
+    }
+
+    /**
+     * @return HasOne<WebsitePlatform, Domain>
+     */
+    public function platform(): HasOne
+    {
+        return $this->hasOne(WebsitePlatform::class);
     }
 }
