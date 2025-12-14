@@ -18,14 +18,14 @@ class SyncDnsRecords extends Command
      */
     protected $signature = 'domains:sync-dns-records 
                             {--domain= : Specific domain to sync (optional)}
-                            {--all : Sync all .com.au domains}';
+                            {--all : Sync all Australian TLD domains (.com.au, .net.au, etc.)}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Sync DNS records from Synergy Wholesale API for domains';
+    protected $description = 'Sync DNS records from Synergy Wholesale API for Australian TLD domains';
 
     /**
      * Execute the console command.
@@ -59,8 +59,8 @@ class SyncDnsRecords extends Command
                 return Command::FAILURE;
             }
 
-            if (! str_ends_with($domain->domain, '.com.au')) {
-                $this->warn("Domain '{$domainOption}' is not a .com.au domain. Synergy Wholesale only handles .com.au domains.");
+            if (! \App\Services\SynergyWholesaleClient::isAustralianTld($domain->domain)) {
+                $this->warn("Domain '{$domainOption}' is not an Australian TLD (.com.au, .net.au, etc.). Synergy Wholesale only handles Australian TLDs.");
 
                 return Command::FAILURE;
             }
@@ -69,17 +69,19 @@ class SyncDnsRecords extends Command
         }
 
         if ($allOption) {
-            $domains = Domain::where('is_active', true)
-                ->where('domain', 'LIKE', '%.com.au')
-                ->get();
+            // Get all active domains and filter for Australian TLDs
+            $allDomains = Domain::where('is_active', true)->get();
+            $domains = $allDomains->filter(function ($domain) {
+                return \App\Services\SynergyWholesaleClient::isAustralianTld($domain->domain);
+            });
 
             if ($domains->isEmpty()) {
-                $this->warn('No active .com.au domains found.');
+                $this->warn('No active Australian TLD domains found.');
 
                 return Command::SUCCESS;
             }
 
-            $this->info("Syncing DNS records for {$domains->count()} .com.au domain(s)...");
+            $this->info("Syncing DNS records for {$domains->count()} Australian TLD domain(s)...");
             $this->newLine();
 
             $bar = $this->output->createProgressBar($domains->count());

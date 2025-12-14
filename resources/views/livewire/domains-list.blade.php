@@ -122,7 +122,7 @@
                             </button>
                         </div>
                         <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                            These actions will sync data from Synergy Wholesale for all .com.au domains in your account.
+                            These actions will sync data from Synergy Wholesale for all Australian TLD domains (.com.au, .net.au, etc.) in your account.
                         </p>
                     </div>
                 </div>

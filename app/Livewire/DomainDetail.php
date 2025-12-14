@@ -78,8 +78,8 @@ class DomainDetail extends Component
 
     public function syncFromSynergy(): void
     {
-        if (! str_ends_with($this->domain->domain, '.com.au')) {
-            $this->syncMessage = 'Only .com.au domains can be synced from Synergy Wholesale.';
+        if (! \App\Services\SynergyWholesaleClient::isAustralianTld($this->domain->domain)) {
+            $this->syncMessage = 'Only Australian TLD domains (.com.au, .net.au, etc.) can be synced from Synergy Wholesale.';
             $this->dispatch('sync-complete');
 
             return;
@@ -199,8 +199,8 @@ class DomainDetail extends Component
 
     public function syncDnsRecords(): void
     {
-        if (! str_ends_with($this->domain->domain, '.com.au')) {
-            session()->flash('error', 'Only .com.au domains can sync DNS records from Synergy Wholesale.');
+        if (! \App\Services\SynergyWholesaleClient::isAustralianTld($this->domain->domain)) {
+            session()->flash('error', 'Only Australian TLD domains (.com.au, .net.au, etc.) can sync DNS records from Synergy Wholesale.');
             $this->dispatch('dns-sync-complete');
 
             return;
@@ -269,8 +269,8 @@ class DomainDetail extends Component
 
     public function saveDnsRecord(): void
     {
-        if (! $this->domain || ! str_ends_with($this->domain->domain, '.com.au')) {
-            session()->flash('error', 'Only .com.au domains can manage DNS records via Synergy Wholesale.');
+        if (! $this->domain || ! \App\Services\SynergyWholesaleClient::isAustralianTld($this->domain->domain)) {
+            session()->flash('error', 'Only Australian TLD domains (.com.au, .net.au, etc.) can manage DNS records via Synergy Wholesale.');
 
             return;
         }
@@ -372,8 +372,8 @@ class DomainDetail extends Component
 
     public function deleteDnsRecord(string $recordId): void
     {
-        if (! $this->domain || ! str_ends_with($this->domain->domain, '.com.au')) {
-            session()->flash('error', 'Only .com.au domains can manage DNS records via Synergy Wholesale.');
+        if (! $this->domain || ! \App\Services\SynergyWholesaleClient::isAustralianTld($this->domain->domain)) {
+            session()->flash('error', 'Only Australian TLD domains (.com.au, .net.au, etc.) can manage DNS records via Synergy Wholesale.');
 
             return;
         }

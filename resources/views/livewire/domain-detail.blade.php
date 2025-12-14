@@ -11,7 +11,10 @@
                 <a href="{{ route('domains.edit', $domain->id) }}" wire:navigate class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700">
                     Edit Domain
                 </a>
-                @if(str_ends_with($domain->domain, '.com.au'))
+                @php
+                    $isAustralianTld = preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$/', $domain->domain);
+                @endphp
+                @if($isAustralianTld)
                     <button wire:click="syncFromSynergy" wire:loading.attr="disabled" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 disabled:opacity-50">
                         <span wire:loading.remove wire:target="syncFromSynergy">Sync from Synergy</span>
                         <span wire:loading wire:target="syncFromSynergy">Syncing...</span>
@@ -211,8 +214,11 @@
             </div>
         </div>
 
-        <!-- Synergy Wholesale Information (for .com.au domains) -->
-        @if(str_ends_with($domain->domain, '.com.au') && ($domain->registrant_name || $domain->eligibility_type))
+        <!-- Synergy Wholesale Information (for Australian TLD domains) -->
+        @php
+            $isAustralianTld = preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$/', $domain->domain);
+        @endphp
+        @if($isAustralianTld && ($domain->registrant_name || $domain->eligibility_type))
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
                 <div class="p-6">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Australian Domain Information</h3>
@@ -341,7 +347,10 @@
             <div class="p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">DNS Records</h3>
-                    @if(str_ends_with($domain->domain, '.com.au'))
+                    @php
+                        $isAustralianTld = preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$/', $domain->domain);
+                    @endphp
+                    @if($isAustralianTld)
                         <div class="flex gap-2">
                             <button wire:click="openAddDnsRecordModal" class="inline-flex items-center px-3 py-1.5 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700">
                                 Add Record
@@ -363,7 +372,10 @@
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Value</th>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">TTL</th>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Priority</th>
-                                    @if(str_ends_with($domain->domain, '.com.au'))
+                                    @php
+                                        $isAustralianTld = preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$/', $domain->domain);
+                                    @endphp
+                                    @if($isAustralianTld)
                                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                                     @endif
                                 </tr>
@@ -398,7 +410,7 @@
                                         <td class="px-3 py-2 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
                                             {{ $record->priority ?? 'N/A' }}
                                         </td>
-                                        @if(str_ends_with($domain->domain, '.com.au'))
+                                        @if($isAustralianTld)
                                             <td class="px-3 py-2 whitespace-nowrap text-xs">
                                                 <div class="flex gap-1">
                                                     <button wire:click="openEditDnsRecordModal('{{ $record->id }}')" class="px-2 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-xs">
@@ -422,10 +434,13 @@
                     @endif
                 @else
                     <p class="text-gray-500 dark:text-gray-400">
-                        @if(str_ends_with($domain->domain, '.com.au'))
+                        @php
+                            $isAustralianTld = preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$/', $domain->domain);
+                        @endphp
+                        @if($isAustralianTld)
                             No DNS records synced yet. Click "Sync DNS Records" to retrieve them from Synergy Wholesale.
                         @else
-                            DNS records are only available for .com.au domains via Synergy Wholesale.
+                            DNS records are only available for Australian TLD domains (.com.au, .net.au, etc.) via Synergy Wholesale.
                         @endif
                     </p>
                 @endif

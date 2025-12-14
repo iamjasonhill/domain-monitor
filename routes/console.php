@@ -48,13 +48,13 @@ Schedule::command('domains:health-check --all --type=dns')
     ->everySixHours()
     ->timezone('UTC');
 
-// Synergy Wholesale expiry sync - run daily for .com.au domains
+// Synergy Wholesale expiry sync - run daily for Australian TLD domains
 Schedule::command('domains:sync-synergy-expiry --all')
     ->daily()
     ->at('04:00')
     ->timezone('UTC');
 
-// DNS records sync - run daily for .com.au domains
+// DNS records sync - run daily for Australian TLD domains
 Schedule::command('domains:sync-dns-records --all')
     ->daily()
     ->at('04:30')

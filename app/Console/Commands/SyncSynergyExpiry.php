@@ -17,14 +17,14 @@ class SyncSynergyExpiry extends Command
      */
     protected $signature = 'domains:sync-synergy-expiry 
                             {--domain= : Specific domain to sync (optional)}
-                            {--all : Sync all .com.au domains}';
+                            {--all : Sync all Australian TLD domains (.com.au, .net.au, etc.)}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Sync domain information (expiry, status, nameservers, registrant info, etc.) from Synergy Wholesale API';
+    protected $description = 'Sync domain information (expiry, status, nameservers, registrant info, etc.) from Synergy Wholesale API for Australian TLDs';
 
     /**
      * Execute the console command.
@@ -58,8 +58,8 @@ class SyncSynergyExpiry extends Command
                 return Command::FAILURE;
             }
 
-            if (! str_ends_with($domain->domain, '.com.au')) {
-                $this->warn("Domain '{$domainOption}' is not a .com.au domain. Synergy Wholesale only handles .com.au domains.");
+            if (! SynergyWholesaleClient::isAustralianTld($domain->domain)) {
+                $this->warn("Domain '{$domainOption}' is not an Australian TLD (.com.au, .net.au, etc.). Synergy Wholesale only handles Australian TLDs.");
 
                 return Command::FAILURE;
             }
@@ -68,17 +68,19 @@ class SyncSynergyExpiry extends Command
         }
 
         if ($allOption) {
-            $domains = Domain::where('is_active', true)
-                ->where('domain', 'LIKE', '%.com.au')
-                ->get();
+            // Get all active domains and filter for Australian TLDs
+            $allDomains = Domain::where('is_active', true)->get();
+            $domains = $allDomains->filter(function ($domain) {
+                return SynergyWholesaleClient::isAustralianTld($domain->domain);
+            });
 
             if ($domains->isEmpty()) {
-                $this->warn('No active .com.au domains found.');
+                $this->warn('No active Australian TLD domains found.');
 
                 return Command::SUCCESS;
             }
 
-            $this->info("Syncing expiry dates for {$domains->count()} .com.au domain(s)...");
+            $this->info("Syncing expiry dates for {$domains->count()} Australian TLD domain(s)...");
             $this->newLine();
 
             $bar = $this->output->createProgressBar($domains->count());
