@@ -42,9 +42,12 @@ class DomainDetail extends Component
             $query->latest()->limit(20);
         }])->findOrFail($this->domainId);
 
-        // Sync simple platform field with relationship if relationship exists but field doesn't
-        if ($this->domain->platform && $this->domain->platform->platform_type && ! $this->domain->platform) {
-            $this->domain->update(['platform' => $this->domain->platform->platform_type]);
+        // Sync simple platform field with relationship if relationship exists but field is empty
+        $platformModel = $this->domain->getRelation('platform');
+        $platformString = $this->domain->getAttribute('platform');
+
+        if ($platformModel instanceof \App\Models\WebsitePlatform && $platformModel->platform_type && empty($platformString)) {
+            $this->domain->update(['platform' => $platformModel->platform_type]);
             $this->domain->refresh();
         }
     }
