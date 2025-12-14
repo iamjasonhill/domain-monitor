@@ -16,15 +16,16 @@ class CommandsList extends Component
 
     protected function loadCommands(): void
     {
-        // Get all Artisan commands
-        $artisanCommands = Artisan::all();
+        // Get all Artisan commands using the Artisan facade
+        $artisan = app(\Illuminate\Contracts\Console\Kernel::class);
+        $artisanCommands = $artisan->all();
 
         $this->commands = collect($artisanCommands)
             ->map(function ($command, $name) {
                 return [
                     'name' => $name,
-                    'description' => $command->getDescription(),
-                    'signature' => $command->getSynopsis(),
+                    'description' => $command->getDescription() ?: 'No description available',
+                    'signature' => $command->getSynopsis() ?: $name,
                 ];
             })
             ->sortBy('name')
