@@ -41,13 +41,23 @@ class DomainsList extends Component
         $this->syncingExpiry = true;
 
         try {
+            // Check if credentials exist
+            $credential = \App\Models\SynergyCredential::where('is_active', true)->first();
+            if (! $credential) {
+                $this->dispatch('flash-message', message: 'No active Synergy Wholesale credentials found. Please configure credentials first.', type: 'error');
+                $this->syncingExpiry = false;
+
+                return;
+            }
+
             $exitCode = Artisan::call('domains:sync-synergy-expiry', ['--all' => true]);
             $output = Artisan::output();
 
             if ($exitCode === 0) {
                 $this->dispatch('flash-message', message: 'Domain information synced successfully from Synergy Wholesale!', type: 'success');
             } else {
-                $this->dispatch('flash-message', message: 'Sync completed with warnings. Check logs for details.', type: 'warning');
+                $errorMessage = trim($output) ?: 'Sync completed with warnings. Check logs for details.';
+                $this->dispatch('flash-message', message: $errorMessage, type: 'warning');
             }
         } catch (\Exception $e) {
             \Log::error('Sync Synergy Expiry Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
@@ -63,13 +73,23 @@ class DomainsList extends Component
         $this->syncingDns = true;
 
         try {
+            // Check if credentials exist
+            $credential = \App\Models\SynergyCredential::where('is_active', true)->first();
+            if (! $credential) {
+                $this->dispatch('flash-message', message: 'No active Synergy Wholesale credentials found. Please configure credentials first.', type: 'error');
+                $this->syncingDns = false;
+
+                return;
+            }
+
             $exitCode = Artisan::call('domains:sync-dns-records', ['--all' => true]);
             $output = Artisan::output();
 
             if ($exitCode === 0) {
                 $this->dispatch('flash-message', message: 'DNS records synced successfully from Synergy Wholesale!', type: 'success');
             } else {
-                $this->dispatch('flash-message', message: 'DNS sync completed with warnings. Check logs for details.', type: 'warning');
+                $errorMessage = trim($output) ?: 'DNS sync completed with warnings. Check logs for details.';
+                $this->dispatch('flash-message', message: $errorMessage, type: 'warning');
             }
         } catch (\Exception $e) {
             \Log::error('Sync DNS Records Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
@@ -85,13 +105,23 @@ class DomainsList extends Component
         $this->importingDomains = true;
 
         try {
+            // Check if credentials exist
+            $credential = \App\Models\SynergyCredential::where('is_active', true)->first();
+            if (! $credential) {
+                $this->dispatch('flash-message', message: 'No active Synergy Wholesale credentials found. Please configure credentials first.', type: 'error');
+                $this->importingDomains = false;
+
+                return;
+            }
+
             $exitCode = Artisan::call('domains:import-synergy');
             $output = Artisan::output();
 
             if ($exitCode === 0) {
                 $this->dispatch('flash-message', message: 'Domains imported successfully from Synergy Wholesale!', type: 'success');
             } else {
-                $this->dispatch('flash-message', message: 'Import completed with warnings. Check logs for details.', type: 'warning');
+                $errorMessage = trim($output) ?: 'Import completed with warnings. Check logs for details.';
+                $this->dispatch('flash-message', message: $errorMessage, type: 'warning');
             }
         } catch (\Exception $e) {
             \Log::error('Import Synergy Domains Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
