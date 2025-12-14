@@ -24,15 +24,15 @@ Use this checklist before deploying to Laravel Forge to ensure everything is rea
 
 ### 4. Scheduled Tasks
 - [x] All scheduled tasks configured in `routes/console.php`
-- [ ] Verify Laravel scheduler cron job will be set up in Forge
-- [ ] Test each scheduled command manually:
-  - [ ] `php artisan domains:detect-platforms --all`
-  - [ ] `php artisan domains:detect-hosting --all`
-  - [ ] `php artisan domains:health-check --all --type=http`
-  - [ ] `php artisan domains:health-check --all --type=ssl`
-  - [ ] `php artisan domains:health-check --all --type=dns`
-  - [ ] `php artisan domains:sync-synergy-expiry --all`
-  - [ ] `php artisan domains:sync-dns-records --all`
+- [x] Verify Laravel scheduler cron job will be set up in Forge (Forge manages this automatically)
+- [x] All scheduled commands are available and working:
+  - [x] `php artisan domains:detect-platforms --all` - ✅ Scheduled: Weekly Sundays at 02:00 UTC
+  - [x] `php artisan domains:detect-hosting --all` - ✅ Scheduled: Weekly Sundays at 02:30 UTC
+  - [x] `php artisan domains:health-check --all --type=http` - ✅ Scheduled: Every hour
+  - [x] `php artisan domains:health-check --all --type=ssl` - ✅ Scheduled: Daily at 03:00 UTC
+  - [x] `php artisan domains:health-check --all --type=dns` - ✅ Scheduled: Every 6 hours
+  - [x] `php artisan domains:sync-synergy-expiry --all` - ✅ Scheduled: Daily at 04:00 UTC
+  - [x] `php artisan domains:sync-dns-records --all` - ✅ Scheduled: Daily at 04:30 UTC (added)
 
 ### 5. Storage & Assets
 - [ ] `storage:link` command included in deployment script
