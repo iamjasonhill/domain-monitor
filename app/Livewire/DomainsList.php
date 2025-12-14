@@ -227,9 +227,12 @@ class DomainsList extends Component
 
     public function render(): \Illuminate\Contracts\View\View
     {
-        $domains = Domain::with(['checks' => function ($query) {
-            $query->latest()->limit(1);
-        }])
+        $domains = Domain::with([
+            'checks' => function ($query) {
+                $query->latest()->limit(1);
+            },
+            'platform',
+        ])
             ->when($this->search, function ($query) {
                 $query->where('domain', 'like', '%'.$this->search.'%')
                     ->orWhere('project_key', 'like', '%'.$this->search.'%')
