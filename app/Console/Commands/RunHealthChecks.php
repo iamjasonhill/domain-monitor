@@ -43,7 +43,7 @@ class RunHealthChecks extends Command
         }
 
         if ($domainOption) {
-            $domain = Domain::where('domain', $domainOption)->first();
+            $domain = Domain::with('platform')->where('domain', $domainOption)->first();
 
             if (! $domain) {
                 $this->error("Domain '{$domainOption}' not found.");
