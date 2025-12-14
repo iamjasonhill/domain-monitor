@@ -221,6 +221,7 @@ class DomainsList extends Component
             $this->dispatch('flash-message', message: 'Error detecting platforms: '.$e->getMessage(), type: 'error');
         } finally {
             $this->detectingPlatforms = false;
+            // Force component refresh to show updated platform data
             $this->resetPage();
         }
     }

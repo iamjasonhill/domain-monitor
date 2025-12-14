@@ -230,7 +230,13 @@
                                                     @endif
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                                    {{ $domain->platform?->platform_type ?? ($domain->platform ?? 'N/A') }}
+                                                    @php
+                                                        $platform = $domain->platform;
+                                                    @endphp
+                                                    {{ $platform?->platform_type ?? 'N/A' }}
+                                                    @if($platform && $platform->platform_version)
+                                                        <span class="text-xs text-gray-400 dark:text-gray-500">({{ $platform->platform_version }})</span>
+                                                    @endif
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                                     {{ $domain->hosting_provider ?? 'N/A' }}
