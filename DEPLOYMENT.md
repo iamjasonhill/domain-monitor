@@ -90,17 +90,25 @@ Laravel Forge automatically sets up the Laravel scheduler. Ensure this cron job 
 - **DNS Checks**: Every 6 hours
 - **Synergy Wholesale Sync**: Daily at 04:00 UTC (for .com.au domains)
 
-### 5. Queue Workers (Optional)
+### 5. Queue Workers (REQUIRED for Brain Events)
 
-If you plan to use queues for background jobs, set up a queue worker in Forge:
+**IMPORTANT**: Queue workers are REQUIRED for Brain event notifications. Health checks and expiry alerts use async dispatch, so a queue worker must be running.
+
+Set up a queue worker daemon in Forge:
 
 1. Go to your site → Daemons
 2. Add a new daemon:
    - **Command**: `php artisan queue:work --sleep=3 --tries=3 --max-time=3600`
    - **User**: `forge`
-   - **Directory**: `/home/forge/your-site-path`
+   - **Directory**: `/home/forge/domains.again.com.au/current`
+3. Click **Start Daemon**
 
-Currently, the application uses `QUEUE_CONNECTION=database`, so queue workers are optional but recommended for better performance.
+The application uses `QUEUE_CONNECTION=database`, so all async jobs (including Brain events) are stored in the database and require a worker to process them.
+
+**Verification**:
+- Check if worker is running: `ps aux | grep 'queue:work'`
+- Check pending jobs: `php artisan tinker --execute="echo DB::table('jobs')->count();"`
+- Process pending jobs manually: `php artisan queue:work --stop-when-empty`
 
 ### 6. Asset Compilation
 
