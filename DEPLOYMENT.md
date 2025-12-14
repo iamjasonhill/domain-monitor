@@ -57,8 +57,13 @@ Ensure all required environment variables are set in Laravel Forge:
 
 3. **Create Superadmin User:**
    ```bash
-   php artisan db:seed --class=SuperadminSeeder
+   php artisan db:seed --class=SuperadminSeeder --force
    ```
+   
+   **Default Login Credentials:**
+   - **Email:** `jason@jasonhill.com.au`
+   - **Password:** `password`
+   - ⚠️ **Important:** Change the password immediately after first login!
 
 ### 3. Storage Link
 
