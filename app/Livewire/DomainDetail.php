@@ -33,6 +33,7 @@ class DomainDetail extends Component
         return [
             'sync-complete' => 'loadDomain',
             'health-check-complete' => 'loadDomain',
+            'dns-sync-complete' => 'loadDomain',
         ];
     }
 
