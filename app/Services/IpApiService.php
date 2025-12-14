@@ -170,6 +170,8 @@ class IpApiService
             'Linode' => 'Linode',
             'Cloudflare' => 'Cloudflare',
             'Vercel' => 'Vercel',
+            'CYPRESS COMMUNICATIONS' => 'Vercel',
+            'Cypress Communications' => 'Vercel',
             'Render' => 'Render',
             'Netlify' => 'Netlify',
         ];

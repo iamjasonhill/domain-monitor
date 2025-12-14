@@ -121,7 +121,7 @@ class HostingProviderUrls
             return self::PROVIDER_URLS['DigitalOcean'];
         }
 
-        if (stripos($providerName, 'vercel') !== false) {
+        if (stripos($providerName, 'vercel') !== false || stripos($providerName, 'cypress communications') !== false || stripos($providerName, 'cypress') !== false) {
             return self::PROVIDER_URLS['Vercel'];
         }
 
