@@ -2,9 +2,12 @@
 
 namespace App\Livewire;
 
+use App\Models\DnsRecord;
 use App\Models\Domain;
+use App\Models\SynergyCredential;
 use App\Services\HostingDetector;
 use App\Services\PlatformDetector;
+use App\Services\SynergyWholesaleClient;
 use Illuminate\Support\Facades\Artisan;
 use Livewire\Component;
 
@@ -214,6 +217,198 @@ class DomainDetail extends Component
         } catch (\Exception $e) {
             session()->flash('error', 'Error syncing DNS records: '.$e->getMessage());
             $this->dispatch('dns-sync-complete');
+        }
+    }
+
+    public function openAddDnsRecordModal(): void
+    {
+        $this->editingDnsRecordId = null;
+        $this->dnsRecordHost = '';
+        $this->dnsRecordType = 'A';
+        $this->dnsRecordValue = '';
+        $this->dnsRecordTtl = 300;
+        $this->dnsRecordPriority = 0;
+        $this->showDnsRecordModal = true;
+    }
+
+    public function openEditDnsRecordModal(string $recordId): void
+    {
+        $record = DnsRecord::where('id', $recordId)
+            ->where('domain_id', $this->domain->id)
+            ->first();
+
+        if (! $record) {
+            session()->flash('error', 'DNS record not found.');
+
+            return;
+        }
+
+        $this->editingDnsRecordId = $record->id;
+        $this->dnsRecordHost = $record->host;
+        $this->dnsRecordType = $record->type;
+        $this->dnsRecordValue = $record->value;
+        $this->dnsRecordTtl = $record->ttl ?? 300;
+        $this->dnsRecordPriority = $record->priority ?? 0;
+        $this->showDnsRecordModal = true;
+    }
+
+    public function closeDnsRecordModal(): void
+    {
+        $this->showDnsRecordModal = false;
+        $this->editingDnsRecordId = null;
+        $this->dnsRecordHost = '';
+        $this->dnsRecordType = 'A';
+        $this->dnsRecordValue = '';
+        $this->dnsRecordTtl = 300;
+        $this->dnsRecordPriority = 0;
+    }
+
+    public function saveDnsRecord(): void
+    {
+        if (! $this->domain || ! str_ends_with($this->domain->domain, '.com.au')) {
+            session()->flash('error', 'Only .com.au domains can manage DNS records via Synergy Wholesale.');
+
+            return;
+        }
+
+        // Validation
+        if (empty($this->dnsRecordHost) || empty($this->dnsRecordValue)) {
+            session()->flash('error', 'Host and Value are required.');
+
+            return;
+        }
+
+        $credential = SynergyCredential::where('is_active', true)->first();
+        if (! $credential) {
+            session()->flash('error', 'No active Synergy Wholesale credentials found.');
+
+            return;
+        }
+
+        $client = SynergyWholesaleClient::fromEncryptedCredentials(
+            $credential->reseller_id,
+            $credential->api_key_encrypted,
+            $credential->api_url
+        );
+
+        try {
+            if ($this->editingDnsRecordId) {
+                // Update existing record
+                $record = DnsRecord::where('id', $this->editingDnsRecordId)
+                    ->where('domain_id', $this->domain->id)
+                    ->first();
+
+                if (! $record || ! $record->record_id) {
+                    session()->flash('error', 'DNS record not found or cannot be updated.');
+
+                    return;
+                }
+
+                $result = $client->updateDnsRecord(
+                    $this->domain->domain,
+                    $record->record_id,
+                    $this->dnsRecordHost,
+                    $this->dnsRecordType,
+                    $this->dnsRecordValue,
+                    $this->dnsRecordTtl,
+                    $this->dnsRecordPriority
+                );
+
+                if ($result && $result['status'] === 'OK') {
+                    // Update local record
+                    $record->update([
+                        'host' => $this->dnsRecordHost,
+                        'type' => strtoupper($this->dnsRecordType),
+                        'value' => $this->dnsRecordValue,
+                        'ttl' => $this->dnsRecordTtl,
+                        'priority' => $this->dnsRecordPriority,
+                    ]);
+
+                    session()->flash('message', 'DNS record updated successfully!');
+                    $this->closeDnsRecordModal();
+                    $this->loadDomain();
+                } else {
+                    session()->flash('error', $result['error_message'] ?? 'Failed to update DNS record.');
+                }
+            } else {
+                // Add new record
+                $result = $client->addDnsRecord(
+                    $this->domain->domain,
+                    $this->dnsRecordHost,
+                    $this->dnsRecordType,
+                    $this->dnsRecordValue,
+                    $this->dnsRecordTtl,
+                    $this->dnsRecordPriority
+                );
+
+                if ($result && $result['status'] === 'OK' && $result['record_id']) {
+                    // Create local record
+                    DnsRecord::create([
+                        'domain_id' => $this->domain->id,
+                        'host' => $this->dnsRecordHost,
+                        'type' => strtoupper($this->dnsRecordType),
+                        'value' => $this->dnsRecordValue,
+                        'ttl' => $this->dnsRecordTtl,
+                        'priority' => $this->dnsRecordPriority,
+                        'record_id' => $result['record_id'],
+                        'synced_at' => now(),
+                    ]);
+
+                    session()->flash('message', 'DNS record added successfully!');
+                    $this->closeDnsRecordModal();
+                    $this->loadDomain();
+                } else {
+                    session()->flash('error', $result['error_message'] ?? 'Failed to add DNS record.');
+                }
+            }
+        } catch (\Exception $e) {
+            session()->flash('error', 'Error saving DNS record: '.$e->getMessage());
+        }
+    }
+
+    public function deleteDnsRecord(string $recordId): void
+    {
+        if (! $this->domain || ! str_ends_with($this->domain->domain, '.com.au')) {
+            session()->flash('error', 'Only .com.au domains can manage DNS records via Synergy Wholesale.');
+
+            return;
+        }
+
+        $record = DnsRecord::where('id', $recordId)
+            ->where('domain_id', $this->domain->id)
+            ->first();
+
+        if (! $record || ! $record->record_id) {
+            session()->flash('error', 'DNS record not found or cannot be deleted.');
+
+            return;
+        }
+
+        $credential = SynergyCredential::where('is_active', true)->first();
+        if (! $credential) {
+            session()->flash('error', 'No active Synergy Wholesale credentials found.');
+
+            return;
+        }
+
+        $client = SynergyWholesaleClient::fromEncryptedCredentials(
+            $credential->reseller_id,
+            $credential->api_key_encrypted,
+            $credential->api_url
+        );
+
+        try {
+            $result = $client->deleteDnsRecord($this->domain->domain, $record->record_id);
+
+            if ($result && $result['status'] === 'OK') {
+                $record->delete();
+                session()->flash('message', 'DNS record deleted successfully!');
+                $this->loadDomain();
+            } else {
+                session()->flash('error', $result['error_message'] ?? 'Failed to delete DNS record.');
+            }
+        } catch (\Exception $e) {
+            session()->flash('error', 'Error deleting DNS record: '.$e->getMessage());
         }
     }
 
