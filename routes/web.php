@@ -35,6 +35,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/health-checks', function () {
         return view('health-checks.index');
     })->name('health-checks.index');
+
+    // Settings routes
+    Route::get('/settings', function () {
+        return view('settings.index');
+    })->name('settings.index');
+
+    Route::get('/settings/commands', function () {
+        return view('settings.commands');
+    })->name('settings.commands');
 });
 
 require __DIR__.'/auth.php';
