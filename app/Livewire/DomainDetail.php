@@ -229,7 +229,6 @@ class DomainDetail extends Component
         $this->dnsRecordTtl = 300;
         $this->dnsRecordPriority = 0;
         $this->showDnsRecordModal = true;
-        $this->dispatch('open-modal', 'dns-record-modal');
     }
 
     public function openEditDnsRecordModal(string $recordId): void
@@ -255,7 +254,6 @@ class DomainDetail extends Component
         $this->dnsRecordTtl = $record->ttl ?? 300;
         $this->dnsRecordPriority = $record->priority ?? 0;
         $this->showDnsRecordModal = true;
-        $this->dispatch('open-modal', 'dns-record-modal');
     }
 
     public function closeDnsRecordModal(): void
@@ -267,7 +265,6 @@ class DomainDetail extends Component
         $this->dnsRecordValue = '';
         $this->dnsRecordTtl = 300;
         $this->dnsRecordPriority = 0;
-        $this->dispatch('close-modal', 'dns-record-modal');
     }
 
     public function saveDnsRecord(): void
