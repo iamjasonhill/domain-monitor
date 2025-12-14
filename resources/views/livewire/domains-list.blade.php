@@ -231,10 +231,17 @@
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                                     @php
-                                                        $platform = $domain->platform;
+                                                        // Get platform relationship (not the string attribute)
+                                                        $platform = $domain->getRelation('platform') ?? null;
+                                                        // Fallback to string attribute if relationship doesn't exist
+                                                        if (!$platform && is_string($domain->getAttribute('platform'))) {
+                                                            $platformType = $domain->getAttribute('platform');
+                                                        } else {
+                                                            $platformType = $platform?->platform_type ?? 'N/A';
+                                                        }
                                                     @endphp
-                                                    {{ $platform?->platform_type ?? 'N/A' }}
-                                                    @if($platform && $platform->platform_version)
+                                                    {{ $platformType }}
+                                                    @if($platform && $platform instanceof \App\Models\WebsitePlatform && $platform->platform_version)
                                                         <span class="text-xs text-gray-400 dark:text-gray-500">({{ $platform->platform_version }})</span>
                                                     @endif
                                                 </td>
