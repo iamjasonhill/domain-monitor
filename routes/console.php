@@ -71,3 +71,11 @@ Schedule::command('domains:check-expiring')
     ->daily()
     ->at('05:00')
     ->timezone('UTC');
+
+// Weekly subdomain discovery and IP updates - queue jobs spread over the week
+// Each domain gets checked once per week, with IP updates 20 minutes after discovery
+Schedule::command('domains:queue-subdomain-checks')
+    ->weekly()
+    ->sundays()
+    ->at('06:00')
+    ->timezone('UTC');
