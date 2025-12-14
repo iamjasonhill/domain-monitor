@@ -261,11 +261,12 @@ class DomainsList extends Component
             },
             'platform',
         ])
-            ->when($this->search, function ($query) {
-                $query->where(function ($q) {
-                    $q->where('domain', 'like', '%'.$this->search.'%')
-                        ->orWhere('project_key', 'like', '%'.$this->search.'%')
-                        ->orWhere('registrar', 'like', '%'.$this->search.'%');
+            ->when(! empty(trim($this->search)), function ($query) {
+                $searchTerm = trim($this->search);
+                $query->where(function ($q) use ($searchTerm) {
+                    $q->where('domain', 'like', '%'.$searchTerm.'%')
+                        ->orWhere('project_key', 'like', '%'.$searchTerm.'%')
+                        ->orWhere('registrar', 'like', '%'.$searchTerm.'%');
                 });
             })
             ->when($this->filterActive !== null, function ($query) {
