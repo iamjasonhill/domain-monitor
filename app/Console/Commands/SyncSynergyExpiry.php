@@ -23,7 +23,7 @@ class SyncSynergyExpiry extends Command
      *
      * @var string
      */
-    protected $description = 'Sync domain expiry dates from Synergy Wholesale API';
+    protected $description = 'Sync domain information (expiry, status, nameservers, registrant info, etc.) from Synergy Wholesale API';
 
     /**
      * Execute the console command.
@@ -107,32 +107,118 @@ class SyncSynergyExpiry extends Command
     }
 
     /**
-     * Sync expiry date for a single domain
+     * Sync domain information for a single domain
      */
     private function syncDomain(Domain $domain, SynergyWholesaleClient $client, bool $verbose = true): int
     {
         if ($verbose) {
-            $this->info("Syncing expiry date for: {$domain->domain}");
+            $this->info("Syncing domain information for: {$domain->domain}");
         }
 
         try {
-            $expiryDate = $client->syncDomainExpiry($domain->domain);
+            $domainInfo = $client->getDomainInfo($domain->domain);
 
-            if ($expiryDate) {
-                $domain->update(['expires_at' => $expiryDate]);
-
+            if (! $domainInfo) {
                 if ($verbose) {
-                    $this->line("  Expiry Date: {$expiryDate->format('Y-m-d')}");
+                    $this->warn('  Could not retrieve domain information from Synergy Wholesale');
                 }
 
-                return Command::SUCCESS;
+                return Command::FAILURE;
             }
+
+            // Prepare update data
+            $updateData = [];
+
+            // Expiry date
+            if (isset($domainInfo['expiry_date'])) {
+                try {
+                    $updateData['expires_at'] = new \DateTimeImmutable($domainInfo['expiry_date']);
+                } catch (\Exception $e) {
+                    // Invalid date format, skip
+                }
+            }
+
+            // Created date
+            if (isset($domainInfo['created_date'])) {
+                try {
+                    $updateData['created_at_synergy'] = new \DateTimeImmutable($domainInfo['created_date']);
+                } catch (\Exception $e) {
+                    // Invalid date format, skip
+                }
+            }
+
+            // Status & renewal
+            if (isset($domainInfo['domain_status'])) {
+                $updateData['domain_status'] = $domainInfo['domain_status'];
+            }
+            if (isset($domainInfo['auto_renew'])) {
+                $updateData['auto_renew'] = $domainInfo['auto_renew'];
+            }
+
+            // DNS & Nameservers
+            if (isset($domainInfo['nameservers']) && is_array($domainInfo['nameservers'])) {
+                $updateData['nameservers'] = $domainInfo['nameservers'];
+            }
+            if (isset($domainInfo['dns_config_name'])) {
+                $updateData['dns_config_name'] = $domainInfo['dns_config_name'];
+            }
+
+            // Registrant information
+            if (isset($domainInfo['registrant_name'])) {
+                $updateData['registrant_name'] = $domainInfo['registrant_name'];
+            }
+            if (isset($domainInfo['registrant_id_type'])) {
+                $updateData['registrant_id_type'] = $domainInfo['registrant_id_type'];
+            }
+            if (isset($domainInfo['registrant_id'])) {
+                $updateData['registrant_id'] = $domainInfo['registrant_id'];
+            }
+
+            // Eligibility information
+            if (isset($domainInfo['eligibility_type'])) {
+                $updateData['eligibility_type'] = $domainInfo['eligibility_type'];
+            }
+            if (isset($domainInfo['eligibility_valid'])) {
+                $updateData['eligibility_valid'] = $domainInfo['eligibility_valid'];
+            }
+            if (isset($domainInfo['eligibility_last_check'])) {
+                try {
+                    $updateData['eligibility_last_check'] = new \DateTimeImmutable($domainInfo['eligibility_last_check']);
+                } catch (\Exception $e) {
+                    // Invalid date format, skip
+                }
+            }
+
+            // Update registrar if not set
+            if (! $domain->registrar && isset($domainInfo['registrar'])) {
+                $updateData['registrar'] = $domainInfo['registrar'];
+            } elseif (! $domain->registrar) {
+                $updateData['registrar'] = 'Synergy Wholesale';
+            }
+
+            // Update the domain
+            $domain->update($updateData);
 
             if ($verbose) {
-                $this->warn('  Could not retrieve expiry date from Synergy Wholesale');
+                $this->line('  ✅ Domain information synced:');
+                if (isset($updateData['expires_at'])) {
+                    $this->line("     Expiry: {$updateData['expires_at']->format('Y-m-d')}");
+                }
+                if (isset($updateData['domain_status'])) {
+                    $this->line("     Status: {$updateData['domain_status']}");
+                }
+                if (isset($updateData['auto_renew'])) {
+                    $this->line('     Auto-renew: '.($updateData['auto_renew'] ? 'Yes' : 'No'));
+                }
+                if (isset($updateData['nameservers']) && count($updateData['nameservers']) > 0) {
+                    $this->line('     Nameservers: '.count($updateData['nameservers']));
+                }
+                if (isset($updateData['eligibility_valid'])) {
+                    $this->line('     Eligibility: '.($updateData['eligibility_valid'] ? 'Valid' : 'Invalid'));
+                }
             }
 
-            return Command::FAILURE;
+            return Command::SUCCESS;
         } catch (\Exception $e) {
             if ($verbose) {
                 $this->error("  Failed: {$e->getMessage()}");

@@ -76,9 +76,9 @@ class SynergyWholesaleClient
     }
 
     /**
-     * Get domain information including expiry date
+     * Get domain information including expiry date and additional fields
      *
-     * @return array{domain: string, expiry_date: string|null, registrar: string|null, status: string|null, nameservers: array<int, string>}|null
+     * @return array{domain: string, expiry_date: string|null, created_date: string|null, domain_status: string|null, auto_renew: string|null, nameservers: array<int, string>, dns_config_name: string|null, registrant_name: string|null, registrant_id_type: string|null, registrant_id: string|null, eligibility_type: string|null, eligibility_valid: bool|null, eligibility_last_check: string|null, registrar: string|null, status: string|null}|null
      */
     public function getDomainInfo(string $domain): ?array
     {
@@ -117,12 +117,39 @@ class SynergyWholesaleClient
                     $nameservers = $result->nameservers;
                 }
 
+                // Parse auto_renew (can be 'on', 'off', or boolean)
+                $autoRenew = null;
+                if (isset($result->autoRenew)) {
+                    $autoRenew = is_bool($result->autoRenew) ? $result->autoRenew : (strtolower($result->autoRenew) === 'on');
+                }
+
+                // Parse eligibility_valid (can be boolean or integer 0/1)
+                $eligibilityValid = null;
+                if (isset($result->au_valid_eligibility)) {
+                    $eligibilityValid = (bool) $result->au_valid_eligibility;
+                } elseif (isset($result->auValidEligibility)) {
+                    $eligibilityValid = (bool) $result->auValidEligibility;
+                }
+
+                // Parse eligibility_last_check (prefer auEligibilityLastCheck, fallback to au_eligibility_last_check)
+                $eligibilityLastCheck = $result->auEligibilityLastCheck ?? $result->au_eligibility_last_check ?? null;
+
                 return [
                     'domain' => $result->domainName ?? $domain,
                     'expiry_date' => $result->domain_expiry ?? $result->expiryDate ?? null,
-                    'registrar' => $result->registrar ?? null,
-                    'status' => $result->domain_status ?? $result->status ?? null,
+                    'created_date' => $result->createdDate ?? null,
+                    'domain_status' => $result->domain_status ?? null,
+                    'auto_renew' => $autoRenew,
                     'nameservers' => $nameservers,
+                    'dns_config_name' => $result->dnsConfigName ?? null,
+                    'registrant_name' => $result->auRegistrantName ?? null,
+                    'registrant_id_type' => $result->auRegistrantIDType ?? null,
+                    'registrant_id' => $result->auRegistrantID ?? null,
+                    'eligibility_type' => $result->auEligibilityType ?? null,
+                    'eligibility_valid' => $eligibilityValid,
+                    'eligibility_last_check' => $eligibilityLastCheck,
+                    'registrar' => $result->registrar ?? null,
+                    'status' => $result->status ?? null,
                 ];
             }
 
@@ -159,6 +186,46 @@ class SynergyWholesaleClient
             ]);
 
             return null;
+        }
+    }
+
+    /**
+     * List all domains from Synergy Wholesale
+     *
+     * @return \Illuminate\Support\Collection<int, object>
+     */
+    public function listDomains(): \Illuminate\Support\Collection
+    {
+        $this->initialize();
+
+        try {
+            $request = [
+                'resellerID' => $this->resellerId,
+                'apiKey' => $this->apiKey,
+            ];
+
+            $result = $this->client->listDomains($request);
+
+            // Extract domains from response
+            $domains = [];
+            if (isset($result->listDomainsResult) && is_array($result->listDomainsResult)) {
+                $domains = $result->listDomainsResult;
+            } elseif (isset($result->listDomainsResult)) {
+                // If it's a single object, wrap it in an array
+                $domains = [$result->listDomainsResult];
+            }
+
+            // Filter out domains with errors and return as collection
+            return collect($domains)->filter(function ($domain) {
+                return isset($domain->status) && $domain->status === 'OK' && isset($domain->domainName);
+            });
+        } catch (SoapFault $e) {
+            Log::error('Synergy Wholesale listDomains failed', [
+                'error' => $e->getMessage(),
+                'fault_code' => $e->faultcode ?? null,
+            ]);
+
+            return collect([]);
         }
     }
 
