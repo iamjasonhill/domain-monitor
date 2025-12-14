@@ -20,11 +20,27 @@ class HttpHealthCheck
         $startTime = microtime(true);
 
         try {
-            $response = Http::timeout($timeout)
-                ->withHeaders([
-                    'User-Agent' => 'DomainMonitor/1.0',
-                ])
-                ->get($url);
+            // Try HTTPS first, but allow fallback to HTTP for parked domains with SSL issues
+            try {
+                $response = Http::timeout($timeout)
+                    ->withoutVerifying() // Allow self-signed certificates
+                    ->withHeaders([
+                        'User-Agent' => 'DomainMonitor/1.0',
+                    ])
+                    ->get($url);
+            } catch (\Illuminate\Http\Client\ConnectionException $e) {
+                // If HTTPS fails with SSL error, try HTTP
+                if (str_contains($e->getMessage(), 'SSL') || str_contains($e->getMessage(), 'TLS')) {
+                    $httpUrl = str_replace('https://', 'http://', $url);
+                    $response = Http::timeout($timeout)
+                        ->withHeaders([
+                            'User-Agent' => 'DomainMonitor/1.0',
+                        ])
+                        ->get($httpUrl);
+                } else {
+                    throw $e; // Re-throw if it's not an SSL error
+                }
+            }
 
             $duration = (int) ((microtime(true) - $startTime) * 1000);
 
