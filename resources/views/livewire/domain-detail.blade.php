@@ -16,7 +16,7 @@
                 @endphp
                 @if($isAustralianTld)
                     <button wire:click="syncFromSynergy" wire:loading.attr="disabled" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 disabled:opacity-50">
-                        <span wire:loading.remove wire:target="syncFromSynergy">Sync from Synergy</span>
+                        <span wire:loading.remove wire:target="syncFromSynergy">Sync Domain Info</span>
                         <span wire:loading wire:target="syncFromSynergy">Syncing...</span>
                     </button>
                 @endif
@@ -129,7 +129,7 @@
                         @endif
                         @if($domain->created_at_synergy)
                             <div>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Created (Synergy)</dt>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Created Date</dt>
                                 <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $domain->created_at_synergy->format('Y-m-d') }}</dd>
                             </div>
                         @endif

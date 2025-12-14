@@ -56,10 +56,10 @@
                     </div>
                 </div>
 
-                <!-- Synergy Wholesale Actions -->
+                <!-- Domain Sync Actions -->
                 <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
                     <div class="p-6">
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Synergy Wholesale Actions</h3>
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Domain Sync Actions</h3>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <!-- Sync Domain Information -->
                             <button 
@@ -122,7 +122,7 @@
                             </button>
                         </div>
                         <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                            These actions will sync data from Synergy Wholesale for all Australian TLD domains (.com.au, .net.au, etc.) in your account.
+                            These actions will sync data for all Australian TLD domains (.com.au, .net.au, etc.) in your account.
                         </p>
                     </div>
                 </div>

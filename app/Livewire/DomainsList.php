@@ -64,7 +64,7 @@ class DomainsList extends Component
             // Check if credentials exist
             $credential = \App\Models\SynergyCredential::where('is_active', true)->first();
             if (! $credential) {
-                $this->dispatch('flash-message', message: 'No active Synergy Wholesale credentials found. Please configure credentials first.', type: 'error');
+                $this->dispatch('flash-message', message: 'No active domain registrar credentials found. Please configure credentials first.', type: 'error');
                 $this->syncingExpiry = false;
 
                 return;
@@ -110,7 +110,7 @@ class DomainsList extends Component
             // Check if credentials exist
             $credential = \App\Models\SynergyCredential::where('is_active', true)->first();
             if (! $credential) {
-                $this->dispatch('flash-message', message: 'No active Synergy Wholesale credentials found. Please configure credentials first.', type: 'error');
+                $this->dispatch('flash-message', message: 'No active domain registrar credentials found. Please configure credentials first.', type: 'error');
                 $this->syncingDns = false;
 
                 return;
@@ -156,7 +156,7 @@ class DomainsList extends Component
             // Check if credentials exist
             $credential = \App\Models\SynergyCredential::where('is_active', true)->first();
             if (! $credential) {
-                $this->dispatch('flash-message', message: 'No active Synergy Wholesale credentials found. Please configure credentials first.', type: 'error');
+                $this->dispatch('flash-message', message: 'No active domain registrar credentials found. Please configure credentials first.', type: 'error');
                 $this->importingDomains = false;
 
                 return;

@@ -108,7 +108,7 @@
                                 <h3 class="ml-4 text-lg font-semibold text-gray-900 dark:text-white">DNS Management</h3>
                             </div>
                             <p class="text-gray-600 dark:text-gray-400">
-                                Sync and manage DNS records directly from Synergy Wholesale for Australian TLD domains.
+                                Sync and manage DNS records for Australian TLD domains (.com.au, .net.au, etc.).
                             </p>
                         </div>
 
