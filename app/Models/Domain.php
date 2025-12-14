@@ -15,6 +15,7 @@ use Illuminate\Support\Str;
  * @property string|null $project_key
  * @property string|null $registrar
  * @property string|null $hosting_provider
+ * @property string|null $hosting_admin_url
  * @property string|null $platform
  * @property \Illuminate\Support\Carbon|null $expires_at
  * @property \Illuminate\Support\Carbon|null $last_checked_at
@@ -38,6 +39,7 @@ class Domain extends Model
         'project_key',
         'registrar',
         'hosting_provider',
+        'hosting_admin_url',
         'platform',
         'expires_at',
         'last_checked_at',

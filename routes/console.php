@@ -14,3 +14,10 @@ Schedule::command('domains:detect-platforms --all')
     ->sundays()
     ->at('02:00')
     ->timezone('UTC');
+
+// Weekly hosting detection for all active domains
+Schedule::command('domains:detect-hosting --all')
+    ->weekly()
+    ->sundays()
+    ->at('02:30')
+    ->timezone('UTC');

@@ -68,9 +68,18 @@ Track and monitor domains with health checks, uptime monitoring, SSL certificate
 - [x] Create scheduled job for platform detection (weekly)
 - [x] Create artisan command for manual detection
 
+### ✅ Step 5: Hosting Detection Service
+- [x] Create hosting detection service
+- [x] Add `hosting_admin_url` field to domains table
+- [x] Implement detection logic for major providers (Vercel, Render, Cloudflare, AWS, Netlify)
+- [x] Detection methods: DNS records, HTTP headers
+- [x] Store primary hosting provider and admin URL
+- [x] Create scheduled job for hosting detection (weekly)
+- [x] Create artisan command for manual detection
+
 ## Next Step
 
-### Step 5: Hosting Detection Service
+### Step 6: HTTP Health Checks
 
 ## Future Steps
 
