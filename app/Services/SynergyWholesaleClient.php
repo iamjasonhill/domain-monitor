@@ -21,7 +21,10 @@ class SynergyWholesaleClient
     {
         $this->resellerId = $resellerId;
         $this->apiKey = $apiKey;
-        $this->apiUrl = $apiUrl ?? 'https://api.synergywholesale.com/soap/soap.php?wsdl';
+        // Default API URL - verify with actual Synergy Wholesale API documentation
+        // The WSDL may require authentication or IP whitelisting to access
+        // Check the API documentation PDF for the correct endpoint
+        $this->apiUrl = $apiUrl ?? config('services.synergy.api_url', 'https://api.synergywholesale.com/soap');
     }
 
     /**
@@ -34,17 +37,43 @@ class SynergyWholesaleClient
         }
 
         try {
-            $this->client = new SoapClient($this->apiUrl, [
+            // Try with WSDL first
+            $options = [
                 'soap_version' => SOAP_1_1,
                 'trace' => true,
                 'exceptions' => true,
-            ]);
+                'stream_context' => stream_context_create([
+                    'http' => [
+                        'timeout' => 10,
+                        'user_agent' => 'DomainMonitor/1.0',
+                    ],
+                ]),
+            ];
+
+            // If URL doesn't end with ?wsdl, try adding it
+            $wsdlUrl = $this->apiUrl;
+            if (! str_contains($wsdlUrl, '?wsdl') && ! str_contains($wsdlUrl, '&wsdl')) {
+                $wsdlUrl = rtrim($wsdlUrl, '/').'?wsdl';
+            }
+
+            $this->client = new SoapClient($wsdlUrl, $options);
         } catch (SoapFault $e) {
             Log::error('Synergy Wholesale SOAP client initialization failed', [
                 'error' => $e->getMessage(),
                 'api_url' => $this->apiUrl,
+                'fault_code' => $e->faultcode ?? null,
             ]);
-            throw new \RuntimeException('Failed to initialize Synergy Wholesale client: '.$e->getMessage());
+
+            // Provide helpful error message
+            $message = 'Failed to initialize Synergy Wholesale client: '.$e->getMessage();
+            if (str_contains($e->getMessage(), '404') || str_contains($e->getMessage(), 'Not Found')) {
+                $message .= "\n\nPossible issues:\n";
+                $message .= "- WSDL endpoint may require authentication\n";
+                $message .= "- IP address may need to be whitelisted\n";
+                $message .= "- Verify the correct API endpoint in Synergy Wholesale API documentation\n";
+            }
+
+            throw new \RuntimeException($message);
         }
     }
 

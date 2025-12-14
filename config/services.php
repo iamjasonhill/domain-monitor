@@ -40,4 +40,8 @@ return [
         'api_key' => env('BRAIN_API_KEY'),
     ],
 
+    'synergy' => [
+        'api_url' => env('SYNERGY_API_URL', 'https://api.synergywholesale.com/soap'),
+    ],
+
 ];
