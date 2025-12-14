@@ -17,6 +17,8 @@ class DomainsList extends Component
 
     public bool $filterExpiring = false;
 
+    public bool $filterExcludeParked = false;
+
     public bool $syncingExpiry = false;
 
     public bool $syncingDns = false;
@@ -35,6 +37,7 @@ class DomainsList extends Component
         $this->search = '';
         $this->filterActive = null;
         $this->filterExpiring = false;
+        $this->filterExcludeParked = false;
         $this->resetPage();
     }
 
@@ -250,6 +253,12 @@ class DomainsList extends Component
                     ->whereNotNull('expires_at')
                     ->where('expires_at', '<=', now()->addDays(30))
                     ->where('expires_at', '>', now());
+            })
+            ->when($this->filterExcludeParked, function ($query) {
+                $query->where(function ($q) {
+                    $q->where('platform', '!=', 'Parked')
+                        ->orWhereNull('platform');
+                });
             })
             ->orderBy('updated_at', 'desc')
             ->paginate(20);

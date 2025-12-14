@@ -87,6 +87,16 @@ class PlatformDetector
                 ];
             }
 
+            // Parked domain detection (check before static site)
+            if ($this->isParked($html, $domain)) {
+                return [
+                    'platform_type' => 'Parked',
+                    'platform_version' => null,
+                    'admin_url' => null,
+                    'detection_confidence' => 'high',
+                ];
+            }
+
             // Static site detection (no CMS indicators)
             if ($this->isStaticSite($html, $poweredBy)) {
                 return [
@@ -235,5 +245,75 @@ class PlatformDetector
             ! str_contains($html, 'laravel') &&
             ! str_contains($html, '_next') &&
             ! str_contains(strtolower($html), 'shopify');
+    }
+
+    /**
+     * Check if domain is parked
+     */
+    private function isParked(string $html, string $domain): bool
+    {
+        $htmlLower = strtolower($html);
+        $domainLower = strtolower($domain);
+
+        // Common parked page indicators
+        $parkedIndicators = [
+            'this domain is parked',
+            'domain is parked',
+            'parked domain',
+            'this domain name is parked',
+            'domain parking',
+            'parked by',
+            'parking page',
+            'domain for sale',
+            'this domain may be for sale',
+            'buy this domain',
+            'domain name registration',
+            'sedo parking',
+            'bodis',
+            'parkingcrew',
+            'domain parking service',
+            'parked free',
+            'parking page',
+            'this domain is available',
+            'domain is available',
+            'domain name is available',
+        ];
+
+        // Check for parked page indicators
+        foreach ($parkedIndicators as $indicator) {
+            if (str_contains($htmlLower, $indicator)) {
+                return true;
+            }
+        }
+
+        // Check for common parked page providers
+        $parkedProviders = [
+            'sedo.com',
+            'bodis.com',
+            'parkingcrew.com',
+            'parkingpage',
+            'parked.com',
+            'domainsponsor',
+            'namedrive',
+            'trafficz',
+        ];
+
+        foreach ($parkedProviders as $provider) {
+            if (str_contains($htmlLower, $provider)) {
+                return true;
+            }
+        }
+
+        // Check for very minimal content (typical of parked pages)
+        // Parked pages often have very little content
+        $contentLength = strlen(strip_tags($html));
+        if ($contentLength < 500) {
+            // Check if it's a simple "coming soon" or parking page
+            if (preg_match('/coming\s+soon|under\s+construction|parked|for\s+sale/i', $html)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

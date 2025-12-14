@@ -154,7 +154,18 @@
                             </div>
                         </div>
 
-                        @if($search || $filterActive !== null || $filterExpiring)
+                        <!-- Additional Filters Row -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                            <!-- Exclude Parked Filter -->
+                            <div>
+                                <label class="flex items-center">
+                                    <input type="checkbox" wire:model.live="filterExcludeParked" class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-sm focus:ring-blue-500">
+                                    <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Exclude Parked Domains</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        @if($search || $filterActive !== null || $filterExpiring || $filterExcludeParked)
                             <div class="mt-4">
                                 <button wire:click="clearFilters" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
                                     Clear Filters
@@ -240,10 +251,16 @@
                                                             $platformType = $platform?->platform_type ?? 'N/A';
                                                         }
                                                     @endphp
-                                                    {{ $platformType }}
-                                                    @if($platform && $platform instanceof \App\Models\WebsitePlatform && $platform->platform_version)
-                                                        <span class="text-xs text-gray-400 dark:text-gray-500">({{ $platform->platform_version }})</span>
-                                                    @endif
+                                                    <div class="flex items-center gap-2">
+                                                        @if($platformType === 'Parked')
+                                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Parked</span>
+                                                        @else
+                                                            <span>{{ $platformType }}</span>
+                                                        @endif
+                                                        @if($platform && $platform instanceof \App\Models\WebsitePlatform && $platform->platform_version)
+                                                            <span class="text-xs text-gray-400 dark:text-gray-500">({{ $platform->platform_version }})</span>
+                                                        @endif
+                                                    </div>
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                                     {{ $domain->hosting_provider ?? 'N/A' }}

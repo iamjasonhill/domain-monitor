@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Domain;
 use App\Models\SynergyCredential;
+use App\Services\PlatformDetector;
 use App\Services\SynergyWholesaleClient;
 use Illuminate\Console\Command;
 
@@ -197,6 +198,22 @@ class SyncSynergyExpiry extends Command
                 $updateData['registrar'] = $domainInfo['registrar'];
             } elseif (! $domain->registrar) {
                 $updateData['registrar'] = 'Synergy Wholesale';
+            }
+
+            // Check if domain is parked (detect via platform detection)
+            // Only check if platform is not already set or if we want to update it
+            if (! $domain->platform || $domain->platform !== 'Parked') {
+                try {
+                    $platformDetector = app(PlatformDetector::class);
+                    $platformInfo = $platformDetector->detect($domain->domain);
+
+                    // If detected as parked, update platform
+                    if ($platformInfo['platform_type'] === 'Parked') {
+                        $updateData['platform'] = 'Parked';
+                    }
+                } catch (\Exception $e) {
+                    // Silently fail platform detection - don't break sync
+                }
             }
 
             // Update the domain
