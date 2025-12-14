@@ -53,11 +53,25 @@ class DomainsList extends Component
             $exitCode = Artisan::call('domains:sync-synergy-expiry', ['--all' => true]);
             $output = Artisan::output();
 
+            // Extract error message from output if command failed
+            $outputLines = explode("\n", trim($output));
+            $errorLine = null;
+            foreach ($outputLines as $line) {
+                if (stripos($line, 'error') !== false || stripos($line, 'failed') !== false || stripos($line, 'exception') !== false) {
+                    $errorLine = trim($line);
+                    break;
+                }
+            }
+
             if ($exitCode === 0) {
                 $this->dispatch('flash-message', message: 'Domain information synced successfully from Synergy Wholesale!', type: 'success');
             } else {
-                $errorMessage = trim($output) ?: 'Sync completed with warnings. Check logs for details.';
-                $this->dispatch('flash-message', message: $errorMessage, type: 'warning');
+                $errorMessage = $errorLine ?: (trim($output) ?: 'Sync failed. Check logs for details.');
+                // Truncate long error messages
+                if (strlen($errorMessage) > 200) {
+                    $errorMessage = substr($errorMessage, 0, 197).'...';
+                }
+                $this->dispatch('flash-message', message: $errorMessage, type: 'error');
             }
         } catch (\Exception $e) {
             \Log::error('Sync Synergy Expiry Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
@@ -85,11 +99,25 @@ class DomainsList extends Component
             $exitCode = Artisan::call('domains:sync-dns-records', ['--all' => true]);
             $output = Artisan::output();
 
+            // Extract error message from output if command failed
+            $outputLines = explode("\n", trim($output));
+            $errorLine = null;
+            foreach ($outputLines as $line) {
+                if (stripos($line, 'error') !== false || stripos($line, 'failed') !== false || stripos($line, 'exception') !== false) {
+                    $errorLine = trim($line);
+                    break;
+                }
+            }
+
             if ($exitCode === 0) {
                 $this->dispatch('flash-message', message: 'DNS records synced successfully from Synergy Wholesale!', type: 'success');
             } else {
-                $errorMessage = trim($output) ?: 'DNS sync completed with warnings. Check logs for details.';
-                $this->dispatch('flash-message', message: $errorMessage, type: 'warning');
+                $errorMessage = $errorLine ?: (trim($output) ?: 'DNS sync failed. Check logs for details.');
+                // Truncate long error messages
+                if (strlen($errorMessage) > 200) {
+                    $errorMessage = substr($errorMessage, 0, 197).'...';
+                }
+                $this->dispatch('flash-message', message: $errorMessage, type: 'error');
             }
         } catch (\Exception $e) {
             \Log::error('Sync DNS Records Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
@@ -117,11 +145,25 @@ class DomainsList extends Component
             $exitCode = Artisan::call('domains:import-synergy');
             $output = Artisan::output();
 
+            // Extract error message from output if command failed
+            $outputLines = explode("\n", trim($output));
+            $errorLine = null;
+            foreach ($outputLines as $line) {
+                if (stripos($line, 'error') !== false || stripos($line, 'failed') !== false || stripos($line, 'exception') !== false) {
+                    $errorLine = trim($line);
+                    break;
+                }
+            }
+
             if ($exitCode === 0) {
                 $this->dispatch('flash-message', message: 'Domains imported successfully from Synergy Wholesale!', type: 'success');
             } else {
-                $errorMessage = trim($output) ?: 'Import completed with warnings. Check logs for details.';
-                $this->dispatch('flash-message', message: $errorMessage, type: 'warning');
+                $errorMessage = $errorLine ?: (trim($output) ?: 'Import failed. Check logs for details.');
+                // Truncate long error messages
+                if (strlen($errorMessage) > 200) {
+                    $errorMessage = substr($errorMessage, 0, 197).'...';
+                }
+                $this->dispatch('flash-message', message: $errorMessage, type: 'error');
             }
         } catch (\Exception $e) {
             \Log::error('Import Synergy Domains Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
