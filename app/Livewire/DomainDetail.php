@@ -42,7 +42,7 @@ class DomainDetail extends Component
             $query->latest()->limit(20);
         }])->findOrFail($this->domainId);
 
-        // Sync simple platform field with relationship
+        // Sync simple platform field with relationship if relationship exists but field doesn't
         if ($this->domain->platform && $this->domain->platform->platform_type && ! $this->domain->platform) {
             $this->domain->update(['platform' => $this->domain->platform->platform_type]);
             $this->domain->refresh();
