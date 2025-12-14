@@ -255,7 +255,18 @@ class PlatformDetector
         $htmlLower = strtolower($html);
         $domainLower = strtolower($domain);
 
-        // Common parked page indicators
+        // Extract title and meta description for more accurate detection
+        $title = '';
+        if (preg_match('/<title[^>]*>(.*?)<\/title>/is', $html, $titleMatches)) {
+            $title = strtolower(strip_tags($titleMatches[1]));
+        }
+
+        $metaDescription = '';
+        if (preg_match('/<meta[^>]*name=["\']description["\'][^>]*content=["\']([^"\']*)["\'][^>]*>/i', $html, $metaMatches)) {
+            $metaDescription = strtolower($metaMatches[1]);
+        }
+
+        // Common parked page indicators (expanded list)
         $parkedIndicators = [
             'this domain is parked',
             'domain is parked',
@@ -281,11 +292,53 @@ class PlatformDetector
             'synergywholesale.com/manage', // Synergy Wholesale parking pages
             'static.synergywholesale.com', // Synergy Wholesale static assets
             'manage.synergywholesale.com', // Synergy Wholesale management
+            'domain parked',
+            'is parked',
+            'currently parked',
+            'domain name parked',
+            'parked domain name',
+            'this domain has been parked',
+            'domain has been parked',
+            'parked by the owner',
+            'parked by owner',
+            'domain parking service',
+            'parking service',
+            'domain parking page',
+            'parked page',
+            'this domain is for sale',
+            'domain for sale',
+            'this domain may be for sale',
+            'domain name for sale',
+            'buy this domain name',
+            'purchase this domain',
+            'domain purchase',
+            'register this domain',
+            'domain registration',
+            'domain name registration',
+            'coming soon',
+            'under construction',
+            'website coming soon',
+            'site coming soon',
+            'page coming soon',
         ];
 
-        // Check for parked page indicators
+        // Check for parked page indicators in full HTML
         foreach ($parkedIndicators as $indicator) {
             if (str_contains($htmlLower, $indicator)) {
+                return true;
+            }
+        }
+
+        // Check title specifically (very reliable indicator)
+        foreach ($parkedIndicators as $indicator) {
+            if (str_contains($title, $indicator)) {
+                return true;
+            }
+        }
+
+        // Check meta description
+        foreach ($parkedIndicators as $indicator) {
+            if (str_contains($metaDescription, $indicator)) {
                 return true;
             }
         }
@@ -296,9 +349,10 @@ class PlatformDetector
             return true;
         }
 
-        // Check for common parked page providers
+        // Check for common parked page providers (expanded)
         $parkedProviders = [
             'sedo.com',
+            'sedoparking',
             'bodis.com',
             'parkingcrew.com',
             'parkingpage',
@@ -309,10 +363,35 @@ class PlatformDetector
             'synergywholesale.com',
             'ventraip.com.au',
             'static.ventraip.com.au',
+            'crazydomains.com.au',
+            'netregistry.com.au',
+            'tppwholesale.com',
+            'domaincentral.com.au',
+            'parklogic',
+            'parkingpanel',
+            'parkingcrew',
+            'parkedpage',
         ];
 
         foreach ($parkedProviders as $provider) {
             if (str_contains($htmlLower, $provider)) {
+                return true;
+            }
+        }
+
+        // Check for parked page HTML structure patterns
+        // Many parked pages have specific class names or IDs
+        $parkedHtmlPatterns = [
+            '/class=["\'][^"\']*parked[^"\']*["\']/i',
+            '/id=["\'][^"\']*parked[^"\']*["\']/i',
+            '/class=["\'][^"\']*parking[^"\']*["\']/i',
+            '/id=["\'][^"\']*parking[^"\']*["\']/i',
+            '/class=["\'][^"\']*domain-sale[^"\']*["\']/i',
+            '/id=["\'][^"\']*domain-sale[^"\']*["\']/i',
+        ];
+
+        foreach ($parkedHtmlPatterns as $pattern) {
+            if (preg_match($pattern, $html)) {
                 return true;
             }
         }
@@ -322,7 +401,34 @@ class PlatformDetector
         $contentLength = strlen(strip_tags($html));
         if ($contentLength < 500) {
             // Check if it's a simple "coming soon" or parking page
-            if (preg_match('/coming\s+soon|under\s+construction|parked|for\s+sale/i', $html)) {
+            if (preg_match('/coming\s+soon|under\s+construction|parked|for\s+sale|domain\s+name|domain\s+parking/i', $html)) {
+                return true;
+            }
+
+            // Very minimal content with domain name in title often indicates parking
+            if ($contentLength < 200 && ! empty($title) && str_contains($title, $domainLower)) {
+                return true;
+            }
+        }
+
+        // Check for redirects to parking services
+        if (preg_match('/<meta[^>]*http-equiv=["\']refresh["\'][^>]*content=["\'][^"\']*url=([^"\']*(?:sedo|bodis|parking|parked)[^"\']*)["\'][^>]*>/i', $html)) {
+            return true;
+        }
+
+        // Check for common parked page text patterns
+        // Many parked pages have phrases like "This domain is..." or "Domain name..."
+        if (preg_match('/this\s+domain\s+(?:is|has|may|can|will)/i', $html)) {
+            // If combined with minimal content, likely parked
+            if ($contentLength < 1000) {
+                return true;
+            }
+        }
+
+        // Check for domain name prominently displayed with minimal other content
+        // Parked pages often just show the domain name
+        if (preg_match('/<h[1-6][^>]*>.*?'.preg_quote($domainLower, '/').'.*?<\/h[1-6]>/i', $html)) {
+            if ($contentLength < 800) {
                 return true;
             }
         }
