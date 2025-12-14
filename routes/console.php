@@ -8,6 +8,11 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+// Health ping - send every 5 minutes to indicate app is alive
+Schedule::command('health:ping')
+    ->everyFiveMinutes()
+    ->timezone('UTC');
+
 // Horizon metrics snapshot - run every minute to collect queue metrics
 Schedule::command('horizon:snapshot')
     ->everyMinute()
