@@ -1,14 +1,13 @@
-<div x-data="{ showFlash: false, flashMessage: '', flashType: '' }"
-     x-init="
-        Livewire.on('flash-message', (data) => {
-            showFlash = true;
-            flashMessage = data.message;
-            flashType = data.type;
-            setTimeout(() => showFlash = false, 5000);
-        });
-     ">
+<div>
     <!-- Flash Message -->
-    <div x-show="showFlash"
+    <div x-data="{ showFlash: false, flashMessage: '', flashType: '' }"
+         @flash-message.window="
+            showFlash = true;
+            flashMessage = $event.detail.message || $event.detail[0]?.message || 'Operation completed';
+            flashType = $event.detail.type || $event.detail[0]?.type || 'success';
+            setTimeout(() => showFlash = false, 5000);
+         "
+         x-show="showFlash"
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0 transform translate-y-full"
          x-transition:enter-end="opacity-100 transform translate-y-0"
