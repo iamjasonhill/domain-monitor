@@ -19,6 +19,7 @@ class PlatformDetector
 
         try {
             $response = Http::timeout(10)
+                ->withoutVerifying() // Allow self-signed certificates for parked domains
                 ->withHeaders([
                     'User-Agent' => 'DomainMonitor/1.0',
                 ])
@@ -314,6 +315,9 @@ class PlatformDetector
             'synergywholesale.com/manage', // Synergy Wholesale parking pages
             'static.synergywholesale.com', // Synergy Wholesale static assets
             'manage.synergywholesale.com', // Synergy Wholesale management
+            'your domains', // Common parked page title (Synergy/VentraIP)
+            'static.ventraip.com.au', // VentraIP static assets
+            'static.synergywholesale.com/manage', // Synergy management pages
             'domain parked',
             'is parked',
             'currently parked',
@@ -383,6 +387,8 @@ class PlatformDetector
             'namedrive',
             'trafficz',
             'synergywholesale.com',
+            'static.synergywholesale.com',
+            'manage.synergywholesale.com',
             'ventraip.com.au',
             'static.ventraip.com.au',
             'crazydomains.com.au',
