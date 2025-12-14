@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Domain;
+use Illuminate\Support\Facades\Artisan;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -16,6 +17,12 @@ class DomainsList extends Component
 
     public bool $filterExpiring = false;
 
+    public bool $syncingExpiry = false;
+
+    public bool $syncingDns = false;
+
+    public bool $importingDomains = false;
+
     public function updatingSearch()
     {
         $this->resetPage();
@@ -27,6 +34,51 @@ class DomainsList extends Component
         $this->filterActive = null;
         $this->filterExpiring = false;
         $this->resetPage();
+    }
+
+    public function syncSynergyExpiry(): void
+    {
+        $this->syncingExpiry = true;
+
+        try {
+            Artisan::call('domains:sync-synergy-expiry', ['--all' => true]);
+            session()->flash('message', 'Domain information synced successfully from Synergy Wholesale!');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Error syncing domain information: '.$e->getMessage());
+        } finally {
+            $this->syncingExpiry = false;
+            $this->dispatch('$refresh');
+        }
+    }
+
+    public function syncDnsRecords(): void
+    {
+        $this->syncingDns = true;
+
+        try {
+            Artisan::call('domains:sync-dns-records', ['--all' => true]);
+            session()->flash('message', 'DNS records synced successfully from Synergy Wholesale!');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Error syncing DNS records: '.$e->getMessage());
+        } finally {
+            $this->syncingDns = false;
+            $this->dispatch('$refresh');
+        }
+    }
+
+    public function importSynergyDomains(): void
+    {
+        $this->importingDomains = true;
+
+        try {
+            Artisan::call('domains:import-synergy');
+            session()->flash('message', 'Domains imported successfully from Synergy Wholesale!');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Error importing domains: '.$e->getMessage());
+        } finally {
+            $this->importingDomains = false;
+            $this->dispatch('$refresh');
+        }
     }
 
     public function render(): \Illuminate\Contracts\View\View
