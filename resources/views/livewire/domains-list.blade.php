@@ -3,8 +3,8 @@
     <div x-data="{ showFlash: false, flashMessage: '', flashType: '' }"
          @flash-message.window="
             showFlash = true;
-            flashMessage = $event.detail.message || $event.detail[0]?.message || 'Operation completed';
-            flashType = $event.detail.type || $event.detail[0]?.type || 'success';
+            flashMessage = $event.detail.message || 'Operation completed';
+            flashType = $event.detail.type || 'success';
             setTimeout(() => showFlash = false, 5000);
          "
          x-show="showFlash"
