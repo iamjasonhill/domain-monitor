@@ -566,6 +566,117 @@ class DomainDetail extends Component
         }
     }
 
+    public function discoverSubdomainsFromDns(): void
+    {
+        if (! $this->domain) {
+            session()->flash('error', 'Domain not found.');
+
+            return;
+        }
+
+        try {
+            // Get all DNS records for this domain
+            $dnsRecords = $this->domain->dnsRecords;
+
+            if ($dnsRecords->isEmpty()) {
+                session()->flash('error', 'No DNS records found. Please sync DNS records first.');
+
+                return;
+            }
+
+            $discoveredSubdomains = [];
+            $existingSubdomains = $this->domain->subdomains->pluck('subdomain')->toArray();
+
+            // Extract subdomain names from DNS records
+            foreach ($dnsRecords as $record) {
+                $host = trim($record->host ?? '');
+
+                // Skip empty, root (@), or wildcard records
+                if (empty($host) || $host === '@' || $host === '*' || str_starts_with($host, '*.')) {
+                    continue;
+                }
+
+                // Extract subdomain name
+                // Host could be: "www", "www.again.com.au", "api.again.com.au", etc.
+                $subdomainName = $this->extractSubdomainName($host, $this->domain->domain);
+
+                if ($subdomainName && ! in_array($subdomainName, $discoveredSubdomains) && ! in_array($subdomainName, $existingSubdomains)) {
+                    $discoveredSubdomains[] = $subdomainName;
+                }
+            }
+
+            if (empty($discoveredSubdomains)) {
+                session()->flash('info', 'No new subdomains found in DNS records.');
+
+                return;
+            }
+
+            // Create subdomain entries
+            $created = 0;
+            foreach ($discoveredSubdomains as $subdomainName) {
+                $fullDomain = "{$subdomainName}.{$this->domain->domain}";
+
+                // Check if it already exists (double-check)
+                $exists = Subdomain::where('domain_id', $this->domain->id)
+                    ->where('subdomain', $subdomainName)
+                    ->exists();
+
+                if (! $exists) {
+                    Subdomain::create([
+                        'domain_id' => $this->domain->id,
+                        'subdomain' => $subdomainName,
+                        'full_domain' => $fullDomain,
+                        'is_active' => true,
+                    ]);
+                    $created++;
+                }
+            }
+
+            $this->loadDomain();
+            session()->flash('message', "Discovered and created {$created} subdomain(s) from DNS records: ".implode(', ', $discoveredSubdomains));
+        } catch (\Exception $e) {
+            session()->flash('error', 'Failed to discover subdomains: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Extract subdomain name from DNS record host
+     *
+     * @param  string  $host  DNS record host (e.g., "www", "www.again.com.au", "api.again.com.au")
+     * @param  string  $domain  Main domain (e.g., "again.com.au")
+     * @return string|null Subdomain name (e.g., "www", "api") or null if not a subdomain
+     */
+    private function extractSubdomainName(string $host, string $domain): ?string
+    {
+        // Remove trailing dot if present
+        $host = rtrim($host, '.');
+
+        // If host is exactly the domain, it's not a subdomain
+        if ($host === $domain) {
+            return null;
+        }
+
+        // If host ends with the domain, extract the subdomain part
+        if (str_ends_with($host, '.'.$domain)) {
+            $subdomain = substr($host, 0, -(strlen($domain) + 1)); // +1 for the dot
+
+            // Validate subdomain name (alphanumeric, hyphens, underscores)
+            if (preg_match('/^[a-z0-9]([a-z0-9\-_]*[a-z0-9])?$/i', $subdomain)) {
+                return $subdomain;
+            }
+        }
+
+        // If host doesn't contain the domain, it might be just the subdomain name
+        if (! str_contains($host, '.')) {
+            // Validate it's a valid subdomain name
+            if (preg_match('/^[a-z0-9]([a-z0-9\-_]*[a-z0-9])?$/i', $host)) {
+                return $host;
+            }
+        }
+
+        return null;
+    }
+
     public function render(): \Illuminate\Contracts\View\View
     {
         return view('livewire.domain-detail');
