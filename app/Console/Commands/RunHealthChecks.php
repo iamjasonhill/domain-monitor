@@ -107,18 +107,20 @@ class RunHealthChecks extends Command
             $payload = [];
 
             if ($type === 'http') {
-                // Check if domain is parked - parked domains should not fail HTTP checks
+                // Check if domain is parked or email-only - these should not fail HTTP checks
                 // Check both string attribute and relationship
                 $platformType = is_string($domain->platform)
                     ? $domain->platform
                     : ($domain->platform?->platform_type ?? $domain->getAttribute('platform'));
                 $isParked = $platformType === 'Parked';
+                $isEmailOnly = $platformType === 'Email Only';
 
                 $result = $httpCheck->check($domain->domain);
 
-                // For parked domains, if we get any response (even error), mark as ok
+                // For parked or email-only domains, if we get any response (even error), mark as ok
                 // Parked domains often have SSL issues but still serve content
-                if ($isParked) {
+                // Email-only domains don't have web hosting, so HTTP failures are expected
+                if ($isParked || $isEmailOnly) {
                     // If we got a status code (even if it's an error), consider it ok for parked domains
                     // They're serving a parked page, which is expected behavior
                     if ($result['status_code'] !== null) {
