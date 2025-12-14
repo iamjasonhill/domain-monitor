@@ -94,9 +94,21 @@ Track and monitor domains with health checks, uptime monitoring, SSL certificate
 - [x] Tested with .com.au domains ✅
 - [ ] Uptime monitoring service (future)
 
+### ✅ Step 9: Synergy Wholesale Integration
+- [x] Create `synergy_credentials` table with encrypted API key storage
+- [x] Create SynergyCredential model with encryption helpers
+- [x] Implement SynergyWholesaleClient service (SOAP API)
+- [x] Create scheduled job for expiry sync (daily at 4 AM UTC)
+- [x] Create SyncSynergyExpiry artisan command
+- [x] Support for .com.au domains only
+- [x] Encrypted credential storage using Laravel Crypt
+- [ ] Test with actual Synergy Wholesale API credentials (pending)
+
+**Note:** The SOAP method names and response structure may need adjustment based on actual API documentation. The implementation follows the previous TypeScript pattern but should be verified with real API credentials.
+
 ## Next Step
 
-### Step 7: Alert System
+### Step 8: API Authentication
 
 ## Future Steps
 
