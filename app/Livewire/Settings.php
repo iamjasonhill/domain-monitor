@@ -30,7 +30,7 @@ class Settings extends Component
                 return;
             }
 
-            if (empty($credential->encrypted_api_key)) {
+            if (empty($credential->api_key_encrypted)) {
                 $this->synergyBalanceError = 'Synergy Wholesale API key is not configured.';
                 $this->loadingBalance = false;
 
@@ -39,7 +39,8 @@ class Settings extends Component
 
             $client = SynergyWholesaleClient::fromEncryptedCredentials(
                 $credential->reseller_id,
-                $credential->encrypted_api_key
+                $credential->api_key_encrypted,
+                $credential->api_url
             );
 
             $result = $client->getBalance();
