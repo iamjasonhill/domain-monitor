@@ -663,10 +663,10 @@ class SynergyWholesaleClient
                 'resellerID' => $this->resellerId,
                 'apiKey' => $this->apiKey,
                 'domainName' => $domain,
-                'renewalPeriod' => $years,
+                'years' => $years,
             ];
 
-            $result = $this->client->domainRenew($request);
+            $result = $this->client->renewDomain($request);
 
             // Check for errors
             if (isset($result->status) && $result->status !== 'OK' && str_starts_with($result->status, 'ERR_')) {
