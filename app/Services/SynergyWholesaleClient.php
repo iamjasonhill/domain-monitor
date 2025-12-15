@@ -592,6 +592,62 @@ class SynergyWholesaleClient
     }
 
     /**
+     * Get account balance/credit
+     *
+     * @return array{status: string, balance: float|null, error_message: string|null}|null
+     */
+    public function getBalance(): ?array
+    {
+        $this->initialize();
+
+        try {
+            $request = [
+                'resellerID' => $this->resellerId,
+                'apiKey' => $this->apiKey,
+            ];
+
+            $result = $this->client->balanceQuery($request);
+
+            // Check for errors
+            if (isset($result->status) && $result->status !== 'OK' && str_starts_with($result->status, 'ERR_')) {
+                Log::warning('Synergy Wholesale balanceQuery returned error', [
+                    'status' => $result->status,
+                    'error_message' => $result->errorMessage ?? null,
+                ]);
+
+                return [
+                    'status' => $result->status,
+                    'balance' => null,
+                    'error_message' => $result->errorMessage ?? null,
+                ];
+            }
+
+            // Parse balance - can be string or float
+            $balance = null;
+            if (isset($result->balance)) {
+                $balance = is_numeric($result->balance) ? (float) $result->balance : null;
+            }
+
+            return [
+                'status' => $result->status ?? 'OK',
+                'balance' => $balance,
+                'error_message' => $result->errorMessage ?? null,
+            ];
+        } catch (SoapFault $e) {
+            Log::error('Synergy Wholesale balanceQuery failed', [
+                'error' => $e->getMessage(),
+                'fault_code' => $e->faultcode ?? null,
+            ]);
+
+            return [
+                'status' => 'ERROR',
+                'balance' => null,
+                'error_message' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
      * Create client from encrypted credentials
      */
     public static function fromEncryptedCredentials(string $resellerId, string $encryptedApiKey, ?string $apiUrl = null): self
