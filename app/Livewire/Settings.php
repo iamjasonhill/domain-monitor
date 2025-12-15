@@ -30,6 +30,13 @@ class Settings extends Component
                 return;
             }
 
+            if (empty($credential->encrypted_api_key)) {
+                $this->synergyBalanceError = 'Synergy Wholesale API key is not configured.';
+                $this->loadingBalance = false;
+
+                return;
+            }
+
             $client = SynergyWholesaleClient::fromEncryptedCredentials(
                 $credential->reseller_id,
                 $credential->encrypted_api_key
