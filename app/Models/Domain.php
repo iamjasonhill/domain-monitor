@@ -230,7 +230,7 @@ class Domain extends Model
         if ($expiring) {
             $query->where('is_active', true)
                 ->whereNotNull('expires_at')
-                ->where('expires_at', '<=', now()->addDays(30))
+                ->where('expires_at', '<=', now()->addDays(30)->endOfDay())
                 ->where('expires_at', '>', now());
         }
     }

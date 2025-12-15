@@ -15,7 +15,7 @@ class Dashboard extends Component
             'active_domains' => Domain::where('is_active', true)->count(),
             'expiring_soon' => Domain::where('is_active', true)
                 ->whereNotNull('expires_at')
-                ->where('expires_at', '<=', now()->addDays(30))
+                ->where('expires_at', '<=', now()->addDays(30)->endOfDay())
                 ->where('expires_at', '>', now())
                 ->count(),
             'recent_failures' => DomainCheck::where('status', 'fail')
