@@ -149,7 +149,7 @@
                             <div>
                                 <label class="flex items-center">
                                     <input type="checkbox" wire:model.live="filterExpiring" class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-sm focus:ring-blue-500">
-                                    <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Expiring Soon</span>
+                                    <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Expiring Soon (30 days)</span>
                                 </label>
                             </div>
                         </div>
