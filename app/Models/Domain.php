@@ -91,6 +91,8 @@ class Domain extends Model
         'ip_country',
         'ip_city',
         'ip_hosting_flag',
+        'parked_override',
+        'parked_override_set_at',
     ];
 
     protected function casts(): array
@@ -109,6 +111,8 @@ class Domain extends Model
             'check_frequency_minutes' => 'integer',
             'ip_checked_at' => 'datetime',
             'ip_hosting_flag' => 'boolean',
+            'parked_override' => 'boolean',
+            'parked_override_set_at' => 'datetime',
         ];
     }
 
@@ -247,6 +251,8 @@ class Domain extends Model
     public function scopeExcludeParked($query, bool $exclude): void
     {
         if ($exclude) {
+            $query->where('parked_override', false);
+
             // Exclude domains where:
             // 1. platform column is 'Parked', OR
             // 2. platform relationship has platform_type = 'Parked'
@@ -258,6 +264,19 @@ class Domain extends Model
                     $platformQ->where('platform_type', 'Parked');
                 });
         }
+    }
+
+    public function isParked(): bool
+    {
+        if ($this->parked_override) {
+            return true;
+        }
+
+        $platformModel = $this->relationLoaded('platform') ? $this->getRelation('platform') : null;
+        $platformType = $platformModel instanceof WebsitePlatform ? $platformModel->platform_type : null;
+        $platformType ??= $this->getAttribute('platform');
+
+        return $platformType === 'Parked';
     }
 
     /**

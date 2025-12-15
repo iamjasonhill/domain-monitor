@@ -55,7 +55,10 @@ class RunHealthChecks extends Command
         }
 
         if ($allOption) {
-            $domains = Domain::with('platform')->where('is_active', true)->get();
+            $domains = Domain::with('platform')
+                ->where('is_active', true)
+                ->excludeParked(true)
+                ->get();
 
             if ($domains->isEmpty()) {
                 $this->warn('No active domains found.');
@@ -99,6 +102,14 @@ class RunHealthChecks extends Command
         }
 
         try {
+            if ($domain->isParked()) {
+                if ($verbose) {
+                    $this->line('  Skipped: domain is marked as parked');
+                }
+
+                return Command::SUCCESS;
+            }
+
             $startedAt = now();
             $result = null;
             $status = 'fail';

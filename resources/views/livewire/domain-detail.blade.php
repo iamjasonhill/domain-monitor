@@ -34,8 +34,13 @@
             </div>
         @endif
 
+        @php
+            $isParked = $domain->isParked();
+            $isManuallyParked = (bool) $domain->parked_override;
+        @endphp
+
         <!-- Parked Domain Alert -->
-        @if($domain->platform === 'Parked')
+        @if($isParked)
             <div class="mb-6 p-4 bg-yellow-100 dark:bg-yellow-900 border border-yellow-400 text-yellow-800 dark:text-yellow-200 rounded-lg">
                 <div class="flex items-center">
                     <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -43,7 +48,18 @@
                     </svg>
                     <div>
                         <h4 class="font-semibold">This domain is parked</h4>
-                        <p class="text-sm mt-1">This domain appears to be parked and is not actively being used for a website.</p>
+                        <p class="text-sm mt-1">
+                            @if($isManuallyParked)
+                                This domain has been manually marked as parked. Health checks are disabled.
+                            @else
+                                This domain appears to be parked (detected). Health checks are disabled.
+                            @endif
+                        </p>
+                        @if($isManuallyParked && $domain->parked_override_set_at)
+                            <p class="text-xs mt-1 opacity-75">
+                                Marked parked {{ $domain->parked_override_set_at->diffForHumans() }}.
+                            </p>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -163,6 +179,11 @@
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Platform & Hosting</h3>
                         <div class="flex gap-2">
+                            <button
+                                wire:click="toggleParkedOverride"
+                                class="inline-flex items-center px-3 py-1.5 bg-yellow-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-700">
+                                {{ $domain->parked_override ? 'Unmark Parked' : 'Mark Parked' }}
+                            </button>
                             <button wire:click="detectPlatform" wire:loading.attr="disabled" class="inline-flex items-center px-3 py-1.5 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 disabled:opacity-50">
                                 <span wire:loading.remove wire:target="detectPlatform">Detect Platform</span>
                                 <span wire:loading wire:target="detectPlatform">Detecting...</span>
@@ -339,16 +360,21 @@
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
             <div class="p-6">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Run Health Checks</h3>
+                @if($isParked)
+                    <div class="mb-4 text-sm text-yellow-800 dark:text-yellow-200 bg-yellow-100 dark:bg-yellow-900 border border-yellow-400 rounded p-3">
+                        Health checks are disabled because this domain is marked as parked.
+                    </div>
+                @endif
                 <div class="flex flex-wrap gap-4">
-                    <button wire:click="runHealthCheck('http')" wire:loading.attr="disabled" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 disabled:opacity-50">
+                    <button wire:click="runHealthCheck('http')" wire:loading.attr="disabled" {{ $isParked ? 'disabled' : '' }} class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 disabled:opacity-50">
                         <span wire:loading.remove wire:target="runHealthCheck('http')">HTTP Check</span>
                         <span wire:loading wire:target="runHealthCheck('http')">Running...</span>
                     </button>
-                    <button wire:click="runHealthCheck('ssl')" wire:loading.attr="disabled" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 disabled:opacity-50">
+                    <button wire:click="runHealthCheck('ssl')" wire:loading.attr="disabled" {{ $isParked ? 'disabled' : '' }} class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 disabled:opacity-50">
                         <span wire:loading.remove wire:target="runHealthCheck('ssl')">SSL Check</span>
                         <span wire:loading wire:target="runHealthCheck('ssl')">Running...</span>
                     </button>
-                    <button wire:click="runHealthCheck('dns')" wire:loading.attr="disabled" class="inline-flex items-center px-4 py-2 bg-purple-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-purple-700 disabled:opacity-50">
+                    <button wire:click="runHealthCheck('dns')" wire:loading.attr="disabled" {{ $isParked ? 'disabled' : '' }} class="inline-flex items-center px-4 py-2 bg-purple-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-purple-700 disabled:opacity-50">
                         <span wire:loading.remove wire:target="runHealthCheck('dns')">DNS Check</span>
                         <span wire:loading wire:target="runHealthCheck('dns')">Running...</span>
                     </button>

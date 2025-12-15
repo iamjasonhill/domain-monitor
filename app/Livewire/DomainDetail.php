@@ -120,6 +120,12 @@ class DomainDetail extends Component
 
     public function runHealthCheck(string $type): void
     {
+        if ($this->domain?->isParked()) {
+            session()->flash('info', 'This domain is marked as parked. Health checks are disabled.');
+
+            return;
+        }
+
         try {
             Artisan::call('domains:health-check', [
                 '--domain' => $this->domain->domain,
@@ -133,6 +139,27 @@ class DomainDetail extends Component
             session()->flash('error', 'Health check failed: '.$e->getMessage());
             $this->dispatch('health-check-error', message: $e->getMessage());
         }
+    }
+
+    public function toggleParkedOverride(): void
+    {
+        if (! $this->domain) {
+            return;
+        }
+
+        $enabled = ! $this->domain->parked_override;
+
+        $this->domain->update([
+            'parked_override' => $enabled,
+            'parked_override_set_at' => $enabled ? now() : null,
+        ]);
+
+        $this->loadDomain();
+
+        session()->flash(
+            'message',
+            $enabled ? 'Domain manually marked as parked. Health checks are now disabled.' : 'Domain unmarked as parked. Health checks are now enabled.'
+        );
     }
 
     public function confirmDelete(): void
