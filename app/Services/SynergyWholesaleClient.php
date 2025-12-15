@@ -648,6 +648,68 @@ class SynergyWholesaleClient
     }
 
     /**
+     * Renew a domain
+     *
+     * @param  string  $domain  Domain name to renew
+     * @param  int  $years  Number of years to renew (default 1)
+     * @return array{status: string, error_message: string|null, new_expiry_date: string|null}|null
+     */
+    public function renewDomain(string $domain, int $years = 1): ?array
+    {
+        $this->initialize();
+
+        try {
+            $request = [
+                'resellerID' => $this->resellerId,
+                'apiKey' => $this->apiKey,
+                'domainName' => $domain,
+                'renewalPeriod' => $years,
+            ];
+
+            $result = $this->client->DomainRenew($request);
+
+            // Check for errors
+            if (isset($result->status) && $result->status !== 'OK' && str_starts_with($result->status, 'ERR_')) {
+                Log::warning('Synergy Wholesale DomainRenew returned error', [
+                    'domain' => $domain,
+                    'status' => $result->status,
+                    'error_message' => $result->errorMessage ?? null,
+                ]);
+
+                return [
+                    'status' => $result->status,
+                    'error_message' => $result->errorMessage ?? null,
+                    'new_expiry_date' => null,
+                ];
+            }
+
+            // Parse new expiry date if provided
+            $newExpiryDate = null;
+            if (isset($result->domain_expiry) || isset($result->expiryDate)) {
+                $newExpiryDate = $result->domain_expiry ?? $result->expiryDate ?? null;
+            }
+
+            return [
+                'status' => $result->status ?? 'OK',
+                'error_message' => $result->errorMessage ?? null,
+                'new_expiry_date' => $newExpiryDate,
+            ];
+        } catch (SoapFault $e) {
+            Log::error('Synergy Wholesale DomainRenew failed', [
+                'domain' => $domain,
+                'error' => $e->getMessage(),
+                'fault_code' => $e->faultcode ?? null,
+            ]);
+
+            return [
+                'status' => 'ERROR',
+                'error_message' => $e->getMessage(),
+                'new_expiry_date' => null,
+            ];
+        }
+    }
+
+    /**
      * Create client from encrypted credentials
      */
     public static function fromEncryptedCredentials(string $resellerId, string $encryptedApiKey, ?string $apiUrl = null): self

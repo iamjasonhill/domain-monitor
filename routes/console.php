@@ -66,6 +66,12 @@ Schedule::command('domains:sync-dns-records --all')
     ->at('04:30')
     ->timezone('UTC');
 
+// Auto-renew domains - run daily to renew domains with auto_renew=true expiring in 30 days
+Schedule::command('domains:auto-renew')
+    ->daily()
+    ->at('04:45')
+    ->timezone('UTC');
+
 // Check for expiring domains - run daily to send alerts at 30, 14, and 7 days
 Schedule::command('domains:check-expiring')
     ->daily()
