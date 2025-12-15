@@ -139,6 +139,20 @@
                                 <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $domain->auto_renew ? 'Yes' : 'No' }}</dd>
                             </div>
                         @endif
+                        @if($domain->renewed_at)
+                            <div>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Last Renewed</dt>
+                                <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+                                    {{ $domain->renewed_at->format('Y-m-d H:i:s') }}
+                                    <span class="text-gray-500">({{ $domain->renewed_at->diffForHumans() }})</span>
+                                    @if($domain->renewed_by)
+                                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                            via {{ $domain->renewed_by === 'auto-renew' ? 'Auto-Renew System' : ucfirst($domain->renewed_by) }}
+                                        </div>
+                                    @endif
+                                </dd>
+                            </div>
+                        @endif
                     </dl>
                 </div>
             </div>

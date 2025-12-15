@@ -146,6 +146,8 @@ class AutoRenewDomains extends Command
                 // Update expiry date (add 1 year)
                 $newExpiryDate = $domain->expires_at->copy()->addYear();
                 $domain->expires_at = $newExpiryDate;
+                $domain->renewed_at = now();
+                $domain->renewed_by = 'auto-renew';
                 $domain->save();
 
                 // Send Brain event

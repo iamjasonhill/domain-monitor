@@ -19,6 +19,8 @@ use Illuminate\Support\Str;
  * @property string|null $hosting_admin_url
  * @property string|null $platform
  * @property \Illuminate\Support\Carbon|null $expires_at
+ * @property \Illuminate\Support\Carbon|null $renewed_at
+ * @property string|null $renewed_by
  * @property \Illuminate\Support\Carbon|null $created_at_synergy
  * @property string|null $domain_status
  * @property bool|null $auto_renew
@@ -63,6 +65,8 @@ class Domain extends Model
         'hosting_admin_url',
         'platform',
         'expires_at',
+        'renewed_at',
+        'renewed_by',
         'created_at_synergy',
         'domain_status',
         'auto_renew',
@@ -93,6 +97,7 @@ class Domain extends Model
     {
         return [
             'expires_at' => 'datetime',
+            'renewed_at' => 'datetime',
             'created_at_synergy' => 'datetime',
             'auto_renew' => 'boolean',
             'nameservers' => 'array',
