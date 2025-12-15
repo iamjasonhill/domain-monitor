@@ -130,6 +130,25 @@
             </div>
         </div>
 
+        <!-- Synergy Refill Account Card -->
+        <a href="https://manage.synergywholesale.com/home/resellers/refill/account" target="_blank" rel="noopener noreferrer" class="block">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-green-100 dark:bg-green-900 rounded-lg p-3">
+                            <svg class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Top Up Account</h3>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Refill Synergy Wholesale account</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+
         <!-- Placeholder for future cards -->
         <!-- Add more cards here as needed -->
     </div>
