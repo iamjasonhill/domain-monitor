@@ -63,13 +63,13 @@ Schedule::command('domains:sync-synergy-expiry --all')
 // DNS records sync - run daily for Australian TLD domains
 Schedule::command('domains:sync-dns-records --all')
     ->daily()
-    ->at('07:15')
+    ->at('07:10')
     ->timezone('UTC');
 
 // Auto-renew domains - run daily to renew domains with auto_renew=true expiring in 30 days
 Schedule::command('domains:auto-renew')
     ->daily()
-    ->at('07:30')
+    ->at('07:20')
     ->timezone('UTC');
 
 // Check for expiring domains - run daily to send alerts at 30, 14, and 7 days
