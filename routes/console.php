@@ -57,25 +57,25 @@ Schedule::command('domains:health-check --all --type=dns')
 // Synergy Wholesale expiry sync - run daily for Australian TLD domains
 Schedule::command('domains:sync-synergy-expiry --all')
     ->daily()
-    ->at('07:00')
+    ->at('08:00')
     ->timezone('UTC');
 
 // DNS records sync - run daily for Australian TLD domains
 Schedule::command('domains:sync-dns-records --all')
     ->daily()
-    ->at('07:10')
+    ->at('08:10')
     ->timezone('UTC');
 
 // Auto-renew domains - run daily to renew domains with auto_renew=true expiring in 30 days
 Schedule::command('domains:auto-renew')
     ->daily()
-    ->at('07:20')
+    ->at('08:20')
     ->timezone('UTC');
 
 // Check for expiring domains - run daily to send alerts at 30, 14, and 7 days
 Schedule::command('domains:check-expiring')
     ->daily()
-    ->at('07:30')
+    ->at('08:30')
     ->timezone('UTC');
 
 // Weekly subdomain discovery and IP updates - queue jobs spread over the week
