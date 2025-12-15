@@ -214,6 +214,17 @@
                                                     <a href="{{ route('domains.show', $domain->id) }}" wire:navigate class="text-blue-600 dark:text-blue-400 hover:underline font-medium">
                                                         {{ $domain->domain }}
                                                     </a>
+                                                    @php
+                                                        $isParked = $domain->isParked();
+                                                        $isManuallyParked = (bool) $domain->parked_override;
+                                                    @endphp
+                                                    @if($isParked)
+                                                        <div class="mt-2">
+                                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                                                                Parked{{ $isManuallyParked ? ' (manual)' : '' }}
+                                                            </span>
+                                                        </div>
+                                                    @endif
                                                     @if($domain->project_key)
                                                         <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $domain->project_key }}</div>
                                                     @endif
@@ -243,7 +254,11 @@
                                                             $latestHttpCheck = $domain->checks->where('check_type', 'http')->first();
                                                             $healthStatus = $latestHttpCheck ? $latestHttpCheck->status : null;
                                                         @endphp
-                                                        @if($healthStatus)
+                                                        @if($isParked)
+                                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                                                                Parked
+                                                            </span>
+                                                        @elseif($healthStatus)
                                                             @if($healthStatus === 'ok')
                                                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">✓ Healthy</span>
                                                             @elseif($healthStatus === 'warn')
@@ -282,7 +297,7 @@
                                                         }
                                                     @endphp
                                                     <div class="flex items-center gap-2">
-                                                        @if($platformType === 'Parked')
+                                                        @if($isParked)
                                                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Parked</span>
                                                         @elseif($platformType === 'Email Only')
                                                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Email Only</span>
