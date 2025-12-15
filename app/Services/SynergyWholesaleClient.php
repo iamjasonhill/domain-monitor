@@ -666,7 +666,7 @@ class SynergyWholesaleClient
                 'renewalPeriod' => $years,
             ];
 
-            $result = $this->client->DomainRenew($request);
+            $result = $this->client->domainRenew($request);
 
             // Check for errors
             if (isset($result->status) && $result->status !== 'OK' && str_starts_with($result->status, 'ERR_')) {
