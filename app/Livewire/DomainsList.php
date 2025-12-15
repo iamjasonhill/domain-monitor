@@ -325,7 +325,7 @@ class DomainsList extends Component
         }
 
         $domains = $query->orderBy('domains.updated_at', 'DESC')
-            ->paginate(20);
+            ->paginate(50);
 
         return view('livewire.domains-list', [
             'domains' => $domains,
