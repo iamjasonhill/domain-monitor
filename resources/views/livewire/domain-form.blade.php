@@ -72,6 +72,36 @@
                     <x-input-error :messages="$errors->get('platform')" class="mt-2" />
                 </div>
 
+                <!-- Tags -->
+                <div class="mb-4">
+                    <x-input-label for="tags" value="Tags" />
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 mb-2">Select tags to categorize this domain. Tags with higher priority will appear first in the domains list.</p>
+                    <div class="mt-2 space-y-2">
+                        @forelse($availableTags as $tag)
+                            <label class="flex items-center">
+                                <input 
+                                    type="checkbox" 
+                                    wire:model="selectedTags" 
+                                    value="{{ $tag->id }}"
+                                    class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-sm focus:ring-blue-500"
+                                >
+                                <span 
+                                    class="ms-2 px-2 py-1 text-xs font-semibold rounded-full"
+                                    style="background-color: {{ $tag->color }}20; color: {{ $tag->color }}; border: 1px solid {{ $tag->color }}40;"
+                                >
+                                    {{ $tag->name }}
+                                </span>
+                                @if($tag->description)
+                                    <span class="ms-2 text-xs text-gray-500 dark:text-gray-400">- {{ $tag->description }}</span>
+                                @endif
+                            </label>
+                        @empty
+                            <p class="text-sm text-gray-500 dark:text-gray-400">No tags available. <a href="{{ route('settings.tags') }}" wire:navigate class="text-blue-600 dark:text-blue-400 hover:underline">Create tags in settings</a>.</p>
+                        @endforelse
+                    </div>
+                    <x-input-error :messages="$errors->get('selectedTags')" class="mt-2" />
+                </div>
+
                 <!-- Check Frequency -->
                 <div class="mb-4">
                     <x-input-label for="check_frequency_minutes" value="Check Frequency (minutes)" />

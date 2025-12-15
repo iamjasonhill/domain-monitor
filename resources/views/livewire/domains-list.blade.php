@@ -217,6 +217,19 @@
                                                     @if($domain->project_key)
                                                         <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $domain->project_key }}</div>
                                                     @endif
+                                                    @if($domain->tags && $domain->tags->count() > 0)
+                                                        <div class="flex flex-wrap gap-1 mt-2">
+                                                            @foreach($domain->tags->sortByDesc('priority') as $tag)
+                                                                <span 
+                                                                    class="px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full"
+                                                                    style="background-color: {{ $tag->color }}20; color: {{ $tag->color }}; border: 1px solid {{ $tag->color }}40;"
+                                                                    title="{{ $tag->description ?? $tag->name }}"
+                                                                >
+                                                                    {{ $tag->name }}
+                                                                </span>
+                                                            @endforeach
+                                                        </div>
+                                                    @endif
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap">
                                                     <div class="flex flex-col gap-1">

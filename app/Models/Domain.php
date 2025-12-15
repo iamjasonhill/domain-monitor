@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -153,6 +154,14 @@ class Domain extends Model
     public function subdomains(): HasMany
     {
         return $this->hasMany(Subdomain::class);
+    }
+
+    /**
+     * @return BelongsToMany<DomainTag, Domain>
+     */
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(DomainTag::class, 'domain_tag', 'domain_id', 'tag_id');
     }
 
     /**

@@ -52,6 +52,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/settings/scheduled-tasks', function () {
         return view('settings.scheduled-tasks');
     })->name('settings.scheduled-tasks');
+
+    Route::get('/settings/tags', function () {
+        return view('settings.tags');
+    })->name('settings.tags');
 });
 
 require __DIR__.'/auth.php';

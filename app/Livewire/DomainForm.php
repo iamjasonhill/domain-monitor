@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Domain;
+use App\Models\DomainTag;
 use App\Services\HostingDetector;
 use App\Services\PlatformDetector;
 use Livewire\Component;
@@ -31,12 +32,14 @@ class DomainForm extends Component
 
     public int $check_frequency_minutes = 60;
 
+    public array $selectedTags = [];
+
     public function mount(?string $domainId = null): void
     {
         $this->domainId = $domainId;
 
         if ($this->domainId) {
-            $this->domain = Domain::with('platform')->findOrFail($this->domainId);
+            $this->domain = Domain::with(['platform', 'tags'])->findOrFail($this->domainId);
             $this->domain_name = $this->domain->domain;
             $this->project_key = $this->domain->project_key;
             $this->registrar = $this->domain->registrar;
@@ -47,6 +50,7 @@ class DomainForm extends Component
             $this->notes = $this->domain->notes;
             $this->is_active = $this->domain->is_active;
             $this->check_frequency_minutes = $this->domain->check_frequency_minutes;
+            $this->selectedTags = $this->domain->tags->pluck('id')->toArray();
         } else {
             $this->domain = new Domain;
         }
@@ -116,6 +120,9 @@ class DomainForm extends Component
 
         $this->domain->save();
 
+        // Sync tags
+        $this->domain->tags()->sync($this->selectedTags);
+
         $action = $this->domainId ? 'updated' : 'created';
         session()->flash('message', "Domain '{$this->domain->domain}' has been {$action} successfully!");
 
@@ -169,6 +176,10 @@ class DomainForm extends Component
 
     public function render(): \Illuminate\Contracts\View\View
     {
-        return view('livewire.domain-form');
+        $availableTags = DomainTag::orderedByPriority()->get();
+
+        return view('livewire.domain-form', [
+            'availableTags' => $availableTags,
+        ]);
     }
 }

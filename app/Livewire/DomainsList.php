@@ -294,12 +294,16 @@ class DomainsList extends Component
             $isActive = false;
         }
 
-        $domains = Domain::with([
+        // Get database connection type for proper NULL handling
+        $connection = \DB::getDriverName();
+
+        $query = Domain::with([
             'checks' => function ($query) {
                 // Load both HTTP and DNS checks (view will filter to HTTP only for status display)
                 $query->whereIn('check_type', ['http', 'dns'])->latest()->limit(5);
             },
             'platform',
+            'tags',
         ])
             ->search($this->search)
             ->filterActive($isActive)
@@ -307,7 +311,20 @@ class DomainsList extends Component
             ->excludeParked($this->filterExcludeParked)
             ->filterRecentFailures($this->filterRecentFailures)
             ->filterFailedEligibility($this->filterFailedEligibility)
-            ->orderBy('updated_at', 'desc')
+            ->leftJoin('domain_tag', 'domains.id', '=', 'domain_tag.domain_id')
+            ->leftJoin('domain_tags', 'domain_tag.tag_id', '=', 'domain_tags.id')
+            ->select('domains.*')
+            ->groupBy('domains.id');
+
+        // Order by tag priority (handle NULL values based on database type)
+        if ($connection === 'pgsql') {
+            $query->orderByRaw('MAX(domain_tags.priority) DESC NULLS LAST');
+        } else {
+            // MySQL/SQLite: Use COALESCE to put NULLs last
+            $query->orderByRaw('COALESCE(MAX(domain_tags.priority), -1) DESC');
+        }
+
+        $domains = $query->orderBy('domains.updated_at', 'DESC')
             ->paginate(20);
 
         return view('livewire.domains-list', [
