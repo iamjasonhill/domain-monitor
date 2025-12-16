@@ -884,10 +884,10 @@ class DomainDetail extends Component
      * Find IP address from DNS records for a subdomain
      *
      * @param  string  $fullDomain  Full subdomain (e.g., "www.again.com.au")
-     * @param  \Illuminate\Database\Eloquent\Collection  $dnsRecords  DNS records collection
+     * @param  \Illuminate\Database\Eloquent\Collection<int, \App\Models\DnsRecord>  $dnsRecords  DNS records collection
      * @return string|null IP address or null if not found
      */
-    private function findIpFromDnsRecords(string $fullDomain, $dnsRecords): ?string
+    private function findIpFromDnsRecords(string $fullDomain, \Illuminate\Database\Eloquent\Collection $dnsRecords): ?string
     {
         // Look for A record with matching host
         foreach ($dnsRecords as $record) {
@@ -925,8 +925,9 @@ class DomainDetail extends Component
 
         // Fallback: try DNS lookup
         try {
+            /** @var array<int, array{ip?: string}>|false $aRecords */
             $aRecords = @dns_get_record($fullDomain, DNS_A);
-            if ($aRecords && ! empty($aRecords)) {
+            if (is_array($aRecords) && $aRecords !== []) {
                 $ip = $aRecords[0]['ip'] ?? null;
                 if ($ip && filter_var($ip, FILTER_VALIDATE_IP)) {
                     return $ip;

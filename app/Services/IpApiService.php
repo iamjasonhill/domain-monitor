@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -48,7 +49,7 @@ class IpApiService
         try {
             $response = Http::timeout(10)
                 ->get("http://ip-api.com/json/{$ipAddress}");
-
+            /** @var Response $response */
             if (! $response->successful()) {
                 Log::warning('IP-API.com request failed', [
                     'ip' => $ipAddress,
