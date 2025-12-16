@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +10,7 @@ use Illuminate\Support\Str;
 
 class DomainCheckAlertState extends Model
 {
-    /** @use HasFactory<\Database\Factories\DomainCheckAlertStateFactory> */
+    /** @use HasFactory<Factory> */
     use HasFactory;
 
     public $incrementing = false;
@@ -45,7 +46,7 @@ class DomainCheckAlertState extends Model
     }
 
     /**
-     * @return BelongsTo<Domain, DomainCheckAlertState>
+     * @return BelongsTo<Domain, $this>
      */
     public function domain(): BelongsTo
     {

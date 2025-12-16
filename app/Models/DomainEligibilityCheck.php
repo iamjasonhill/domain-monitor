@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +10,7 @@ use Illuminate\Support\Str;
 
 class DomainEligibilityCheck extends Model
 {
-    /** @use HasFactory<\Database\Factories\DomainEligibilityCheckFactory> */
+    /** @use HasFactory<Factory> */
     use HasFactory;
 
     public $incrementing = false;
@@ -44,7 +45,7 @@ class DomainEligibilityCheck extends Model
     }
 
     /**
-     * @return BelongsTo<Domain, DomainEligibilityCheck>
+     * @return BelongsTo<Domain, $this>
      */
     public function domain(): BelongsTo
     {

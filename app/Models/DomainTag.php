@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -20,6 +21,7 @@ use Illuminate\Support\Str;
  */
 class DomainTag extends Model
 {
+    /** @use HasFactory<\Illuminate\Database\Eloquent\Factories\Factory> */
     use HasFactory, SoftDeletes;
 
     public $incrementing = false;
@@ -50,7 +52,7 @@ class DomainTag extends Model
     }
 
     /**
-     * @return BelongsToMany<Domain, DomainTag>
+     * @return BelongsToMany<Domain, $this>
      */
     public function domains(): BelongsToMany
     {
@@ -60,7 +62,7 @@ class DomainTag extends Model
     /**
      * Scope a query to order tags by priority (descending).
      */
-    public function scopeOrderedByPriority($query): void
+    public function scopeOrderedByPriority(Builder $query): void
     {
         $query->orderBy('priority', 'desc');
     }
