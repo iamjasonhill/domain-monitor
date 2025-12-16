@@ -90,6 +90,7 @@ class ImportSynergyDomains extends Command
                 }
 
                 try {
+                    $domainName = (string) $domainData->domainName;
                     $domain = Domain::firstOrNew(['domain' => $domainData->domainName]);
 
                     $isNew = ! $domain->exists;
@@ -158,7 +159,7 @@ class ImportSynergyDomains extends Command
     /**
      * Map Synergy Wholesale domain data to our domain model fields
      *
-     * @param  object{domainName?: string, domain_expiry?: string, createdDate?: string, domain_status?: string, autoRenew?: string|int|bool, nameServers?: array<int, string>, dnsConfigName?: string, auRegistrantName?: string, auRegistrantIDType?: string, auRegistrantID?: string, auEligibilityType?: string, au_valid_eligibility?: int|bool, auValidEligibility?: int|bool, auEligibilityLastCheck?: string, au_eligibility_last_check?: string}  $domainData
+     * @param  object{domainName: string, domain_expiry?: string, createdDate?: string, domain_status?: string, autoRenew?: string|int|bool, nameServers?: array<int, string>, dnsConfigName?: string, auRegistrantName?: string, auRegistrantIDType?: string, auRegistrantID?: string, auEligibilityType?: string, au_valid_eligibility?: int|bool, auValidEligibility?: int|bool, auEligibilityLastCheck?: string, au_eligibility_last_check?: string}  $domainData
      * @return array<string, mixed>
      */
     private function mapDomainData($domainData): array
@@ -192,11 +193,19 @@ class ImportSynergyDomains extends Command
             $data['domain_status'] = $domainData->domain_status;
         }
         if (isset($domainData->autoRenew)) {
-            $data['auto_renew'] = is_bool($domainData->autoRenew) ? $domainData->autoRenew : (strtolower($domainData->autoRenew) === 'on' || $domainData->autoRenew == 1);
+            $autoRenew = $domainData->autoRenew;
+            if (is_bool($autoRenew)) {
+                $data['auto_renew'] = $autoRenew;
+            } elseif (is_int($autoRenew)) {
+                $data['auto_renew'] = $autoRenew === 1;
+            } else {
+                $value = strtolower((string) $autoRenew);
+                $data['auto_renew'] = $value === 'on' || $value === '1' || $value === 'true';
+            }
         }
 
         // DNS & Nameservers
-        if (isset($domainData->nameServers) && is_array($domainData->nameServers)) {
+        if (isset($domainData->nameServers)) {
             $data['nameservers'] = $domainData->nameServers;
         }
         if (isset($domainData->dnsConfigName)) {
