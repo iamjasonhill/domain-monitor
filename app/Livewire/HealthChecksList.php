@@ -19,8 +19,28 @@ class HealthChecksList extends Component
 
     public ?string $filterStatus = null;
 
+    public bool $filterRecentFailures = false;
+
+    public function mount(): void
+    {
+        $this->filterRecentFailures = request()->boolean('recentFailures');
+
+        if ($this->filterRecentFailures && empty($this->filterStatus)) {
+            $this->filterStatus = 'fail';
+        }
+    }
+
     public function updatingSearch()
     {
+        $this->resetPage();
+    }
+
+    public function updatingFilterRecentFailures(): void
+    {
+        if ($this->filterRecentFailures) {
+            $this->filterStatus = 'fail';
+        }
+
         $this->resetPage();
     }
 
@@ -30,6 +50,7 @@ class HealthChecksList extends Component
         $this->filterDomain = null;
         $this->filterType = null;
         $this->filterStatus = null;
+        $this->filterRecentFailures = false;
         $this->resetPage();
     }
 
@@ -49,6 +70,9 @@ class HealthChecksList extends Component
             })
             ->when($this->filterStatus, function ($query) {
                 $query->where('status', $this->filterStatus);
+            })
+            ->when($this->filterRecentFailures, function ($query) {
+                $query->where('created_at', '>=', now()->subHours(24));
             })
             ->orderBy('created_at', 'desc')
             ->paginate(20);

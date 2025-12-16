@@ -39,9 +39,17 @@
                         <option value="fail">Failed</option>
                     </select>
                 </div>
+
+                <!-- Recent Failures Filter -->
+                <div>
+                    <label class="flex items-center mt-3">
+                        <input type="checkbox" wire:model.live="filterRecentFailures" class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-sm focus:ring-blue-500">
+                        <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Recent Failures (24 hours)</span>
+                    </label>
+                </div>
             </div>
 
-            @if($search || $filterDomain || $filterType || $filterStatus)
+            @if($search || $filterDomain || $filterType || $filterStatus || $filterRecentFailures)
                 <div class="mt-4">
                     <button wire:click="clearFilters" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
                         Clear Filters

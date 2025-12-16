@@ -59,7 +59,7 @@
         </a>
 
         <!-- Recent Failures -->
-        <a href="{{ route('domains.index') }}?filterRecentFailures=1" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+        <a href="{{ route('health-checks.index') }}?recentFailures=1" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
             <div class="p-6">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 bg-red-500 rounded-md p-3">
