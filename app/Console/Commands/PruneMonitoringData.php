@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\DomainCheck;
 use App\Models\DomainEligibilityCheck;
+use App\Services\DomainMonitorSettings;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Schema;
 
@@ -31,8 +32,10 @@ class PruneMonitoringData extends Command
      */
     public function handle(): int
     {
-        $checksDays = (int) ($this->option('checks-days') ?: config('domain_monitor.prune_domain_checks_days', 90));
-        $eligibilityDays = (int) ($this->option('eligibility-days') ?: config('domain_monitor.prune_eligibility_checks_days', 180));
+        $settings = app(DomainMonitorSettings::class);
+
+        $checksDays = (int) ($this->option('checks-days') ?: $settings->pruneDomainChecksDays());
+        $eligibilityDays = (int) ($this->option('eligibility-days') ?: $settings->pruneEligibilityChecksDays());
         $dryRun = (bool) $this->option('dry-run');
 
         $checksCutoff = now()->subDays(max(1, $checksDays));

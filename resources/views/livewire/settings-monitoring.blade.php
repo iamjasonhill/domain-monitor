@@ -29,6 +29,40 @@
                     <x-input-error :messages="$errors->get('recentFailuresHours')" class="mt-2" />
                 </div>
 
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <x-input-label for="pruneDomainChecksDays" value="Retain domain check history (days)" />
+                        <x-text-input
+                            id="pruneDomainChecksDays"
+                            type="number"
+                            min="1"
+                            max="3650"
+                            wire:model="pruneDomainChecksDays"
+                            class="mt-1 block w-full"
+                        />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Used by the daily prune job for the `domain_checks` table.
+                        </p>
+                        <x-input-error :messages="$errors->get('pruneDomainChecksDays')" class="mt-2" />
+                    </div>
+
+                    <div>
+                        <x-input-label for="pruneEligibilityChecksDays" value="Retain eligibility check history (days)" />
+                        <x-text-input
+                            id="pruneEligibilityChecksDays"
+                            type="number"
+                            min="1"
+                            max="3650"
+                            wire:model="pruneEligibilityChecksDays"
+                            class="mt-1 block w-full"
+                        />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Used by the daily prune job for the `domain_eligibility_checks` table.
+                        </p>
+                        <x-input-error :messages="$errors->get('pruneEligibilityChecksDays')" class="mt-2" />
+                    </div>
+                </div>
+
                 <div class="flex justify-end">
                     <x-primary-button type="submit">
                         Save
