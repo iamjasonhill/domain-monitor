@@ -73,7 +73,7 @@ class CheckExpiringDomains extends Command
                 }
 
                 // Calculate exact days until expiry
-                $daysUntilExpiry = $now->diffInDays($domain->expires_at, false);
+                $daysUntilExpiry = (int) $now->diffInDays($domain->expires_at, false);
 
                 // Send Brain event
                 $this->sendExpiryEvent($brain, $domain, $daysUntilExpiry, $days);
