@@ -69,7 +69,7 @@
                     </div>
                     <div class="ml-5 w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Recent Failures (24 hours)</dt>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Recent Failures ({{ $recentFailuresHours }} hours)</dt>
                             <dd class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats['recent_failures'] }}</dd>
                         </dl>
                     </div>
@@ -78,7 +78,7 @@
         </a>
 
         <!-- Failed Eligibility Status -->
-        <a href="{{ route('domains.index') }}?failedEligibility=1" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+        <a href="{{ route('eligibility-checks.index') }}?failed=1" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
             <div class="p-6">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 bg-orange-500 rounded-md p-3">

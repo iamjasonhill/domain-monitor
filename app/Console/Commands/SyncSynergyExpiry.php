@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Domain;
+use App\Models\DomainEligibilityCheck;
 use App\Models\SynergyCredential;
 use App\Services\PlatformDetector;
 use App\Services\SynergyWholesaleClient;
@@ -220,6 +221,20 @@ class SyncSynergyExpiry extends Command
 
             // Update the domain
             $domain->update($updateData);
+
+            if (array_key_exists('eligibility_valid', $updateData) || array_key_exists('eligibility_last_check', $updateData) || array_key_exists('eligibility_type', $updateData)) {
+                DomainEligibilityCheck::create([
+                    'domain_id' => $domain->id,
+                    'source' => 'synergy',
+                    'eligibility_type' => $updateData['eligibility_type'] ?? $domain->eligibility_type,
+                    'is_valid' => $updateData['eligibility_valid'] ?? $domain->eligibility_valid,
+                    'checked_at' => $updateData['eligibility_last_check'] ?? now(),
+                    'payload' => [
+                        'domain_status' => $updateData['domain_status'] ?? $domain->domain_status,
+                        'raw_last_check' => $domainInfo['eligibility_last_check'] ?? null,
+                    ],
+                ]);
+            }
 
             if ($verbose) {
                 $this->line('  ✅ Domain information synced:');

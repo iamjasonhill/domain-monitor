@@ -3,11 +3,11 @@
 namespace App\Livewire;
 
 use App\Models\Domain;
-use App\Models\DomainCheck;
+use App\Models\DomainEligibilityCheck;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-class HealthChecksList extends Component
+class EligibilityChecksList extends Component
 {
     use WithPagination;
 
@@ -15,9 +15,7 @@ class HealthChecksList extends Component
 
     public ?string $filterDomain = null;
 
-    public ?string $filterType = null;
-
-    public ?string $filterStatus = null;
+    public ?string $filterValid = null;
 
     public bool $filterRecentFailures = false;
 
@@ -26,40 +24,45 @@ class HealthChecksList extends Component
     public function mount(): void
     {
         $this->recentFailuresHours = (int) config('domain_monitor.recent_failures_hours', 24);
-        $this->filterRecentFailures = request()->boolean('recentFailures');
+        $this->filterRecentFailures = true;
 
-        if ($this->filterRecentFailures && empty($this->filterStatus)) {
-            $this->filterStatus = 'fail';
+        if (request()->boolean('failed')) {
+            $this->filterValid = '0';
         }
     }
 
-    public function updatingSearch()
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterDomain(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterValid(): void
     {
         $this->resetPage();
     }
 
     public function updatingFilterRecentFailures(): void
     {
-        if ($this->filterRecentFailures) {
-            $this->filterStatus = 'fail';
-        }
-
         $this->resetPage();
     }
 
-    public function clearFilters()
+    public function clearFilters(): void
     {
         $this->search = '';
         $this->filterDomain = null;
-        $this->filterType = null;
-        $this->filterStatus = null;
+        $this->filterValid = null;
         $this->filterRecentFailures = false;
         $this->resetPage();
     }
 
     public function render(): \Illuminate\Contracts\View\View
     {
-        $checks = DomainCheck::with('domain')
+        $checks = DomainEligibilityCheck::with('domain')
             ->when($this->search, function ($query) {
                 $query->whereHas('domain', function ($q) {
                     $q->where('domain', 'like', '%'.$this->search.'%');
@@ -68,23 +71,20 @@ class HealthChecksList extends Component
             ->when($this->filterDomain, function ($query) {
                 $query->where('domain_id', $this->filterDomain);
             })
-            ->when($this->filterType, function ($query) {
-                $query->where('check_type', $this->filterType);
-            })
-            ->when($this->filterStatus, function ($query) {
-                $query->where('status', $this->filterStatus);
+            ->when($this->filterValid !== null && $this->filterValid !== '', function ($query) {
+                $query->where('is_valid', $this->filterValid === '1');
             })
             ->when($this->filterRecentFailures, function ($query) {
-                $query->where('created_at', '>=', now()->subHours($this->recentFailuresHours));
+                $query->where('checked_at', '>=', now()->subHours($this->recentFailuresHours));
             })
-            ->orderBy('created_at', 'desc')
+            ->orderBy('checked_at', 'desc')
             ->paginate(20);
 
         $domains = Domain::where('is_active', true)
             ->orderBy('domain')
             ->get();
 
-        return view('livewire.health-checks-list', [
+        return view('livewire.eligibility-checks-list', [
             'checks' => $checks,
             'domains' => $domains,
         ]);

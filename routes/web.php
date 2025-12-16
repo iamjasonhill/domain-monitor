@@ -40,6 +40,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return view('health-checks.index');
     })->name('health-checks.index');
 
+    Route::get('/eligibility-checks', function () {
+        return view('eligibility-checks.index');
+    })->name('eligibility-checks.index');
+
     // Settings routes
     Route::get('/settings', function () {
         return view('settings.index');

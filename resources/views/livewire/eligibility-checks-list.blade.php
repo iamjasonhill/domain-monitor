@@ -18,38 +18,27 @@
                     </select>
                 </div>
 
-                <!-- Type Filter -->
+                <!-- Valid Filter -->
                 <div>
-                    <select wire:model.live="filterType" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                        <option value="">All Types</option>
-                        <option value="http">HTTP</option>
-                        <option value="ssl">SSL</option>
-                        <option value="dns">DNS</option>
+                    <select wire:model.live="filterValid" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">All</option>
+                        <option value="1">Valid</option>
+                        <option value="0">Invalid</option>
                     </select>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <!-- Status Filter -->
-                <div>
-                    <select wire:model.live="filterStatus" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                        <option value="">All Status</option>
-                        <option value="ok">OK</option>
-                        <option value="warn">Warning</option>
-                        <option value="fail">Failed</option>
-                    </select>
-                </div>
-
                 <!-- Recent Failures Filter -->
                 <div>
                     <label class="flex items-center mt-3">
                         <input type="checkbox" wire:model.live="filterRecentFailures" class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-sm focus:ring-blue-500">
-                        <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Recent Failures ({{ $recentFailuresHours }} hours)</span>
+                        <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Recent ({{ $recentFailuresHours }} hours)</span>
                     </label>
                 </div>
             </div>
 
-            @if($search || $filterDomain || $filterType || $filterStatus || $filterRecentFailures)
+            @if($search || $filterDomain || $filterValid !== null || $filterRecentFailures)
                 <div class="mt-4">
                     <button wire:click="clearFilters" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
                         Clear Filters
@@ -59,7 +48,7 @@
         </div>
     </div>
 
-    <!-- Health Checks Table -->
+    <!-- Eligibility Checks Table -->
     <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
         <div class="p-6">
             @if($checks->count() > 0)
@@ -68,11 +57,10 @@
                         <thead class="bg-gray-50 dark:bg-gray-900">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Domain</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Eligibility Type</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Response Code</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Duration</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Time</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Checked</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Source</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -83,27 +71,26 @@
                                             {{ $check->domain->domain }}
                                         </a>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 uppercase">
-                                        {{ $check->check_type }}
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                        {{ $check->eligibility_type ?? 'N/A' }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        @if($check->status === 'ok')
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">OK</span>
-                                        @elseif($check->status === 'warn')
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Warn</span>
+                                        @if($check->is_valid === true)
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Valid</span>
+                                        @elseif($check->is_valid === false)
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Invalid</span>
                                         @else
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Fail</span>
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">Unknown</span>
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                        {{ $check->response_code ?? 'N/A' }}
+                                        {{ $check->checked_at?->diffForHumans() ?? $check->created_at->diffForHumans() }}
+                                        <div class="text-xs text-gray-400">
+                                            {{ ($check->checked_at ?? $check->created_at)->format('Y-m-d H:i:s') }}
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                        {{ $check->duration_ms ? $check->duration_ms.'ms' : 'N/A' }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                        {{ $check->created_at->diffForHumans() }}
-                                        <div class="text-xs text-gray-400">{{ $check->created_at->format('Y-m-d H:i:s') }}</div>
+                                        {{ $check->source }}
                                     </td>
                                 </tr>
                             @endforeach
@@ -111,15 +98,16 @@
                     </table>
                 </div>
 
-                <!-- Pagination -->
                 <div class="mt-4">
                     {{ $checks->links() }}
                 </div>
             @else
                 <div class="text-center py-12">
-                    <p class="text-gray-500 dark:text-gray-400">No health checks found.</p>
+                    <p class="text-gray-500 dark:text-gray-400">No eligibility checks found.</p>
                 </div>
             @endif
         </div>
     </div>
 </div>
+
+

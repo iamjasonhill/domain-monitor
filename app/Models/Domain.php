@@ -285,9 +285,11 @@ class Domain extends Model
     public function scopeFilterRecentFailures($query, bool $recentFailures): void
     {
         if ($recentFailures) {
-            $query->whereHas('checks', function ($q) {
+            $hours = (int) config('domain_monitor.recent_failures_hours', 24);
+
+            $query->whereHas('checks', function ($q) use ($hours) {
                 $q->where('status', 'fail')
-                    ->where('created_at', '>=', now()->subHours(24));
+                    ->where('created_at', '>=', now()->subHours($hours));
             });
         }
     }

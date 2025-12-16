@@ -10,6 +10,8 @@ class Dashboard extends Component
 {
     public function render(): \Illuminate\Contracts\View\View
     {
+        $recentFailuresHours = (int) config('domain_monitor.recent_failures_hours', 24);
+
         $stats = [
             'total_domains' => Domain::count(),
             'active_domains' => Domain::where('is_active', true)->count(),
@@ -19,7 +21,7 @@ class Dashboard extends Component
                 ->where('expires_at', '>', now())
                 ->count(),
             'recent_failures' => DomainCheck::where('status', 'fail')
-                ->where('created_at', '>=', now()->subHours(24))
+                ->where('created_at', '>=', now()->subHours($recentFailuresHours))
                 ->distinct('domain_id')
                 ->count('domain_id'),
             'failed_eligibility' => Domain::where('eligibility_valid', false)->count(),
@@ -39,6 +41,7 @@ class Dashboard extends Component
             'stats' => $stats,
             'recentDomains' => $recentDomains,
             'recentChecks' => $recentChecks,
+            'recentFailuresHours' => $recentFailuresHours,
         ]);
     }
 }
