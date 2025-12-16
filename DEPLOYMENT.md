@@ -39,6 +39,11 @@ Ensure all required environment variables are set in Laravel Forge:
 - `BRAIN_BASE_URL` - Your Brain instance URL
 - `BRAIN_API_KEY` - Your Brain API key
 
+#### Domain Monitor Settings (Optional)
+- `DOMAIN_MONITOR_RECENT_FAILURES_HOURS` - Default “Recent failures” window (hours). Can be overridden in-app at `/settings/monitoring`.
+- `DOMAIN_MONITOR_PRUNE_DOMAIN_CHECKS_DAYS` - Retain `domain_checks` history for N days (default 90).
+- `DOMAIN_MONITOR_PRUNE_ELIGIBILITY_CHECKS_DAYS` - Retain `domain_eligibility_checks` history for N days (default 180).
+
 #### Synergy Wholesale API (Optional - for .com.au domains)
 - `SYNERGY_WHOLESALE_API_URL` - Default: `https://api.synergywholesale.com/soap`
 - `SYNERGY_WHOLESALE_RESELLER_ID` - Your reseller ID
@@ -89,6 +94,15 @@ Laravel Forge automatically sets up the Laravel scheduler. Ensure this cron job 
 - **SSL Certificate Checks**: Daily at 03:00 UTC
 - **DNS Checks**: Every 6 hours
 - **Synergy Wholesale Sync**: Daily at 04:00 UTC (for .com.au domains)
+- **Prune Monitoring Data**: Daily at 09:00 UTC
+
+### 4a. Monitoring Settings UI (Optional)
+
+You can tune “recent” windows from the UI at:
+
+- `/settings/monitoring`
+
+The DB setting takes precedence; environment variables are used as defaults/fallbacks.
 
 ### 5. Queue Workers with Laravel Horizon (REQUIRED for Brain Events)
 
