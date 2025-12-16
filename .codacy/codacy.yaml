@@ -2,3 +2,8 @@ runtimes:
     - go@1.22.3
 tools:
     - revive@1.7.0
+    - phpmd@2.14.1
+    - phpcs@3.10.1
+    - eslint-9@9.38.0
+    - semgrep@1.78.0
+    - trivy@0.66.0
