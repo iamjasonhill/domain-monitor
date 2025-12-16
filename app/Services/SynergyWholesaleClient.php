@@ -93,7 +93,7 @@ class SynergyWholesaleClient
     /**
      * Get domain information including expiry date and additional fields
      *
-     * @return array{domain: string, expiry_date: string|null, created_date: string|null, domain_status: string|null, auto_renew: string|null, nameservers: array<int, string>|null, nameserver_details: array<int, array{hostname: string|null, ip: string|null, subdomain: string|null}>|null, dns_config_name: string|null, registrant_name: string|null, registrant_id_type: string|null, registrant_id: string|null, eligibility_type: string|null, eligibility_valid: bool|null, eligibility_last_check: string|null, registrar: string|null, status: string|null}|null
+     * @return array{domain: string, expiry_date: string|null, created_date: string|null, domain_status: string|null, auto_renew: bool|null, nameservers: array<int, string>|null, nameserver_details: array<int, array{hostname: string|null, ip: string|null, subdomain: string|null}>|null, dns_config_name: string|null, registrant_name: string|null, registrant_id_type: string|null, registrant_id: string|null, eligibility_type: string|null, eligibility_valid: bool|null, eligibility_last_check: string|null, registrar: string|null, status: string|null}|null
      */
     public function getDomainInfo(string $domain): ?array
     {
@@ -214,24 +214,34 @@ class SynergyWholesaleClient
 
                 // Parse eligibility_last_check (prefer auEligibilityLastCheck, fallback to au_eligibility_last_check)
                 $eligibilityLastCheck = $result->auEligibilityLastCheck ?? $result->au_eligibility_last_check ?? null;
+                $eligibilityLastCheck = $eligibilityLastCheck !== null ? (string) $eligibilityLastCheck : null;
+
+                $expiryDate = $result->domain_expiry ?? $result->expiryDate ?? null;
+                $expiryDate = $expiryDate !== null ? (string) $expiryDate : null;
+
+                $createdDate = $result->createdDate ?? null;
+                $createdDate = $createdDate !== null ? (string) $createdDate : null;
+
+                $domainStatus = $result->domain_status ?? null;
+                $domainStatus = $domainStatus !== null ? (string) $domainStatus : null;
 
                 return [
-                    'domain' => $result->domainName ?? $domain,
-                    'expiry_date' => $result->domain_expiry ?? $result->expiryDate ?? null,
-                    'created_date' => $result->createdDate ?? null,
-                    'domain_status' => $result->domain_status ?? null,
+                    'domain' => isset($result->domainName) ? (string) $result->domainName : $domain,
+                    'expiry_date' => $expiryDate,
+                    'created_date' => $createdDate,
+                    'domain_status' => $domainStatus,
                     'auto_renew' => $autoRenew,
                     'nameservers' => $nameservers, // Array of hostname strings
                     'nameserver_details' => ! empty($nameserverDetails) ? $nameserverDetails : null, // Detailed nameserver info with IP, subdomain, etc.
-                    'dns_config_name' => $result->dnsConfigName ?? null,
-                    'registrant_name' => $result->auRegistrantName ?? null,
-                    'registrant_id_type' => $result->auRegistrantIDType ?? null,
-                    'registrant_id' => $result->auRegistrantID ?? null,
-                    'eligibility_type' => $result->auEligibilityType ?? null,
+                    'dns_config_name' => isset($result->dnsConfigName) ? (string) $result->dnsConfigName : null,
+                    'registrant_name' => isset($result->auRegistrantName) ? (string) $result->auRegistrantName : null,
+                    'registrant_id_type' => isset($result->auRegistrantIDType) ? (string) $result->auRegistrantIDType : null,
+                    'registrant_id' => isset($result->auRegistrantID) ? (string) $result->auRegistrantID : null,
+                    'eligibility_type' => isset($result->auEligibilityType) ? (string) $result->auEligibilityType : null,
                     'eligibility_valid' => $eligibilityValid,
                     'eligibility_last_check' => $eligibilityLastCheck,
-                    'registrar' => $result->registrar ?? null,
-                    'status' => $result->status ?? null,
+                    'registrar' => isset($result->registrar) ? (string) $result->registrar : null,
+                    'status' => isset($result->status) ? (string) $result->status : null,
                 ];
             }
 
@@ -313,7 +323,7 @@ class SynergyWholesaleClient
             // Filter out domains with errors and return as collection
             return collect($domains)->filter(function ($domain) {
                 return isset($domain->status) && $domain->status === 'OK' && isset($domain->domainName);
-            });
+            })->values();
         } catch (SoapFault $e) {
             Log::error('Synergy Wholesale listDomains failed', [
                 'error' => $e->getMessage(),

@@ -121,42 +121,21 @@ class RunHealthChecks extends Command
             $payload = [];
 
             if ($type === 'http') {
-                // Check if domain is parked or email-only - these should not fail HTTP checks
-                // Check both string attribute and relationship
-                $platformType = is_string($domain->platform)
-                    ? $domain->platform
-                    : ($domain->platform?->platform_type ?? $domain->getAttribute('platform'));
-                $isParked = $platformType === 'Parked';
+                // Email-only domains don't have web hosting, so HTTP failures are expected
+                $platformModel = $domain->relationLoaded('platform') ? $domain->getRelation('platform') : null;
+                $platformType = $platformModel instanceof \App\Models\WebsitePlatform ? $platformModel->platform_type : null;
+                $platformType ??= $domain->getAttribute('platform');
                 $isEmailOnly = $platformType === 'Email Only';
 
                 $result = $httpCheck->check($domain->domain);
 
-                // For parked or email-only domains, if we get any response (even error), mark as ok
-                // Parked domains often have SSL issues but still serve content
-                // Email-only domains don't have web hosting, so HTTP failures are expected
-                if ($isParked || $isEmailOnly) {
-                    // For email-only domains, always mark as 'ok' - they don't have web hosting
-                    if ($isEmailOnly) {
-                        $status = 'ok';
-                        // Still try to get response code for logging, but status is always ok
-                        if ($result['status_code'] === null) {
-                            // Try HTTP fallback to see if we can get any response
-                            $result = $httpCheck->check('http://'.$domain->domain);
-                        }
-                    } else {
-                        // For parked domains, if we got a status code (even if it's an error), consider it ok
-                        // They're serving a parked page, which is expected behavior
-                        if ($result['status_code'] !== null) {
-                            $status = 'ok';
-                        } else {
-                            // No response at all - try HTTP fallback
-                            $result = $httpCheck->check('http://'.$domain->domain);
-                            if ($result['status_code'] !== null) {
-                                $status = 'ok';
-                            } else {
-                                $status = 'warn'; // Can't reach even via HTTP, but don't fail
-                            }
-                        }
+                // For email-only domains, always mark as 'ok' - they don't have web hosting
+                if ($isEmailOnly) {
+                    $status = 'ok';
+                    // Still try to get response code for logging, but status is always ok
+                    if ($result['status_code'] === null) {
+                        // Try HTTP fallback to see if we can get any response
+                        $result = $httpCheck->check('http://'.$domain->domain);
                     }
                 } else {
                     $status = $result['is_up'] ? 'ok' : 'fail';

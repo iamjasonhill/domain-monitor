@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Domain;
 use App\Models\DomainTag;
+use App\Models\WebsitePlatform;
 use App\Services\HostingDetector;
 use App\Services\PlatformDetector;
 use Livewire\Component;
@@ -49,7 +50,9 @@ class DomainForm extends Component
             $this->hosting_provider = $this->domain->hosting_provider;
             $this->hosting_admin_url = $this->domain->hosting_admin_url;
             // Use platform from relationship if available, otherwise fallback to simple field
-            $this->platform = $this->domain->platform?->platform_type ?? $this->domain->platform;
+            $platformModel = $this->domain->relationLoaded('platform') ? $this->domain->getRelation('platform') : null;
+            $platformType = $platformModel instanceof WebsitePlatform ? $platformModel->platform_type : null;
+            $this->platform = $platformType ?? $this->domain->getAttribute('platform');
             $this->notes = $this->domain->notes;
             $this->is_active = $this->domain->is_active;
             $this->check_frequency_minutes = $this->domain->check_frequency_minutes;

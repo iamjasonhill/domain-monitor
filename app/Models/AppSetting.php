@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 class AppSetting extends Model
 {
-    /** @use HasFactory<\Database\Factories\AppSettingFactory> */
+    /** @use HasFactory<Factory> */
     use HasFactory;
 
     public $incrementing = false;

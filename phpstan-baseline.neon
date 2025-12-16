@@ -25,18 +25,6 @@ parameters:
 			path: app/Console/Commands/ImportSynergyDomains.php
 
 		-
-			message: '#^Cannot access property \$platform_type on null\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Console/Commands/RunHealthChecks.php
-
-		-
-			message: '#^Expression on left side of \?\? is always null\.$#'
-			identifier: nullCoalesce.expr
-			count: 1
-			path: app/Console/Commands/RunHealthChecks.php
-
-		-
 			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
 			identifier: greater.alwaysTrue
 			count: 1
@@ -85,34 +73,10 @@ parameters:
 			path: app/Livewire/DomainDetail.php
 
 		-
-			message: '#^Cannot access property \$platform_type on string\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Livewire/DomainForm.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>platform_type" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Livewire/DomainForm.php
-
-		-
 			message: '#^Variable \$description in empty\(\) always exists and is not falsy\.$#'
 			identifier: empty.variable
 			count: 1
 			path: app/Livewire/ScheduledTasks.php
-
-		-
-			message: '#^PHPDoc tag @use has invalid type Database\\Factories\\AppSettingFactory\.$#'
-			identifier: class.notFound
-			count: 1
-			path: app/Models/AppSetting.php
-
-		-
-			message: '#^Type Database\\Factories\\AppSettingFactory in generic type Illuminate\\Database\\Eloquent\\Factories\\HasFactory\<Database\\Factories\\AppSettingFactory\> in PHPDoc tag @use is not subtype of template type TFactory of Illuminate\\Database\\Eloquent\\Factories\\Factory of trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory\.$#'
-			identifier: generics.notSubtype
-			count: 1
-			path: app/Models/AppSetting.php
 
 		-
 			message: '#^Method App\\Models\\DnsRecord\:\:domain\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\Domain, App\\Models\\DnsRecord\> but returns Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\Domain, \$this\(App\\Models\\DnsRecord\)\>\.$#'
@@ -181,18 +145,6 @@ parameters:
 			path: app/Models/DomainTag.php
 
 		-
-			message: '#^Class App\\Models\\Subdomain uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Models/Subdomain.php
-
-		-
-			message: '#^Method App\\Models\\Subdomain\:\:domain\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\Domain, App\\Models\\Subdomain\> but returns Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\Domain, \$this\(App\\Models\\Subdomain\)\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/Subdomain.php
-
-		-
 			message: '#^Method App\\Models\\WebsitePlatform\:\:domain\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\Domain, App\\Models\\WebsitePlatform\> but returns Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\Domain, \$this\(App\\Models\\WebsitePlatform\)\>\.$#'
 			identifier: return.type
 			count: 1
@@ -223,13 +175,7 @@ parameters:
 			path: app/Services/IpApiService.php
 
 		-
-			message: '#^Method App\\Services\\SynergyWholesaleClient\:\:getDomainInfo\(\) should return array\{domain\: string, expiry_date\: string\|null, created_date\: string\|null, domain_status\: string\|null, auto_renew\: string\|null, nameservers\: array\<int, string\>\|null, nameserver_details\: array\<int, array\{hostname\: string\|null, ip\: string\|null, subdomain\: string\|null\}\>\|null, dns_config_name\: string\|null, \.\.\.\}\|null but returns array\{domain\: mixed, expiry_date\: mixed, created_date\: mixed, domain_status\: mixed, auto_renew\: bool\|null, nameservers\: array, nameserver_details\: non\-empty\-list\<array\{hostname\: mixed, ip\: mixed, subdomain\: mixed\}\>\|null, dns_config_name\: mixed, \.\.\.\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/SynergyWholesaleClient.php
-
-		-
-			message: '#^Method App\\Services\\SynergyWholesaleClient\:\:listDomains\(\) should return Illuminate\\Support\\Collection\<int, object\> but returns Illuminate\\Support\\Collection\<\(int\|string\), object\>\.$#'
+			message: '#^Method App\\Services\\SynergyWholesaleClient\:\:listDomains\(\) should return Illuminate\\Support\\Collection\<int, object\> but returns Illuminate\\Support\\Collection\<int, object\>\.$#'
 			identifier: return.type
 			count: 1
 			path: app/Services/SynergyWholesaleClient.php
