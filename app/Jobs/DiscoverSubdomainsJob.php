@@ -222,8 +222,9 @@ class DiscoverSubdomainsJob implements ShouldQueue
         }
 
         try {
+            /** @var list<array{ip?: string}>|false $aRecords */
             $aRecords = @dns_get_record($fullDomain, DNS_A);
-            if ($aRecords && ! empty($aRecords)) {
+            if (is_array($aRecords) && $aRecords !== []) {
                 $ip = $aRecords[0]['ip'] ?? null;
                 if ($ip && filter_var($ip, FILTER_VALIDATE_IP)) {
                     return $ip;

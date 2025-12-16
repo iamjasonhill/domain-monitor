@@ -115,7 +115,7 @@ class TestIpApi extends Command
 
         try {
             // Try DNS A record first
-            /** @var array<int, array{ip?: string}>|false $aRecords */
+            /** @var list<array{ip?: string}>|false $aRecords */
             $aRecords = @dns_get_record($domain, DNS_A);
             if (is_array($aRecords) && $aRecords !== []) {
                 return $aRecords[0]['ip'] ?? null;

@@ -712,8 +712,9 @@ class DomainDetail extends Component
 
         try {
             // Get A records (IPv4)
+            /** @var list<array{ip?: string}>|false $aRecords */
             $aRecords = @dns_get_record($domain, DNS_A);
-            if ($aRecords) {
+            if (is_array($aRecords) && $aRecords !== []) {
                 foreach ($aRecords as $record) {
                     if (isset($record['ip']) && filter_var($record['ip'], FILTER_VALIDATE_IP)) {
                         $ipAddresses[] = $record['ip'];
@@ -925,7 +926,7 @@ class DomainDetail extends Component
 
         // Fallback: try DNS lookup
         try {
-            /** @var array<int, array{ip?: string}>|false $aRecords */
+            /** @var list<array{ip?: string}>|false $aRecords */
             $aRecords = @dns_get_record($fullDomain, DNS_A);
             if (is_array($aRecords) && $aRecords !== []) {
                 $ip = $aRecords[0]['ip'] ?? null;

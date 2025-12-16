@@ -61,6 +61,8 @@ class DomainTag extends Model
 
     /**
      * Scope a query to order tags by priority (descending).
+     *
+     * @param  Builder<DomainTag>  $query
      */
     public function scopeOrderedByPriority(Builder $query): void
     {

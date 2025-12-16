@@ -93,7 +93,7 @@ class DetectHosting extends Command
 
             // Get suggested login URL if admin_url is not provided
             $adminUrl = $result['admin_url'];
-            if (! $adminUrl && $result['provider']) {
+            if (! $adminUrl) {
                 $adminUrl = \App\Services\HostingProviderUrls::getLoginUrl($result['provider']);
             }
 
@@ -103,7 +103,7 @@ class DetectHosting extends Command
             ];
 
             // Save IP-API data if available
-            if (isset($result['ip_api_data']) && is_array($result['ip_api_data'])) {
+            if (isset($result['ip_api_data'])) {
                 $ipApiData = $result['ip_api_data'];
                 $ipAddresses = $detector->getIpAddresses($domain->domain);
 

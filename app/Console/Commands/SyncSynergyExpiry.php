@@ -160,10 +160,10 @@ class SyncSynergyExpiry extends Command
             }
 
             // DNS & Nameservers
-            if (! empty($domainInfo['nameservers']) && is_array($domainInfo['nameservers'])) {
+            if (! empty($domainInfo['nameservers'])) {
                 $updateData['nameservers'] = $domainInfo['nameservers'];
             }
-            if (! empty($domainInfo['nameserver_details']) && is_array($domainInfo['nameserver_details'])) {
+            if (! empty($domainInfo['nameserver_details'])) {
                 $updateData['nameserver_details'] = $domainInfo['nameserver_details'];
             }
             if (isset($domainInfo['dns_config_name'])) {
@@ -247,7 +247,7 @@ class SyncSynergyExpiry extends Command
                 if (isset($updateData['auto_renew'])) {
                     $this->line('     Auto-renew: '.($updateData['auto_renew'] ? 'Yes' : 'No'));
                 }
-                if (isset($updateData['nameservers']) && count($updateData['nameservers']) > 0) {
+                if (isset($updateData['nameservers'])) {
                     $this->line('     Nameservers: '.count($updateData['nameservers']));
                 }
                 if (isset($updateData['eligibility_valid'])) {

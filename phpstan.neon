@@ -1,7 +1,5 @@
 includes:
     - vendor/larastan/larastan/extension.neon
-    # Include baseline after generating it:
-    - phpstan-baseline.neon
 
 parameters:
     paths:

@@ -129,16 +129,6 @@ class HostingDetector
                 ];
             }
 
-            // If IP-API provided a provider and we don't have a high-confidence detection, use it
-            if ($ipApiProvider && empty($detections)) {
-                return [
-                    'provider' => $ipApiProvider,
-                    'confidence' => 'medium',
-                    'admin_url' => null,
-                    'ip_api_data' => $ipApiData,
-                ];
-            }
-
             // If IP-API provider matches one of our detections, boost confidence
             if ($ipApiProvider && ! empty($detections)) {
                 foreach ($detections as &$detection) {

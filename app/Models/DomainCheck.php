@@ -175,7 +175,7 @@ class DomainCheck extends Model
     }
 
     /**
-     * @return BelongsTo<Domain, DomainCheck>
+     * @return BelongsTo<Domain, $this>
      */
     public function domain(): BelongsTo
     {

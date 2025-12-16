@@ -51,7 +51,7 @@ class WebsitePlatform extends Model
     }
 
     /**
-     * @return BelongsTo<Domain, WebsitePlatform>
+     * @return BelongsTo<Domain, $this>
      */
     public function domain(): BelongsTo
     {

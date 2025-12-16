@@ -179,6 +179,8 @@ class Domain extends Model
      * Scope a query to search domains by domain name, project key, registrar, hosting provider, or notes.
      * Supports case-insensitive search and multiple search terms.
      * Requires minimum 2 characters to avoid performance issues.
+     *
+     * @param  Builder<Domain>  $query
      */
     public function scopeSearch(Builder $query, string $term): void
     {
@@ -195,7 +197,7 @@ class Domain extends Model
         $searchTerms = array_filter(explode(' ', $searchTerm), fn ($word) => ! empty(trim($word)));
 
         // Get database connection type
-        $connection = $query->getConnection()->getDriverName();
+        $connection = $query->getModel()->getConnection()->getDriverName();
 
         $query->where(function ($q) use ($searchTerms, $connection) {
             foreach ($searchTerms as $term) {
@@ -225,6 +227,8 @@ class Domain extends Model
 
     /**
      * Scope a query to filter by active status.
+     *
+     * @param  Builder<Domain>  $query
      */
     public function scopeFilterActive(Builder $query, ?bool $isActive): void
     {
@@ -235,6 +239,8 @@ class Domain extends Model
 
     /**
      * Scope a query to filter domains expiring soon (within 30 days).
+     *
+     * @param  Builder<Domain>  $query
      */
     public function scopeFilterExpiring(Builder $query, bool $expiring): void
     {
@@ -249,6 +255,8 @@ class Domain extends Model
     /**
      * Scope a query to exclude parked domains.
      * Checks both the platform column and the platform relationship.
+     *
+     * @param  Builder<Domain>  $query
      */
     public function scopeExcludeParked(Builder $query, bool $exclude): void
     {
@@ -283,6 +291,8 @@ class Domain extends Model
 
     /**
      * Scope a query to filter domains with recent failures (within last 7 days).
+     *
+     * @param  Builder<Domain>  $query
      */
     public function scopeFilterRecentFailures(Builder $query, bool $recentFailures): void
     {
@@ -298,6 +308,8 @@ class Domain extends Model
 
     /**
      * Scope a query to filter domains with failed eligibility status.
+     *
+     * @param  Builder<Domain>  $query
      */
     public function scopeFilterFailedEligibility(Builder $query, bool $failedEligibility): void
     {

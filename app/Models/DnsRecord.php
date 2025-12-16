@@ -61,7 +61,7 @@ class DnsRecord extends Model
     }
 
     /**
-     * @return BelongsTo<Domain, DnsRecord>
+     * @return BelongsTo<Domain, $this>
      */
     public function domain(): BelongsTo
     {

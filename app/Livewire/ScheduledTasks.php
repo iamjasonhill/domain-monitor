@@ -37,7 +37,7 @@ class ScheduledTasks extends Component
                 : (string) $event->timezone;
 
             // If no description, try to extract from command
-            if ($description === 'No description' || empty($description)) {
+            if ($description === 'No description') {
                 $description = $this->getCommandDescription($command);
             }
 

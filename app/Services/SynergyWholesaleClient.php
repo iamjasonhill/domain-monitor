@@ -320,17 +320,26 @@ class SynergyWholesaleClient
                 }
             }
 
+            $domains = array_values(array_filter($domains, 'is_object'));
+            /** @var array<int, object> $domains */
+
             // Filter out domains with errors and return as collection
-            return collect($domains)->filter(function ($domain) {
+            /** @var \Illuminate\Support\Collection<int, object> $filtered */
+            $filtered = collect($domains)->filter(function (object $domain): bool {
                 return isset($domain->status) && $domain->status === 'OK' && isset($domain->domainName);
             })->values();
+
+            return $filtered;
         } catch (SoapFault $e) {
             Log::error('Synergy Wholesale listDomains failed', [
                 'error' => $e->getMessage(),
                 'fault_code' => $e->faultcode ?? null,
             ]);
 
-            return collect([]);
+            /** @var \Illuminate\Support\Collection<int, object> $empty */
+            $empty = collect([]);
+
+            return $empty;
         }
     }
 

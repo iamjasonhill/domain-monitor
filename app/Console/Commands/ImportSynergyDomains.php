@@ -74,6 +74,8 @@ class ImportSynergyDomains extends Command
             $errors = 0;
 
             foreach ($domains as $domainData) {
+                $domainName = 'unknown';
+
                 // Skip domains with errors
                 if (isset($domainData->status) && $domainData->status !== 'OK') {
                     $skipped++;
@@ -96,6 +98,7 @@ class ImportSynergyDomains extends Command
                     $isNew = ! $domain->exists;
 
                     // Update domain information
+                    /** @var object{domainName: string, domain_expiry?: string, createdDate?: string, domain_status?: string, autoRenew?: string|int|bool, nameServers?: array<int, string>, dnsConfigName?: string, auRegistrantName?: string, auRegistrantIDType?: string, auRegistrantID?: string, auEligibilityType?: string, au_valid_eligibility?: int|bool, auValidEligibility?: int|bool, auEligibilityLastCheck?: string, au_eligibility_last_check?: string} $domainData */
                     $updateData = $this->mapDomainData($domainData);
 
                     if (! $this->option('dry-run')) {
@@ -124,7 +127,7 @@ class ImportSynergyDomains extends Command
                 } catch (\Exception $e) {
                     $errors++;
                     Log::error('Error importing domain', [
-                        'domain' => $domainName ?? 'unknown',
+                        'domain' => $domainName,
                         'error' => $e->getMessage(),
                     ]);
                 }

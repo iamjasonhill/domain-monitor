@@ -64,7 +64,7 @@ class DomainAlert extends Model
     }
 
     /**
-     * @return BelongsTo<Domain, DomainAlert>
+     * @return BelongsTo<Domain, $this>
      */
     public function domain(): BelongsTo
     {
