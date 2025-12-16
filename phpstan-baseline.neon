@@ -73,32 +73,8 @@ parameters:
 			path: app/Console/Commands/SyncSynergyExpiry.php
 
 		-
-			message: '#^Call to an undefined method GuzzleHttp\\Promise\\PromiseInterface\|Illuminate\\Http\\Client\\Response\:\:json\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Console/Commands/TestIpApi.php
-
-		-
-			message: '#^Call to an undefined method GuzzleHttp\\Promise\\PromiseInterface\|Illuminate\\Http\\Client\\Response\:\:status\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Console/Commands/TestIpApi.php
-
-		-
-			message: '#^Call to an undefined method GuzzleHttp\\Promise\\PromiseInterface\|Illuminate\\Http\\Client\\Response\:\:successful\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Console/Commands/TestIpApi.php
-
-		-
-			message: '#^Variable \$aRecords in empty\(\) always exists and is not falsy\.$#'
-			identifier: empty.variable
-			count: 1
-			path: app/Console/Commands/TestIpApi.php
-
-		-
-			message: '#^Variable \$ipAddress on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.variable
+			message: '#^PHPDoc tag @var with type array\<int, array\{ip\?\: string\}\>\|false is not subtype of native type list\<array\>\|false\.$#'
+			identifier: varTag.nativeType
 			count: 1
 			path: app/Console/Commands/TestIpApi.php
 

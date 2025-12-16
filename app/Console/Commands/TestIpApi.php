@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -64,7 +65,7 @@ class TestIpApi extends Command
         try {
             $response = Http::timeout(10)
                 ->get("http://ip-api.com/json/{$ipAddress}");
-
+            /** @var Response $response */
             if (! $response->successful()) {
                 $this->error("API request failed with status: {$response->status()}");
 
@@ -94,7 +95,7 @@ class TestIpApi extends Command
             $this->error("Error querying IP-API.com: {$e->getMessage()}");
             Log::error('IP-API.com test failed', [
                 'input' => $input,
-                'ip' => $ipAddress ?? null,
+                'ip' => $ipAddress,
                 'error' => $e->getMessage(),
             ]);
 
@@ -114,8 +115,9 @@ class TestIpApi extends Command
 
         try {
             // Try DNS A record first
+            /** @var array<int, array{ip?: string}>|false $aRecords */
             $aRecords = @dns_get_record($domain, DNS_A);
-            if ($aRecords && ! empty($aRecords)) {
+            if (is_array($aRecords) && $aRecords !== []) {
                 return $aRecords[0]['ip'] ?? null;
             }
 
