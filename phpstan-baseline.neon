@@ -7,20 +7,8 @@ parameters:
 			path: app/Console/Commands/CheckExpiringDomains.php
 
 		-
-			message: '#^Call to private method getIpAddresses\(\) of class App\\Services\\HostingDetector\.$#'
-			identifier: method.private
-			count: 1
-			path: app/Console/Commands/DetectHosting.php
-
-		-
-			message: '#^Offset ''ip_api_data'' on array\{provider\: string\|null, confidence\: string, admin_url\: string\|null\} in isset\(\) does not exist\.$#'
-			identifier: isset.offset
-			count: 1
-			path: app/Console/Commands/DetectHosting.php
-
-		-
-			message: '#^Result of && is always false\.$#'
-			identifier: booleanAnd.alwaysFalse
+			message: '#^Right side of && is always true\.$#'
+			identifier: booleanAnd.rightAlwaysTrue
 			count: 1
 			path: app/Console/Commands/DetectHosting.php
 

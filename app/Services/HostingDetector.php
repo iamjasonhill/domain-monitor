@@ -17,7 +17,7 @@ class HostingDetector
      * Detect hosting provider for a given domain
      *
      * @param  string  $domain  Domain name (with or without protocol)
-     * @return array{provider: string|null, confidence: string, admin_url: string|null}
+     * @return array{provider: string|null, confidence: string, admin_url: string|null, ip_api_data?: array<string, mixed>|null}
      */
     public function detect(string $domain): array
     {
@@ -264,7 +264,7 @@ class HostingDetector
      *
      * @return array<int, string>
      */
-    private function getIpAddresses(string $domain): array
+    public function getIpAddresses(string $domain): array
     {
         $ipAddresses = [];
 
