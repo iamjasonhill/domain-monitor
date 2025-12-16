@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -37,6 +38,7 @@ class PlatformDetector
                         'User-Agent' => 'DomainMonitor/1.0',
                     ])
                     ->get($url);
+                /** @var Response $response */
             } catch (\Exception $e) {
                 // If HTTPS fails with SSL error, try HTTP
                 Log::debug('PlatformDetector HTTPS failed, trying HTTP', [
@@ -49,6 +51,7 @@ class PlatformDetector
                         'User-Agent' => 'DomainMonitor/1.0',
                     ])
                     ->get($url);
+                /** @var Response $response */
             }
 
             if (! $response->successful()) {
@@ -246,6 +249,8 @@ class PlatformDetector
 
     /**
      * Check if site is Laravel
+     *
+     * @param  array<string, array<int, string>|string>  $headers
      */
     private function isLaravel(string $html, array $headers): bool
     {
@@ -261,6 +266,8 @@ class PlatformDetector
 
     /**
      * Check if site is Next.js
+     *
+     * @param  array<string, array<int, string>|string>  $headers
      */
     private function isNextJs(string $html, array $headers): bool
     {
@@ -276,6 +283,8 @@ class PlatformDetector
 
     /**
      * Check if site is Shopify
+     *
+     * @param  array<string, array<int, string>|string>  $headers
      */
     private function isShopify(string $html, array $headers, string $domain): bool
     {
