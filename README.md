@@ -82,6 +82,9 @@ See `DEPLOYMENT.md` for a complete list of required environment variables.
 
 ### Optional
 - `SYNERGY_WHOLESALE_*` - Synergy Wholesale API credentials (for .com.au domains)
+- `DOMAIN_MONITOR_RECENT_FAILURES_HOURS` - Default “Recent failures” window (hours). Can be overridden in-app at `/settings/monitoring`.
+- `DOMAIN_MONITOR_PRUNE_DOMAIN_CHECKS_DAYS` - Retain `domain_checks` history for N days (default 90).
+- `DOMAIN_MONITOR_PRUNE_ELIGIBILITY_CHECKS_DAYS` - Retain `domain_eligibility_checks` history for N days (default 180).
 
 ## Scheduled Tasks
 
@@ -93,11 +96,20 @@ The application includes several scheduled tasks configured in `routes/console.p
 - **SSL Certificate Checks**: Daily at 03:00 UTC
 - **DNS Checks**: Every 6 hours
 - **Synergy Wholesale Sync**: Daily at 04:00 UTC
+- **Prune Monitoring Data**: Daily at 09:00 UTC
 
 Ensure Laravel's scheduler is running:
 ```bash
 * * * * * cd /path-to-your-project && php artisan schedule:run >> /dev/null 2>&1
 ```
+
+## Monitoring Settings UI
+
+You can tune “recent” windows from the UI at:
+
+- `/settings/monitoring`
+
+The DB setting takes precedence; environment variables are used as defaults/fallbacks.
 
 ## Deployment
 

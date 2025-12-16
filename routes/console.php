@@ -85,3 +85,9 @@ Schedule::command('domains:queue-subdomain-checks')
     ->sundays()
     ->at('06:00')
     ->timezone('UTC');
+
+// Prune old monitoring/history rows to keep tables lean
+Schedule::command('domains:prune-monitoring-data')
+    ->daily()
+    ->at('09:00')
+    ->timezone('UTC');
