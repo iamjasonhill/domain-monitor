@@ -3,24 +3,35 @@
 namespace App\Livewire;
 
 use App\Models\DomainTag;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
 use Livewire\Component;
 
 class SettingsTags extends Component
 {
-    public $tags;
+    /**
+     * @var Collection<int, DomainTag>
+     */
+    public Collection $tags;
 
-    public $showTagModal = false;
+    public bool $showTagModal = false;
 
-    public $editingTag = null;
+    public ?DomainTag $editingTag = null;
 
-    public $tagForm = [
+    /**
+     * @var array{name: string, priority: int, color: string, description: string}
+     */
+    public array $tagForm = [
         'name' => '',
         'priority' => 0,
         'color' => '#3B82F6',
         'description' => '',
     ];
 
-    protected $rules = [
+    /**
+     * @var array<string, string>
+     */
+    protected array $rules = [
         'tagForm.name' => 'required|string|max:255|unique:domain_tags,name',
         'tagForm.priority' => 'required|integer|min:0',
         'tagForm.color' => 'nullable|string|max:7',
@@ -50,7 +61,7 @@ class SettingsTags extends Component
         $this->resetValidation();
     }
 
-    public function openEditModal($tagId): void
+    public function openEditModal(string $tagId): void
     {
         $tag = DomainTag::findOrFail($tagId);
         $this->editingTag = $tag;
@@ -107,7 +118,7 @@ class SettingsTags extends Component
         $this->closeModal();
     }
 
-    public function deleteTag($tagId): void
+    public function deleteTag(string $tagId): void
     {
         $tag = DomainTag::findOrFail($tagId);
         $tag->delete();
@@ -115,14 +126,14 @@ class SettingsTags extends Component
         $this->loadTags();
     }
 
-    public function updatePriority($tagId, $newPriority): void
+    public function updatePriority(string $tagId, int $newPriority): void
     {
         $tag = DomainTag::findOrFail($tagId);
         $tag->update(['priority' => (int) $newPriority]);
         $this->loadTags();
     }
 
-    public function render()
+    public function render(): View
     {
         return view('livewire.settings-tags');
     }
