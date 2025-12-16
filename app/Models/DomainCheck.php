@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\BrainEventClient;
+use App\Services\DomainCheckAlertingService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -69,14 +70,14 @@ class DomainCheck extends Model
         });
 
         static::created(function (self $check) {
-            $check->emitBrainEvent();
+            app(DomainCheckAlertingService::class)->handle($check);
         });
     }
 
     /**
      * Emit domain.check.* event to Brain
      */
-    protected function emitBrainEvent(): void
+    public function emitBrainEvent(): void
     {
         // Only emit if Brain is configured
         $brain = app(BrainEventClient::class);
