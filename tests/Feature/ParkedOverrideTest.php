@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Domain;
 use App\Models\DomainCheck;
+use App\Models\WebsitePlatform;
 use App\Services\DnsHealthCheck;
 use App\Services\HttpHealthCheck;
 use App\Services\SslHealthCheck;
@@ -52,6 +53,33 @@ class ParkedOverrideTest extends TestCase
         ]);
 
         $this->assertSame(0, DomainCheck::where('domain_id', $parked->id)->count());
+    }
+
+    public function test_auto_detected_parked_domain_is_skipped_for_ssl_checks(): void
+    {
+        $parked = Domain::factory()->create([
+            'parked_override' => false,
+            'platform' => null,
+        ]);
+
+        WebsitePlatform::factory()->create([
+            'domain_id' => $parked->id,
+            'platform_type' => 'Parked',
+        ]);
+
+        $active = Domain::factory()->create([
+            'parked_override' => false,
+        ]);
+
+        $this->fakeHealthChecks();
+
+        Artisan::call('domains:health-check', [
+            '--all' => true,
+            '--type' => 'ssl',
+        ]);
+
+        $this->assertSame(0, DomainCheck::where('domain_id', $parked->id)->count());
+        $this->assertSame(1, DomainCheck::where('domain_id', $active->id)->count());
     }
 
     private function fakeHealthChecks(): void
