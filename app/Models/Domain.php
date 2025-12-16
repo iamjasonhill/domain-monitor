@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\DomainMonitorSettings;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -25,8 +26,8 @@ use Illuminate\Support\Str;
  * @property \Illuminate\Support\Carbon|null $created_at_synergy
  * @property string|null $domain_status
  * @property bool|null $auto_renew
- * @property array|null $nameservers
- * @property array|null $nameserver_details
+ * @property array<int, string>|null $nameservers
+ * @property array<int, array<string, mixed>>|null $nameserver_details
  * @property string|null $dns_config_name
  * @property string|null $registrant_name
  * @property string|null $registrant_id_type
@@ -127,7 +128,7 @@ class Domain extends Model
     }
 
     /**
-     * @return HasMany<DomainCheck, Domain>
+     * @return HasMany<DomainCheck, $this>
      */
     public function checks(): HasMany
     {
@@ -135,7 +136,7 @@ class Domain extends Model
     }
 
     /**
-     * @return HasMany<DomainAlert, Domain>
+     * @return HasMany<DomainAlert, $this>
      */
     public function alerts(): HasMany
     {
@@ -143,7 +144,7 @@ class Domain extends Model
     }
 
     /**
-     * @return HasOne<WebsitePlatform, Domain>
+     * @return HasOne<WebsitePlatform, $this>
      */
     public function platform(): HasOne
     {
@@ -151,7 +152,7 @@ class Domain extends Model
     }
 
     /**
-     * @return HasMany<DnsRecord, Domain>
+     * @return HasMany<DnsRecord, $this>
      */
     public function dnsRecords(): HasMany
     {
@@ -159,7 +160,7 @@ class Domain extends Model
     }
 
     /**
-     * @return HasMany<Subdomain, Domain>
+     * @return HasMany<Subdomain, $this>
      */
     public function subdomains(): HasMany
     {
@@ -167,7 +168,7 @@ class Domain extends Model
     }
 
     /**
-     * @return BelongsToMany<DomainTag, Domain>
+     * @return BelongsToMany<DomainTag, $this>
      */
     public function tags(): BelongsToMany
     {
@@ -179,7 +180,7 @@ class Domain extends Model
      * Supports case-insensitive search and multiple search terms.
      * Requires minimum 2 characters to avoid performance issues.
      */
-    public function scopeSearch($query, string $term): void
+    public function scopeSearch(Builder $query, string $term): void
     {
         $searchTerm = trim($term);
         // Require minimum 2 characters for search to avoid performance issues
@@ -225,7 +226,7 @@ class Domain extends Model
     /**
      * Scope a query to filter by active status.
      */
-    public function scopeFilterActive($query, ?bool $isActive): void
+    public function scopeFilterActive(Builder $query, ?bool $isActive): void
     {
         if ($isActive !== null) {
             $query->where('is_active', $isActive);
@@ -235,7 +236,7 @@ class Domain extends Model
     /**
      * Scope a query to filter domains expiring soon (within 30 days).
      */
-    public function scopeFilterExpiring($query, bool $expiring): void
+    public function scopeFilterExpiring(Builder $query, bool $expiring): void
     {
         if ($expiring) {
             $query->where('is_active', true)
@@ -249,7 +250,7 @@ class Domain extends Model
      * Scope a query to exclude parked domains.
      * Checks both the platform column and the platform relationship.
      */
-    public function scopeExcludeParked($query, bool $exclude): void
+    public function scopeExcludeParked(Builder $query, bool $exclude): void
     {
         if ($exclude) {
             $query->where('parked_override', false);
@@ -283,7 +284,7 @@ class Domain extends Model
     /**
      * Scope a query to filter domains with recent failures (within last 7 days).
      */
-    public function scopeFilterRecentFailures($query, bool $recentFailures): void
+    public function scopeFilterRecentFailures(Builder $query, bool $recentFailures): void
     {
         if ($recentFailures) {
             $hours = app(DomainMonitorSettings::class)->recentFailuresHours();
@@ -298,7 +299,7 @@ class Domain extends Model
     /**
      * Scope a query to filter domains with failed eligibility status.
      */
-    public function scopeFilterFailedEligibility($query, bool $failedEligibility): void
+    public function scopeFilterFailedEligibility(Builder $query, bool $failedEligibility): void
     {
         if ($failedEligibility) {
             $query->where('eligibility_valid', false);

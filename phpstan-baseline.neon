@@ -229,86 +229,44 @@ parameters:
 			path: app/Models/DnsRecord.php
 
 		-
-			message: '#^Class App\\Models\\Domain has PHPDoc tag @property for property \$nameserver_details with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
+			message: '#^Call to an undefined method Illuminate\\Database\\ConnectionInterface\:\:getDriverName\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: app/Models/Domain.php
 
 		-
-			message: '#^Class App\\Models\\Domain has PHPDoc tag @property for property \$nameservers with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
+			message: '#^Method App\\Models\\Domain\:\:scopeExcludeParked\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
 			count: 1
 			path: app/Models/Domain.php
 
 		-
-			message: '#^Method App\\Models\\Domain\:\:alerts\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\DomainAlert, App\\Models\\Domain\> but returns Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\DomainAlert, \$this\(App\\Models\\Domain\)\>\.$#'
-			identifier: return.type
+			message: '#^Method App\\Models\\Domain\:\:scopeFilterActive\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
 			count: 1
 			path: app/Models/Domain.php
 
 		-
-			message: '#^Method App\\Models\\Domain\:\:checks\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\DomainCheck, App\\Models\\Domain\> but returns Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\DomainCheck, \$this\(App\\Models\\Domain\)\>\.$#'
-			identifier: return.type
+			message: '#^Method App\\Models\\Domain\:\:scopeFilterExpiring\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
 			count: 1
 			path: app/Models/Domain.php
 
 		-
-			message: '#^Method App\\Models\\Domain\:\:dnsRecords\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\DnsRecord, App\\Models\\Domain\> but returns Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\DnsRecord, \$this\(App\\Models\\Domain\)\>\.$#'
-			identifier: return.type
+			message: '#^Method App\\Models\\Domain\:\:scopeFilterFailedEligibility\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
 			count: 1
 			path: app/Models/Domain.php
 
 		-
-			message: '#^Method App\\Models\\Domain\:\:platform\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasOne\<App\\Models\\WebsitePlatform, App\\Models\\Domain\> but returns Illuminate\\Database\\Eloquent\\Relations\\HasOne\<App\\Models\\WebsitePlatform, \$this\(App\\Models\\Domain\)\>\.$#'
-			identifier: return.type
+			message: '#^Method App\\Models\\Domain\:\:scopeFilterRecentFailures\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
 			count: 1
 			path: app/Models/Domain.php
 
 		-
-			message: '#^Method App\\Models\\Domain\:\:scopeExcludeParked\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Domain.php
-
-		-
-			message: '#^Method App\\Models\\Domain\:\:scopeFilterActive\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Domain.php
-
-		-
-			message: '#^Method App\\Models\\Domain\:\:scopeFilterExpiring\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Domain.php
-
-		-
-			message: '#^Method App\\Models\\Domain\:\:scopeFilterFailedEligibility\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Domain.php
-
-		-
-			message: '#^Method App\\Models\\Domain\:\:scopeFilterRecentFailures\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Domain.php
-
-		-
-			message: '#^Method App\\Models\\Domain\:\:scopeSearch\(\) has parameter \$query with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Models/Domain.php
-
-		-
-			message: '#^Method App\\Models\\Domain\:\:subdomains\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\Subdomain, App\\Models\\Domain\> but returns Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\Subdomain, \$this\(App\\Models\\Domain\)\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Models/Domain.php
-
-		-
-			message: '#^Method App\\Models\\Domain\:\:tags\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\<App\\Models\\DomainTag, App\\Models\\Domain, Illuminate\\Database\\Eloquent\\Relations\\Pivot, ''pivot''\> but returns Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\<App\\Models\\DomainTag, \$this\(App\\Models\\Domain\), Illuminate\\Database\\Eloquent\\Relations\\Pivot, ''pivot''\>\.$#'
-			identifier: return.type
+			message: '#^Method App\\Models\\Domain\:\:scopeSearch\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
 			count: 1
 			path: app/Models/Domain.php
 
