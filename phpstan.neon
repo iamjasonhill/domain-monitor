@@ -1,7 +1,7 @@
 includes:
     - vendor/larastan/larastan/extension.neon
     # Include baseline after generating it:
-    # - phpstan-baseline.neon
+    - phpstan-baseline.neon
 
 parameters:
     paths:
@@ -23,8 +23,4 @@ parameters:
         - bootstrap/cache/
         - storage/
         - public/
-
-    ignoreErrors:
-        # Laravel relationship covariance issues (known limitation)
-        - '#Template type TDeclaringModel.*is not covariant#'
 

@@ -1,0 +1,631 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Parameter \#3 \$daysUntilExpiry of method App\\Console\\Commands\\CheckExpiringDomains\:\:sendExpiryEvent\(\) expects int, float given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/CheckExpiringDomains.php
+
+		-
+			message: '#^Call to private method getIpAddresses\(\) of class App\\Services\\HostingDetector\.$#'
+			identifier: method.private
+			count: 1
+			path: app/Console/Commands/DetectHosting.php
+
+		-
+			message: '#^Offset ''ip_api_data'' on array\{provider\: string\|null, confidence\: string, admin_url\: string\|null\} in isset\(\) does not exist\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Console/Commands/DetectHosting.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: app/Console/Commands/DetectHosting.php
+
+		-
+			message: '#^Access to an undefined property object\{domainName\?\: string, domain_expiry\?\: string, createdDate\?\: string, domain_status\?\: string, autoRenew\?\: bool\|int\|string, nameServers\?\: array\<int, string\>, dnsConfigName\?\: string, auRegistrantName\?\: string, auRegistrantIDType\?\: string, auRegistrantID\?\: string, auEligibilityType\?\: string, au_valid_eligibility\?\: bool\|int, auValidEligibility\?\: bool\|int, auEligibilityLastCheck\?\: string, au_eligibility_last_check\?\: string\}\:\:\$domainName\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/ImportSynergyDomains.php
+
+		-
+			message: '#^Parameter \#1 \$string of function strtolower expects string, int\|string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/ImportSynergyDomains.php
+
+		-
+			message: '#^Right side of && is always true\.$#'
+			identifier: booleanAnd.rightAlwaysTrue
+			count: 1
+			path: app/Console/Commands/ImportSynergyDomains.php
+
+		-
+			message: '#^Variable \$domainName on left side of \?\? is never defined\.$#'
+			identifier: nullCoalesce.variable
+			count: 1
+			path: app/Console/Commands/ImportSynergyDomains.php
+
+		-
+			message: '#^Cannot access property \$platform_type on null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Console/Commands/RunHealthChecks.php
+
+		-
+			message: '#^Expression on left side of \?\? is always null\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Console/Commands/RunHealthChecks.php
+
+		-
+			message: '#^Offset ''host'' on array\{host\: string, type\: string, value\: string, ttl\: int\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Console/Commands/SyncDnsRecords.php
+
+		-
+			message: '#^Offset ''id'' on array\{host\: string, type\: string, value\: string, ttl\: int\|null\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Console/Commands/SyncDnsRecords.php
+
+		-
+			message: '#^Offset ''priority'' on array\{host\: string, type\: string, value\: string, ttl\: int\|null\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Console/Commands/SyncDnsRecords.php
+
+		-
+			message: '#^Offset ''type'' on array\{host\: string, type\: string, value\: string, ttl\: int\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Console/Commands/SyncDnsRecords.php
+
+		-
+			message: '#^Offset ''value'' on array\{host\: string, type\: string, value\: string, ttl\: int\|null\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Console/Commands/SyncDnsRecords.php
+
+		-
+			message: '#^Variable \$dnsRecords in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: app/Console/Commands/SyncDnsRecords.php
+
+		-
+			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
+			identifier: greater.alwaysTrue
+			count: 1
+			path: app/Console/Commands/SyncSynergyExpiry.php
+
+		-
+			message: '#^Right side of && is always true\.$#'
+			identifier: booleanAnd.rightAlwaysTrue
+			count: 2
+			path: app/Console/Commands/SyncSynergyExpiry.php
+
+		-
+			message: '#^Call to an undefined method GuzzleHttp\\Promise\\PromiseInterface\|Illuminate\\Http\\Client\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Console/Commands/TestIpApi.php
+
+		-
+			message: '#^Call to an undefined method GuzzleHttp\\Promise\\PromiseInterface\|Illuminate\\Http\\Client\\Response\:\:status\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Console/Commands/TestIpApi.php
+
+		-
+			message: '#^Call to an undefined method GuzzleHttp\\Promise\\PromiseInterface\|Illuminate\\Http\\Client\\Response\:\:successful\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Console/Commands/TestIpApi.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\TestIpApi\:\:analyzeForHosting\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/TestIpApi.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\TestIpApi\:\:displayResults\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/TestIpApi.php
+
+		-
+			message: '#^Variable \$aRecords in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: app/Console/Commands/TestIpApi.php
+
+		-
+			message: '#^Variable \$ipAddress on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.variable
+			count: 1
+			path: app/Console/Commands/TestIpApi.php
+
+		-
+			message: '#^Parameter \#1 \$user of class Illuminate\\Auth\\Events\\Verified constructor expects Illuminate\\Contracts\\Auth\\MustVerifyEmail, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Auth/VerifyEmailController.php
+
+		-
+			message: '#^Method App\\Jobs\\DiscoverSubdomainsJob\:\:findIpFromDnsRecords\(\) has parameter \$dnsRecords with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Jobs/DiscoverSubdomainsJob.php
+
+		-
+			message: '#^Property App\\Jobs\\DiscoverSubdomainsJob\:\:\$backoff has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: app/Jobs/DiscoverSubdomainsJob.php
+
+		-
+			message: '#^Property App\\Jobs\\DiscoverSubdomainsJob\:\:\$tries has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: app/Jobs/DiscoverSubdomainsJob.php
+
+		-
+			message: '#^Variable \$aRecords in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: app/Jobs/DiscoverSubdomainsJob.php
+
+		-
+			message: '#^Property App\\Jobs\\UpdateSubdomainsIpJob\:\:\$backoff has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: app/Jobs/UpdateSubdomainsIpJob.php
+
+		-
+			message: '#^Property App\\Jobs\\UpdateSubdomainsIpJob\:\:\$tries has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: app/Jobs/UpdateSubdomainsIpJob.php
+
+		-
+			message: '#^Property App\\Livewire\\CommandsList\:\:\$commands type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Livewire/CommandsList.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Livewire/DomainDetail.php
+
+		-
+			message: '#^Method App\\Livewire\\DomainDetail\:\:findIpFromDnsRecords\(\) has parameter \$dnsRecords with generic class Illuminate\\Database\\Eloquent\\Collection but does not specify its types\: TKey, TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Livewire/DomainDetail.php
+
+		-
+			message: '#^Variable \$aRecords in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: app/Livewire/DomainDetail.php
+
+		-
+			message: '#^Cannot access property \$platform_type on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Livewire/DomainForm.php
+
+		-
+			message: '#^Property App\\Livewire\\DomainForm\:\:\$selectedTags type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Livewire/DomainForm.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>platform_type" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Livewire/DomainForm.php
+
+		-
+			message: '#^Method App\\Livewire\\HealthChecksList\:\:clearFilters\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Livewire/HealthChecksList.php
+
+		-
+			message: '#^Method App\\Livewire\\HealthChecksList\:\:updatingSearch\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Livewire/HealthChecksList.php
+
+		-
+			message: '#^Parameter \#2 \$timezone of method App\\Livewire\\ScheduledTasks\:\:parseCronExpression\(\) expects string, DateTimeZone\|string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Livewire/ScheduledTasks.php
+
+		-
+			message: '#^Property App\\Livewire\\ScheduledTasks\:\:\$tasks type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Livewire/ScheduledTasks.php
+
+		-
+			message: '#^Property Illuminate\\Console\\Scheduling\\Event\:\:\$expression \(string\) on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.property
+			count: 1
+			path: app/Livewire/ScheduledTasks.php
+
+		-
+			message: '#^Property Illuminate\\Console\\Scheduling\\Event\:\:\$timezone \(DateTimeZone\|string\) on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.property
+			count: 1
+			path: app/Livewire/ScheduledTasks.php
+
+		-
+			message: '#^Ternary operator condition is always true\.$#'
+			identifier: ternary.alwaysTrue
+			count: 2
+			path: app/Livewire/ScheduledTasks.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\DomainTag\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\DomainTag\>\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/SettingsTags.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\DomainTag\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\DomainTag\>\:\:\$priority\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Livewire/SettingsTags.php
+
+		-
+			message: '#^Call to an undefined method App\\Models\\DomainTag\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\DomainTag\>\:\:delete\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Livewire/SettingsTags.php
+
+		-
+			message: '#^Call to an undefined method App\\Models\\DomainTag\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\DomainTag\>\:\:update\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Livewire/SettingsTags.php
+
+		-
+			message: '#^Method App\\Livewire\\SettingsTags\:\:deleteTag\(\) has parameter \$tagId with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Livewire/SettingsTags.php
+
+		-
+			message: '#^Method App\\Livewire\\SettingsTags\:\:openEditModal\(\) has parameter \$tagId with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Livewire/SettingsTags.php
+
+		-
+			message: '#^Method App\\Livewire\\SettingsTags\:\:render\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Livewire/SettingsTags.php
+
+		-
+			message: '#^Method App\\Livewire\\SettingsTags\:\:updatePriority\(\) has parameter \$newPriority with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Livewire/SettingsTags.php
+
+		-
+			message: '#^Method App\\Livewire\\SettingsTags\:\:updatePriority\(\) has parameter \$tagId with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Livewire/SettingsTags.php
+
+		-
+			message: '#^Property App\\Livewire\\SettingsTags\:\:\$editingTag has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: app/Livewire/SettingsTags.php
+
+		-
+			message: '#^Property App\\Livewire\\SettingsTags\:\:\$rules has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: app/Livewire/SettingsTags.php
+
+		-
+			message: '#^Property App\\Livewire\\SettingsTags\:\:\$showTagModal has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: app/Livewire/SettingsTags.php
+
+		-
+			message: '#^Property App\\Livewire\\SettingsTags\:\:\$tagForm has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: app/Livewire/SettingsTags.php
+
+		-
+			message: '#^Property App\\Livewire\\SettingsTags\:\:\$tags has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: app/Livewire/SettingsTags.php
+
+		-
+			message: '#^PHPDoc tag @use has invalid type Database\\Factories\\AppSettingFactory\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Models/AppSetting.php
+
+		-
+			message: '#^Type Database\\Factories\\AppSettingFactory in generic type Illuminate\\Database\\Eloquent\\Factories\\HasFactory\<Database\\Factories\\AppSettingFactory\> in PHPDoc tag @use is not subtype of template type TFactory of Illuminate\\Database\\Eloquent\\Factories\\Factory of trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory\.$#'
+			identifier: generics.notSubtype
+			count: 1
+			path: app/Models/AppSetting.php
+
+		-
+			message: '#^Method App\\Models\\DnsRecord\:\:domain\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\Domain, App\\Models\\DnsRecord\> but returns Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\Domain, \$this\(App\\Models\\DnsRecord\)\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/DnsRecord.php
+
+		-
+			message: '#^Class App\\Models\\Domain has PHPDoc tag @property for property \$nameserver_details with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Models/Domain.php
+
+		-
+			message: '#^Class App\\Models\\Domain has PHPDoc tag @property for property \$nameservers with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Models/Domain.php
+
+		-
+			message: '#^Method App\\Models\\Domain\:\:alerts\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\DomainAlert, App\\Models\\Domain\> but returns Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\DomainAlert, \$this\(App\\Models\\Domain\)\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/Domain.php
+
+		-
+			message: '#^Method App\\Models\\Domain\:\:checks\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\DomainCheck, App\\Models\\Domain\> but returns Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\DomainCheck, \$this\(App\\Models\\Domain\)\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/Domain.php
+
+		-
+			message: '#^Method App\\Models\\Domain\:\:dnsRecords\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\DnsRecord, App\\Models\\Domain\> but returns Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\DnsRecord, \$this\(App\\Models\\Domain\)\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/Domain.php
+
+		-
+			message: '#^Method App\\Models\\Domain\:\:platform\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasOne\<App\\Models\\WebsitePlatform, App\\Models\\Domain\> but returns Illuminate\\Database\\Eloquent\\Relations\\HasOne\<App\\Models\\WebsitePlatform, \$this\(App\\Models\\Domain\)\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/Domain.php
+
+		-
+			message: '#^Method App\\Models\\Domain\:\:scopeExcludeParked\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/Domain.php
+
+		-
+			message: '#^Method App\\Models\\Domain\:\:scopeFilterActive\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/Domain.php
+
+		-
+			message: '#^Method App\\Models\\Domain\:\:scopeFilterExpiring\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/Domain.php
+
+		-
+			message: '#^Method App\\Models\\Domain\:\:scopeFilterFailedEligibility\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/Domain.php
+
+		-
+			message: '#^Method App\\Models\\Domain\:\:scopeFilterRecentFailures\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/Domain.php
+
+		-
+			message: '#^Method App\\Models\\Domain\:\:scopeSearch\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/Domain.php
+
+		-
+			message: '#^Method App\\Models\\Domain\:\:subdomains\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\Subdomain, App\\Models\\Domain\> but returns Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\Subdomain, \$this\(App\\Models\\Domain\)\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/Domain.php
+
+		-
+			message: '#^Method App\\Models\\Domain\:\:tags\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\<App\\Models\\DomainTag, App\\Models\\Domain, Illuminate\\Database\\Eloquent\\Relations\\Pivot, ''pivot''\> but returns Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\<App\\Models\\DomainTag, \$this\(App\\Models\\Domain\), Illuminate\\Database\\Eloquent\\Relations\\Pivot, ''pivot''\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/Domain.php
+
+		-
+			message: '#^Method App\\Models\\DomainAlert\:\:domain\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\Domain, App\\Models\\DomainAlert\> but returns Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\Domain, \$this\(App\\Models\\DomainAlert\)\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/DomainAlert.php
+
+		-
+			message: '#^Method App\\Models\\DomainCheck\:\:domain\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\Domain, App\\Models\\DomainCheck\> but returns Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\Domain, \$this\(App\\Models\\DomainCheck\)\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/DomainCheck.php
+
+		-
+			message: '#^Method App\\Models\\DomainCheckAlertState\:\:domain\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\Domain, App\\Models\\DomainCheckAlertState\> but returns Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\Domain, \$this\(App\\Models\\DomainCheckAlertState\)\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/DomainCheckAlertState.php
+
+		-
+			message: '#^PHPDoc tag @use has invalid type Database\\Factories\\DomainCheckAlertStateFactory\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Models/DomainCheckAlertState.php
+
+		-
+			message: '#^Type Database\\Factories\\DomainCheckAlertStateFactory in generic type Illuminate\\Database\\Eloquent\\Factories\\HasFactory\<Database\\Factories\\DomainCheckAlertStateFactory\> in PHPDoc tag @use is not subtype of template type TFactory of Illuminate\\Database\\Eloquent\\Factories\\Factory of trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory\.$#'
+			identifier: generics.notSubtype
+			count: 1
+			path: app/Models/DomainCheckAlertState.php
+
+		-
+			message: '#^Method App\\Models\\DomainEligibilityCheck\:\:domain\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\Domain, App\\Models\\DomainEligibilityCheck\> but returns Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\Domain, \$this\(App\\Models\\DomainEligibilityCheck\)\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/DomainEligibilityCheck.php
+
+		-
+			message: '#^PHPDoc tag @use has invalid type Database\\Factories\\DomainEligibilityCheckFactory\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Models/DomainEligibilityCheck.php
+
+		-
+			message: '#^Type Database\\Factories\\DomainEligibilityCheckFactory in generic type Illuminate\\Database\\Eloquent\\Factories\\HasFactory\<Database\\Factories\\DomainEligibilityCheckFactory\> in PHPDoc tag @use is not subtype of template type TFactory of Illuminate\\Database\\Eloquent\\Factories\\Factory of trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory\.$#'
+			identifier: generics.notSubtype
+			count: 1
+			path: app/Models/DomainEligibilityCheck.php
+
+		-
+			message: '#^Class App\\Models\\DomainTag uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/DomainTag.php
+
+		-
+			message: '#^Method App\\Models\\DomainTag\:\:domains\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\<App\\Models\\Domain, App\\Models\\DomainTag, Illuminate\\Database\\Eloquent\\Relations\\Pivot, ''pivot''\> but returns Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\<App\\Models\\Domain, \$this\(App\\Models\\DomainTag\), Illuminate\\Database\\Eloquent\\Relations\\Pivot, ''pivot''\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/DomainTag.php
+
+		-
+			message: '#^Method App\\Models\\DomainTag\:\:scopeOrderedByPriority\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/DomainTag.php
+
+		-
+			message: '#^Class App\\Models\\Subdomain uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Subdomain.php
+
+		-
+			message: '#^Method App\\Models\\Subdomain\:\:domain\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\Domain, App\\Models\\Subdomain\> but returns Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\Domain, \$this\(App\\Models\\Subdomain\)\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/Subdomain.php
+
+		-
+			message: '#^Method App\\Models\\WebsitePlatform\:\:domain\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\Domain, App\\Models\\WebsitePlatform\> but returns Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\Domain, \$this\(App\\Models\\WebsitePlatform\)\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/WebsitePlatform.php
+
+		-
+			message: '#^Variable \$detections in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: app/Services/HostingDetector.php
+
+		-
+			message: '#^Call to an undefined method GuzzleHttp\\Promise\\PromiseInterface\|Illuminate\\Http\\Client\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/IpApiService.php
+
+		-
+			message: '#^Call to an undefined method GuzzleHttp\\Promise\\PromiseInterface\|Illuminate\\Http\\Client\\Response\:\:status\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/IpApiService.php
+
+		-
+			message: '#^Call to an undefined method GuzzleHttp\\Promise\\PromiseInterface\|Illuminate\\Http\\Client\\Response\:\:successful\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/IpApiService.php
+
+		-
+			message: '#^Call to an undefined method GuzzleHttp\\Promise\\PromiseInterface\|Illuminate\\Http\\Client\\Response\:\:body\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/PlatformDetector.php
+
+		-
+			message: '#^Call to an undefined method GuzzleHttp\\Promise\\PromiseInterface\|Illuminate\\Http\\Client\\Response\:\:headers\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/PlatformDetector.php
+
+		-
+			message: '#^Call to an undefined method GuzzleHttp\\Promise\\PromiseInterface\|Illuminate\\Http\\Client\\Response\:\:status\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Services/PlatformDetector.php
+
+		-
+			message: '#^Call to an undefined method GuzzleHttp\\Promise\\PromiseInterface\|Illuminate\\Http\\Client\\Response\:\:successful\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/PlatformDetector.php
+
+		-
+			message: '#^Method App\\Services\\PlatformDetector\:\:isLaravel\(\) has parameter \$headers with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/PlatformDetector.php
+
+		-
+			message: '#^Method App\\Services\\PlatformDetector\:\:isNextJs\(\) has parameter \$headers with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/PlatformDetector.php
+
+		-
+			message: '#^Method App\\Services\\PlatformDetector\:\:isShopify\(\) has parameter \$headers with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/PlatformDetector.php
+
+		-
+			message: '#^Method App\\Services\\SynergyWholesaleClient\:\:getDomainInfo\(\) should return array\{domain\: string, expiry_date\: string\|null, created_date\: string\|null, domain_status\: string\|null, auto_renew\: string\|null, nameservers\: array\<int, string\>\|null, nameserver_details\: array\<int, array\{hostname\: string\|null, ip\: string\|null, subdomain\: string\|null\}\>\|null, dns_config_name\: string\|null, \.\.\.\}\|null but returns array\{domain\: mixed, expiry_date\: mixed, created_date\: mixed, domain_status\: mixed, auto_renew\: bool\|null, nameservers\: array, nameserver_details\: non\-empty\-list\<array\{hostname\: mixed, ip\: mixed, subdomain\: mixed\}\>\|null, dns_config_name\: mixed, \.\.\.\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/SynergyWholesaleClient.php
+
+		-
+			message: '#^Method App\\Services\\SynergyWholesaleClient\:\:listDomains\(\) should return Illuminate\\Support\\Collection\<int, object\> but returns Illuminate\\Support\\Collection\<\(int\|string\), object\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/SynergyWholesaleClient.php
+
+		-
+			message: '#^Parameter \#1 \$title of static method Illuminate\\Support\\Str\:\:slug\(\) expects string, bool\|string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: config/horizon.php

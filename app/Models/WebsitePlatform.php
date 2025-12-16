@@ -52,8 +52,6 @@ class WebsitePlatform extends Model
 
     /**
      * @return BelongsTo<Domain, WebsitePlatform>
-     *
-     * @phpstan-ignore-next-line
      */
     public function domain(): BelongsTo
     {
