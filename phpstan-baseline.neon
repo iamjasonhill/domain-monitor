@@ -127,18 +127,6 @@ parameters:
 			path: app/Console/Commands/TestIpApi.php
 
 		-
-			message: '#^Method App\\Console\\Commands\\TestIpApi\:\:analyzeForHosting\(\) has parameter \$data with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Console/Commands/TestIpApi.php
-
-		-
-			message: '#^Method App\\Console\\Commands\\TestIpApi\:\:displayResults\(\) has parameter \$data with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Console/Commands/TestIpApi.php
-
-		-
 			message: '#^Variable \$aRecords in empty\(\) always exists and is not falsy\.$#'
 			identifier: empty.variable
 			count: 1
@@ -157,46 +145,10 @@ parameters:
 			path: app/Http/Controllers/Auth/VerifyEmailController.php
 
 		-
-			message: '#^Method App\\Jobs\\DiscoverSubdomainsJob\:\:findIpFromDnsRecords\(\) has parameter \$dnsRecords with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: app/Jobs/DiscoverSubdomainsJob.php
-
-		-
-			message: '#^Property App\\Jobs\\DiscoverSubdomainsJob\:\:\$backoff has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Jobs/DiscoverSubdomainsJob.php
-
-		-
-			message: '#^Property App\\Jobs\\DiscoverSubdomainsJob\:\:\$tries has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Jobs/DiscoverSubdomainsJob.php
-
-		-
 			message: '#^Variable \$aRecords in empty\(\) always exists and is not falsy\.$#'
 			identifier: empty.variable
 			count: 1
 			path: app/Jobs/DiscoverSubdomainsJob.php
-
-		-
-			message: '#^Property App\\Jobs\\UpdateSubdomainsIpJob\:\:\$backoff has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Jobs/UpdateSubdomainsIpJob.php
-
-		-
-			message: '#^Property App\\Jobs\\UpdateSubdomainsIpJob\:\:\$tries has no type specified\.$#'
-			identifier: missingType.property
-			count: 1
-			path: app/Jobs/UpdateSubdomainsIpJob.php
-
-		-
-			message: '#^Property App\\Livewire\\CommandsList\:\:\$commands type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Livewire/CommandsList.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
@@ -223,28 +175,10 @@ parameters:
 			path: app/Livewire/DomainForm.php
 
 		-
-			message: '#^Property App\\Livewire\\DomainForm\:\:\$selectedTags type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Livewire/DomainForm.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>platform_type" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Livewire/DomainForm.php
-
-		-
-			message: '#^Method App\\Livewire\\HealthChecksList\:\:clearFilters\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Livewire/HealthChecksList.php
-
-		-
-			message: '#^Method App\\Livewire\\HealthChecksList\:\:updatingSearch\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Livewire/HealthChecksList.php
 
 		-
 			message: '#^Parameter \#2 \$timezone of method App\\Livewire\\ScheduledTasks\:\:parseCronExpression\(\) expects string, DateTimeZone\|string given\.$#'

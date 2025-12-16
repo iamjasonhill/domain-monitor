@@ -32,6 +32,9 @@ class DomainForm extends Component
 
     public int $check_frequency_minutes = 60;
 
+    /**
+     * @var array<int, string>
+     */
     public array $selectedTags = [];
 
     public function mount(?string $domainId = null): void

@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\DnsRecord;
 use App\Models\Domain;
 use App\Models\Subdomain;
 use App\Services\IpApiService;
@@ -13,9 +14,9 @@ class DiscoverSubdomainsJob implements ShouldQueue
 {
     use Queueable;
 
-    public $tries = 2;
+    public int $tries = 2;
 
-    public $backoff = 60;
+    public int $backoff = 60;
 
     /**
      * Create a new job instance.
@@ -186,8 +187,10 @@ class DiscoverSubdomainsJob implements ShouldQueue
 
     /**
      * Find IP address from DNS records for a subdomain
+     *
+     * @param  iterable<DnsRecord>  $dnsRecords
      */
-    private function findIpFromDnsRecords(string $fullDomain, $dnsRecords): ?string
+    private function findIpFromDnsRecords(string $fullDomain, iterable $dnsRecords): ?string
     {
         foreach ($dnsRecords as $record) {
             $host = trim($record->host ?? '');

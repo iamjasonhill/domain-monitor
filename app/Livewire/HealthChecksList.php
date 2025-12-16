@@ -34,7 +34,7 @@ class HealthChecksList extends Component
         }
     }
 
-    public function updatingSearch()
+    public function updatingSearch(): void
     {
         $this->resetPage();
     }
@@ -48,7 +48,7 @@ class HealthChecksList extends Component
         $this->resetPage();
     }
 
-    public function clearFilters()
+    public function clearFilters(): void
     {
         $this->search = '';
         $this->filterDomain = null;

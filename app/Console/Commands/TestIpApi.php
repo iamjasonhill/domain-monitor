@@ -133,6 +133,8 @@ class TestIpApi extends Command
 
     /**
      * Display API results in a formatted table
+     *
+     * @param  array<string, mixed>  $data
      */
     private function displayResults(array $data, string $originalInput, string $ipAddress): void
     {
@@ -163,6 +165,8 @@ class TestIpApi extends Command
 
     /**
      * Analyze the data for hosting provider detection
+     *
+     * @param  array<string, mixed>  $data
      */
     private function analyzeForHosting(array $data): void
     {

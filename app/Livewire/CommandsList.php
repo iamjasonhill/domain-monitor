@@ -7,6 +7,9 @@ use Livewire\Component;
 
 class CommandsList extends Component
 {
+    /**
+     * @var array<int, array{name: string, description: string, signature: string}>
+     */
     public array $commands = [];
 
     public function mount(): void

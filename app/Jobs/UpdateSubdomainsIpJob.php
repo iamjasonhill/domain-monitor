@@ -13,9 +13,9 @@ class UpdateSubdomainsIpJob implements ShouldQueue
 {
     use Queueable;
 
-    public $tries = 2;
+    public int $tries = 2;
 
-    public $backoff = 60;
+    public int $backoff = 60;
 
     /**
      * Create a new job instance.
