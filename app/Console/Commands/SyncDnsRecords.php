@@ -117,9 +117,10 @@ class SyncDnsRecords extends Command
         }
 
         try {
+            /** @var array<int, array{host?: string, type?: string, value?: string, ttl?: int|null, priority?: int|null, id?: string|null}>|null $dnsRecords */
             $dnsRecords = $client->getDnsRecords($domain->domain);
 
-            if (! $dnsRecords || empty($dnsRecords)) {
+            if (empty($dnsRecords)) {
                 if ($verbose) {
                     $this->warn('  Could not retrieve DNS records from Synergy Wholesale');
                 }
