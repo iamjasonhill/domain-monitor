@@ -4,13 +4,14 @@ namespace App\Livewire;
 
 use App\Models\Domain;
 use App\Models\DomainCheck;
+use App\Services\DomainMonitorSettings;
 use Livewire\Component;
 
 class Dashboard extends Component
 {
     public function render(): \Illuminate\Contracts\View\View
     {
-        $recentFailuresHours = (int) config('domain_monitor.recent_failures_hours', 24);
+        $recentFailuresHours = app(DomainMonitorSettings::class)->recentFailuresHours();
 
         $stats = [
             'total_domains' => Domain::count(),

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\DomainMonitorSettings;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -285,7 +286,7 @@ class Domain extends Model
     public function scopeFilterRecentFailures($query, bool $recentFailures): void
     {
         if ($recentFailures) {
-            $hours = (int) config('domain_monitor.recent_failures_hours', 24);
+            $hours = app(DomainMonitorSettings::class)->recentFailuresHours();
 
             $query->whereHas('checks', function ($q) use ($hours) {
                 $q->where('status', 'fail')

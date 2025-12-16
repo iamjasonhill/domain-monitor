@@ -81,6 +81,25 @@
             </div>
         </a>
 
+        <!-- Monitoring Settings Card -->
+        <a href="{{ route('settings.monitoring') }}" wire:navigate class="block">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-red-100 dark:bg-red-900 rounded-lg p-3">
+                            <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Monitoring</h3>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Configure “recent” windows and alerting UX</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+
         <!-- Synergy Balance Card -->
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
             <div class="p-6">

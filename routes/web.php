@@ -60,6 +60,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/settings/tags', function () {
         return view('settings.tags');
     })->name('settings.tags');
+
+    Route::get('/settings/monitoring', function () {
+        return view('settings.monitoring');
+    })->name('settings.monitoring');
 });
 
 require __DIR__.'/auth.php';

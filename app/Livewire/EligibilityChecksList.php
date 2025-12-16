@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Domain;
 use App\Models\DomainEligibilityCheck;
+use App\Services\DomainMonitorSettings;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -23,7 +24,7 @@ class EligibilityChecksList extends Component
 
     public function mount(): void
     {
-        $this->recentFailuresHours = (int) config('domain_monitor.recent_failures_hours', 24);
+        $this->recentFailuresHours = app(DomainMonitorSettings::class)->recentFailuresHours();
         $this->filterRecentFailures = true;
 
         if (request()->boolean('failed')) {
