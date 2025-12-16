@@ -21,7 +21,7 @@
         </a>
 
         <!-- Active Domains -->
-        <a href="{{ route('domains.index') }}?filterActive=1" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+        <a href="{{ route('domains.index') }}?active=1" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
             <div class="p-6">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 bg-green-500 rounded-md p-3">
@@ -40,7 +40,7 @@
         </a>
 
         <!-- Expiring Soon -->
-        <a href="{{ route('domains.index') }}?filterExpiring=1" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+        <a href="{{ route('domains.index') }}?expiring=1" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
             <div class="p-6">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 bg-yellow-500 rounded-md p-3">
@@ -78,7 +78,7 @@
         </a>
 
         <!-- Failed Eligibility Status -->
-        <a href="{{ route('domains.index') }}?filterFailedEligibility=1" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+        <a href="{{ route('domains.index') }}?failedEligibility=1" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
             <div class="p-6">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 bg-orange-500 rounded-md p-3">
