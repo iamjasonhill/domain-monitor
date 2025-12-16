@@ -2,10 +2,16 @@
 
 namespace App\Livewire;
 
+use DateTimeZone;
+use Illuminate\Console\Scheduling\Event;
+use Illuminate\Contracts\View\View;
 use Livewire\Component;
 
 class ScheduledTasks extends Component
 {
+    /**
+     * @var array<int, array{description: string, command: string, expression: string, schedule: string, timezone: string, next_run: string, next_run_relative: string}>
+     */
     public array $tasks = [];
 
     public function mount(): void
@@ -22,11 +28,13 @@ class ScheduledTasks extends Component
         $schedule = app(\Illuminate\Console\Scheduling\Schedule::class);
         $events = $schedule->events();
 
-        $this->tasks = collect($events)->map(function ($event) {
-            $description = $event->description ?? 'No description';
-            $command = $event->command ?? 'N/A';
-            $expression = $event->expression ?? 'N/A';
-            $timezone = $event->timezone ?? config('app.timezone', 'UTC');
+        $this->tasks = collect($events)->map(function (Event $event): array {
+            $description = $event->description ?: 'No description';
+            $command = $event->command ?: 'N/A';
+            $expression = $event->expression;
+            $timezone = $event->timezone instanceof DateTimeZone
+                ? $event->timezone->getName()
+                : (string) $event->timezone;
 
             // If no description, try to extract from command
             if ($description === 'No description' || empty($description)) {
@@ -39,8 +47,8 @@ class ScheduledTasks extends Component
             // Get next run time
             try {
                 $nextRun = $event->nextRunDate();
-                $nextRunFormatted = $nextRun ? $nextRun->format('Y-m-d H:i:s T') : 'N/A';
-                $nextRunRelative = $nextRun ? $nextRun->diffForHumans() : 'N/A';
+                $nextRunFormatted = $nextRun->format('Y-m-d H:i:s T');
+                $nextRunRelative = $nextRun->diffForHumans();
             } catch (\Exception $e) {
                 $nextRunFormatted = 'N/A';
                 $nextRunRelative = 'N/A';
@@ -132,7 +140,7 @@ class ScheduledTasks extends Component
         return $expression;
     }
 
-    public function render(): \Illuminate\Contracts\View\View
+    public function render(): View
     {
         return view('livewire.scheduled-tasks');
     }

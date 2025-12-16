@@ -121,33 +121,9 @@ parameters:
 			path: app/Livewire/DomainForm.php
 
 		-
-			message: '#^Parameter \#2 \$timezone of method App\\Livewire\\ScheduledTasks\:\:parseCronExpression\(\) expects string, DateTimeZone\|string given\.$#'
-			identifier: argument.type
+			message: '#^Variable \$description in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.variable
 			count: 1
-			path: app/Livewire/ScheduledTasks.php
-
-		-
-			message: '#^Property App\\Livewire\\ScheduledTasks\:\:\$tasks type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Livewire/ScheduledTasks.php
-
-		-
-			message: '#^Property Illuminate\\Console\\Scheduling\\Event\:\:\$expression \(string\) on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.property
-			count: 1
-			path: app/Livewire/ScheduledTasks.php
-
-		-
-			message: '#^Property Illuminate\\Console\\Scheduling\\Event\:\:\$timezone \(DateTimeZone\|string\) on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.property
-			count: 1
-			path: app/Livewire/ScheduledTasks.php
-
-		-
-			message: '#^Ternary operator condition is always true\.$#'
-			identifier: ternary.alwaysTrue
-			count: 2
 			path: app/Livewire/ScheduledTasks.php
 
 		-
