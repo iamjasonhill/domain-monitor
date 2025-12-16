@@ -287,7 +287,7 @@ class Domain extends Model
         if ($recentFailures) {
             $query->whereHas('checks', function ($q) {
                 $q->where('status', 'fail')
-                    ->where('created_at', '>=', now()->subDays(7));
+                    ->where('created_at', '>=', now()->subHours(24));
             });
         }
     }

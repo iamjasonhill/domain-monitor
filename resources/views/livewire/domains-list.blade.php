@@ -168,7 +168,7 @@
                             <div>
                                 <label class="flex items-center">
                                     <input type="checkbox" wire:model.live="filterRecentFailures" class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-sm focus:ring-blue-500">
-                                    <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Recent Failures (7 days)</span>
+                                    <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Recent Failures (24 hours)</span>
                                 </label>
                             </div>
 

@@ -19,7 +19,7 @@ class Dashboard extends Component
                 ->where('expires_at', '>', now())
                 ->count(),
             'recent_failures' => DomainCheck::where('status', 'fail')
-                ->where('created_at', '>=', now()->subDays(7))
+                ->where('created_at', '>=', now()->subHours(24))
                 ->distinct('domain_id')
                 ->count('domain_id'),
             'failed_eligibility' => Domain::where('eligibility_valid', false)->count(),
