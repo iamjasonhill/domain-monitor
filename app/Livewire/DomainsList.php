@@ -142,6 +142,9 @@ class DomainsList extends Component
         return $direction === 'desc' ? 'desc' : 'asc';
     }
 
+    /**
+     * @param  Builder<Domain>  $query
+     */
     private function applySorting(Builder $query, string $connection): void
     {
         if ($this->sortField === null) {
