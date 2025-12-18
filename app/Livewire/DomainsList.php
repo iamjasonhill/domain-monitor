@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Domain;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Artisan;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -30,12 +31,21 @@ class DomainsList extends Component
     #[Url(as: 'failedEligibility', history: true, keep: false)]
     public bool $filterFailedEligibility = false;
 
+    #[Url(as: 'sort', history: true, keep: false)]
+    public ?string $sortField = null;
+
+    #[Url(as: 'dir', history: true, keep: false)]
+    public string $sortDirection = 'asc';
+
     public function mount(): void
     {
         // Convert URL string values to proper types
         if ($this->filterActive !== null) {
             $this->filterActive = $this->filterActive === '1' ? '1' : ($this->filterActive === '0' ? '0' : null);
         }
+
+        $this->sortField = $this->normalizeSortField($this->sortField);
+        $this->sortDirection = $this->normalizeSortDirection($this->sortDirection);
     }
 
     public bool $syncingExpiry = false;
@@ -85,6 +95,100 @@ class DomainsList extends Component
     public function updatingFilterFailedEligibility(): void
     {
         $this->resetPage();
+    }
+
+    public function sortBy(string $field): void
+    {
+        $field = $this->normalizeSortField($field);
+        if ($field === null) {
+            return;
+        }
+
+        if ($this->sortField === $field) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortField = $field;
+            $this->sortDirection = 'asc';
+        }
+
+        $this->resetPage();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function allowedSortFields(): array
+    {
+        return [
+            'domain',
+            'expires',
+            'platform',
+            'hosting',
+            'active',
+        ];
+    }
+
+    private function normalizeSortField(?string $field): ?string
+    {
+        if ($field === null || $field === '') {
+            return null;
+        }
+
+        return in_array($field, $this->allowedSortFields(), true) ? $field : null;
+    }
+
+    private function normalizeSortDirection(string $direction): string
+    {
+        return $direction === 'desc' ? 'desc' : 'asc';
+    }
+
+    private function applySorting(Builder $query, string $connection): void
+    {
+        if ($this->sortField === null) {
+            return;
+        }
+
+        $dir = $this->normalizeSortDirection($this->sortDirection);
+
+        switch ($this->sortField) {
+            case 'domain':
+                $query->orderByRaw('LOWER(domains.domain) '.$dir);
+                break;
+
+            case 'expires':
+                if ($connection === 'pgsql') {
+                    $query->orderByRaw("domains.expires_at {$dir} NULLS LAST");
+                } else {
+                    $query->orderByRaw('domains.expires_at IS NULL ASC')
+                        ->orderBy('domains.expires_at', $dir);
+                }
+                break;
+
+            case 'hosting':
+                if ($connection === 'pgsql') {
+                    $query->orderByRaw("LOWER(domains.hosting_provider) {$dir} NULLS LAST");
+                } else {
+                    $query->orderByRaw('domains.hosting_provider IS NULL ASC')
+                        ->orderByRaw('LOWER(domains.hosting_provider) '.$dir);
+                }
+                break;
+
+            case 'active':
+                $query->orderBy('domains.is_active', $dir);
+                break;
+
+            case 'platform':
+                if ($connection === 'pgsql') {
+                    $query->orderByRaw("LOWER(COALESCE(wp.platform_type, domains.platform)) {$dir} NULLS LAST");
+                } else {
+                    $query->orderByRaw('COALESCE(wp.platform_type, domains.platform) IS NULL ASC')
+                        ->orderByRaw('LOWER(COALESCE(wp.platform_type, domains.platform)) '.$dir);
+                }
+                break;
+        }
+
+        // Stable tie-breaker to avoid jitter across pages
+        $query->orderBy('domains.id', 'asc');
     }
 
     public function syncSynergyExpiry(): void
@@ -311,21 +415,33 @@ class DomainsList extends Component
             ->excludeParked($this->filterExcludeParked)
             ->filterRecentFailures($this->filterRecentFailures)
             ->filterFailedEligibility($this->filterFailedEligibility)
-            ->leftJoin('domain_tag', 'domains.id', '=', 'domain_tag.domain_id')
-            ->leftJoin('domain_tags', 'domain_tag.tag_id', '=', 'domain_tags.id')
-            ->select('domains.*')
-            ->groupBy('domains.id');
+            ->select('domains.*');
 
-        // Order by tag priority (handle NULL values based on database type)
-        if ($connection === 'pgsql') {
-            $query->orderByRaw('MAX(domain_tags.priority) DESC NULLS LAST');
+        // If a sort is selected, it overrides tag-priority ordering.
+        if ($this->sortField !== null) {
+            // Platform sorting needs a join (domain->platform is a relationship)
+            if ($this->sortField === 'platform') {
+                $query->leftJoin('website_platforms as wp', 'wp.domain_id', '=', 'domains.id');
+            }
+
+            $this->applySorting($query, $connection);
         } else {
-            // MySQL/SQLite: Use COALESCE to put NULLs last
-            $query->orderByRaw('COALESCE(MAX(domain_tags.priority), -1) DESC');
+            $query->leftJoin('domain_tag', 'domains.id', '=', 'domain_tag.domain_id')
+                ->leftJoin('domain_tags', 'domain_tag.tag_id', '=', 'domain_tags.id')
+                ->groupBy('domains.id');
+
+            // Order by tag priority (handle NULL values based on database type)
+            if ($connection === 'pgsql') {
+                $query->orderByRaw('MAX(domain_tags.priority) DESC NULLS LAST');
+            } else {
+                // MySQL/SQLite: Use COALESCE to put NULLs last
+                $query->orderByRaw('COALESCE(MAX(domain_tags.priority), -1) DESC');
+            }
+
+            $query->orderBy('domains.updated_at', 'DESC');
         }
 
-        $domains = $query->orderBy('domains.updated_at', 'DESC')
-            ->paginate(50);
+        $domains = $query->paginate(50);
 
         return view('livewire.domains-list', [
             'domains' => $domains,
