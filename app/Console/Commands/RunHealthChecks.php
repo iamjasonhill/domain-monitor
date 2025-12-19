@@ -55,9 +55,12 @@ class RunHealthChecks extends Command
         }
 
         if ($allOption) {
+            $excludeEmailOnly = in_array($type, ['http', 'ssl'], true);
+
             $domains = Domain::with('platform')
                 ->where('is_active', true)
                 ->excludeParked(true)
+                ->excludeEmailOnly($excludeEmailOnly)
                 ->get();
 
             if ($domains->isEmpty()) {
@@ -113,6 +116,14 @@ class RunHealthChecks extends Command
                 return Command::SUCCESS;
             }
 
+            if ($domain->isEmailOnly() && in_array($type, ['http', 'ssl'], true)) {
+                if ($verbose) {
+                    $this->line('  Skipped: domain is marked as email-only (HTTP/SSL checks disabled)');
+                }
+
+                return Command::SUCCESS;
+            }
+
             $startedAt = now();
             $result = null;
             $status = 'fail';
@@ -121,27 +132,10 @@ class RunHealthChecks extends Command
             $payload = [];
 
             if ($type === 'http') {
-                // Email-only domains don't have web hosting, so HTTP failures are expected
-                $platformModel = $domain->relationLoaded('platform') ? $domain->getRelation('platform') : null;
-                $platformType = $platformModel instanceof \App\Models\WebsitePlatform ? $platformModel->platform_type : null;
-                $platformType ??= $domain->getAttribute('platform');
-                $isEmailOnly = $platformType === 'Email Only';
-
                 $result = $httpCheck->check($domain->domain);
-
-                // For email-only domains, always mark as 'ok' - they don't have web hosting
-                if ($isEmailOnly) {
-                    $status = 'ok';
-                    // Still try to get response code for logging, but status is always ok
-                    if ($result['status_code'] === null) {
-                        // Try HTTP fallback to see if we can get any response
-                        $result = $httpCheck->check('http://'.$domain->domain);
-                    }
-                } else {
-                    $status = $result['is_up'] ? 'ok' : 'fail';
-                    if ($result['status_code'] && $result['status_code'] >= 400 && $result['status_code'] < 500) {
-                        $status = 'warn';
-                    }
+                $status = $result['is_up'] ? 'ok' : 'fail';
+                if ($result['status_code'] && $result['status_code'] >= 400 && $result['status_code'] < 500) {
+                    $status = 'warn';
                 }
                 $responseCode = $result['status_code'];
                 $errorMessage = $result['error_message'];

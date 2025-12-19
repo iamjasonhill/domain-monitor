@@ -276,6 +276,25 @@ class Domain extends Model
         }
     }
 
+    /**
+     * Scope a query to exclude email-only domains.
+     * Checks both the platform column and the platform relationship.
+     *
+     * @param  Builder<Domain>  $query
+     */
+    public function scopeExcludeEmailOnly(Builder $query, bool $exclude): void
+    {
+        if ($exclude) {
+            $query->where(function ($q) {
+                $q->where('platform', '!=', 'Email Only')
+                    ->orWhereNull('platform');
+            })
+                ->whereDoesntHave('platform', function ($platformQ) {
+                    $platformQ->where('platform_type', 'Email Only');
+                });
+        }
+    }
+
     public function isParked(): bool
     {
         if ($this->parked_override) {
@@ -287,6 +306,15 @@ class Domain extends Model
         $platformType ??= $this->getAttribute('platform');
 
         return $platformType === 'Parked';
+    }
+
+    public function isEmailOnly(): bool
+    {
+        $platformModel = $this->relationLoaded('platform') ? $this->getRelation('platform') : null;
+        $platformType = $platformModel instanceof WebsitePlatform ? $platformModel->platform_type : null;
+        $platformType ??= $this->getAttribute('platform');
+
+        return $platformType === 'Email Only';
     }
 
     /**

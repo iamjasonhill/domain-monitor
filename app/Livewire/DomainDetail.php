@@ -126,6 +126,12 @@ class DomainDetail extends Component
             return;
         }
 
+        if ($this->domain?->isEmailOnly() && in_array($type, ['http', 'ssl'], true)) {
+            session()->flash('info', 'This domain is marked as email-only. HTTP and SSL checks are disabled.');
+
+            return;
+        }
+
         try {
             Artisan::call('domains:health-check', [
                 '--domain' => $this->domain->domain,

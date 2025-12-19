@@ -38,6 +38,64 @@ class ParkedOverrideTest extends TestCase
         $this->assertSame(1, DomainCheck::where('domain_id', $active->id)->count());
     }
 
+    public function test_email_only_domain_is_skipped_for_http_checks(): void
+    {
+        $emailOnly = Domain::factory()->create([
+            'platform' => 'Email Only',
+        ]);
+
+        $active = Domain::factory()->create([
+            'platform' => null,
+        ]);
+
+        $this->fakeHealthChecks();
+
+        Artisan::call('domains:health-check', [
+            '--all' => true,
+            '--type' => 'http',
+        ]);
+
+        $this->assertSame(0, DomainCheck::where('domain_id', $emailOnly->id)->count());
+        $this->assertSame(1, DomainCheck::where('domain_id', $active->id)->count());
+    }
+
+    public function test_email_only_domain_is_skipped_for_ssl_checks(): void
+    {
+        $emailOnly = Domain::factory()->create([
+            'platform' => 'Email Only',
+        ]);
+
+        $active = Domain::factory()->create([
+            'platform' => null,
+        ]);
+
+        $this->fakeHealthChecks();
+
+        Artisan::call('domains:health-check', [
+            '--all' => true,
+            '--type' => 'ssl',
+        ]);
+
+        $this->assertSame(0, DomainCheck::where('domain_id', $emailOnly->id)->count());
+        $this->assertSame(1, DomainCheck::where('domain_id', $active->id)->count());
+    }
+
+    public function test_email_only_domain_is_not_skipped_for_dns_checks(): void
+    {
+        $emailOnly = Domain::factory()->create([
+            'platform' => 'Email Only',
+        ]);
+
+        $this->fakeHealthChecks();
+
+        Artisan::call('domains:health-check', [
+            '--domain' => $emailOnly->domain,
+            '--type' => 'dns',
+        ]);
+
+        $this->assertSame(1, DomainCheck::where('domain_id', $emailOnly->id)->count());
+    }
+
     public function test_manually_parked_domain_is_skipped_for_single_domain_health_check(): void
     {
         $parked = Domain::factory()->create([
