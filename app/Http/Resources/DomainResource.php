@@ -33,6 +33,8 @@ class DomainResource extends JsonResource
             'id' => $this->id,
             'name' => $this->domain,
             'status' => $this->is_active ? 'active' : 'inactive',
+            'is_parked' => $this->isParked(),
+            'is_email_only' => $this->isEmailOnly(),
             'expires_at' => $this->expires_at?->format('Y-m-d'),
             'registrar' => $this->registrar,
             'dns_servers' => $this->nameservers ?? [],
