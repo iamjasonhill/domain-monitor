@@ -14,6 +14,6 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware(['auth:api-key'])->group(function () {
+Route::middleware(['api-key'])->group(function () {
     Route::get('/domains', [DomainController::class, 'index']);
 });
