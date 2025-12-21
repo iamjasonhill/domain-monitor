@@ -44,4 +44,9 @@ return [
         'api_url' => env('SYNERGY_API_URL', 'https://api.synergywholesale.com/soap'),
     ],
 
+    'domain_monitor' => [
+        'brain_api_key' => env('BRAIN_API_KEY'),
+        'ops_api_key' => env('OPS_API_KEY'),
+    ],
+
 ];
