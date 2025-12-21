@@ -9,6 +9,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property string $id
  * @property string $domain
  * @property string|null $registrar
+ * @property string|null $hosting_provider
+ * @property string|null $platform
+ * @property string|null $domain_status
+ * @property bool|null $auto_renew
  * @property array<int, string>|null $nameservers
  * @property \Illuminate\Support\Carbon|null $expires_at
  * @property \Illuminate\Support\Carbon|null $last_checked_at
