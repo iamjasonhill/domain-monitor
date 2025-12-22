@@ -4,8 +4,59 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0594bd4afd2b2998c936c2e228e1f3df",
+    "content-hash": "4a3a35f5c4bb639c1d79573cf7d0a426",
     "packages": [
+        {
+            "name": "brain-nucleus/client",
+            "version": "v1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/iamjasonhill/brain-client.git",
+                "reference": "344539ba18b3ed8b5210821a7c1d5d8feb8571e3"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/iamjasonhill/brain-client/zipball/344539ba18b3ed8b5210821a7c1d5d8feb8571e3",
+                "reference": "344539ba18b3ed8b5210821a7c1d5d8feb8571e3",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/http": "^9.0|^10.0|^11.0|^12.0",
+                "illuminate/support": "^9.0|^10.0|^11.0|^12.0",
+                "php": "^8.1"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Brain\\Client\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Jason Hill",
+                    "email": "support@again.com.au"
+                }
+            ],
+            "description": "Official Brain Nucleus event client for Laravel - monitoring, analytics, and incident management",
+            "homepage": "https://github.com/iamjasonhill/brain-client",
+            "keywords": [
+                "analytics",
+                "brain",
+                "events",
+                "incidents",
+                "laravel",
+                "monitoring"
+            ],
+            "support": {
+                "issues": "https://github.com/iamjasonhill/brain-client/issues",
+                "source": "https://github.com/iamjasonhill/brain-client/tree/v1.0.0"
+            },
+            "time": "2025-12-22T05:26:28+00:00"
+        },
         {
             "name": "brick/math",
             "version": "0.14.1",

@@ -2,7 +2,7 @@
 
 namespace App\Providers;
 
-use App\Services\BrainEventClient;
+use Brain\Client\BrainEventClient;
 use Illuminate\Support\ServiceProvider;
 
 class BrainServiceProvider extends ServiceProvider

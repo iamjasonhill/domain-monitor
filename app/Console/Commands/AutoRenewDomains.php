@@ -4,8 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\Domain;
 use App\Models\SynergyCredential;
-use App\Services\BrainEventClient;
 use App\Services\SynergyWholesaleClient;
+use Brain\Client\BrainEventClient;
 use Illuminate\Console\Command;
 
 class AutoRenewDomains extends Command

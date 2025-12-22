@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Services\BrainEventClient;
+use Brain\Client\BrainEventClient;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 

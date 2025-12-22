@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Domain;
 use App\Models\DomainAlert;
-use App\Services\BrainEventClient;
+use Brain\Client\BrainEventClient;
 use Illuminate\Console\Command;
 
 class CheckExpiringDomains extends Command
