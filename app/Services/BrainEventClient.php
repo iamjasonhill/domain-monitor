@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Log;
  */
 class BrainEventClient
 {
+    public const CLIENT_VERSION = '1.0.0';
+
     private string $baseUrl;
 
     private string $apiKey;
@@ -27,63 +29,43 @@ class BrainEventClient
     }
 
     /**
+     * Get the client version.
+     */
+    public function getVersion(): string
+    {
+        return self::CLIENT_VERSION;
+    }
+
+    /**
      * Send an event to Brain Nucleus
      *
      * @param  string  $eventType  The type of event (e.g., 'user.signup', 'order.completed')
      * @param  array<string, mixed>  $payload  Event data (will be stored as JSON)
-     * @param  array<string, mixed>  $options  Optional fields: severity, fingerprint, message, context, occurred_at
+     * @param  \DateTimeInterface|null  $occurredAt  When the event occurred (defaults to now)
      * @return array<string, mixed>|null Response data with 'id' and 'status', or null on failure
      */
-    public function send(string $eventType, array $payload, array $options = []): ?array
+    public function send(string $eventType, array $payload, ?\DateTimeInterface $occurredAt = null): ?array
     {
         try {
-            $eventData = [
-                'event_type' => $eventType,
-                'payload' => $payload,
-            ];
-
-            // Add optional fields if provided
-            if (isset($options['severity'])) {
-                $eventData['severity'] = $options['severity'];
-            }
-
-            if (isset($options['fingerprint'])) {
-                $eventData['fingerprint'] = $options['fingerprint'];
-            }
-
-            if (isset($options['message'])) {
-                $eventData['message'] = $options['message'];
-            }
-
-            if (isset($options['context'])) {
-                $eventData['context'] = $options['context'];
-            }
-
-            if (isset($options['occurred_at'])) {
-                $eventData['occurred_at'] = $options['occurred_at'] instanceof \DateTimeInterface
-                    ? $options['occurred_at']->format('c')
-                    : $options['occurred_at'];
-            }
-
+            /** @var \Illuminate\Http\Client\Response $response */
             $response = Http::withHeaders([
                 'X-Brain-Key' => $this->apiKey,
+                'X-Brain-Client-Version' => self::CLIENT_VERSION,
                 'Content-Type' => 'application/json',
-            ])->post("{$this->baseUrl}/api/v1/events", $eventData);
+            ])->post("{$this->baseUrl}/api/v1/events", [
+                'event_type' => $eventType,
+                'payload' => $payload,
+                'occurred_at' => $occurredAt?->format('c'),
+            ]);
 
-            if ($response instanceof \Illuminate\Http\Client\Response && $response->successful()) {
+            if ($response->successful()) {
                 return $response->json();
             }
 
-            $status = $response instanceof \Illuminate\Http\Client\Response ? $response->status() : 'unknown';
-            $body = $response instanceof \Illuminate\Http\Client\Response ? $response->body() : 'unknown';
-            $headers = $response instanceof \Illuminate\Http\Client\Response ? $response->headers() : [];
-
             Log::warning('Brain event send failed', [
                 'event_type' => $eventType,
-                'status' => $status,
-                'body' => $body,
-                'base_url' => $this->baseUrl,
-                'api_key_configured' => ! empty($this->apiKey),
+                'status' => $response->status(),
+                'body' => $response->body(),
             ]);
 
             return null;
@@ -101,12 +83,41 @@ class BrainEventClient
      * Send an event asynchronously (fire and forget)
      *
      * @param  array<string, mixed>  $payload
-     * @param  array<string, mixed>  $options
      */
-    public function sendAsync(string $eventType, array $payload, array $options = []): void
+    public function sendAsync(string $eventType, array $payload, ?\DateTimeInterface $occurredAt = null): void
     {
-        dispatch(function () use ($eventType, $payload, $options) {
-            $this->send($eventType, $payload, $options);
+        dispatch(function () use ($eventType, $payload, $occurredAt) {
+            $this->send($eventType, $payload, $occurredAt);
         });
+    }
+
+    /**
+     * Check for client version updates.
+     *
+     * @return array<string, mixed>|null Response with 'latest_version', 'current_version', and 'update_required', or null on failure
+     */
+    public function checkVersion(): ?array
+    {
+        try {
+            /** @var \Illuminate\Http\Client\Response $response */
+            $response = Http::get("{$this->baseUrl}/api/v1/client/version");
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            Log::warning('Brain version check failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return null;
+        } catch (\Exception $e) {
+            Log::error('Brain version check exception', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 }

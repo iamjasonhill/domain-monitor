@@ -171,3 +171,4 @@ php artisan test
 ✅ **CI runs automatically** on push/PR  
 ✅ **Pre-commit hooks** catch issues early
 
+
