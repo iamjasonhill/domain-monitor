@@ -51,7 +51,6 @@ class SendHealthPing extends Command
                 'site' => config('app.name', 'domain-monitor'),
                 'version' => config('app.version', '1.0.0'),
                 'environment' => config('app.env', 'production'),
-            ], [
                 'severity' => 'info',
                 'fingerprint' => 'health.heartbeat:domain-monitor',
                 'message' => 'ok',
