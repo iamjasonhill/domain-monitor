@@ -76,11 +76,14 @@ class BrainEventClient
 
             $status = $response instanceof \Illuminate\Http\Client\Response ? $response->status() : 'unknown';
             $body = $response instanceof \Illuminate\Http\Client\Response ? $response->body() : 'unknown';
+            $headers = $response instanceof \Illuminate\Http\Client\Response ? $response->headers() : [];
 
             Log::warning('Brain event send failed', [
                 'event_type' => $eventType,
                 'status' => $status,
                 'body' => $body,
+                'base_url' => $this->baseUrl,
+                'api_key_configured' => ! empty($this->apiKey),
             ]);
 
             return null;
