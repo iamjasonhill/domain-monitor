@@ -164,14 +164,14 @@ class DomainCheck extends Model
             $payload['metadata'] = $this->metadata;
         }
 
-        // Send event asynchronously (non-blocking)
-        $brain->sendAsync($eventType, $payload, [
-            'severity' => $severity,
-            'fingerprint' => $fingerprint,
-            'message' => $message,
-            'context' => $context,
-            'occurred_at' => $this->finished_at ?? $this->created_at,
-        ]);
+        // Send event asynchronously with all metadata in payload (non-blocking)
+        $payload['severity'] = $severity;
+        $payload['fingerprint'] = $fingerprint;
+        $payload['message'] = $message;
+        $payload['context'] = $context;
+        $payload['occurred_at'] = ($this->finished_at ?? $this->created_at)?->toIso8601String();
+
+        $brain->sendAsync($eventType, $payload);
     }
 
     /**

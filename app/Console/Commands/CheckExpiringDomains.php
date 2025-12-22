@@ -141,14 +141,13 @@ class CheckExpiringDomains extends Command
             'registrar' => $domain->registrar,
         ];
 
-        // Send event asynchronously
-        $brain->sendAsync($eventType, $payload, [
-            'severity' => $severity,
-            'fingerprint' => $fingerprint,
-            'message' => $message,
-            'context' => $context,
-            'occurred_at' => now(),
-        ]);
+        // Send event asynchronously with all metadata in payload
+        $payload['severity'] = $severity;
+        $payload['fingerprint'] = $fingerprint;
+        $payload['message'] = $message;
+        $payload['context'] = $context;
+
+        $brain->sendAsync($eventType, $payload);
     }
 
     /**

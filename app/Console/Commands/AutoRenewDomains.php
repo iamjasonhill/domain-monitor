@@ -205,17 +205,16 @@ class AutoRenewDomains extends Command
             $payload['error_message'] = $errorMessage;
         }
 
-        // Send event asynchronously
-        $brain->sendAsync($eventType, $payload, [
-            'severity' => $success ? 'info' : 'error',
-            'fingerprint' => $fingerprint,
-            'message' => $message,
-            'context' => [
-                'domain' => $domain->domain,
-                'domain_id' => $domain->id,
-                'success' => $success,
-            ],
-            'occurred_at' => now(),
-        ]);
+        // Send event asynchronously with all metadata in payload
+        $payload['severity'] = $success ? 'info' : 'error';
+        $payload['fingerprint'] = $fingerprint;
+        $payload['message'] = $message;
+        $payload['context'] = [
+            'domain' => $domain->domain,
+            'domain_id' => $domain->id,
+            'success' => $success,
+        ];
+
+        $brain->sendAsync($eventType, $payload);
     }
 }
