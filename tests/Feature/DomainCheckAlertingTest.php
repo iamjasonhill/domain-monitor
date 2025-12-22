@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Domain;
 use App\Models\DomainCheck;
-use App\Services\BrainEventClient;
+use Brain\Client\BrainEventClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
