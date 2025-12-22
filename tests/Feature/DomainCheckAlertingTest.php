@@ -21,7 +21,7 @@ class DomainCheckAlertingTest extends TestCase
 
         $brain = $this->mock(BrainEventClient::class);
 
-        $brain->shouldReceive('sendAsync')->once()->withArgs(function (string $eventType, array $payload, array $options) use ($domain): bool {
+        $brain->shouldReceive('sendAsync')->once()->withArgs(function (string $eventType, array $payload) use ($domain): bool {
             $this->assertSame('domain.check.http', $eventType);
             $this->assertSame($domain->id, $payload['domain_id']);
             $this->assertSame('http', $payload['check_type']);
@@ -33,7 +33,7 @@ class DomainCheckAlertingTest extends TestCase
             return true;
         });
 
-        $brain->shouldReceive('sendAsync')->once()->withArgs(function (string $eventType, array $payload, array $options) use ($domain): bool {
+        $brain->shouldReceive('sendAsync')->once()->withArgs(function (string $eventType, array $payload) use ($domain): bool {
             $this->assertSame('domain.check.http', $eventType);
             $this->assertSame($domain->id, $payload['domain_id']);
             $this->assertSame('http', $payload['check_type']);
@@ -60,7 +60,7 @@ class DomainCheckAlertingTest extends TestCase
 
         $brain = $this->mock(BrainEventClient::class);
 
-        $brain->shouldReceive('sendAsync')->once()->withArgs(function (string $eventType, array $payload, array $options) use ($domain): bool {
+        $brain->shouldReceive('sendAsync')->once()->withArgs(function (string $eventType, array $payload) use ($domain): bool {
             $this->assertSame('domain.check.ssl', $eventType);
             $this->assertSame($domain->id, $payload['domain_id']);
             $this->assertSame('ssl', $payload['check_type']);
