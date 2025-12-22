@@ -66,6 +66,11 @@ class Domain extends Model
         'hosting_provider',
         'hosting_admin_url',
         'platform',
+        'target_platform',
+        'migration_tier',
+        'scaffolding_status',
+        'scaffolded_at',
+        'scaffolded_by',
         'expires_at',
         'renewed_at',
         'renewed_by',
@@ -115,6 +120,8 @@ class Domain extends Model
             'ip_hosting_flag' => 'boolean',
             'parked_override' => 'boolean',
             'parked_override_set_at' => 'datetime',
+            'scaffolded_at' => 'datetime',
+            'migration_tier' => 'integer',
         ];
     }
 
