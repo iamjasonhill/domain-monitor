@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "brain-nucleus/client",
-            "version": "v1.1.0",
+            "version": "v1.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/iamjasonhill/brain-client.git",
-                "reference": "02c1c3a67a80531173b95d45d4577f3337f6697b"
+                "reference": "715cde0bbfd575440979b301bd976765e6b098b4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/iamjasonhill/brain-client/zipball/02c1c3a67a80531173b95d45d4577f3337f6697b",
-                "reference": "02c1c3a67a80531173b95d45d4577f3337f6697b",
+                "url": "https://api.github.com/repos/iamjasonhill/brain-client/zipball/715cde0bbfd575440979b301bd976765e6b098b4",
+                "reference": "715cde0bbfd575440979b301bd976765e6b098b4",
                 "shasum": ""
             },
             "require": {
@@ -26,6 +26,13 @@
                 "php": "^8.1"
             },
             "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Brain\\Client\\BrainServiceProvider"
+                    ]
+                }
+            },
             "autoload": {
                 "psr-4": {
                     "Brain\\Client\\": "src/"
@@ -53,9 +60,9 @@
             ],
             "support": {
                 "issues": "https://github.com/iamjasonhill/brain-client/issues",
-                "source": "https://github.com/iamjasonhill/brain-client/tree/v1.1.0"
+                "source": "https://github.com/iamjasonhill/brain-client/tree/v1.2.0"
             },
-            "time": "2025-12-23T00:50:06+00:00"
+            "time": "2025-12-23T02:47:40+00:00"
         },
         {
             "name": "brick/math",

@@ -826,3 +826,5 @@ npm run build                   # Production build
 - Pre-commit hook prevents committing code with errors
 - CI/CD runs all checks automatically on push/PR
 
+
+

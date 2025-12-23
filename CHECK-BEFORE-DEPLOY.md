@@ -172,3 +172,5 @@ php artisan test
 ✅ **Pre-commit hooks** catch issues early
 
 
+
+
