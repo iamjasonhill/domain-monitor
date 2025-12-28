@@ -3,8 +3,10 @@
 namespace App\Livewire;
 
 use App\Models\Domain;
+use App\Models\DomainTag;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Artisan;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -30,6 +32,9 @@ class DomainsList extends Component
 
     #[Url(as: 'failedEligibility', history: true, keep: false)]
     public bool $filterFailedEligibility = false;
+
+    #[Url(as: 'tag', history: true, keep: false)]
+    public ?string $filterTag = null;
 
     #[Url(as: 'sort', history: true, keep: false)]
     public ?string $sortField = null;
@@ -64,6 +69,7 @@ class DomainsList extends Component
         $this->filterExcludeParked = false;
         $this->filterRecentFailures = false;
         $this->filterFailedEligibility = false;
+        $this->filterTag = null;
         $this->resetPage();
     }
 
@@ -95,6 +101,22 @@ class DomainsList extends Component
     public function updatingFilterFailedEligibility(): void
     {
         $this->resetPage();
+    }
+
+    public function updatingFilterTag(): void
+    {
+        $this->resetPage();
+    }
+
+    /**
+     * Get all available tags for the filter dropdown.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, DomainTag>
+     */
+    #[Computed]
+    public function availableTags(): \Illuminate\Database\Eloquent\Collection
+    {
+        return DomainTag::orderedByPriority()->get();
     }
 
     public function sortBy(string $field): void
@@ -418,6 +440,11 @@ class DomainsList extends Component
             ->excludeParked($this->filterExcludeParked)
             ->filterRecentFailures($this->filterRecentFailures)
             ->filterFailedEligibility($this->filterFailedEligibility)
+            ->when($this->filterTag, function (Builder $query) {
+                $query->whereHas('tags', function (Builder $q) {
+                    $q->where('domain_tags.id', $this->filterTag);
+                });
+            })
             ->select('domains.*');
 
         // If a sort is selected, it overrides tag-priority ordering.
