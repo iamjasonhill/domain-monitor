@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\DeploymentController;
 use App\Http\Controllers\Api\DomainController;
 use App\Http\Controllers\Api\TagController;
 use Illuminate\Support\Facades\Route;
@@ -26,4 +27,7 @@ Route::middleware(['api-key'])->group(function () {
     // Tags
     Route::get('/tags', [TagController::class, 'index']);
     Route::get('/tags/{tag}/domains', [TagController::class, 'domains']);
+
+    // Deployments
+    Route::post('/deployments', [DeploymentController::class, 'store']);
 });
