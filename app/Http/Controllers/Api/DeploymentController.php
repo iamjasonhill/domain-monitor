@@ -67,12 +67,13 @@ class DeploymentController extends Controller
         }
 
         try {
-            Http::withHeaders([
+            /** @var \Illuminate\Http\Client\Response $response */
+            $response = Http::withHeaders([
                 'X-Brain-Key' => $brainKey,
-            ])->post("{$brainUrl}/api/events", [
-                'type' => 'deployment.completed',
+            ])->post("{$brainUrl}/api/v1/events", [
+                'event_type' => 'deployment.completed',
                 'project' => 'domain-monitor',
-                'data' => [
+                'payload' => [
                     'domain' => $domain->domain,
                     'deployment_id' => $deployment->id,
                     'git_commit' => $deployment->git_commit,
@@ -80,7 +81,11 @@ class DeploymentController extends Controller
                 ],
             ]);
 
-            Log::info("Deployment event sent to Brain for {$domain->domain}");
+            if ($response->successful()) {
+                Log::info("Deployment event sent to Brain for {$domain->domain}");
+            } else {
+                Log::error("Brain rejected deployment event: {$response->status()} - {$response->body()}");
+            }
         } catch (\Exception $e) {
             Log::error('Failed to notify Brain of deployment: '.$e->getMessage());
         }
