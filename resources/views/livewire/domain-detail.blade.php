@@ -635,6 +635,51 @@
                 @endif
             </div>
         </div>
+
+        <!-- Deployments -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mt-6">
+            <div class="p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Deployments</h3>
+                @if($domain->deployments && $domain->deployments->count() > 0)
+                    <div class="overflow-x-auto">
+                        <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-900">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Deployed At</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Commit</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                @foreach($domain->deployments->take(10) as $deployment)
+                                    <tr>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                            {{ $deployment->deployed_at->format('Y-m-d H:i') }}
+                                            <span class="text-gray-500 dark:text-gray-400 text-xs">({{ $deployment->deployed_at->diffForHumans() }})</span>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-mono text-gray-900 dark:text-gray-100">
+                                            @if($deployment->git_commit)
+                                                <code class="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-xs">{{ substr($deployment->git_commit, 0, 7) }}</code>
+                                            @else
+                                                <span class="text-gray-400">—</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
+                                            {{ $deployment->notes ?? '—' }}
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @if($domain->deployments->count() > 10)
+                        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Showing 10 most recent of {{ $domain->deployments->count() }} total deployments.</p>
+                    @endif
+                @else
+                    <p class="text-gray-500 dark:text-gray-400">No deployments recorded yet. Add deployment tracking to your CI/CD pipeline to see history here.</p>
+                @endif
+            </div>
+        </div>
     @else
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
             <div class="p-6 text-center">

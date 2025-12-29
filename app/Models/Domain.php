@@ -183,6 +183,14 @@ class Domain extends Model
     }
 
     /**
+     * @return HasMany<Deployment, $this>
+     */
+    public function deployments(): HasMany
+    {
+        return $this->hasMany(Deployment::class)->orderByDesc('deployed_at');
+    }
+
+    /**
      * Scope a query to search domains by domain name, project key, registrar, hosting provider, or notes.
      * Supports case-insensitive search and multiple search terms.
      * Requires minimum 2 characters to avoid performance issues.
