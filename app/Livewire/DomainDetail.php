@@ -74,7 +74,7 @@ class DomainDetail extends Component
                 $query->latest()->limit(20);
             },
             'dnsRecords' => function ($query) {
-                $query->orderBy('type')->orderBy('host');
+                $query->orderByRaw('LOWER(host)');
             },
         ])->findOrFail($this->domainId);
 
