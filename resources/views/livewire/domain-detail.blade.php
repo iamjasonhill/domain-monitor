@@ -702,12 +702,29 @@
                         {{ $editingDnsRecordId ? 'Edit DNS Record' : 'Add DNS Record' }}
                     </h2>
 
+                    @if (session()->has('error'))
+                        <div class="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-300 rounded">
+                            <p class="text-sm font-medium">{{ session('error') }}</p>
+                        </div>
+                    @endif
+
+                    @if ($errors->any())
+                        <div class="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-300 rounded">
+                            <p class="text-sm font-medium mb-1">Please fix the following errors:</p>
+                            <ul class="list-disc list-inside text-sm">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
                     <div class="space-y-4">
                         <!-- Host -->
                         <div>
                             <x-input-label for="dns_record_host" value="Host/Subdomain" />
-                            <x-text-input wire:model="dnsRecordHost" id="dns_record_host" type="text" class="mt-1 block w-full" placeholder="e.g., www, mail, @ for root" required />
-                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave empty or use @ for root domain</p>
+                            <x-text-input wire:model="dnsRecordHost" id="dns_record_host" type="text" class="mt-1 block w-full" placeholder="e.g., www, mail, or leave empty/@ for root" />
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Leave empty or use @ for root domain. Enter subdomain name (e.g., www, mail) for subdomain records.</p>
                             <x-input-error :messages="$errors->get('dnsRecordHost')" class="mt-2" />
                         </div>
 
@@ -751,11 +768,22 @@
                     </div>
 
                     <div class="mt-6 flex justify-end gap-3">
-                        <x-secondary-button type="button" wire:click="closeDnsRecordModal">
+                        <x-secondary-button type="button" wire:click="closeDnsRecordModal" wire:loading.attr="disabled">
                             Cancel
                         </x-secondary-button>
-                        <x-primary-button type="submit">
-                            {{ $editingDnsRecordId ? 'Update' : 'Add' }} Record
+                        <x-primary-button type="submit" wire:loading.attr="disabled" wire:target="saveDnsRecord">
+                            <span wire:loading.remove wire:target="saveDnsRecord">
+                                {{ $editingDnsRecordId ? 'Update' : 'Add' }} Record
+                            </span>
+                            <span wire:loading wire:target="saveDnsRecord">
+                                <span class="inline-flex items-center">
+                                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Saving...
+                                </span>
+                            </span>
                         </x-primary-button>
                     </div>
                 </form>

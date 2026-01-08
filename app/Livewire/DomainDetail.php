@@ -314,22 +314,57 @@ class DomainDetail extends Component
 
     public function saveDnsRecord(): void
     {
+        // Validate domain and TLD
         if (! $this->domain || ! \App\Services\SynergyWholesaleClient::isAustralianTld($this->domain->domain)) {
+            $this->addError('dnsRecordHost', 'Only Australian TLD domains (.com.au, .net.au, etc.) can manage DNS records.');
             session()->flash('error', 'Only Australian TLD domains (.com.au, .net.au, etc.) can manage DNS records.');
 
             return;
         }
 
-        // Validation
-        if (empty($this->dnsRecordHost) || empty($this->dnsRecordValue)) {
-            session()->flash('error', 'Host and Value are required.');
+        // Normalize host field first (empty or @ means root domain)
+        $host = trim($this->dnsRecordHost ?? '');
+        if ($host === '' || $host === '@') {
+            $host = '@';
+            $this->dnsRecordHost = '@';
+        }
+
+        // Validate required fields
+        $this->validate([
+            'dnsRecordHost' => ['required', 'string', 'max:255'],
+            'dnsRecordType' => ['required', 'string', 'in:A,AAAA,CNAME,MX,NS,TXT,SRV'],
+            'dnsRecordValue' => ['required', 'string', 'max:65535'],
+            'dnsRecordTtl' => ['required', 'integer', 'min:60', 'max:86400'],
+            'dnsRecordPriority' => ['nullable', 'integer', 'min:0', 'max:65535'],
+        ], [
+            'dnsRecordHost.required' => 'Host/Subdomain is required. Use @ for root domain or leave empty.',
+            'dnsRecordValue.required' => 'Value is required.',
+            'dnsRecordTtl.required' => 'TTL is required.',
+            'dnsRecordTtl.min' => 'TTL must be at least 60 seconds.',
+            'dnsRecordTtl.max' => 'TTL cannot exceed 86400 seconds (1 day).',
+            'dnsRecordPriority.min' => 'Priority must be 0 or greater.',
+            'dnsRecordPriority.max' => 'Priority cannot exceed 65535.',
+        ]);
+
+        // Validate host format (allow @ or valid subdomain)
+        if ($host !== '@' && ! preg_match('/^[a-z0-9]([a-z0-9\-_]*[a-z0-9])?$/i', $host)) {
+            $this->addError('dnsRecordHost', 'Host must be a valid subdomain name (letters, numbers, hyphens, underscores) or @ for root domain.');
 
             return;
         }
 
+        // Additional validation for MX records
+        if ($this->dnsRecordType === 'MX' && $this->dnsRecordPriority < 1) {
+            $this->addError('dnsRecordPriority', 'Priority is required for MX records (typically 10-100).');
+
+            return;
+        }
+
+        // Check for active credentials
         $credential = SynergyCredential::where('is_active', true)->first();
         if (! $credential) {
-            session()->flash('error', 'No active domain registrar credentials found.');
+            $this->addError('dnsRecordHost', 'No active domain registrar credentials found. Please configure Synergy Wholesale credentials in Settings.');
+            session()->flash('error', 'No active domain registrar credentials found. Please configure Synergy Wholesale credentials in Settings.');
 
             return;
         }
@@ -377,7 +412,9 @@ class DomainDetail extends Component
                     $this->closeDnsRecordModal();
                     $this->loadDomain();
                 } else {
-                    session()->flash('error', $result['error_message'] ?? 'Failed to update DNS record.');
+                    $errorMessage = $result['error_message'] ?? 'Failed to update DNS record.';
+                    $this->addError('dnsRecordValue', $errorMessage);
+                    session()->flash('error', $errorMessage);
                 }
             } else {
                 // Add new record
@@ -407,11 +444,15 @@ class DomainDetail extends Component
                     $this->closeDnsRecordModal();
                     $this->loadDomain();
                 } else {
-                    session()->flash('error', $result['error_message'] ?? 'Failed to add DNS record.');
+                    $errorMessage = $result['error_message'] ?? 'Failed to add DNS record. Please check the values and try again.';
+                    $this->addError('dnsRecordValue', $errorMessage);
+                    session()->flash('error', $errorMessage);
                 }
             }
         } catch (\Exception $e) {
-            session()->flash('error', 'Error saving DNS record: '.$e->getMessage());
+            $errorMessage = 'Error saving DNS record: '.$e->getMessage();
+            $this->addError('dnsRecordValue', $errorMessage);
+            session()->flash('error', $errorMessage);
         }
     }
 
