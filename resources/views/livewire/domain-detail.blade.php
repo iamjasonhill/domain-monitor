@@ -676,7 +676,7 @@
                                     @if($spf['record'])
                                         <div>
                                             <span class="text-gray-600 dark:text-gray-400 block mb-1">Record:</span>
-                                            <code class="block w-full text-xs p-2 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 break-all">{{ $spf['record'] }}</code>
+                                            <code class="block w-full text-xs p-2 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 rounded border border-gray-200 dark:border-gray-700 break-all">{{ $spf['record'] }}</code>
                                         </div>
                                     @endif
                                     @if($spf['mechanism'])
@@ -716,7 +716,7 @@
                                     @if($dmarc['record'])
                                         <div>
                                             <span class="text-gray-600 dark:text-gray-400 block mb-1">Record:</span>
-                                            <code class="block w-full text-xs p-2 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 break-all">{{ $dmarc['record'] }}</code>
+                                            <code class="block w-full text-xs p-2 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 rounded border border-gray-200 dark:border-gray-700 break-all">{{ $dmarc['record'] }}</code>
                                         </div>
                                     @endif
                                     @if($dmarc['policy'])
