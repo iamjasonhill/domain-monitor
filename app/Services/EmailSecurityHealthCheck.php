@@ -89,9 +89,12 @@ class EmailSecurityHealthCheck
      */
     private function checkDkim(string $domain): array
     {
-        // Common selectors to check
+        // Common selectors to check (expanded list)
         $selectors = [
             'google', 'default', 'mail', 'k1', 'smtp', 's1', 's2019', 's2020', '20230601',
+            'mandrill', 'sendgrid', 'mailchimp', 'sparkpost', 'postmark', 'amazonses',
+            'protonmail', 'office365', 'outlook', 'm1', 'm2', 'dkim', 'dkim1', 'dkim2',
+            'dns1', 'dns2', 'zoho', 'fastmail', 'ms', 'key1',
         ];
 
         $foundSelectors = [];
