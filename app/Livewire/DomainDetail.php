@@ -121,6 +121,12 @@ class DomainDetail extends Component
 
     public function runHealthCheck(string $type): void
     {
+        Log::info('Manual health check initiated', [
+            'domain' => $this->domain->domain,
+            'type' => $type,
+            'is_parked' => $this->domain?->isParked(),
+        ]);
+
         if ($this->domain?->isParked()) {
             session()->flash('info', 'This domain is marked as parked. Health checks are disabled.');
 
