@@ -4,7 +4,6 @@
             <div>
                 <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 italic">Hosting Reliability</h2>
                 <p class="mt-2 text-sm text-gray-600 dark:text-gray-400 font-medium">Compare uptime and downtime across your hosting providers.</p>
-                {{-- Test comment for /commit workflow --}}
             </div>
             @if($selectedHost)
                 <button wire:click="selectHost(null)" class="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-500 flex items-center gap-1">
