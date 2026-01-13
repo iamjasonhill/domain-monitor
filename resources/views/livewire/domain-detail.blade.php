@@ -1416,6 +1416,103 @@
             </div>
         </div>
 
+        <!-- Broken Link Checker -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                        Broken Link Checker
+                    </h3>
+                    @if($domain->is_active)
+                         <!-- Action button or status could go here -->
+                    @endif
+                </div>
+
+                @php
+                    $latestBrokenLinkCheck = $domain->checks()->where('check_type', 'broken_links')->latest()->first();
+                    $blPayload = $latestBrokenLinkCheck?->payload ?? [];
+                    $brokenLinks = $blPayload['broken_links'] ?? [];
+                    $pagesScanned = $blPayload['pages_scanned'] ?? 0;
+                    $blCount = $blPayload['broken_links_count'] ?? count($brokenLinks);
+                @endphp
+
+                @if($latestBrokenLinkCheck)
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                         <!-- Stats -->
+                        <div class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Status</span>
+                            <p class="text-lg font-semibold {{ $blCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400' }}">
+                                {{ $blCount > 0 ? 'Issues Found' : 'Healthy' }}
+                            </p>
+                        </div>
+                        <div class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Pages Scanned</span>
+                            <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $pagesScanned }}</p>
+                        </div>
+                        <div class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Broken Links</span>
+                            <p class="text-lg font-semibold {{ $blCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400' }}">
+                                {{ $blCount }}
+                            </p>
+                        </div>
+                    </div>
+
+                    @if($blCount > 0)
+                        <div class="overflow-x-auto border rounded-lg dark:border-gray-700">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-50 dark:bg-gray-900">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Broken URL</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Found On</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                    @foreach($brokenLinks as $link)
+                                        <tr>
+                                            <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100 break-all">
+                                                <a href="{{ $link['url'] }}" target="_blank" class="hover:underline text-blue-600 dark:text-blue-400">{{ $link['url'] }}</a>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                                    {{ $link['status'] ?: 'Error' }}
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 break-all">
+                                                <a href="{{ $link['found_on'] }}" target="_blank" class="hover:underline">{{ $link['found_on'] }}</a>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="flex items-center p-4 mb-4 text-sm text-green-800 rounded-lg bg-green-50 dark:bg-gray-800 dark:text-green-400 border border-green-200 dark:border-green-800" role="alert">
+                            <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+                            </svg>
+                            <span class="sr-only">Info</span>
+                            <div>
+                                <span class="font-medium">No broken links found.</span> We scanned {{ $pagesScanned }} pages and found no dead links.
+                            </div>
+                        </div>
+                    @endif
+                    
+                    <div class="mt-4 text-xs text-gray-500 dark:text-gray-400 text-right">
+                        Last checked: {{ $latestBrokenLinkCheck->created_at->diffForHumans() }} ({{ $latestBrokenLinkCheck->duration_ms }}ms)
+                    </div>
+                @else
+                     <div class="text-center py-6 text-gray-500 dark:text-gray-400">
+                        <p>No broken link data available yet.</p>
+                        <p class="text-sm mt-2">Run a health check to scan for broken links.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
         <!-- Reputation & Blacklist Monitoring -->
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
             <div class="p-6">
