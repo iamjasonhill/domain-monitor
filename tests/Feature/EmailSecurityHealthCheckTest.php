@@ -33,6 +33,21 @@ class EmailSecurityHealthCheckTest extends TestCase
                 ->andReturn([
                     new TXT(['host' => '_dmarc.example.com', 'class' => 'IN', 'ttl' => 300, 'type' => 'TXT', 'txt' => 'v=DMARC1; p=reject;']),
                 ]);
+
+            // Mock DNSSEC
+            $mockDnskey = \Mockery::mock(\Spatie\Dns\Records\Record::class);
+            $mockDnskey->shouldReceive('__toString')->andReturn('256 3 8 ...');
+
+            $mock->shouldReceive('getRecords')
+                ->with('example.com', 'DNSKEY')
+                ->andReturn([$mockDnskey]);
+
+            // Mock CAA
+            $mock->shouldReceive('getRecords')
+                ->with('example.com', 'CAA')
+                ->andReturn([
+                    new \Spatie\Dns\Records\CAA(['host' => 'example.com', 'class' => 'IN', 'ttl' => 300, 'type' => 'CAA', 'tag' => 'issue', 'value' => 'letsencrypt.org', 'flags' => 0]),
+                ]);
         });
 
         // Act
@@ -54,6 +69,10 @@ class EmailSecurityHealthCheckTest extends TestCase
 
         $this->assertTrue($payload['dmarc']['valid']);
         $this->assertEquals('reject', $payload['dmarc']['policy']);
+
+        $this->assertTrue($payload['dnssec']['enabled']);
+        $this->assertTrue($payload['caa']['present']);
+        $this->assertCount(1, $payload['caa']['records']);
     }
 
     public function test_it_detects_invalid_spf_and_missing_dmarc(): void
@@ -77,6 +96,16 @@ class EmailSecurityHealthCheckTest extends TestCase
             $mock->shouldReceive('getRecords')
                 ->with('_dmarc.bad-config.com', 'TXT')
                 ->andReturn([]);
+
+            // Missing DNSSEC
+            $mock->shouldReceive('getRecords')
+                ->with('bad-config.com', 'DNSKEY')
+                ->andReturn([]);
+
+            // Missing CAA
+            $mock->shouldReceive('getRecords')
+                ->with('bad-config.com', 'CAA')
+                ->andReturn([]);
         });
 
         // Act
@@ -98,5 +127,8 @@ class EmailSecurityHealthCheckTest extends TestCase
 
         $this->assertFalse($payload['dmarc']['present']);
         $this->assertFalse($payload['dmarc']['valid']);
+
+        $this->assertFalse($payload['dnssec']['enabled']);
+        $this->assertFalse($payload['caa']['present']);
     }
 }

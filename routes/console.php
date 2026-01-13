@@ -54,6 +54,12 @@ Schedule::command('domains:health-check --all --type=dns')
     ->everySixHours()
     ->timezone('UTC');
 
+// Email security checks - run daily for active domains
+Schedule::command('domains:health-check --all --type=email_security')
+    ->daily()
+    ->at('03:30')
+    ->timezone('UTC');
+
 // Synergy Wholesale expiry sync - run daily for Australian TLD domains
 Schedule::command('domains:sync-synergy-expiry --all')
     ->daily()

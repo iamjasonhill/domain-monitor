@@ -735,6 +735,59 @@
                                 <p class="text-sm text-gray-500">No data available.</p>
                             @endif
                         </div>
+
+                        <!-- DNSSEC Status -->
+                        <div class="border rounded-md p-4 {{ $dnssec && $dnssec['enabled'] ? 'border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800' : 'border-gray-200 bg-gray-50 dark:bg-gray-900/20 dark:border-gray-800' }}">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-semibold {{ $dnssec && $dnssec['enabled'] ? 'text-green-800 dark:text-green-300' : 'text-gray-800 dark:text-gray-300' }}">DNSSEC</h4>
+                                @if($dnssec && $dnssec['enabled'])
+                                    <span class="px-2 py-1 text-xs font-bold rounded bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100">SECURE</span>
+                                @else
+                                    <span class="px-2 py-1 text-xs font-bold rounded bg-gray-200 text-gray-800 dark:bg-gray-800 dark:text-gray-100">NOT SECURE</span>
+                                @endif
+                            </div>
+                            
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">Enabled:</span>
+                                    <span class="font-medium text-gray-900 dark:text-gray-100">{{ $dnssec && $dnssec['enabled'] ? 'Yes' : 'No' }}</span>
+                                </div>
+                                @if($dnssec && $dnssec['error'])
+                                    <div class="text-red-600 dark:text-red-400 text-xs mt-2">
+                                        Error: {{ $dnssec['error'] }}
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+
+                        <!-- CAA Status -->
+                        <div class="border rounded-md p-4 {{ $caa && $caa['present'] ? 'border-indigo-200 bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-800' : 'border-gray-200 bg-gray-50 dark:bg-gray-900/20 dark:border-gray-800' }}">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-semibold {{ $caa && $caa['present'] ? 'text-indigo-800 dark:text-indigo-300' : 'text-gray-800 dark:text-gray-300' }}">CAA</h4>
+                                @if($caa && $caa['present'])
+                                    <span class="px-2 py-1 text-xs font-bold rounded bg-indigo-200 text-indigo-800 dark:bg-indigo-800 dark:text-indigo-100">PRESENT</span>
+                                @else
+                                    <span class="px-2 py-1 text-xs font-bold rounded bg-gray-200 text-gray-800 dark:bg-gray-800 dark:text-gray-100">MISSING</span>
+                                @endif
+                            </div>
+                            
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">Configured:</span>
+                                    <span class="font-medium text-gray-900 dark:text-gray-100">{{ $caa && $caa['present'] ? 'Yes' : 'No' }}</span>
+                                </div>
+                                @if($caa && $caa['present'] && !empty($caa['records']))
+                                    <div class="mt-2">
+                                        <span class="text-gray-600 dark:text-gray-400 block mb-1">Authorized CAs:</span>
+                                        <div class="space-y-1">
+                                            @foreach($caa['records'] as $record)
+                                                <code class="block w-full text-xs p-1.5 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 rounded border border-gray-100 dark:border-gray-800">{{ $record }}</code>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
                     </div>
                     <div class="mt-4 text-xs text-gray-500 dark:text-gray-400 text-right">
                         Last checked: {{ $latestSecurityCheck->created_at->diffForHumans() }} ({{ $latestSecurityCheck->duration_ms }}ms)

@@ -13,12 +13,14 @@ class EmailSecurityHealthCheck
     }
 
     /**
-     * Perform Email Security health check (SPF, DMARC)
+     * Perform Email & DNS Security health check (SPF, DMARC, DNSSEC, CAA)
      *
      * @return array{
      *     is_valid: bool,
      *     spf: array{present: bool, valid: bool, record: string|null, mechanism: string|null, error: string|null},
      *     dmarc: array{present: bool, valid: bool, record: string|null, policy: string|null, error: string|null},
+     *     dnssec: array{enabled: bool, error: string|null},
+     *     caa: array{present: bool, records: array<int, string>, error: string|null},
      *     error_message: string|null,
      *     payload: array<string, mixed>
      * }
@@ -34,6 +36,12 @@ class EmailSecurityHealthCheck
             // DMARC Check
             $dmarcResult = $this->checkDmarc($domain);
 
+            // DNSSEC Check
+            $dnssecResult = $this->checkDnssec($domain);
+
+            // CAA Check
+            $caaResult = $this->checkCaa($domain);
+
             $isValid = $spfResult['valid'] && $dmarcResult['valid'];
             $duration = (int) ((microtime(true) - $startTime) * 1000);
 
@@ -41,11 +49,15 @@ class EmailSecurityHealthCheck
                 'is_valid' => $isValid,
                 'spf' => $spfResult,
                 'dmarc' => $dmarcResult,
+                'dnssec' => $dnssecResult,
+                'caa' => $caaResult,
                 'error_message' => $isValid ? null : $this->buildErrorMessage($spfResult, $dmarcResult),
                 'payload' => [
                     'domain' => $domain,
                     'spf' => $spfResult,
                     'dmarc' => $dmarcResult,
+                    'dnssec' => $dnssecResult,
+                    'caa' => $caaResult,
                     'dkim' => ['status' => 'skipped', 'reason' => 'Selector required'], // Placeholder
                     'duration_ms' => $duration,
                 ],
@@ -55,6 +67,8 @@ class EmailSecurityHealthCheck
                 'is_valid' => false,
                 'spf' => ['present' => false, 'valid' => false, 'record' => null, 'mechanism' => null, 'error' => 'Check failed'],
                 'dmarc' => ['present' => false, 'valid' => false, 'record' => null, 'policy' => null, 'error' => 'Check failed'],
+                'dnssec' => ['enabled' => false, 'error' => 'Check failed'],
+                'caa' => ['present' => false, 'records' => [], 'error' => 'Check failed'],
                 'error_message' => 'Exception: '.$e->getMessage(),
                 'payload' => [
                     'domain' => $domain,
@@ -181,6 +195,58 @@ class EmailSecurityHealthCheck
                 'valid' => false,
                 'record' => null,
                 'policy' => null,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * @return array{enabled: bool, error: string|null}
+     */
+    private function checkDnssec(string $domain): array
+    {
+        try {
+            // Check for DNSKEY records which indicate DNSSEC is enabled
+            $records = $this->dns->getRecords($domain, 'DNSKEY');
+
+            return [
+                'enabled' => ! empty($records),
+                'error' => null,
+            ];
+        } catch (Exception $e) {
+            return [
+                'enabled' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * @return array{present: bool, records: array<int, string>, error: string|null}
+     */
+    private function checkCaa(string $domain): array
+    {
+        try {
+            // Check for CAA (Certificate Authority Authorization) records
+            $records = $this->dns->getRecords($domain, 'CAA');
+
+            if (empty($records)) {
+                return [
+                    'present' => false,
+                    'records' => [],
+                    'error' => null,
+                ];
+            }
+
+            return [
+                'present' => true,
+                'records' => array_map(fn ($r) => (string) $r, $records),
+                'error' => null,
+            ];
+        } catch (Exception $e) {
+            return [
+                'present' => false,
+                'records' => [],
                 'error' => $e->getMessage(),
             ];
         }
