@@ -63,14 +63,25 @@ class PruneMonitoringData extends Command
             $this->warn('Skipping domain_alerts prune: table does not exist.');
         }
 
+        $incidentsDays = 365; // Default 1 year
+        $incidentsCutoff = now()->subDays($incidentsDays);
+        $incidentsQuery = null;
+        if (Schema::hasTable((new \App\Models\UptimeIncident)->getTable())) {
+            $incidentsQuery = \App\Models\UptimeIncident::query()->where('created_at', '<', $incidentsCutoff);
+        } else {
+            $this->warn('Skipping uptime_incidents prune: table does not exist.');
+        }
+
         $checksCount = $checksQuery?->count() ?? 0;
         $eligibilityCount = $eligibilityQuery?->count() ?? 0;
         $alertsCount = $alertsQuery?->count() ?? 0;
+        $incidentsCount = $incidentsQuery?->count() ?? 0;
 
         $this->info('Prune monitoring data:');
         $this->line("  Domain checks older than {$checksDays} days: {$checksCount}");
         $this->line("  Eligibility checks older than {$eligibilityDays} days: {$eligibilityCount}");
         $this->line("  Domain alerts older than {$alertsDays} days: {$alertsCount}");
+        $this->line("  Uptime incidents older than {$incidentsDays} days: {$incidentsCount}");
 
         if ($dryRun) {
             $this->warn('Dry run enabled — no records deleted.');
@@ -81,10 +92,12 @@ class PruneMonitoringData extends Command
         $deletedChecks = $checksQuery?->delete() ?? 0;
         $deletedEligibility = $eligibilityQuery?->delete() ?? 0;
         $deletedAlerts = $alertsQuery?->delete() ?? 0;
+        $deletedIncidents = $incidentsQuery?->delete() ?? 0;
 
         $this->info("Deleted {$deletedChecks} domain check(s).");
         $this->info("Deleted {$deletedEligibility} eligibility check(s).");
         $this->info("Deleted {$deletedAlerts} alert record(s).");
+        $this->info("Deleted {$deletedIncidents} uptime incident(s).");
 
         return Command::SUCCESS;
     }

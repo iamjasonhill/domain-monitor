@@ -605,6 +605,42 @@
                             </div>
                         </div>
                     </div>
+
+                    @if($this->uptimeIncidents->count() > 0)
+                        <div class="mt-6">
+                            <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wider">Uptime History (Last 10)</h4>
+                            <div class="overflow-hidden border border-gray-100 dark:border-gray-700 rounded-lg">
+                                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                    <thead class="bg-gray-50 dark:bg-gray-900/50">
+                                        <tr>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Started</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Ended</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Duration</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                        @foreach($this->uptimeIncidents as $incident)
+                                            <tr class="text-xs">
+                                                <td class="px-3 py-2 whitespace-nowrap text-gray-900 dark:text-gray-100">
+                                                    {{ $incident->started_at->format('M j, H:i:s') }}
+                                                </td>
+                                                <td class="px-3 py-2 whitespace-nowrap text-gray-500 dark:text-gray-400">
+                                                    {{ $incident->ended_at ? $incident->ended_at->format('M j, H:i:s') : 'Ongoing' }}
+                                                </td>
+                                                <td class="px-3 py-2 whitespace-nowrap text-gray-500 dark:text-gray-400">
+                                                    {{ $incident->ended_at ? $incident->started_at->diffForHumans($incident->ended_at, true) : '-' }}
+                                                </td>
+                                                <td class="px-3 py-2 text-red-600 dark:text-red-400">
+                                                    {{ $incident->status_code ?? 'Error' }}
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
                  @else
                     <div class="text-center py-4 text-gray-500 dark:text-gray-400">
                         No uptime data available yet.

@@ -363,4 +363,12 @@ class Domain extends Model
             $query->where('eligibility_valid', false);
         }
     }
+
+    /**
+     * @return HasMany<UptimeIncident, $this>
+     */
+    public function uptimeIncidents(): HasMany
+    {
+        return $this->hasMany(UptimeIncident::class)->orderByDesc('started_at');
+    }
 }

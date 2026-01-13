@@ -23,16 +23,22 @@ class DomainCheckAlertingService
 
     public function handle(DomainCheck $check): void
     {
+        $isFailure = in_array($check->status, self::FAILURE_STATUSES, true);
+
+        // Handle Uptime History (Incident Logging)
+        if ($check->check_type === 'uptime') {
+            $this->handleUptimeIncident($check, $isFailure);
+        }
+
         if (! in_array($check->check_type, self::THREE_STRIKE_TYPES, true)) {
             $check->emitBrainEvent();
 
             return;
         }
 
-        DB::transaction(function () use ($check) {
+        DB::transaction(function () use ($check, $isFailure) {
             $state = $this->lockOrCreateState($check);
 
-            $isFailure = in_array($check->status, self::FAILURE_STATUSES, true);
             if ($isFailure) {
                 $state->consecutive_failure_count++;
 
@@ -69,6 +75,28 @@ class DomainCheckAlertingService
             $state->consecutive_failure_count = 0;
             $state->save();
         });
+    }
+
+    private function handleUptimeIncident(DomainCheck $check, bool $isFailure): void
+    {
+        $openIncident = \App\Models\UptimeIncident::where('domain_id', $check->domain_id)
+            ->whereNull('ended_at')
+            ->first();
+
+        if ($isFailure && ! $openIncident) {
+            // Start a new incident
+            \App\Models\UptimeIncident::create([
+                'domain_id' => $check->domain_id,
+                'started_at' => $check->started_at ?? now(),
+                'status_code' => $check->response_code,
+                'error_message' => $check->error_message,
+            ]);
+        } elseif (! $isFailure && $openIncident) {
+            // Close the current incident
+            $openIncident->update([
+                'ended_at' => $check->finished_at ?? now(),
+            ]);
+        }
     }
 
     private function lockOrCreateState(DomainCheck $check): DomainCheckAlertState

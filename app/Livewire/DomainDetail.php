@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\DnsRecord;
 use App\Models\Domain;
+use App\Models\DomainCheck;
 use App\Models\Subdomain;
 use App\Models\SynergyCredential;
 use App\Services\HostingDetector;
@@ -63,6 +64,13 @@ class DomainDetail extends Component
         return $this->domain?->checks()->latest()->limit(20)->get() ?? collect();
     }
 
+    #[Computed]
+    /** @return \Illuminate\Database\Eloquent\Collection<int, \App\Models\UptimeIncident>|\Illuminate\Support\Collection<int, never> */
+    public function uptimeIncidents(): mixed
+    {
+        return $this->domain?->uptimeIncidents()->latest('started_at')->limit(10)->get() ?? collect();
+    }
+
     public function mount(): void
     {
         $this->loadDomain();
@@ -89,6 +97,9 @@ class DomainDetail extends Component
             },
             'dnsRecords' => function ($query) {
                 $query->orderByRaw('LOWER(host)');
+            },
+            'uptimeIncidents' => function ($query) {
+                $query->orderByDesc('started_at')->limit(10);
             },
         ])->findOrFail($this->domainId);
 
