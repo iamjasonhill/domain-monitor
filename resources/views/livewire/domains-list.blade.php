@@ -364,16 +364,13 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                         @php
-                                            $issues = [];
-                                            $checks = $domain->checks;
+                                            $failedSsl = $domain->latestSslCheck?->status === 'fail';
+                                            $failedDmarc = $domain->latestEmailSecurityCheck?->status === 'fail';
+                                            $failedDns = $domain->latestDnsCheck?->status === 'fail';
+                                            $failedSeo = $domain->latestSeoCheck?->status === 'fail';
+                                            $failedHeaders = $domain->latestSecurityHeadersCheck?->status === 'fail';
                                             
-                                            $failedSsl = $checks->where('check_type', 'ssl')->first()?->status === 'fail';
-                                            $failedDmarc = $checks->where('check_type', 'email_security')->first()?->status === 'fail';
-                                            $failedDns = $checks->where('check_type', 'dns')->first()?->status === 'fail';
-                                            $failedSeo = $checks->where('check_type', 'seo')->first()?->status === 'fail';
-                                            $failedHeaders = $checks->where('check_type', 'security_headers')->first()?->status === 'fail';
-                                            
-                                            $hasChecks = $checks->count() > 0;
+                                            $hasChecks = $domain->latestHttpCheck || $domain->latestSslCheck || $domain->latestEmailSecurityCheck || $domain->latestDnsCheck;
                                             $hasIssues = $failedSsl || $failedDmarc || $failedDns || $failedSeo || $failedHeaders;
                                         @endphp
 

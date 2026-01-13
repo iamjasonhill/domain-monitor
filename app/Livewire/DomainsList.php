@@ -427,17 +427,12 @@ class DomainsList extends Component
         $connection = \DB::getDriverName();
 
         $query = Domain::with([
-            'checks' => function ($query) {
-                // Load latest checks for issues column
-                $query->whereIn('check_type', [
-                    'http',
-                    'ssl',
-                    'email_security',
-                    'dns',
-                    'seo',
-                    'security_headers',
-                ])->latest()->limit(20);
-            },
+            'latestHttpCheck',
+            'latestSslCheck',
+            'latestEmailSecurityCheck',
+            'latestDnsCheck',
+            'latestSeoCheck',
+            'latestSecurityHeadersCheck',
             'platform',
             'tags',
         ])
