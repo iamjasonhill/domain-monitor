@@ -636,6 +636,118 @@
             </div>
         </div>
 
+        <!-- Email Security (SPF/DMARC) -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Email Security</h3>
+                    <button wire:click="runHealthCheck('email_security')" wire:loading.attr="disabled" {{ $isParked ? 'disabled' : '' }} class="inline-flex items-center px-3 py-1.5 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50">
+                        <span wire:loading.remove wire:target="runHealthCheck('email_security')">Run Security Check</span>
+                        <span wire:loading wire:target="runHealthCheck('email_security')">Checking...</span>
+                    </button>
+                </div>
+
+                @php
+                    $latestSecurityCheck = $domain->checks()->where('check_type', 'email_security')->latest()->first();
+                    $payload = $latestSecurityCheck?->payload ?? [];
+                    $spf = $payload['spf'] ?? null;
+                    $dmarc = $payload['dmarc'] ?? null;
+                @endphp
+
+                @if($latestSecurityCheck)
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- SPF Status -->
+                        <div class="border rounded-md p-4 {{ $spf && $spf['valid'] ? 'border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800' : 'border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800' }}">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-semibold {{ $spf && $spf['valid'] ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300' }}">SPF</h4>
+                                @if($spf && $spf['valid'])
+                                    <span class="px-2 py-1 text-xs font-bold rounded bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100">PASS</span>
+                                @else
+                                    <span class="px-2 py-1 text-xs font-bold rounded bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-100">FAIL</span>
+                                @endif
+                            </div>
+                            
+                            @if($spf)
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600 dark:text-gray-400">Present:</span>
+                                        <span class="font-medium text-gray-900 dark:text-gray-100">{{ $spf['present'] ? 'Yes' : 'No' }}</span>
+                                    </div>
+                                    @if($spf['record'])
+                                        <div>
+                                            <span class="text-gray-600 dark:text-gray-400 block mb-1">Record:</span>
+                                            <code class="block w-full text-xs p-2 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 break-all">{{ $spf['record'] }}</code>
+                                        </div>
+                                    @endif
+                                    @if($spf['mechanism'])
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600 dark:text-gray-400">Mechanism:</span>
+                                            <span class="font-mono text-gray-900 dark:text-gray-100">{{ $spf['mechanism'] }}</span>
+                                        </div>
+                                    @endif
+                                    @if($spf['error'])
+                                        <div class="text-red-600 dark:text-red-400 text-xs mt-2">
+                                            Error: {{ $spf['error'] }}
+                                        </div>
+                                    @endif
+                                </div>
+                            @else
+                                <p class="text-sm text-gray-500">No data available.</p>
+                            @endif
+                        </div>
+
+                        <!-- DMARC Status -->
+                        <div class="border rounded-md p-4 {{ $dmarc && $dmarc['valid'] ? 'border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800' : 'border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800' }}">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-semibold {{ $dmarc && $dmarc['valid'] ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300' }}">DMARC</h4>
+                                @if($dmarc && $dmarc['valid'])
+                                    <span class="px-2 py-1 text-xs font-bold rounded bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100">PASS</span>
+                                @else
+                                    <span class="px-2 py-1 text-xs font-bold rounded bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-100">FAIL</span>
+                                @endif
+                            </div>
+
+                            @if($dmarc)
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600 dark:text-gray-400">Present:</span>
+                                        <span class="font-medium text-gray-900 dark:text-gray-100">{{ $dmarc['present'] ? 'Yes' : 'No' }}</span>
+                                    </div>
+                                    @if($dmarc['record'])
+                                        <div>
+                                            <span class="text-gray-600 dark:text-gray-400 block mb-1">Record:</span>
+                                            <code class="block w-full text-xs p-2 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 break-all">{{ $dmarc['record'] }}</code>
+                                        </div>
+                                    @endif
+                                    @if($dmarc['policy'])
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600 dark:text-gray-400">Policy:</span>
+                                            <span class="font-mono text-gray-900 dark:text-gray-100">{{ $dmarc['policy'] }}</span>
+                                        </div>
+                                    @endif
+                                    @if($dmarc['error'])
+                                        <div class="text-red-600 dark:text-red-400 text-xs mt-2">
+                                            Error: {{ $dmarc['error'] }}
+                                        </div>
+                                    @endif
+                                </div>
+                            @else
+                                <p class="text-sm text-gray-500">No data available.</p>
+                            @endif
+                        </div>
+                    </div>
+                    <div class="mt-4 text-xs text-gray-500 dark:text-gray-400 text-right">
+                        Last checked: {{ $latestSecurityCheck->created_at->diffForHumans() }} ({{ $latestSecurityCheck->duration_ms }}ms)
+                    </div>
+                @else
+                    <div class="text-center py-6 text-gray-500 dark:text-gray-400">
+                        <p>No security check data available yet.</p>
+                        <p class="text-sm mt-2">Click "Run Security Check" to analyze SPF and DMARC.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
         <!-- Deployments -->
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mt-6">
             <div class="p-6">

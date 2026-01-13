@@ -30,14 +30,14 @@ class RunHealthChecks extends Command
     /**
      * Execute the console command.
      */
-    public function handle(HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck): int
+    public function handle(HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck): int
     {
         $domainOption = $this->option('domain');
         $allOption = $this->option('all');
         $type = $this->option('type');
 
-        if (! in_array($type, ['http', 'ssl', 'dns', 'uptime'])) {
-            $this->error("Invalid check type: {$type}. Must be one of: http, ssl, dns, uptime");
+        if (! in_array($type, ['http', 'ssl', 'dns', 'uptime', 'email_security'])) {
+            $this->error("Invalid check type: {$type}. Must be one of: http, ssl, dns, uptime, email_security");
 
             return Command::FAILURE;
         }
@@ -51,7 +51,7 @@ class RunHealthChecks extends Command
                 return Command::FAILURE;
             }
 
-            return $this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck);
+            return $this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck);
         }
 
         if ($allOption) {
@@ -77,7 +77,7 @@ class RunHealthChecks extends Command
 
             $successCount = 0;
             foreach ($domains as $domain) {
-                if ($this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, false) === Command::SUCCESS) {
+                if ($this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck, false) === Command::SUCCESS) {
                     $successCount++;
                 }
                 $bar->advance();
@@ -98,7 +98,7 @@ class RunHealthChecks extends Command
     /**
      * Run health check for a single domain
      */
-    private function runCheckForDomain(Domain $domain, string $type, HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, bool $verbose = true): int
+    private function runCheckForDomain(Domain $domain, string $type, HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck, bool $verbose = true): int
     {
         if ($verbose) {
             $this->info("Running {$type} check for: {$domain->domain}");
@@ -125,35 +125,44 @@ class RunHealthChecks extends Command
             }
 
             $startedAt = now();
-            $result = null;
             $status = 'fail';
             $responseCode = null;
             $errorMessage = null;
             $payload = [];
 
+            $httpResult = null;
+            $sslResult = null;
+            $dnsResult = null;
+            $emailSecurityResult = null;
+
             if ($type === 'http') {
-                $result = $httpCheck->check($domain->domain);
-                $status = $result['is_up'] ? 'ok' : 'fail';
-                if ($result['status_code'] && $result['status_code'] >= 400 && $result['status_code'] < 500) {
+                $httpResult = $httpCheck->check($domain->domain);
+                $status = $httpResult['is_up'] ? 'ok' : 'fail';
+                if ($httpResult['status_code'] && $httpResult['status_code'] >= 400 && $httpResult['status_code'] < 500) {
                     $status = 'warn';
                 }
-                $responseCode = $result['status_code'];
-                $errorMessage = $result['error_message'];
-                $payload = $result['payload'];
+                $responseCode = $httpResult['status_code'];
+                $errorMessage = $httpResult['error_message'];
+                $payload = $httpResult['payload'];
             } elseif ($type === 'ssl') {
-                $result = $sslCheck->check($domain->domain);
-                $status = $result['is_valid'] ? 'ok' : 'fail';
+                $sslResult = $sslCheck->check($domain->domain);
+                $status = $sslResult['is_valid'] ? 'ok' : 'fail';
                 // Warn if certificate expires within 30 days
-                if ($result['is_valid'] && $result['days_until_expiry'] !== null && $result['days_until_expiry'] <= 30) {
+                if ($sslResult['is_valid'] && $sslResult['days_until_expiry'] !== null && $sslResult['days_until_expiry'] <= 30) {
                     $status = 'warn';
                 }
-                $errorMessage = $result['error_message'];
-                $payload = $result['payload'];
+                $errorMessage = $sslResult['error_message'];
+                $payload = $sslResult['payload'];
             } elseif ($type === 'dns') {
-                $result = $dnsCheck->check($domain->domain);
-                $status = $result['is_valid'] ? 'ok' : 'fail';
-                $errorMessage = $result['error_message'];
-                $payload = $result['payload'];
+                $dnsResult = $dnsCheck->check($domain->domain);
+                $status = $dnsResult['is_valid'] ? 'ok' : 'fail';
+                $errorMessage = $dnsResult['error_message'];
+                $payload = $dnsResult['payload'];
+            } elseif ($type === 'email_security') {
+                $emailSecurityResult = $emailSecurityCheck->check($domain->domain);
+                $status = $emailSecurityResult['is_valid'] ? 'ok' : 'fail';
+                $errorMessage = $emailSecurityResult['error_message'];
+                $payload = $emailSecurityResult['payload'];
             } else {
                 if ($verbose) {
                     $this->warn("  Check type '{$type}' not yet implemented");
@@ -162,7 +171,9 @@ class RunHealthChecks extends Command
                 return Command::FAILURE;
             }
 
-            $duration = $payload['duration_ms'] ?? (int) ((microtime(true) - $startedAt->getTimestamp()) * 1000);
+            $duration = (isset($payload['duration_ms']) && is_int($payload['duration_ms']))
+                ? $payload['duration_ms']
+                : (int) ((microtime(true) - $startedAt->getTimestamp()) * 1000);
 
             $check = $domain->checks()->create([
                 'check_type' => $type,
@@ -184,18 +195,22 @@ class RunHealthChecks extends Command
                 if ($type === 'http' && $responseCode) {
                     $this->line("  Response Code: {$responseCode}");
                 }
-                if ($type === 'ssl' && isset($result['days_until_expiry'])) {
-                    $this->line("  Days Until Expiry: {$result['days_until_expiry']}");
-                    if ($result['issuer']) {
-                        $this->line("  Issuer: {$result['issuer']}");
+                if ($sslResult && isset($sslResult['days_until_expiry'])) {
+                    $this->line("  Days Until Expiry: {$sslResult['days_until_expiry']}");
+                    if ($sslResult['issuer']) {
+                        $this->line("  Issuer: {$sslResult['issuer']}");
                     }
                 }
-                if ($type === 'dns') {
-                    $this->line('  Has A Record: '.($result['has_a_record'] ? 'Yes' : 'No'));
-                    $this->line('  Has MX Record: '.($result['has_mx_record'] ? 'Yes' : 'No'));
-                    if (! empty($result['nameservers'])) {
-                        $this->line('  Nameservers: '.count($result['nameservers']));
+                if ($dnsResult) {
+                    $this->line('  Has A Record: '.($dnsResult['has_a_record'] ? 'Yes' : 'No'));
+                    $this->line('  Has MX Record: '.($dnsResult['has_mx_record'] ? 'Yes' : 'No'));
+                    if (! empty($dnsResult['nameservers'])) {
+                        $this->line('  Nameservers: '.count($dnsResult['nameservers']));
                     }
+                }
+                if ($emailSecurityResult) {
+                    $this->line('  SPF: '.($emailSecurityResult['spf']['valid'] ? 'Pass' : 'Fail'));
+                    $this->line('  DMARC: '.($emailSecurityResult['dmarc']['valid'] ? 'Pass' : 'Fail'));
                 }
                 $this->line("  Duration: {$duration}ms");
                 if ($errorMessage) {
