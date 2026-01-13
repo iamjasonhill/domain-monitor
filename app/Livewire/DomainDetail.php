@@ -801,24 +801,30 @@ class DomainDetail extends Component
                 return;
             }
 
+            // Logic to parse DNS records and find subdomains
             $discoveredSubdomains = [];
             $existingSubdomains = $this->domain->subdomains->pluck('subdomain')->toArray();
 
-            // Extract subdomain names from DNS records
             foreach ($dnsRecords as $record) {
-                $host = trim($record->host ?? '');
-
-                // Skip empty, root (@), or wildcard records
-                if (empty($host) || $host === '@' || $host === '*' || str_starts_with($host, '*.')) {
+                // Skip if not A or CNAME
+                if (! in_array($record->type, ['A', 'AAAA', 'CNAME'])) {
                     continue;
                 }
 
-                // Extract subdomain name
-                // Host could be: "www", "www.again.com.au", "api.again.com.au", etc.
-                $subdomainName = $this->extractSubdomainName($host, $this->domain->domain);
+                $host = strtolower($record->host);
 
-                if ($subdomainName && ! in_array($subdomainName, $discoveredSubdomains) && ! in_array($subdomainName, $existingSubdomains)) {
-                    $discoveredSubdomains[] = $subdomainName;
+                // Skip root, www, mail, webmail, ftp, cpanel, whm, localhost
+                if (in_array($host, ['@', 'www', 'mail', 'webmail', 'ftp', 'cpanel', 'whm', 'localhost', '*'])) {
+                    continue;
+                }
+
+                // Also skip wildcard
+                if (str_starts_with($host, '*')) {
+                    continue;
+                }
+
+                if (! in_array($host, $discoveredSubdomains) && ! in_array($host, $existingSubdomains)) {
+                    $discoveredSubdomains[] = $host;
                 }
             }
 
@@ -828,164 +834,217 @@ class DomainDetail extends Component
                 return;
             }
 
-            // Create subdomain entries and populate IP from DNS records
-            $created = 0;
+            $count = 0;
             foreach ($discoveredSubdomains as $subdomainName) {
-                $fullDomain = "{$subdomainName}.{$this->domain->domain}";
-
-                // Check if it already exists (double-check)
-                $exists = Subdomain::where('domain_id', $this->domain->id)
-                    ->where('subdomain', $subdomainName)
-                    ->exists();
-
-                if (! $exists) {
-                    // Find IP address from DNS A records for this subdomain
-                    $ipAddress = $this->findIpFromDnsRecords($fullDomain, $dnsRecords);
-
-                    $subdomain = Subdomain::create([
-                        'domain_id' => $this->domain->id,
-                        'subdomain' => $subdomainName,
-                        'full_domain' => $fullDomain,
-                        'ip_address' => $ipAddress,
-                        'is_active' => true,
-                    ]);
-
-                    // If we have an IP address, try to get IP-API info
-                    if ($ipAddress) {
-                        try {
-                            $ipApiService = app(\App\Services\IpApiService::class);
-                            $ipApiData = $ipApiService->query($ipAddress);
-
-                            if ($ipApiData) {
-                                $updateData = [
-                                    'ip_checked_at' => now(),
-                                    'ip_isp' => $ipApiData['isp'] ?? null,
-                                    'ip_organization' => $ipApiData['org'] ?? null,
-                                    'ip_as_number' => $ipApiData['as'] ?? null,
-                                    'ip_country' => $ipApiData['country'] ?? null,
-                                    'ip_city' => $ipApiData['city'] ?? null,
-                                    'ip_hosting_flag' => $ipApiData['hosting'] ?? null,
-                                ];
-
-                                $ipApiProvider = $ipApiService->extractHostingProvider($ipApiData);
-                                if ($ipApiProvider) {
-                                    $updateData['hosting_provider'] = $ipApiProvider;
-                                }
-
-                                $subdomain->update($updateData);
-                            }
-                        } catch (\Exception $e) {
-                            // Silently fail - IP-API update is optional
-                        }
-                    }
-
-                    $created++;
-                }
+                $this->domain->subdomains()->create([
+                    'subdomain' => $subdomainName,
+                    'full_domain' => "$subdomainName.{$this->domain->domain}",
+                    'is_active' => true,
+                ]);
+                $count++;
             }
 
             $this->loadDomain();
-            session()->flash('message', "Discovered and created {$created} subdomain(s) from DNS records: ".implode(', ', $discoveredSubdomains));
+            session()->flash('message', "Discovered {$count} new subdomains from DNS records.");
         } catch (\Exception $e) {
-            session()->flash('error', 'Failed to discover subdomains: '.$e->getMessage());
+            session()->flash('error', 'Error discovering subdomains: '.$e->getMessage());
         }
     }
 
-    /**
-     * Extract subdomain name from DNS record host
-     *
-     * @param  string  $host  DNS record host (e.g., "www", "www.again.com.au", "api.again.com.au")
-     * @param  string  $domain  Main domain (e.g., "again.com.au")
-     * @return string|null Subdomain name (e.g., "www", "api") or null if not a subdomain
-     */
-    private function extractSubdomainName(string $host, string $domain): ?string
+    public function applyFix(string $checkType): void
     {
-        // Remove trailing dot if present
-        $host = rtrim($host, '.');
+        // 1. Validate Eligibility
+        if (! $this->domain || ! \App\Services\SynergyWholesaleClient::isAustralianTld($this->domain->domain)) {
+            session()->flash('error', 'Automated fixes are only available for Australian TLD domains.');
 
-        // If host is exactly the domain, it's not a subdomain
-        if ($host === $domain) {
-            return null;
+            return;
         }
 
-        // If host ends with the domain, extract the subdomain part
-        if (str_ends_with($host, '.'.$domain)) {
-            $subdomain = substr($host, 0, -(strlen($domain) + 1)); // +1 for the dot
+        // 2. Get Credentials
+        $credential = SynergyCredential::where('is_active', true)->first();
+        if (! $credential) {
+            session()->flash('error', 'No active Synergy credentials found.');
 
-            // Validate subdomain name (alphanumeric, hyphens, underscores)
-            if (preg_match('/^[a-z0-9]([a-z0-9\-_]*[a-z0-9])?$/i', $subdomain)) {
-                return $subdomain;
-            }
+            return;
         }
 
-        // If host doesn't contain the domain, it might be just the subdomain name
-        if (! str_contains($host, '.')) {
-            // Validate it's a valid subdomain name
-            if (preg_match('/^[a-z0-9]([a-z0-9\-_]*[a-z0-9])?$/i', $host)) {
-                return $host;
-            }
-        }
+        $client = SynergyWholesaleClient::fromEncryptedCredentials(
+            $credential->reseller_id,
+            $credential->api_key_encrypted,
+            $credential->api_url
+        );
 
-        return null;
-    }
-
-    /**
-     * Find IP address from DNS records for a subdomain
-     *
-     * @param  string  $fullDomain  Full subdomain (e.g., "www.again.com.au")
-     * @param  \Illuminate\Database\Eloquent\Collection<int, \App\Models\DnsRecord>  $dnsRecords  DNS records collection
-     * @return string|null IP address or null if not found
-     */
-    private function findIpFromDnsRecords(string $fullDomain, \Illuminate\Database\Eloquent\Collection $dnsRecords): ?string
-    {
-        // Look for A record with matching host
-        foreach ($dnsRecords as $record) {
-            $host = trim($record->host ?? '');
-            $host = rtrim($host, '.'); // Remove trailing dot
-
-            // Check if this record is for our subdomain
-            if (($host === $fullDomain || $host === rtrim($fullDomain, '.')) && $record->type === 'A') {
-                // A record value should be an IP address
-                $value = trim($record->value ?? '');
-                if (filter_var($value, FILTER_VALIDATE_IP)) {
-                    return $value;
-                }
-            }
-
-            // Also check CNAME records - they might point to another record with an A record
-            if (($host === $fullDomain || $host === rtrim($fullDomain, '.')) && $record->type === 'CNAME') {
-                $cnameTarget = trim($record->value ?? '');
-                $cnameTarget = rtrim($cnameTarget, '.');
-
-                // Look for A record for the CNAME target
-                foreach ($dnsRecords as $targetRecord) {
-                    $targetHost = trim($targetRecord->host ?? '');
-                    $targetHost = rtrim($targetHost, '.');
-
-                    if (($targetHost === $cnameTarget || $targetHost === rtrim($cnameTarget, '.')) && $targetRecord->type === 'A') {
-                        $value = trim($targetRecord->value ?? '');
-                        if (filter_var($value, FILTER_VALIDATE_IP)) {
-                            return $value;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Fallback: try DNS lookup
         try {
-            /** @var list<array{ip?: string}>|false $aRecords */
-            $aRecords = @dns_get_record($fullDomain, DNS_A);
-            if (is_array($aRecords) && $aRecords !== []) {
-                $ip = $aRecords[0]['ip'] ?? null;
-                if ($ip && filter_var($ip, FILTER_VALIDATE_IP)) {
-                    return $ip;
-                }
+            // 3. Fetch current live records to ensure we aren't duplicating
+            $liveRecords = $client->getDnsRecords($this->domain->domain);
+            if (! $liveRecords) {
+                throw new \Exception('Could not fetch current DNS records from Synergy.');
+            }
+
+            $success = false;
+            $message = '';
+
+            switch ($checkType) {
+                case 'spf':
+                    $success = $this->fixSpf($client, $liveRecords, $message);
+                    break;
+                case 'dmarc':
+                    $success = $this->fixDmarc($client, $liveRecords, $message);
+                    break;
+                case 'caa':
+                    $success = $this->fixCaa($client, $liveRecords, $message);
+                    break;
+                default:
+                    throw new \Exception("Unknown fix type: {$checkType}");
+            }
+
+            if ($success) {
+                session()->flash('message', $message);
+                $this->syncDnsRecords(); // Sync back to local DB
+                // Trigger health check to verify (might be too fast for propagation, but good UX)
+                $this->runHealthCheck('email_security');
+            } else {
+                session()->flash('error', $message);
             }
         } catch (\Exception $e) {
-            // Silently fail
+            session()->flash('error', 'Failed to apply fix: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * @param  array<int, array{host: string, type: string, value: string, ttl: int|null, priority?: int|null, id?: string|null}>  $records
+     */
+    private function fixSpf(SynergyWholesaleClient $client, array $records, string &$message): bool
+    {
+        // Look for existing SPF
+        $existingSpf = null;
+        foreach ($records as $record) {
+            if ($record['type'] === 'TXT' && ($record['host'] === '@' || $record['host'] === $this->domain->domain) && str_starts_with($record['value'], 'v=spf1')) {
+                $existingSpf = $record;
+                break;
+            }
         }
 
-        return null;
+        $defaultValue = 'v=spf1 a mx ~all';
+
+        if ($existingSpf && ! empty($existingSpf['id'])) {
+            // Update
+            $result = $client->updateDnsRecord(
+                $this->domain->domain,
+                (string) $existingSpf['id'],
+                '@',
+                'TXT',
+                $defaultValue,
+                300
+            );
+            $message = 'Updated existing SPF record to safe default.';
+        } else {
+            // Create
+            $result = $client->addDnsRecord(
+                $this->domain->domain,
+                '@',
+                'TXT',
+                $defaultValue,
+                300
+            );
+            $message = 'Created new SPF record.';
+        }
+
+        if (isset($result['status']) && $result['status'] === 'OK') {
+            return true;
+        }
+
+        $message = $result['error_message'] ?? 'Unknown API error.';
+
+        return false;
+    }
+
+    /**
+     * @param  array<int, array{host: string, type: string, value: string, ttl: int|null, priority?: int|null, id?: string|null}>  $records
+     */
+    private function fixDmarc(SynergyWholesaleClient $client, array $records, string &$message): bool
+    {
+        // Look for existing DMARC at _dmarc
+        $existingDmarc = null;
+        foreach ($records as $record) {
+            if ($record['type'] === 'TXT' && $record['host'] === '_dmarc') {
+                $existingDmarc = $record;
+                break;
+            }
+        }
+
+        $defaultValue = 'v=DMARC1; p=none;';
+
+        if ($existingDmarc && ! empty($existingDmarc['id'])) {
+            // Update
+            $result = $client->updateDnsRecord(
+                $this->domain->domain,
+                (string) $existingDmarc['id'],
+                '_dmarc',
+                'TXT',
+                $defaultValue,
+                300
+            );
+            $message = 'Updated existing DMARC record to p=none.';
+        } else {
+            // Create
+            $result = $client->addDnsRecord(
+                $this->domain->domain,
+                '_dmarc',
+                'TXT',
+                $defaultValue,
+                300
+            );
+            $message = 'Created new DMARC record.';
+        }
+
+        if (isset($result['status']) && $result['status'] === 'OK') {
+            return true;
+        }
+
+        $message = $result['error_message'] ?? 'Unknown API error.';
+
+        return false;
+    }
+
+    /**
+     * @param  array<int, array{host: string, type: string, value: string, ttl: int|null, priority?: int|null, id?: string|null}>  $records
+     */
+    private function fixCaa(SynergyWholesaleClient $client, array $records, string &$message): bool
+    {
+        // Look for any existing CAA
+        $hasCaa = false;
+        foreach ($records as $record) {
+            if ($record['type'] === 'CAA') {
+                $hasCaa = true;
+                break;
+            }
+        }
+
+        if ($hasCaa) {
+            $message = 'CAA records already exist. Automatic fix skipped to avoid breaking existing authorization.';
+
+            return false;
+        }
+
+        // Create for Let's Encrypt
+        $result = $client->addDnsRecord(
+            $this->domain->domain,
+            '@',
+            'CAA',
+            '0 issue "letsencrypt.org"',
+            300
+        );
+
+        if (isset($result['status']) && $result['status'] === 'OK') {
+            $message = "Created CAA record for Let's Encrypt.";
+
+            return true;
+        }
+
+        $message = $result['error_message'] ?? 'Unknown API error.';
+
+        return false;
     }
 
     public function render(): \Illuminate\Contracts\View\View
