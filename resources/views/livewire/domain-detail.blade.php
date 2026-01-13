@@ -1130,6 +1130,186 @@
             </div>
         </div>
 
+        <!-- Security Headers -->
+        @php
+            $latestSecurityHeadersCheck = $domain->checks()
+                ->where('check_type', 'security_headers')
+                ->latest('started_at')
+                ->first();
+            $securityHeadersPayload = $latestSecurityHeadersCheck ? $latestSecurityHeadersCheck->payload : null;
+            $securityHeaders = $securityHeadersPayload['results'] ?? [];
+            $securityScore = $securityHeadersPayload['score'] ?? null;
+        @endphp
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        Security Headers
+                    </h3>
+                    <div>
+                        @if($latestSecurityHeadersCheck)
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full {{
+                                $securityScore >= 80 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                                ($securityScore >= 50 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                                'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300')
+                            }}">
+                                Score: {{ $securityScore }}/100
+                            </span>
+                        @else
+                            <span class="text-gray-400 text-sm italic">Not checked</span>
+                        @endif
+                    </div>
+                </div>
+
+                @if($latestSecurityHeadersCheck)
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        @foreach($securityHeaders as $headerKey => $data)
+                            <div class="p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700">
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ $data['name'] }}</h4>
+                                        <div class="mt-1">
+                                            @if($data['status'] === 'pass')
+                                                <span class="inline-flex items-center text-xs font-medium text-green-600 dark:text-green-400">
+                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                                    Present
+                                                </span>
+                                            @elseif($data['status'] === 'warn')
+                                                <span class="inline-flex items-center text-xs font-medium text-yellow-600 dark:text-yellow-400">
+                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                                    Review
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center text-xs font-medium text-red-600 dark:text-red-400">
+                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                    Missing
+                                                </span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                @if($data['value'])
+                                    <div class="mt-2 group relative">
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 font-mono truncate cursor-help" title="{{ $data['value'] }}">
+                                            {{ Str::limit($data['value'], 30) }}
+                                        </p>
+                                    </div>
+                                @endif
+
+                                @if($data['recommendation'])
+                                    <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 italic">
+                                        {{ $data['recommendation'] }}
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                    
+                    <div class="mt-4 text-xs text-gray-500 dark:text-gray-400 text-right">
+                         Last checked: {{ $latestSecurityHeadersCheck->created_at->diffForHumans() }} ({{ $latestSecurityHeadersCheck->duration_ms }}ms)
+                    </div>
+                @else
+                     <div class="text-center py-6 text-gray-500 dark:text-gray-400">
+                        <p>No security headers data available yet.</p>
+                        <p class="text-sm mt-2">Run a health check to analyze security headers.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <!-- SEO Fundamentals -->
+        @php
+            $latestSeoCheck = $domain->checks()
+                ->where('check_type', 'seo')
+                ->latest('started_at')
+                ->first();
+            $seoPayload = $latestSeoCheck ? $latestSeoCheck->payload : null;
+            $seoResults = $seoPayload['results'] ?? [];
+        @endphp
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+            <div class="p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    SEO Fundamentals
+                </h3>
+
+                @if($latestSeoCheck)
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Robots.txt -->
+                        <div class="p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Robots.txt</h4>
+                                    <div class="mt-1">
+                                        @if(($seoResults['robots']['exists'] ?? false))
+                                            <span class="inline-flex items-center text-xs font-medium text-green-600 dark:text-green-400">
+                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                                Found
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center text-xs font-medium text-red-600 dark:text-red-400">
+                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                Missing
+                                            </span>
+                                        @endif
+                                    </div>
+                                </div>
+                                @if(($seoResults['robots']['url'] ?? false))
+                                    <a href="{{ $seoResults['robots']['url'] }}" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline text-xs flex items-center">
+                                        View
+                                        <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                    </a>
+                                @endif
+                            </div>
+                        </div>
+
+                        <!-- Sitemap.xml -->
+                        <div class="p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Sitemap.xml</h4>
+                                    <div class="mt-1">
+                                        @if(($seoResults['sitemap']['exists'] ?? false))
+                                            <span class="inline-flex items-center text-xs font-medium text-green-600 dark:text-green-400">
+                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                                Found
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center text-xs font-medium text-red-600 dark:text-red-400">
+                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                Missing
+                                            </span>
+                                        @endif
+                                    </div>
+                                </div>
+                                @if(($seoResults['sitemap']['url'] ?? false))
+                                    <a href="{{ $seoResults['sitemap']['url'] }}" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline text-xs flex items-center">
+                                        View
+                                        <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                    </a>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 text-xs text-gray-500 dark:text-gray-400 text-right">
+                         Last checked: {{ $latestSeoCheck->created_at->diffForHumans() }} ({{ $latestSeoCheck->duration_ms }}ms)
+                    </div>
+                @else
+                     <div class="text-center py-6 text-gray-500 dark:text-gray-400">
+                        <p>No SEO data available yet.</p>
+                        <p class="text-sm mt-2">Run a health check to analyze SEO fundamentals.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
         <!-- Reputation & Blacklist Monitoring -->
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
             <div class="p-6">
