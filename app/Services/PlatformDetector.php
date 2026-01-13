@@ -159,6 +159,16 @@ class PlatformDetector
                 ];
             }
 
+            // Custom PHP detection
+            if ($this->isCustomPhp($html, $headers)) {
+                return [
+                    'platform_type' => 'Custom PHP',
+                    'platform_version' => null,
+                    'admin_url' => null, // Custom sites rarely have standard admin paths
+                    'detection_confidence' => 'medium',
+                ];
+            }
+
             return [
                 'platform_type' => 'Other',
                 'platform_version' => null,
@@ -307,6 +317,37 @@ class PlatformDetector
         }
 
         return "https://{$domain}/admin";
+    }
+
+    /**
+     * Check if site is likely Custom PHP
+     *
+     * @param  array<string, array<int, string>|string>  $headers
+     */
+    private function isCustomPhp(string $html, array $headers): bool
+    {
+        $poweredByHeader = $headers['X-Powered-By'] ?? $headers['x-powered-by'] ?? [];
+        $poweredBy = is_array($poweredByHeader) ? (strtolower($poweredByHeader[0] ?? '')) : strtolower($poweredByHeader);
+
+        // Strong indicator: X-Powered-By: PHP/...
+        if (str_contains($poweredBy, 'php')) {
+            // But ensure it's not a known framework (already checked above)
+            return true;
+        }
+
+        // Check for visible .php extensions in links
+        // Matches href="something.php" or href="/path/file.php"
+        if (preg_match('/href=["\'][^"\']+\.php(?:\?[^"\']*)?["\']/i', $html)) {
+            return true;
+        }
+
+        // Check for common PHP include comments (sometimes left in by developers)
+        // e.g. <!-- header.php -->, <!-- include -->
+        if (preg_match('/<!--\s*[\w-]+\.php\s*-->/i', $html)) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
