@@ -119,7 +119,7 @@ if [ -n "$STAGED_BLADE_FILES" ]; then
     for FILE in $STAGED_BLADE_FILES; do
         if [ -f "$FILE" ]; then
             # Extract @include directives
-            INCLUDES=$(grep -oP "@include\(['\"]([^'\"]+)['\"]\)" "$FILE" | sed "s/@include(['\"]//" | sed "s/['\"]).*//" || true)
+            INCLUDES=$(grep -o "@include(['\"][^'\"]*['\"])" "$FILE" | sed "s/@include(['\"]//" | sed "s/['\"])$//" || true)
             
             if [ -n "$INCLUDES" ]; then
                 while IFS= read -r INCLUDE; do
