@@ -134,10 +134,19 @@ class DomainDetail extends Component
         }
 
         try {
-            Artisan::call('domains:health-check', [
+            $exitCode = Artisan::call('domains:health-check', [
                 '--domain' => $this->domain->domain,
                 '--type' => $type,
             ]);
+
+            if ($exitCode !== 0) {
+                $output = Artisan::output();
+                Log::error("Health check failed for {$this->domain->domain} ({$type})", ['output' => $output]);
+                session()->flash('error', 'Health check command failed. Please check logs.');
+                $this->dispatch('health-check-error', message: 'Command failed');
+
+                return;
+            }
 
             $this->loadDomain();
             session()->flash('message', ucfirst($type).' health check completed successfully!');
