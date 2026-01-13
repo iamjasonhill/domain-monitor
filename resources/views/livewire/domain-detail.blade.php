@@ -721,6 +721,31 @@
                             @else
                                 <p class="text-sm text-gray-500">No data available.</p>
                             @endif
+
+                            @if(!$spf || !$spf['valid'])
+                                <div class="mt-3 pt-3 border-t border-red-200 dark:border-red-900/50">
+                                    <h5 class="text-xs font-semibold text-red-800 dark:text-red-300 mb-1">How to Fix</h5>
+                                    <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                                        @if(!$spf || !$spf['present'])
+                                            Add this TXT record to your domain (@) to allow sending emails.
+                                        @else
+                                            Your SPF record is invalid. Consider resetting it to this safe default.
+                                        @endif
+                                    </p>
+                                    <div x-data="{ copied: false }" class="relative">
+                                        <div class="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
+                                            <code class="text-xs text-gray-800 dark:text-gray-200 font-mono break-all select-all">v=spf1 a mx ~all</code>
+                                            <button @click="navigator.clipboard.writeText('v=spf1 a mx ~all'); copied = true; setTimeout(() => copied = false, 2000)" 
+                                                    class="ml-2 text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 focus:outline-none"
+                                                    title="Copy to clipboard">
+                                                <span x-show="!copied"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg></span>
+                                                <span x-show="copied" x-cloak class="text-green-600 dark:text-green-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></span>
+                                            </button>
+                                        </div>
+                                        <p class="mt-1 text-[10px] text-gray-500">Note: Add <code>include:service.com</code> if you use external email providers (e.g. Mailgun, SendGrid).</p>
+                                    </div>
+                                </div>
+                            @endif
                         </div>
 
                         <!-- DMARC Status -->
@@ -779,6 +804,30 @@
                             @else
                                 <p class="text-sm text-gray-500">No data available.</p>
                             @endif
+
+                            @if(!$dmarc || !$dmarc['valid'])
+                                <div class="mt-3 pt-3 border-t border-red-200 dark:border-red-900/50">
+                                    <h5 class="text-xs font-semibold text-red-800 dark:text-red-300 mb-1">How to Fix</h5>
+                                    <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                                        @if(!$dmarc || !$dmarc['present'])
+                                            Add this TXT record to <code>_dmarc</code> subdomain.
+                                        @else
+                                            Your DMARC record is invalid. Use this standard policy.
+                                        @endif
+                                    </p>
+                                    <div x-data="{ copied: false }" class="relative">
+                                        <div class="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
+                                            <code class="text-xs text-gray-800 dark:text-gray-200 font-mono break-all select-all">v=DMARC1; p=none;</code>
+                                            <button @click="navigator.clipboard.writeText('v=DMARC1; p=none;'); copied = true; setTimeout(() => copied = false, 2000)" 
+                                                    class="ml-2 text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 focus:outline-none"
+                                                    title="Copy to clipboard">
+                                                <span x-show="!copied"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg></span>
+                                                <span x-show="copied" x-cloak class="text-green-600 dark:text-green-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
                         </div>
 
                         <!-- DNSSEC Status -->
@@ -821,6 +870,15 @@
                                     </div>
                                 @endif
                             </div>
+                            
+                            @if(!$dnssec || !$dnssec['enabled'])
+                                <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                                    <h5 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">How to Fix</h5>
+                                    <p class="text-xs text-gray-600 dark:text-gray-400">
+                                        Log in to your <strong>domain registrar's dashboard</strong> (e.g., GoDaddy, Namecheap) and look for a "DNSSEC" or "Domain Security" setting. Enable it there—no manual record creation is usually required.
+                                    </p>
+                                </div>
+                            @endif
                         </div>
 
                         <!-- CAA Status -->
@@ -851,6 +909,27 @@
                                     <span class="px-2 py-1 text-xs font-bold rounded bg-gray-200 text-gray-800 dark:bg-gray-800 dark:text-gray-100">MISSING</span>
                                 @endif
                             </div>
+                            
+                            @if(!$caa || !$caa['present'])
+                                <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                                    <h5 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">How to Fix</h5>
+                                    <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                                        Recommended: Allow Let's Encrypt to issue certificates.
+                                    </p>
+                                    <div x-data="{ copied: false }" class="relative">
+                                        <div class="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
+                                            <code class="text-xs text-gray-800 dark:text-gray-200 font-mono break-all select-all">0 issue "letsencrypt.org"</code>
+                                            <button @click="navigator.clipboard.writeText('0 issue &quot;letsencrypt.org&quot;'); copied = true; setTimeout(() => copied = false, 2000)" 
+                                                    class="ml-2 text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 focus:outline-none"
+                                                    title="Copy to clipboard">
+                                                <span x-show="!copied"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg></span>
+                                                <span x-show="copied" x-cloak class="text-green-600 dark:text-green-400"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
                             
                             <div class="space-y-2 text-sm">
                                 <div class="flex justify-between">
