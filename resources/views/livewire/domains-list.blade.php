@@ -387,7 +387,7 @@
                                             <span class="text-red-500" title="SSL Issue">❌</span>
                                         @elseif($domain->latest_ssl_status === 'warn')
                                             <span class="text-orange-500" title="Warning">⚠️</span>
-                                        @elseif($domain->latest_ssl_status === 'pass')
+                                        @elseif(in_array($domain->latest_ssl_status, ['pass', 'ok']))
                                             <span class="text-green-500" title="Valid">✓</span>
                                         @else
                                             <span class="text-gray-300 text-xs">-</span>
@@ -398,7 +398,7 @@
                                             <span class="text-red-500" title="Email Security Issue">❌</span>
                                         @elseif($domain->latest_email_security_status === 'warn')
                                             <span class="text-orange-500" title="Warning">⚠️</span>
-                                        @elseif($domain->latest_email_security_status === 'pass')
+                                        @elseif(in_array($domain->latest_email_security_status, ['pass', 'ok']))
                                             <span class="text-green-500" title="Valid">✓</span>
                                         @else
                                             <span class="text-gray-300 text-xs">-</span>
@@ -409,7 +409,7 @@
                                             <span class="text-red-500" title="SEO Issue">❌</span>
                                         @elseif($domain->latest_seo_status === 'warn')
                                             <span class="text-orange-500" title="Warning">⚠️</span>
-                                        @elseif($domain->latest_seo_status === 'pass')
+                                        @elseif(in_array($domain->latest_seo_status, ['pass', 'ok']))
                                             <span class="text-green-500" title="Valid">✓</span>
                                         @else
                                             <span class="text-gray-300 text-xs">-</span>
@@ -420,7 +420,7 @@
                                             <span class="text-red-500" title="Reputation Issue">❌</span>
                                         @elseif($domain->latest_reputation_status === 'warn')
                                             <span class="text-orange-500" title="Warning">⚠️</span>
-                                        @elseif($domain->latest_reputation_status === 'pass')
+                                        @elseif(in_array($domain->latest_reputation_status, ['pass', 'ok']))
                                             <span class="text-green-500" title="Clean">✓</span>
                                         @else
                                             <span class="text-gray-300 text-xs">-</span>
@@ -431,7 +431,7 @@
                                             <span class="text-red-500" title="Security Headers Issue">❌</span>
                                         @elseif($domain->latest_security_headers_status === 'warn')
                                             <span class="text-orange-500" title="Warning">⚠️</span>
-                                        @elseif($domain->latest_security_headers_status === 'pass')
+                                        @elseif(in_array($domain->latest_security_headers_status, ['pass', 'ok']))
                                             <span class="text-green-500" title="Valid">✓</span>
                                         @else
                                             <span class="text-gray-300 text-xs">-</span>
@@ -442,7 +442,7 @@
                                             <span class="text-red-500" title="Broken Links Found">❌</span>
                                         @elseif($domain->latest_broken_links_status === 'warn')
                                             <span class="text-orange-500" title="Warning">⚠️</span>
-                                        @elseif($domain->latest_broken_links_status === 'pass')
+                                        @elseif(in_array($domain->latest_broken_links_status, ['pass', 'ok']))
                                             <span class="text-green-500" title="No Broken Links">✓</span>
                                         @else
                                             <span class="text-gray-300 text-xs">-</span>
