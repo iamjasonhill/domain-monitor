@@ -42,6 +42,9 @@ class EmailSecurityHealthCheck
             // CAA Check
             $caaResult = $this->checkCaa($domain);
 
+            // DKIM Check (Selector Discovery)
+            $dkimResult = $this->checkDkim($domain);
+
             $isValid = $spfResult['valid'] && $dmarcResult['valid'];
             $duration = (int) ((microtime(true) - $startTime) * 1000);
 
@@ -51,6 +54,7 @@ class EmailSecurityHealthCheck
                 'dmarc' => $dmarcResult,
                 'dnssec' => $dnssecResult,
                 'caa' => $caaResult,
+                'dkim' => $dkimResult,
                 'error_message' => $isValid ? null : $this->buildErrorMessage($spfResult, $dmarcResult),
                 'payload' => [
                     'domain' => $domain,
@@ -58,7 +62,7 @@ class EmailSecurityHealthCheck
                     'dmarc' => $dmarcResult,
                     'dnssec' => $dnssecResult,
                     'caa' => $caaResult,
-                    'dkim' => ['status' => 'skipped', 'reason' => 'Selector required'], // Placeholder
+                    'dkim' => $dkimResult,
                     'duration_ms' => $duration,
                 ],
             ];
@@ -69,12 +73,57 @@ class EmailSecurityHealthCheck
                 'dmarc' => ['present' => false, 'valid' => false, 'record' => null, 'policy' => null, 'error' => 'Check failed'],
                 'dnssec' => ['enabled' => false, 'error' => 'Check failed'],
                 'caa' => ['present' => false, 'records' => [], 'error' => 'Check failed'],
+                'dkim' => ['present' => false, 'selectors' => [], 'error' => 'Check failed'],
                 'error_message' => 'Exception: '.$e->getMessage(),
                 'payload' => [
                     'domain' => $domain,
                     'error' => $e->getMessage(),
                     'duration_ms' => (int) ((microtime(true) - $startTime) * 1000),
                 ],
+            ];
+        }
+    }
+
+    /**
+     * @return array{present: bool, selectors: array<int, array{selector: string, record: string}>, error: string|null}
+     */
+    private function checkDkim(string $domain): array
+    {
+        // Common selectors to check
+        $selectors = [
+            'google', 'default', 'mail', 'k1', 'smtp', 's1', 's2019', 's2020', '20230601',
+        ];
+
+        $foundSelectors = [];
+
+        try {
+            foreach ($selectors as $selector) {
+                $host = "{$selector}._domainkey.{$domain}";
+                $records = $this->dns->getRecords($host, 'TXT');
+
+                foreach ($records as $record) {
+                    $txt = $record->txt();
+                    if (str_contains($txt, 'v=DKIM1')) {
+                        $foundSelectors[] = [
+                            'selector' => $selector,
+                            'record' => $txt,
+                        ];
+                        // Found one for this selector, break inner loop to move to next selector
+                        break;
+                    }
+                }
+            }
+
+            return [
+                'present' => ! empty($foundSelectors),
+                'selectors' => $foundSelectors,
+                'error' => null,
+            ];
+        } catch (Exception $e) {
+            return [
+                'present' => false,
+                'selectors' => [],
+                'error' => $e->getMessage(),
             ];
         }
     }

@@ -654,10 +654,12 @@
                     $dmarc = $payload['dmarc'] ?? null;
                     $dnssec = $payload['dnssec'] ?? null;
                     $caa = $payload['caa'] ?? null;
+                    $dkim = $payload['dkim'] ?? null;
                     
                     $helpers = [
                         'spf' => 'Specifies which mail servers are authorized to send email on behalf of your domain.',
                         'dmarc' => 'Tells email receivers how to handle mail that isn\'t authenticated using SPF or DKIM.',
+                        'dkim' => 'Adds a cryptographic signature to emails, verifying they were sent by you and weren\'t altered.',
                         'dnssec' => 'Protects your DNS records from being tampered with (spoofing).',
                         'caa' => 'Limits which Certificate Authorities can issue SSL certificates for your domain.'
                     ];
@@ -849,6 +851,61 @@
                                         </button>
                                     </div>
                                 </div>
+
+                        <!-- DKIM Status -->
+                        <div class="border rounded-md p-4 {{ $dkim && $dkim['present'] ? 'border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800' : 'border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-800' }}">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-semibold flex items-center {{ $dkim && $dkim['present'] ? 'text-green-800 dark:text-green-300' : 'text-yellow-800 dark:text-yellow-300' }}">
+                                    DKIM
+                                    <div x-data="{ open: false }" class="relative ml-1.5 inline-flex items-center">
+                                        <button @mouseenter="open = true" @mouseleave="open = false" @click="open = !open" type="button" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 focus:outline-none">
+                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+                                        </button>
+                                        <div x-show="open" 
+                                             x-transition:enter="transition ease-out duration-200"
+                                             x-transition:enter-start="opacity-0 scale-95"
+                                             x-transition:enter-end="opacity-100 scale-100"
+                                             x-transition:leave="transition ease-in duration-75"
+                                             x-transition:leave-start="opacity-100 scale-100"
+                                             x-transition:leave-end="opacity-0 scale-95"
+                                             class="absolute z-50 w-56 p-2 mt-2 text-xs font-normal text-white bg-gray-900 rounded-lg shadow-xl -left-1 sm:left-auto sm:right-0 top-full"
+                                             x-cloak>
+                                            {{ $helpers['dkim'] }}
+                                        </div>
+                                    </div>
+                                </h4>
+                                @if($dkim && $dkim['present'])
+                                    <span class="px-2 py-1 text-xs font-bold rounded bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100">PASS</span>
+                                @else
+                                    <span class="px-2 py-1 text-xs font-bold rounded bg-yellow-200 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100">NOT FOUND</span>
+                                @endif
+                            </div>
+                            
+                            @if($dkim)
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600 dark:text-gray-400">Selectors Found:</span>
+                                        <span class="font-medium text-gray-900 dark:text-gray-100">{{ $dkim['present'] ? count($dkim['selectors']) : 'None' }}</span>
+                                    </div>
+                                    @if($dkim['present'] && !empty($dkim['selectors']))
+                                        <div class="mt-2 text-xs">
+                                            @foreach($dkim['selectors'] as $selector)
+                                                <div class="mb-2">
+                                                    <span class="font-mono font-bold text-gray-700 dark:text-gray-300">{{ $selector['selector'] }}</span>
+                                                    <code class="block w-full mt-1 p-1.5 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 rounded border border-gray-100 dark:border-gray-800 break-all">{{ $selector['record'] }}</code>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @elseif(!$dkim['present'])
+                                        <p class="text-xs text-gray-500 mt-2">
+                                            We checked common selectors (google, default, mail, k1, etc.) but found no active DKIM records. This doesn't mean DKIM is broken, but we couldn't detect it automatically.
+                                        </p>
+                                    @endif
+                                </div>
+                            @else
+                                <p class="text-sm text-gray-500">No data available.</p>
+                            @endif
+                        </div>
                             @endif
                         </div>
 
@@ -989,6 +1046,91 @@
                     <div class="text-center py-6 text-gray-500 dark:text-gray-400">
                         <p>No security check data available yet.</p>
                         <p class="text-sm mt-2">Click "Run Security Check" to analyze SPF and DMARC.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <!-- Reputation & Blacklist Monitoring -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Reputation & Blacklist Monitoring</h3>
+                    <button wire:click="runHealthCheck('reputation')" wire:loading.attr="disabled" {{ $isParked ? 'disabled' : '' }} class="inline-flex items-center px-3 py-1.5 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 disabled:opacity-50">
+                        <span wire:loading.remove wire:target="runHealthCheck('reputation')">Run Reputation Check</span>
+                        <span wire:loading wire:target="runHealthCheck('reputation')">Checking...</span>
+                    </button>
+                </div>
+
+                @php
+                    $latestReputationCheck = $domain->checks()->where('check_type', 'reputation')->latest()->first();
+                    $repPayload = $latestReputationCheck?->payload ?? [];
+                    $gsb = $repPayload['google_safe_browsing'] ?? null;
+                    $spamhaus = $repPayload['dnsbl']['spamhaus'] ?? null;
+                @endphp
+
+                @if($latestReputationCheck)
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Google Safe Browsing -->
+                        <div class="border rounded-md p-4 {{ $gsb && $gsb['safe'] ? 'border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800' : 'border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800' }}">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-semibold text-gray-900 dark:text-gray-100">Google Safe Browsing</h4>
+                                @if($gsb && $gsb['safe'])
+                                    <span class="px-2 py-1 text-xs font-bold rounded bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100">SAFE</span>
+                                @else
+                                    <span class="px-2 py-1 text-xs font-bold rounded bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-100">UNSAFE</span>
+                                @endif
+                            </div>
+                            <div class="text-sm">
+                                @if($gsb && !$gsb['safe'])
+                                    <div class="text-red-700 dark:text-red-300">
+                                        <p class="font-medium">Threats Detected:</p>
+                                        <ul class="list-disc list-inside mt-1">
+                                            @foreach($gsb['matches'] as $match)
+                                                <li>{{ $match['threatType'] }} ({{ $match['platformType'] }})</li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                @elseif($gsb && $gsb['error'])
+                                    <p class="text-yellow-600 dark:text-yellow-400">Error: {{ $gsb['error'] }}</p>
+                                @else
+                                    <p class="text-gray-600 dark:text-gray-400">No malware or phishing threats detected by Google.</p>
+                                @endif
+                            </div>
+                        </div>
+
+                        <!-- Spamhaus DNSBL -->
+                        <div class="border rounded-md p-4 {{ $spamhaus && !$spamhaus['listed'] ? 'border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800' : 'border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800' }}">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-semibold text-gray-900 dark:text-gray-100">Spamhaus Blocklist</h4>
+                                @if($spamhaus && !$spamhaus['listed'])
+                                    <span class="px-2 py-1 text-xs font-bold rounded bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100">CLEAN</span>
+                                @else
+                                    <span class="px-2 py-1 text-xs font-bold rounded bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-100">LISTED</span>
+                                @endif
+                            </div>
+                            <div class="text-sm">
+                                @if($spamhaus && $spamhaus['listed'])
+                                    <div class="text-red-700 dark:text-red-300">
+                                        <p class="font-medium">Listing Details:</p>
+                                        <p>{{ $spamhaus['details'] }}</p>
+                                        <p class="mt-2 text-xs"><a href="https://check.spamhaus.org/" target="_blank" class="underline hover:text-red-900">Visit Spamhaus Checker</a></p>
+                                    </div>
+                                @elseif($spamhaus && $spamhaus['error'])
+                                    <p class="text-yellow-600 dark:text-yellow-400">Error: {{ $spamhaus['error'] }}</p>
+                                @else
+                                    <p class="text-gray-600 dark:text-gray-400">Domain IP is not blacklisted by Spamhaus (Zen).</p>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4 text-xs text-gray-500 dark:text-gray-400 text-right">
+                        Last checked: {{ $latestReputationCheck->created_at->diffForHumans() }} ({{ $latestReputationCheck->duration_ms }}ms)
+                    </div>
+                @else
+                    <div class="text-center py-6 text-gray-500 dark:text-gray-400">
+                        <p>No reputation check data available yet.</p>
+                        <p class="text-sm mt-2">Click "Run Reputation Check" to scan for malware and blacklisting.</p>
                     </div>
                 @endif
             </div>

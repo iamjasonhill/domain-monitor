@@ -30,14 +30,14 @@ class RunHealthChecks extends Command
     /**
      * Execute the console command.
      */
-    public function handle(HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck): int
+    public function handle(HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck, \App\Services\ReputationHealthCheck $reputationCheck): int
     {
         $domainOption = $this->option('domain');
         $allOption = $this->option('all');
         $type = $this->option('type');
 
-        if (! in_array($type, ['http', 'ssl', 'dns', 'uptime', 'email_security'])) {
-            $this->error("Invalid check type: {$type}. Must be one of: http, ssl, dns, uptime, email_security");
+        if (! in_array($type, ['http', 'ssl', 'dns', 'uptime', 'email_security', 'reputation'])) {
+            $this->error("Invalid check type: {$type}. Must be one of: http, ssl, dns, uptime, email_security, reputation");
 
             return Command::FAILURE;
         }
@@ -51,7 +51,7 @@ class RunHealthChecks extends Command
                 return Command::FAILURE;
             }
 
-            return $this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck);
+            return $this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck, $reputationCheck);
         }
 
         if ($allOption) {
@@ -77,7 +77,7 @@ class RunHealthChecks extends Command
 
             $successCount = 0;
             foreach ($domains as $domain) {
-                if ($this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck, false) === Command::SUCCESS) {
+                if ($this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck, $reputationCheck, false) === Command::SUCCESS) {
                     $successCount++;
                 }
                 $bar->advance();
@@ -98,7 +98,7 @@ class RunHealthChecks extends Command
     /**
      * Run health check for a single domain
      */
-    private function runCheckForDomain(Domain $domain, string $type, HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck, bool $verbose = true): int
+    private function runCheckForDomain(Domain $domain, string $type, HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck, \App\Services\ReputationHealthCheck $reputationCheck, bool $verbose = true): int
     {
         if ($verbose) {
             $this->info("Running {$type} check for: {$domain->domain}");
@@ -134,6 +134,7 @@ class RunHealthChecks extends Command
             $sslResult = null;
             $dnsResult = null;
             $emailSecurityResult = null;
+            $reputationResult = null;
 
             if ($type === 'http') {
                 $httpResult = $httpCheck->check($domain->domain);
@@ -163,6 +164,11 @@ class RunHealthChecks extends Command
                 $status = $emailSecurityResult['is_valid'] ? 'ok' : 'fail';
                 $errorMessage = $emailSecurityResult['error_message'];
                 $payload = $emailSecurityResult['payload'];
+            } elseif ($type === 'reputation') {
+                $reputationResult = $reputationCheck->check($domain->domain);
+                $status = $reputationResult['is_valid'] ? 'ok' : 'fail';
+                $errorMessage = $reputationResult['error_message'];
+                $payload = $reputationResult['payload'];
             } else {
                 if ($verbose) {
                     $this->warn("  Check type '{$type}' not yet implemented");
@@ -211,6 +217,10 @@ class RunHealthChecks extends Command
                 if ($emailSecurityResult) {
                     $this->line('  SPF: '.($emailSecurityResult['spf']['valid'] ? 'Pass' : 'Fail'));
                     $this->line('  DMARC: '.($emailSecurityResult['dmarc']['valid'] ? 'Pass' : 'Fail'));
+                }
+                if ($reputationResult) {
+                    $this->line('  Safe Browsing: '.($reputationResult['google_safe_browsing']['safe'] ? 'Safe' : 'Unsafe'));
+                    $this->line('  Spamhaus: '.($reputationResult['dnsbl']['spamhaus']['listed'] ? 'Listed' : 'Clean'));
                 }
                 $this->line("  Duration: {$duration}ms");
                 if ($errorMessage) {

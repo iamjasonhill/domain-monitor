@@ -75,8 +75,59 @@ class EmailSecurityHealthCheckTest extends TestCase
         $this->assertCount(1, $payload['caa']['records']);
     }
 
+    public function test_it_discovers_dkim_records(): void
+    {
+        // Arrange
+        $domain = Domain::factory()->create([
+            'domain' => 'dkim-test.com',
+            'is_active' => true,
+        ]);
+
+        $this->mock(Dns::class, function (MockInterface $mock) {
+            // Standard mocks for other checks (keep them clean)
+            $mock->shouldReceive('getRecords')->with('dkim-test.com', 'TXT')->andReturn([]);
+            $mock->shouldReceive('getRecords')->with('_dmarc.dkim-test.com', 'TXT')->andReturn([]);
+            $mock->shouldReceive('getRecords')->with('dkim-test.com', 'CAA')->andReturn([]);
+
+            // Mock DKIM - Simulate finding a 'google' selector
+            // We need to use a loose matching because the loop checks many selectors
+            $mock->shouldReceive('getRecords')
+                ->withArgs(function ($host, $type) {
+                    return str_ends_with($host, '._domainkey.dkim-test.com') && $type === 'TXT';
+                })
+                ->andReturnUsing(function ($host) {
+                    if ($host === 'google._domainkey.dkim-test.com') {
+                        return [
+                            new TXT(['host' => $host, 'class' => 'IN', 'ttl' => 300, 'type' => 'TXT', 'txt' => 'v=DKIM1; k=rsa; p=MIIBIjANBgkqh...']),
+                        ];
+                    }
+
+                    return [];
+                });
+        });
+
+        // Mock service for DNSSEC
+        $mockService = \Mockery::mock(\App\Services\EmailSecurityHealthCheck::class, [app(Dns::class)])->makePartial();
+        $mockService->shouldReceive('getDnsKey')->andReturn([]);
+        $this->instance(\App\Services\EmailSecurityHealthCheck::class, $mockService);
+
+        // Act
+        $this->artisan('domains:health-check', ['--type' => 'email_security', '--domain' => 'dkim-test.com'])
+            ->assertSuccessful();
+
+        // Assert
+        $check = $domain->checks()->latest()->first();
+        $payload = $check->payload;
+
+        $this->assertTrue($payload['dkim']['present']);
+        $this->assertCount(1, $payload['dkim']['selectors']);
+        $this->assertEquals('google', $payload['dkim']['selectors'][0]['selector']);
+        $this->assertStringContainsString('v=DKIM1', $payload['dkim']['selectors'][0]['record']);
+    }
+
     public function test_it_detects_invalid_spf_and_missing_dmarc(): void
     {
+        // ... (existing content)
         // Arrange
         $domain = Domain::factory()->create([
             'domain' => 'bad-config.com',
