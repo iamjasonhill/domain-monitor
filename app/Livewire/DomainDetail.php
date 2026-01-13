@@ -48,6 +48,10 @@ class DomainDetail extends Component
 
     public string $subdomainNotes = '';
 
+    public bool $showDnsRecords = false;
+
+    public bool $showSubdomains = false;
+
     #[Computed]
     /** @return \Illuminate\Database\Eloquent\Collection<int, DomainCheck>|\Illuminate\Support\Collection<int, never> */
     public function recentChecks(): mixed

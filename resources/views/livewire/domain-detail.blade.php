@@ -437,8 +437,12 @@
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
             <div class="p-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Subdomains</h3>
+                    <div class="flex items-center gap-2 cursor-pointer" wire:click="$toggle('showSubdomains')">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Subdomains</h3>
+                        <svg class="w-5 h-5 text-gray-500 transform transition-transform {{ $showSubdomains ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
                     <div class="flex gap-2">
+                        @if($showSubdomains)
                         @if($domain->dnsRecords && $domain->dnsRecords->count() > 0)
                             <button wire:click="discoverSubdomainsFromDns" wire:loading.attr="disabled" class="inline-flex items-center px-3 py-1.5 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 disabled:opacity-50">
                                 <span wire:loading.remove wire:target="discoverSubdomainsFromDns">Discover from DNS</span>
@@ -454,9 +458,15 @@
                         <button wire:click="openAddSubdomainModal" class="inline-flex items-center px-3 py-1.5 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700">
                             Add Subdomain
                         </button>
+                        @else
+                            <button wire:click="$toggle('showSubdomains')" class="inline-flex items-center px-3 py-1.5 bg-gray-100 dark:bg-gray-700 border border-transparent rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-gray-600">
+                                Show ({{ $domain->subdomains->count() }})
+                            </button>
+                        @endif
                     </div>
                 </div>
-                @if($domain->subdomains && $domain->subdomains->count() > 0)
+                @if($showSubdomains)
+                    @if($domain->subdomains && $domain->subdomains->count() > 0)
                     <div class="overflow-x-auto">
                         <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-900">
@@ -525,8 +535,9 @@
                             </tbody>
                         </table>
                     </div>
-                @else
-                    <p class="text-gray-500 dark:text-gray-400">No subdomains added yet. Click "Add Subdomain" to add one.</p>
+                    @else
+                        <p class="text-gray-500 dark:text-gray-400">No subdomains added yet. Click "Add Subdomain" to add one.</p>
+                    @endif
                 @endif
             </div>
         </div>
@@ -535,11 +546,15 @@
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
             <div class="p-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">DNS Records</h3>
+                    <div class="flex items-center gap-2 cursor-pointer" wire:click="$toggle('showDnsRecords')">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">DNS Records</h3>
+                        <svg class="w-5 h-5 text-gray-500 transform transition-transform {{ $showDnsRecords ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
                     @php
                         $isAustralianTld = preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$|\.au$/', $domain->domain);
                     @endphp
-                    @if($isAustralianTld)
+                    @if($showDnsRecords)
+                        @if($isAustralianTld)
                         <div class="flex gap-2">
                             <button wire:click="openAddDnsRecordModal" class="inline-flex items-center px-3 py-1.5 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700">
                                 Add Record
@@ -549,9 +564,15 @@
                                 <span wire:loading wire:target="syncDnsRecords">Syncing...</span>
                             </button>
                         </div>
+                        @endif
+                    @else
+                        <button wire:click="$toggle('showDnsRecords')" class="inline-flex items-center px-3 py-1.5 bg-gray-100 dark:bg-gray-700 border border-transparent rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-gray-600">
+                            Show ({{ $domain->dnsRecords->count() }})
+                        </button>
                     @endif
                 </div>
-                @if($domain->dnsRecords && $domain->dnsRecords->count() > 0)
+                @if($showDnsRecords)
+                    @if($domain->dnsRecords && $domain->dnsRecords->count() > 0)
                     <div class="overflow-x-auto">
                         <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-900">
@@ -632,6 +653,7 @@
                             DNS records are only available for Australian TLD domains (.com.au, .net.au, etc.).
                         @endif
                     </p>
+                @endif
                 @endif
             </div>
         </div>
