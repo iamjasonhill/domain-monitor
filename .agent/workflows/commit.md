@@ -4,9 +4,16 @@ description: Validate and commit code changes with all quality checks
 
 # Commit Workflow
 
-Use this workflow before committing any code changes. This ensures validation happens BEFORE the pre-commit hook, catching errors earlier.
+## Rule: Validate Immediately After Editing
 
-## Steps
+| After editing... | Run immediately: |
+|-----------------|------------------|
+| `.blade.php` | `php artisan blade:validate <file>` |
+| `.php` | `./vendor/bin/phpstan analyse <file> --memory-limit=2G` |
+
+**Don't wait for commit time.** Validate right after saving.
+
+## Before Commit
 
 // turbo
 1. Identify staged/modified Blade files and run validation:
