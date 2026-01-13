@@ -30,14 +30,14 @@ class RunHealthChecks extends Command
     /**
      * Execute the console command.
      */
-    public function handle(HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck, \App\Services\ReputationHealthCheck $reputationCheck, \App\Services\SecurityHeadersHealthCheck $securityHeadersCheck): int
+    public function handle(HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck, \App\Services\ReputationHealthCheck $reputationCheck, \App\Services\SecurityHeadersHealthCheck $securityHeadersCheck, \App\Services\SeoHealthCheck $seoCheck): int
     {
         $domainOption = $this->option('domain');
         $allOption = $this->option('all');
         $type = $this->option('type');
 
-        if (! in_array($type, ['http', 'ssl', 'dns', 'uptime', 'email_security', 'reputation', 'security_headers'])) {
-            $this->error("Invalid check type: {$type}. Must be one of: http, ssl, dns, uptime, email_security, reputation, security_headers");
+        if (! in_array($type, ['http', 'ssl', 'dns', 'uptime', 'email_security', 'reputation', 'security_headers', 'seo'])) {
+            $this->error("Invalid check type: {$type}. Must be one of: http, ssl, dns, uptime, email_security, reputation, security_headers, seo");
 
             return Command::FAILURE;
         }
@@ -51,11 +51,11 @@ class RunHealthChecks extends Command
                 return Command::FAILURE;
             }
 
-            return $this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck, $reputationCheck, $securityHeadersCheck);
+            return $this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck, $reputationCheck, $securityHeadersCheck, $seoCheck);
         }
 
         if ($allOption) {
-            $excludeEmailOnly = in_array($type, ['http', 'ssl', 'security_headers'], true);
+            $excludeEmailOnly = in_array($type, ['http', 'ssl', 'security_headers', 'seo'], true);
 
             $domains = Domain::with('platform')
                 ->where('is_active', true)
@@ -77,7 +77,7 @@ class RunHealthChecks extends Command
 
             $successCount = 0;
             foreach ($domains as $domain) {
-                if ($this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck, $reputationCheck, $securityHeadersCheck, false) === Command::SUCCESS) {
+                if ($this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck, $reputationCheck, $securityHeadersCheck, $seoCheck, false) === Command::SUCCESS) {
                     $successCount++;
                 }
                 $bar->advance();
@@ -98,7 +98,7 @@ class RunHealthChecks extends Command
     /**
      * Run health check for a single domain
      */
-    private function runCheckForDomain(Domain $domain, string $type, HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck, \App\Services\ReputationHealthCheck $reputationCheck, \App\Services\SecurityHeadersHealthCheck $securityHeadersCheck, bool $verbose = true): int
+    private function runCheckForDomain(Domain $domain, string $type, HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck, \App\Services\ReputationHealthCheck $reputationCheck, \App\Services\SecurityHeadersHealthCheck $securityHeadersCheck, \App\Services\SeoHealthCheck $seoCheck, bool $verbose = true): int
     {
         if ($verbose) {
             $this->info("Running {$type} check for: {$domain->domain}");
@@ -116,7 +116,7 @@ class RunHealthChecks extends Command
                 return Command::SUCCESS;
             }
 
-            if ($domain->isEmailOnly() && in_array($type, ['http', 'ssl', 'security_headers'], true)) {
+            if ($domain->isEmailOnly() && in_array($type, ['http', 'ssl', 'security_headers', 'seo'], true)) {
                 if ($verbose) {
                     $this->line('  Skipped: domain is marked as email-only (HTTP/SSL checks disabled)');
                 }
@@ -136,6 +136,7 @@ class RunHealthChecks extends Command
             $emailSecurityResult = null;
             $reputationResult = null;
             $securityHeadersResult = null;
+            $seoResult = null;
 
             if ($type === 'http') {
                 $httpResult = $httpCheck->check($domain->domain);
@@ -174,13 +175,17 @@ class RunHealthChecks extends Command
                 $payload = $reputationResult['payload'];
             } elseif ($type === 'security_headers') {
                 $securityHeadersResult = $securityHeadersCheck->check($domain->domain);
-                $status = $securityHeadersResult['is_valid'] ? 'ok' : 'warn'; // Failures in headers are usually warnings unless critical
-                // Use a dedicated 'fail' status if score is very low? For now, 'warn' is safer than 'fail' for headers
+                $status = $securityHeadersResult['is_valid'] ? 'ok' : 'warn';
                 if (! $securityHeadersResult['is_valid']) {
-                    $status = 'warn'; // Degrading to warn for now as headers are rarely "broken", just "insecure"
+                    $status = 'warn';
                 }
                 $errorMessage = $securityHeadersResult['error_message'];
                 $payload = $securityHeadersResult['payload'];
+            } elseif ($type === 'seo') {
+                $seoResult = $seoCheck->check($domain->domain);
+                $status = $seoResult['is_valid'] ? 'ok' : 'warn';
+                $errorMessage = $seoResult['error_message'];
+                $payload = $seoResult['payload'];
             } else {
                 if ($verbose) {
                     $this->warn("  Check type '{$type}' not yet implemented");
@@ -238,6 +243,10 @@ class RunHealthChecks extends Command
                     $this->line("  Score: {$securityHeadersResult['score']}/100");
                     $this->line('  HSTS: '.($securityHeadersResult['headers']['strict-transport-security']['present'] ? 'Yes' : 'No'));
                     $this->line('  CSP: '.($securityHeadersResult['headers']['content-security-policy']['present'] ? 'Yes' : 'No'));
+                }
+                if ($seoResult) {
+                    $this->line('  Robots.txt: '.($seoResult['results']['robots']['exists'] ? 'Found' : 'Missing'));
+                    $this->line('  Sitemap.xml: '.($seoResult['results']['sitemap']['exists'] ? 'Found' : 'Missing'));
                 }
                 $this->line("  Duration: {$duration}ms");
                 if ($errorMessage) {
