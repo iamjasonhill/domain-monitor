@@ -700,7 +700,7 @@
                                 <div class="space-y-2 text-sm">
                                     <div class="flex justify-between">
                                         <span class="text-gray-600 dark:text-gray-400">Present:</span>
-                                        <span class="font-medium text-gray-900 dark:text-gray-100">{{ $spf['present'] ? 'Yes' : 'No' }}</span>
+                                        <span class="font-medium text-gray-900 dark:text-gray-100">{{ ($spf['present'] ?? false) ? 'Yes' : 'No' }}</span>
                                     </div>
                                     @if($spf['record'])
                                         <div>
@@ -728,7 +728,7 @@
                                 <div class="mt-3 pt-3 border-t border-red-200 dark:border-red-900/50">
                                     <h5 class="text-xs font-semibold text-red-800 dark:text-red-300 mb-1">How to Fix</h5>
                                     <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                                        @if(!$spf || !$spf['present'])
+                                        @if(!$spf || !($spf['present'] ?? false))
                                             Add this TXT record to your domain (@) to allow sending emails.
                                         @else
                                             Your SPF record is invalid. Consider resetting it to this safe default.
@@ -794,7 +794,7 @@
                                 <div class="space-y-2 text-sm">
                                     <div class="flex justify-between">
                                         <span class="text-gray-600 dark:text-gray-400">Present:</span>
-                                        <span class="font-medium text-gray-900 dark:text-gray-100">{{ $dmarc['present'] ? 'Yes' : 'No' }}</span>
+                                        <span class="font-medium text-gray-900 dark:text-gray-100">{{ ($dmarc['present'] ?? false) ? 'Yes' : 'No' }}</span>
                                     </div>
                                     @if($dmarc['record'])
                                         <div>
@@ -822,7 +822,7 @@
                                 <div class="mt-3 pt-3 border-t border-red-200 dark:border-red-900/50">
                                     <h5 class="text-xs font-semibold text-red-800 dark:text-red-300 mb-1">How to Fix</h5>
                                     <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                                        @if(!$dmarc || !$dmarc['present'])
+                                        @if(!$dmarc || !($dmarc['present'] ?? false))
                                             Add this TXT record to <code>_dmarc</code> subdomain.
                                         @else
                                             Your DMARC record is invalid. Use this standard policy.
@@ -853,9 +853,9 @@
                                 </div>
 
                         <!-- DKIM Status -->
-                        <div class="border rounded-md p-4 {{ $dkim && $dkim['present'] ? 'border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800' : 'border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-800' }}">
+                        <div class="border rounded-md p-4 {{ $dkim && ($dkim['present'] ?? false) ? 'border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800' : 'border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-800' }}">
                             <div class="flex items-center justify-between mb-2">
-                                <h4 class="font-semibold flex items-center {{ $dkim && $dkim['present'] ? 'text-green-800 dark:text-green-300' : 'text-yellow-800 dark:text-yellow-300' }}">
+                                <h4 class="font-semibold flex items-center {{ $dkim && ($dkim['present'] ?? false) ? 'text-green-800 dark:text-green-300' : 'text-yellow-800 dark:text-yellow-300' }}">
                                     DKIM
                                     <div x-data="{ open: false }" class="relative ml-1.5 inline-flex items-center">
                                         <button @mouseenter="open = true" @mouseleave="open = false" @click="open = !open" type="button" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 focus:outline-none">
@@ -874,7 +874,7 @@
                                         </div>
                                     </div>
                                 </h4>
-                                @if($dkim && $dkim['present'])
+                                @if($dkim && ($dkim['present'] ?? false))
                                     <span class="px-2 py-1 text-xs font-bold rounded bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100">PASS</span>
                                 @else
                                     <span class="px-2 py-1 text-xs font-bold rounded bg-yellow-200 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100">NOT FOUND</span>
@@ -885,9 +885,9 @@
                                 <div class="space-y-2 text-sm">
                                     <div class="flex justify-between">
                                         <span class="text-gray-600 dark:text-gray-400">Selectors Found:</span>
-                                        <span class="font-medium text-gray-900 dark:text-gray-100">{{ $dkim['present'] ? count($dkim['selectors']) : 'None' }}</span>
+                                        <span class="font-medium text-gray-900 dark:text-gray-100">{{ ($dkim['present'] ?? false) ? count($dkim['selectors']) : 'None' }}</span>
                                     </div>
-                                    @if($dkim['present'] && !empty($dkim['selectors']))
+                                    @if(($dkim['present'] ?? false) && !empty($dkim['selectors']))
                                         <div class="mt-2 text-xs">
                                             @foreach($dkim['selectors'] as $selector)
                                                 <div class="mb-2">
@@ -896,7 +896,7 @@
                                                 </div>
                                             @endforeach
                                         </div>
-                                    @elseif(!$dkim['present'])
+                                    @elseif(!($dkim['present'] ?? false))
                                         <p class="text-xs text-gray-500 mt-2">
                                             We checked common selectors (google, default, mail, k1, etc.) but found no active DKIM records. This doesn't mean DKIM is broken, but we couldn't detect it automatically.
                                         </p>
@@ -961,9 +961,9 @@
                         </div>
 
                         <!-- CAA Status -->
-                        <div class="border rounded-md p-4 {{ $caa && $caa['present'] ? 'border-indigo-200 bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-800' : 'border-gray-200 bg-gray-50 dark:bg-gray-900/20 dark:border-gray-800' }}">
+                        <div class="border rounded-md p-4 {{ $caa && ($caa['present'] ?? false) ? 'border-indigo-200 bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-800' : 'border-gray-200 bg-gray-50 dark:bg-gray-900/20 dark:border-gray-800' }}">
                             <div class="flex items-center justify-between mb-2">
-                                <h4 class="font-semibold flex items-center {{ $caa && $caa['present'] ? 'text-indigo-800 dark:text-indigo-300' : 'text-gray-800 dark:text-gray-300' }}">
+                                <h4 class="font-semibold flex items-center {{ $caa && ($caa['present'] ?? false) ? 'text-indigo-800 dark:text-indigo-300' : 'text-gray-800 dark:text-gray-300' }}">
                                     CAA
                                     <div x-data="{ open: false }" class="relative ml-1.5 inline-flex items-center">
                                         <button @mouseenter="open = true" @mouseleave="open = false" @click="open = !open" type="button" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 focus:outline-none">
@@ -982,14 +982,14 @@
                                         </div>
                                     </div>
                                 </h4>
-                                @if($caa && $caa['present'])
+                                @if($caa && ($caa['present'] ?? false))
                                     <span class="px-2 py-1 text-xs font-bold rounded bg-indigo-200 text-indigo-800 dark:bg-indigo-800 dark:text-indigo-100">PRESENT</span>
                                 @else
                                     <span class="px-2 py-1 text-xs font-bold rounded bg-gray-200 text-gray-800 dark:bg-gray-800 dark:text-gray-100">MISSING</span>
                                 @endif
                             </div>
                             
-                            @if(!$caa || !$caa['present'])
+                            @if(!$caa || !($caa['present'] ?? false))
                                 <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                                     <h5 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">How to Fix</h5>
                                     <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">
@@ -1024,9 +1024,9 @@
                             <div class="space-y-2 text-sm">
                                 <div class="flex justify-between">
                                     <span class="text-gray-600 dark:text-gray-400">Configured:</span>
-                                    <span class="font-medium text-gray-900 dark:text-gray-100">{{ $caa && $caa['present'] ? 'Yes' : 'No' }}</span>
+                                    <span class="font-medium text-gray-900 dark:text-gray-100">{{ $caa && ($caa['present'] ?? false) ? 'Yes' : 'No' }}</span>
                                 </div>
-                                @if($caa && $caa['present'] && !empty($caa['records']))
+                                @if($caa && ($caa['present'] ?? false) && !empty($caa['records']))
                                     <div class="mt-2">
                                         <span class="text-gray-600 dark:text-gray-400 block mb-1">Authorized CAs:</span>
                                         <div class="space-y-1">
