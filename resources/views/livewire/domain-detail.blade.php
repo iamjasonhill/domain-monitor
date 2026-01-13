@@ -568,61 +568,70 @@
             </div>
         </div>
 
-                    @php
-                        $isAustralianTld = preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$|\.au$/', $domain->domain);
-                    @endphp
-                </div> <!-- Closing flex header -->
-                
-                <!-- DNS Records Content -->
-                <!-- We need to ensure the DNS records content (subdomains/loop) is displayed here if showDnsRecords is true -->
-                <!-- Wait, the previous code had content inside here? Let's check where the content went. -->
-                <!-- The view_file output showed lines 572-578 opening the card header. Then line 579 was the PHP block I replaced. -->
-                <!-- It seems I might have cut off the actual DNS records rendering logic in previous replace? -->
-                <!-- Let's check the context again. In step 5011, line 572 starts the card. -->
-                <!-- The content of DNS records was NOT shown in the snippet after line 581. It was cut off? -->
-                <!-- Use view_file to see what's actually inside the DNS card *after* my previous insertion if possible. -->
-                <!-- Ah, I inserted Uptime *after* line 579. -->
-                <!-- This means Uptime is INSIDE the DNS card header div? No, line 574 opened the header div. -->
-                <!-- Line 578 closed the header div? No, line 578 closed the flex div `wire:click`. -->
-                <!-- Line 574 `flex justify-between` was NOT closed before line 579. -->
-                <!-- So Uptime is inside the header flex container? -->
-                    
-                <!-- Let's look at lines 574-578 in Step 5092: -->
-                <!-- 574: <div class="flex justify-between items-center mb-4"> -->
-                <!-- 575:     <div class="flex items-center gap-2 ..."> ... </div> -->
-                <!-- 579:     @php ... @endphp -->
-                <!-- So yes, I inserted Uptime block *inside* the `div` at 574. THIS IS THE PROBLEM. -->
-                <!-- I need to close the div at 574, AND convert the layout so Uptime is *outside* the DNS card entirely. -->
-                
-                <!-- Wait, the DNS Records **content** (the table of records) matches $showDnsRecords. -->
-                <!-- Where is `if($showDnsRecords)`? It must be further down. -->
-                <!-- The Uptime block is currently located at lines 588-626 in Step 5092. -->
-                <!-- I need to move lines 588-626 OUT of the current location. -->
-                <!-- AND I need to find where the DNS card *should* end. -->
-                
-                <!-- I will take a safer approach: -->
-                <!-- 1. Move the Uptime block (lines 583-626) to *before* the DNS Records card (line 571). -->
-                <!-- 2. Clean up the messed up div inside DNS records. -->
+        <!-- Uptime & Performance -->
+        @php
+            $latestUptimeCheck = $domain->checks()->where('check_type', 'uptime')->latest()->first();
+            $uptimePayload = $latestUptimeCheck?->payload ?? [];
+        @endphp
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+            <div class="p-6">
+                 <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        Uptime & Performance
+                    </h3>
+                    @if($latestUptimeCheck)
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $latestUptimeCheck->status === 'ok' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' }}">
+                            {{ $latestUptimeCheck->status === 'ok' ? 'Online' : 'Offline' }}
+                        </span>
+                    @endif
+                 </div>
 
-                    <!-- SSL/TLS Configuration -->
-                    @php
-                        $latestSslCheck = $domain->checks()
-                            ->where('check_type', 'ssl')
-                            ->latest('started_at')
-                            ->first();
-                        $sslPayload = $latestSslCheck ? $latestSslCheck->payload : null;
-                        $chain = $latestSslCheck ? ($latestSslCheck->chain ?? ($sslPayload['chain'] ?? [])) : [];
-                        $protocol = $latestSslCheck->protocol ?? ($sslPayload['protocol'] ?? null);
-                        $cipher = $latestSslCheck->cipher ?? ($sslPayload['cipher'] ?? null);
-                    @endphp
-                    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
-                        <div class="p-6">
-                            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                </svg>
-                                SSL/TLS Configuration
-                            </h3>
+                 @if($latestUptimeCheck)
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                            <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Response Time</div>
+                            <div class="mt-1 flex items-baseline">
+                                <span class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $latestUptimeCheck->duration_ms }}</span>
+                                <span class="ml-1 text-sm text-gray-500 dark:text-gray-400">ms</span>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                            <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Last Checked</div>
+                            <div class="mt-1 flex items-baseline">
+                                <span class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $latestUptimeCheck->created_at->diffForHumans() }}</span>
+                            </div>
+                        </div>
+                    </div>
+                 @else
+                    <div class="text-center py-4 text-gray-500 dark:text-gray-400">
+                        No uptime data available yet.
+                    </div>
+                 @endif
+            </div>
+        </div>
+
+        <!-- SSL/TLS Configuration -->
+        @php
+            $latestSslCheck = $domain->checks()
+                ->where('check_type', 'ssl')
+                ->latest('started_at')
+                ->first();
+            $sslPayload = $latestSslCheck ? $latestSslCheck->payload : null;
+            $chain = $latestSslCheck ? ($latestSslCheck->chain ?? ($sslPayload['chain'] ?? [])) : [];
+            $protocol = $latestSslCheck->protocol ?? ($sslPayload['protocol'] ?? null);
+            $cipher = $latestSslCheck->cipher ?? ($sslPayload['cipher'] ?? null);
+        @endphp
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+            <div class="p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    SSL/TLS Configuration
+                </h3>
 
                             @if($latestSslCheck)
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -707,6 +716,18 @@
                             @endif
                         </div>
                     </div>
+
+        <!-- DNS Records -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-2 cursor-pointer" wire:click="$toggle('showDnsRecords')">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">DNS Records</h3>
+                        <svg class="w-5 h-5 text-gray-500 transform transition-transform {{ $showDnsRecords ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                    @php
+                        $isAustralianTld = preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$|\.au$/', $domain->domain);
+                    @endphp
 
                     @if($showDnsRecords)
 
