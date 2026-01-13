@@ -96,6 +96,12 @@ Schedule::command('domains:check-expiring')
     ->at('08:30')
     ->timezone('UTC');
 
+// Check for expiring SSL certificates - run daily to send alerts at 30, 14, 7, 3 days
+Schedule::command('domains:check-expiring-ssl')
+    ->daily()
+    ->at('04:00')
+    ->timezone('UTC');
+
 // Weekly subdomain discovery and IP updates - queue jobs spread over the week
 // Each domain gets checked once per week, with IP updates 20 minutes after discovery
 Schedule::command('domains:queue-subdomain-checks')
