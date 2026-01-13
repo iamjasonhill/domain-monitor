@@ -264,23 +264,7 @@
                                 </th>
                                 <th
                                     class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                    <button type="button" wire:click="sortBy('platform')"
-                                        class="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200 select-none">
-                                        <span>Platform</span>
-                                        @if($sortField === 'platform')
-                                            <span aria-hidden="true">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                                        @endif
-                                    </button>
-                                </th>
-                                <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                    <button type="button" wire:click="sortBy('hosting')"
-                                        class="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200 select-none">
-                                        <span>Hosting</span>
-                                        @if($sortField === 'hosting')
-                                            <span aria-hidden="true">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                                        @endif
-                                    </button>
+                                    Issues
                                 </th>
                                 <th
                                     class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -380,34 +364,44 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                         @php
-                                            // Get platform relationship (not the string attribute)
-                                            $platform = $domain->getRelation('platform') ?? null;
-                                            // Fallback to string attribute if relationship doesn't exist
-                                            if (!$platform && is_string($domain->getAttribute('platform'))) {
-                                                $platformType = $domain->getAttribute('platform');
-                                            } else {
-                                                $platformType = $platform?->platform_type ?? 'N/A';
-                                            }
+                                            $issues = [];
+                                            $checks = $domain->checks;
+                                            
+                                            $failedSsl = $checks->where('check_type', 'ssl')->first()?->status === 'fail';
+                                            $failedDmarc = $checks->where('check_type', 'email_security')->first()?->status === 'fail';
+                                            $failedDns = $checks->where('check_type', 'dns')->first()?->status === 'fail';
+                                            $failedSeo = $checks->where('check_type', 'seo')->first()?->status === 'fail';
+                                            $failedHeaders = $checks->where('check_type', 'security_headers')->first()?->status === 'fail';
+                                            
+                                            $hasChecks = $checks->count() > 0;
+                                            $hasIssues = $failedSsl || $failedDmarc || $failedDns || $failedSeo || $failedHeaders;
                                         @endphp
-                                        <div class="flex items-center gap-2">
-                                            @if($isParked)
-                                                <span
-                                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Parked</span>
-                                            @elseif($platformType === 'Email Only')
-                                                <span
-                                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Email
-                                                    Only</span>
+
+                                        <div class="flex flex-wrap gap-1">
+                                            @if(!$hasChecks)
+                                                <span class="text-xs text-gray-400">Pending</span>
+                                            @elseif(!$hasIssues)
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                                                    OK
+                                                </span>
                                             @else
-                                                <span>{{ $platformType }}</span>
-                                            @endif
-                                            @if($platform && $platform instanceof \App\Models\WebsitePlatform && $platform->platform_version)
-                                                <span
-                                                    class="text-xs text-gray-400 dark:text-gray-500">({{ $platform->platform_version }})</span>
+                                                @if($failedSsl)
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">SSL</span>
+                                                @endif
+                                                @if($failedDmarc)
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">DMARC</span>
+                                                @endif
+                                                @if($failedDns)
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">DNS</span>
+                                                @endif
+                                                @if($failedSeo)
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">SEO</span>
+                                                @endif
+                                                @if($failedHeaders)
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">Security</span>
+                                                @endif
                                             @endif
                                         </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                        {{ $domain->hosting_provider ?? 'N/A' }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <a href="{{ route('domains.show', $domain->id) }}" wire:navigate

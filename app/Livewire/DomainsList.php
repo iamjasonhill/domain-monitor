@@ -428,8 +428,15 @@ class DomainsList extends Component
 
         $query = Domain::with([
             'checks' => function ($query) {
-                // Load both HTTP and DNS checks (view will filter to HTTP only for status display)
-                $query->whereIn('check_type', ['http', 'dns'])->latest()->limit(5);
+                // Load latest checks for issues column
+                $query->whereIn('check_type', [
+                    'http',
+                    'ssl',
+                    'email_security',
+                    'dns',
+                    'seo',
+                    'security_headers',
+                ])->latest()->limit(20);
             },
             'platform',
             'tags',
