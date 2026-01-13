@@ -132,6 +132,16 @@ class PlatformDetector
                 ];
             }
 
+            // Astro detection
+            if ($this->isAstro($html, $headers)) {
+                return [
+                    'platform_type' => 'Astro',
+                    'platform_version' => null,
+                    'admin_url' => null, // Static site generator, no default admin
+                    'detection_confidence' => 'high',
+                ];
+            }
+
             // Parked domain detection (check before static site)
             $isParkedResult = $this->isParked($html, $domain);
             Log::debug('PlatformDetector parked check', [
@@ -317,6 +327,27 @@ class PlatformDetector
         }
 
         return "https://{$domain}/admin";
+    }
+
+    /**
+     * Check if site is Astro
+     *
+     * @param  array<string, array<int, string>|string>  $headers
+     */
+    private function isAstro(string $html, array $headers): bool
+    {
+        // Check generator meta tag
+        if (preg_match('/<meta[^>]*name=["\']generator["\'][^>]*content=["\']Astro\s*v?([\d.]*)["\']/i', $html)) {
+            return true;
+        }
+
+        // Check for specific Astro attributes or class patterns if generator is hidden
+        // Astro often uses 'astro-' prefix in classes or data attributes, though less reliably than generator
+        if (str_contains($html, 'class="astro-') || str_contains($html, 'data-astro-')) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
