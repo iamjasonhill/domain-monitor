@@ -652,6 +652,8 @@
                     $payload = $latestSecurityCheck?->payload ?? [];
                     $spf = $payload['spf'] ?? null;
                     $dmarc = $payload['dmarc'] ?? null;
+                    $dnssec = $payload['dnssec'] ?? null;
+                    $caa = $payload['caa'] ?? null;
                 @endphp
 
                 @if($latestSecurityCheck)
