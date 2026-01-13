@@ -38,6 +38,11 @@ Schedule::command('domains:update-ip-info --all --hours=24')
     ->at('03:00')
     ->timezone('UTC');
 
+// Uptime checks - run every 10 minutes for active domains
+Schedule::command('domains:health-check --all --type=uptime')
+    ->everyTenMinutes()
+    ->timezone('UTC');
+
 // HTTP health checks - run every hour for active domains
 Schedule::command('domains:health-check --all --type=http')
     ->hourly()
