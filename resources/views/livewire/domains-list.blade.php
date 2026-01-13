@@ -364,13 +364,13 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                         @php
-                                            $failedSsl = $domain->latestSslCheck?->status === 'fail';
-                                            $failedDmarc = $domain->latestEmailSecurityCheck?->status === 'fail';
-                                            $failedDns = $domain->latestDnsCheck?->status === 'fail';
-                                            $failedSeo = $domain->latestSeoCheck?->status === 'fail';
-                                            $failedHeaders = $domain->latestSecurityHeadersCheck?->status === 'fail';
+                                            $failedSsl = $domain->latest_ssl_status === 'fail';
+                                            $failedDmarc = $domain->latest_email_security_status === 'fail';
+                                            $failedDns = $domain->latest_dns_status === 'fail';
+                                            $failedSeo = $domain->latest_seo_status === 'fail';
+                                            $failedHeaders = $domain->latest_security_headers_status === 'fail';
                                             
-                                            $hasChecks = $domain->latestHttpCheck || $domain->latestSslCheck || $domain->latestEmailSecurityCheck || $domain->latestDnsCheck;
+                                            $hasChecks = $domain->latest_http_status || $domain->latest_ssl_status || $domain->latest_email_security_status || $domain->latest_dns_status;
                                             $hasIssues = $failedSsl || $failedDmarc || $failedDns || $failedSeo || $failedHeaders;
                                         @endphp
 

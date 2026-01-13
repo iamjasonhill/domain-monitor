@@ -149,63 +149,32 @@ class Domain extends Model
      * @return HasMany<DomainAlert, $this>
      */
     /**
-     * @return HasOne<DomainCheck, $this>
+     * Scope to load the latest status for each check type using subqueries.
+     * This avoids N+1 problems and PostgreSQL UUID max() limitations.
+     *
+     * @param  Builder<Domain>  $query
      */
-    public function latestHttpCheck(): HasOne
+    public function scopeWithLatestCheckStatuses(Builder $query): void
     {
-        return $this->hasOne(DomainCheck::class)->ofMany(['created_at' => 'max'], function ($query) {
-            $query->where('check_type', 'http');
-        });
-    }
+        $checkTypes = [
+            'http',
+            'ssl',
+            'dns',
+            'email_security',
+            'seo',
+            'security_headers',
+        ];
 
-    /**
-     * @return HasOne<DomainCheck, $this>
-     */
-    public function latestSslCheck(): HasOne
-    {
-        return $this->hasOne(DomainCheck::class)->ofMany(['created_at' => 'max'], function ($query) {
-            $query->where('check_type', 'ssl');
-        });
-    }
-
-    /**
-     * @return HasOne<DomainCheck, $this>
-     */
-    public function latestDnsCheck(): HasOne
-    {
-        return $this->hasOne(DomainCheck::class)->ofMany(['created_at' => 'max'], function ($query) {
-            $query->where('check_type', 'dns');
-        });
-    }
-
-    /**
-     * @return HasOne<DomainCheck, $this>
-     */
-    public function latestEmailSecurityCheck(): HasOne
-    {
-        return $this->hasOne(DomainCheck::class)->ofMany(['created_at' => 'max'], function ($query) {
-            $query->where('check_type', 'email_security');
-        });
-    }
-
-    /**
-     * @return HasOne<DomainCheck, $this>
-     */
-    public function latestSeoCheck(): HasOne
-    {
-        return $this->hasOne(DomainCheck::class)->ofMany(['created_at' => 'max'], function ($query) {
-            $query->where('check_type', 'seo');
-        });
-    }
-
-    /**
-     * @return HasOne<DomainCheck, $this>
-     */
-    public function latestSecurityHeadersCheck(): HasOne
-    {
-        return $this->hasOne(DomainCheck::class)->ofMany(['created_at' => 'max'], function ($query) {
-            $query->where('check_type', 'security_headers');
-        });
+        foreach ($checkTypes as $type) {
+            $attribute = 'latest_'.$type.'_status';
+            $query->addSelect([
+                $attribute => DomainCheck::select('status')
+                    ->whereColumn('domain_id', 'domains.id')
+                    ->where('check_type', $type)
+                    ->latest()
+                    ->take(1),
+            ]);
+        }
     }
 
     /**

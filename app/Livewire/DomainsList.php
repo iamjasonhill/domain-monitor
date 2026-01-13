@@ -427,15 +427,10 @@ class DomainsList extends Component
         $connection = \DB::getDriverName();
 
         $query = Domain::with([
-            'latestHttpCheck',
-            'latestSslCheck',
-            'latestEmailSecurityCheck',
-            'latestDnsCheck',
-            'latestSeoCheck',
-            'latestSecurityHeadersCheck',
             'platform',
             'tags',
         ])
+            ->withLatestCheckStatuses()
             ->search($this->search)
             ->filterActive($isActive)
             ->filterExpiring($this->filterExpiring)
