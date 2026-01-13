@@ -931,9 +931,19 @@
                                             @endforeach
                                         </div>
                                     @elseif(!($dkim['present'] ?? false))
-                                        <p class="text-xs text-gray-500 mt-2">
-                                            We checked common selectors (google, default, mail, k1, etc.) but found no active DKIM records. This doesn't mean DKIM is broken, but we couldn't detect it automatically.
-                                        </p>
+                                        <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                                            <h5 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">How to Fix</h5>
+                                            <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                                                DKIM cannot be fixed automatically because it requires a private key from your email provider.
+                                            </p>
+                                            <ol class="list-decimal list-inside text-xs text-gray-600 dark:text-gray-400 space-y-1 ml-1">
+                                                <li>Log in to your email provider's admin panel (e.g., Google Workspace, Office 365, Zoho).</li>
+                                                <li>Look for "DKIM" or "Email Authentication" settings.</li>
+                                                <li>Generate a new DKIM key. They will give you a <strong>Selector</strong> and a <strong>TXT Record</strong>.</li>
+                                                <li>Add that TXT record to your DNS records.</li>
+                                                <li>Enter the <strong>Selector</strong> name in the "Custom DKIM Selectors" box below and click Save.</li>
+                                            </ol>
+                                        </div>
                                     @endif
                                 </div>
                                 <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
