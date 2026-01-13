@@ -64,6 +64,11 @@ class DomainDetail extends Component
         ];
     }
 
+    public function runReputationCheck(): void
+    {
+        $this->runHealthCheck('reputation');
+    }
+
     public function loadDomain(): void
     {
         $this->domain = Domain::with([

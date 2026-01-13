@@ -1056,9 +1056,9 @@
             <div class="p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Reputation & Blacklist Monitoring</h3>
-                    <button wire:click="runHealthCheck('reputation')" wire:loading.attr="disabled" class="inline-flex items-center px-3 py-1.5 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 disabled:opacity-50">
-                        <span wire:loading.remove wire:target="runHealthCheck('reputation')">Run Reputation Check</span>
-                        <span wire:loading wire:target="runHealthCheck('reputation')">Checking...</span>
+                    <button wire:click="runReputationCheck" wire:key="btn-run-reputation" wire:loading.attr="disabled" class="inline-flex items-center px-3 py-1.5 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 disabled:opacity-50">
+                        <span wire:loading.remove wire:target="runReputationCheck">Run Reputation Check</span>
+                        <span wire:loading wire:target="runReputationCheck">Checking...</span>
                     </button>
                 </div>
 
