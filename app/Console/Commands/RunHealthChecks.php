@@ -108,7 +108,7 @@ class RunHealthChecks extends Command
             // Ensure platform relationship is available for accurate parked detection
             $domain->loadMissing('platform');
 
-            if ($domain->isParked()) {
+            if ($domain->isParked() && $type !== 'reputation') {
                 if ($verbose) {
                     $this->line('  Skipped: domain is marked as parked');
                 }

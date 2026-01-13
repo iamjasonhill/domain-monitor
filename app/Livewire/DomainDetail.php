@@ -127,7 +127,7 @@ class DomainDetail extends Component
             'is_parked' => $this->domain?->isParked(),
         ]);
 
-        if ($this->domain?->isParked()) {
+        if ($type !== 'reputation' && $this->domain?->isParked()) {
             session()->flash('info', 'This domain is marked as parked. Health checks are disabled.');
 
             return;
