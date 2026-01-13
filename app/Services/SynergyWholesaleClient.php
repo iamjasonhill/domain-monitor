@@ -451,7 +451,17 @@ class SynergyWholesaleClient
                 'recordPrio' => $recordPrio,
             ];
 
+            Log::info('Synergy Wholesale addDNSRecord request', $request);
+
             $result = $this->client->addDNSRecord($request);
+
+            Log::info('Synergy Wholesale addDNSRecord response', [
+                'domain' => $domain,
+                'status' => $result->status ?? 'unknown',
+                'id' => $result->id ?? null,
+                'errorMessage' => $result->errorMessage ?? null,
+                'result_raw' => (array) $result,
+            ]);
 
             // Check for errors
             if (isset($result->status) && $result->status !== 'OK' && str_starts_with($result->status, 'ERR_')) {
@@ -515,11 +525,20 @@ class SynergyWholesaleClient
                 'recordType' => strtoupper($recordType),
                 'recordContent' => $recordContent,
                 'recordTTL' => (string) $recordTTL, // API expects string for TTL in update
-                'recordPrio' => $recordPrio,
                 'recordID' => $recordId,
             ];
 
+            Log::info('Synergy Wholesale updateDNSRecord request', $request);
+
             $result = $this->client->updateDNSRecord($request);
+
+            Log::info('Synergy Wholesale updateDNSRecord response', [
+                'domain' => $domain,
+                'record_id' => $recordId,
+                'status' => $result->status ?? 'unknown',
+                'errorMessage' => $result->errorMessage ?? null,
+                'result_raw' => (array) $result,
+            ]);
 
             // Check for errors
             if (isset($result->status) && $result->status !== 'OK' && str_starts_with($result->status, 'ERR_')) {

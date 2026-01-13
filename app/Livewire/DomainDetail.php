@@ -10,6 +10,7 @@ use App\Services\HostingDetector;
 use App\Services\PlatformDetector;
 use App\Services\SynergyWholesaleClient;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 
 class DomainDetail extends Component
@@ -853,8 +854,14 @@ class DomainDetail extends Component
 
     public function applyFix(string $checkType): void
     {
+        Log::info('Automated DNS fix initiated', [
+            'domain' => $this->domain->domain,
+            'type' => $checkType,
+        ]);
+
         // 1. Validate Eligibility
         if (! $this->domain || ! \App\Services\SynergyWholesaleClient::isAustralianTld($this->domain->domain)) {
+            Log::warning('Automated DNS fix skipped: not eligible', ['domain' => $this->domain->domain ?? 'unknown']);
             session()->flash('error', 'Automated fixes are only available for Australian TLD domains.');
 
             return;
@@ -863,6 +870,7 @@ class DomainDetail extends Component
         // 2. Get Credentials
         $credential = SynergyCredential::where('is_active', true)->first();
         if (! $credential) {
+            Log::error('Automated DNS fix failed: no credentials');
             session()->flash('error', 'No active Synergy credentials found.');
 
             return;
@@ -927,6 +935,8 @@ class DomainDetail extends Component
 
         $defaultValue = 'v=spf1 a mx ~all';
 
+        Log::info('Checking for existing SPF record', ['found' => $existingSpf ? true : false]);
+
         if ($existingSpf && ! empty($existingSpf['id'])) {
             // Update
             $result = $client->updateDnsRecord(
@@ -974,6 +984,8 @@ class DomainDetail extends Component
         }
 
         $defaultValue = 'v=DMARC1; p=none;';
+
+        Log::info('Checking for existing DMARC record', ['found' => $existingDmarc ? true : false]);
 
         if ($existingDmarc && ! empty($existingDmarc['id'])) {
             // Update
