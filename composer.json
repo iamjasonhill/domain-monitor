@@ -16,6 +16,7 @@
         "spatie/dns": "^2.7"
     },
     "require-dev": {
+        "deinte/laravel-blade-validator": "^0.0.1",
         "fakerphp/faker": "^1.23",
         "larastan/larastan": "^3.8",
         "laravel/boost": "^1.8",

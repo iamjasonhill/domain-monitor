@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f200aa186b34a7bd17475feb696753c8",
+    "content-hash": "88b4558e117f87b2a7dc744a5d0144c6",
     "packages": [
         {
             "name": "brain-nucleus/client",
@@ -6396,6 +6396,80 @@
         }
     ],
     "packages-dev": [
+        {
+            "name": "deinte/laravel-blade-validator",
+            "version": "v0.0.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/deinte/laravel-blade-validator.git",
+                "reference": "01a5492caaf4fcfb2aafe2d78086de73205f616c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/deinte/laravel-blade-validator/zipball/01a5492caaf4fcfb2aafe2d78086de73205f616c",
+                "reference": "01a5492caaf4fcfb2aafe2d78086de73205f616c",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/contracts": "^11.0|^12.0",
+                "illuminate/filesystem": "^11.0|^12.0",
+                "illuminate/support": "^11.0|^12.0",
+                "illuminate/view": "^11.0|^12.0",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.14",
+                "nunomaduro/collision": "^8.1",
+                "orchestra/testbench": "^9.0|^10.0",
+                "pestphp/pest": "^3.0",
+                "pestphp/pest-plugin-arch": "^3.0",
+                "pestphp/pest-plugin-laravel": "^3.0",
+                "phpro/grumphp": "^2.0",
+                "phpstan/phpstan": "^2.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "BladeValidator": "Deinte\\BladeValidator\\Facades\\BladeValidator"
+                    },
+                    "providers": [
+                        "Deinte\\BladeValidator\\BladeValidatorServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Deinte\\BladeValidator\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Dante Schrauwen",
+                    "email": "contact@danteschrauwen.be",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Validate Blade templates for syntax errors, security issues, and best practices",
+            "homepage": "https://github.com/deinte/laravel-blade-validator",
+            "keywords": [
+                "blade",
+                "deinte",
+                "laravel",
+                "linter",
+                "security",
+                "validator"
+            ],
+            "support": {
+                "issues": "https://github.com/deinte/laravel-blade-validator/issues",
+                "source": "https://github.com/deinte/laravel-blade-validator/tree/v0.0.1"
+            },
+            "time": "2026-01-06T13:00:18+00:00"
+        },
         {
             "name": "fakerphp/faker",
             "version": "v1.24.1",

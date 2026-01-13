@@ -86,53 +86,28 @@ else
 fi
 echo ""
 
-# 3. Blade Syntax Check (unmatched directives)
-echo -e "${BLUE}3. Checking Blade syntax...${NC}"
+# 3. Blade Syntax & Security Check
+echo -e "${BLUE}3. Validating Blade templates...${NC}"
 if [ -n "$STAGED_BLADE_FILES" ]; then
+    # Filter out files that might have been deleted but are still in the staged list
+    ACTUAL_BLADE_FILES=""
     for FILE in $STAGED_BLADE_FILES; do
         if [ -f "$FILE" ]; then
-            BLADE_ERRORS=false
-            
-            # Check for unmatched @if/@endif
-            IF_COUNT=$(grep -o '@if' "$FILE" | wc -l | tr -d ' ')
-            ENDIF_COUNT=$(grep -o '@endif' "$FILE" | wc -l | tr -d ' ')
-            if [ "$IF_COUNT" != "$ENDIF_COUNT" ]; then
-                echo -e "  ${RED}❌ $FILE: Unmatched @if/@endif ($IF_COUNT @if, $ENDIF_COUNT @endif)${NC}"
-                BLADE_ERRORS=true
-                HAS_ERRORS=true
-            fi
-            
-            # Check for unmatched @foreach/@endforeach
-            FOREACH_COUNT=$(grep -o '@foreach' "$FILE" | wc -l | tr -d ' ')
-            ENDFOREACH_COUNT=$(grep -o '@endforeach' "$FILE" | wc -l | tr -d ' ')
-            if [ "$FOREACH_COUNT" != "$ENDFOREACH_COUNT" ]; then
-                echo -e "  ${RED}❌ $FILE: Unmatched @foreach/@endforeach ($FOREACH_COUNT @foreach, $ENDFOREACH_COUNT @endforeach)${NC}"
-                BLADE_ERRORS=true
-                HAS_ERRORS=true
-            fi
-            
-            # Check for unmatched @for/@endfor
-            FOR_COUNT=$(grep -o '@for' "$FILE" | wc -l | tr -d ' ')
-            ENDFOR_COUNT=$(grep -o '@endfor' "$FILE" | wc -l | tr -d ' ')
-            if [ "$FOR_COUNT" != "$ENDFOR_COUNT" ]; then
-                echo -e "  ${RED}❌ $FILE: Unmatched @for/@endfor ($FOR_COUNT @for, $ENDFOR_COUNT @endfor)${NC}"
-                BLADE_ERRORS=true
-                HAS_ERRORS=true
-            fi
-            
-            # Check for unmatched @section/@endsection (warning only)
-            SECTION_COUNT=$(grep -o '@section' "$FILE" | wc -l | tr -d ' ')
-            ENDSECTION_COUNT=$(grep -o '@endsection' "$FILE" | wc -l | tr -d ' ')
-            if [ "$SECTION_COUNT" != "$ENDSECTION_COUNT" ]; then
-                echo -e "  ${YELLOW}⚠️  $FILE: Unmatched @section/@endsection ($SECTION_COUNT @section, $ENDSECTION_COUNT @endsection)${NC}"
-                # Warning only, not blocking
-            fi
-            
-            if [ "$BLADE_ERRORS" = false ]; then
-                echo -e "  ${GREEN}✅ $FILE${NC}"
-            fi
+            ACTUAL_BLADE_FILES="$ACTUAL_BLADE_FILES $FILE"
         fi
     done
+
+    if [ -n "$ACTUAL_BLADE_FILES" ]; then
+        if php artisan blade:validate $ACTUAL_BLADE_FILES > /tmp/blade-validate.txt 2>&1; then
+            echo -e "  ${GREEN}✅ All staged Blade files passed validation${NC}"
+        else
+            echo -e "  ${RED}❌ Blade validation FAILED${NC}"
+            cat /tmp/blade-validate.txt
+            HAS_ERRORS=true
+        fi
+    else
+        echo -e "  ${YELLOW}⚠️  No staged Blade files found on disk${NC}"
+    fi
 else
     echo -e "  ${YELLOW}⚠️  No Blade files staged${NC}"
 fi
