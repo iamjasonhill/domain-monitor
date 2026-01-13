@@ -64,11 +64,6 @@ class DomainDetail extends Component
         ];
     }
 
-    public function runReputationCheck(): void
-    {
-        $this->runHealthCheck('reputation');
-    }
-
     public function loadDomain(): void
     {
         $this->domain = Domain::with([
@@ -126,12 +121,6 @@ class DomainDetail extends Component
 
     public function runHealthCheck(string $type): void
     {
-        Log::error('Manual health check initiated', [
-            'domain' => $this->domain->domain,
-            'type' => $type,
-            'is_parked' => $this->domain?->isParked(),
-        ]);
-
         if ($type !== 'reputation' && $this->domain?->isParked()) {
             session()->flash('info', 'This domain is marked as parked. Health checks are disabled.');
 
