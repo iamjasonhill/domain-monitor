@@ -108,10 +108,29 @@ See `DEPLOYMENT.md` for detailed deployment instructions for Laravel Forge.
 
 ## Documentation
 
-- `PROJECT-PLAN.md` - Project overview and completed steps
-- `DEPLOYMENT.md` - Deployment guide for Laravel Forge
-- `SYNERGY-SETUP.md` - Synergy Wholesale API setup
-- `SYNERGY-API-FIELDS.md` - Available API fields and methods
+The detailed project documentation has been moved to the `docs/` folder:
+
+### General
+- [Project Overview (Completed Steps)](docs/PROJECT-PLAN.md)
+- [Project Setup Guide](docs/PROJECT-SETUP-GUIDE.md)
+
+### Deployment & Ops
+- [Deployment Guide (Laravel Forge)](docs/DEPLOYMENT.md)
+- [Deployment Checklist](docs/DEPLOYMENT-CHECKLIST.md)
+- [Pre-Deployment Checks](docs/CHECK-BEFORE-DEPLOY.md)
+- [Server Access & Logging](SERVER_ACCESS.md) *(Local only, ignored by git)*
+
+### Features & Implementation
+- [Auth & UI Plan](docs/AUTH-AND-UI-PLAN.md)
+- [Step 8 Plan](docs/STEP-8-PLAN.md)
+
+### Styling
+- [Styling Guide](docs/STYLING-GUIDE.md)
+- [Styling Quick Reference](docs/STYLING-QUICK-REFERENCE.md)
+
+### Integrations
+- [Synergy Wholesale Setup](docs/SYNERGY-SETUP.md)
+- [Synergy API Fields](docs/SYNERGY-API-FIELDS.md)
 
 ## Contributing
 
