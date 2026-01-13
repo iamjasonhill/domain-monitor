@@ -104,3 +104,15 @@ Schedule::command('domains:prune-monitoring-data')
     ->daily()
     ->at('09:00')
     ->timezone('UTC');
+
+// Prune failed queue jobs older than 14 days (336 hours)
+Schedule::command('queue:prune-failed --hours=336')
+    ->daily()
+    ->at('09:10')
+    ->timezone('UTC');
+
+// Prune old job batches older than 14 days (20160 minutes)
+Schedule::command('queue:prune-batches --hours=336')
+    ->daily()
+    ->at('09:20')
+    ->timezone('UTC');

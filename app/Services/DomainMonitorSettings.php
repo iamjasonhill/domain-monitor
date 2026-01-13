@@ -13,6 +13,8 @@ class DomainMonitorSettings
 
     private const string PRUNE_ELIGIBILITY_CHECKS_DAYS_KEY = 'domain_monitor.prune_eligibility_checks_days';
 
+    private const string PRUNE_ALERTS_DAYS_KEY = 'domain_monitor.prune_alerts_days';
+
     private const int MIN_RECENT_FAILURES_HOURS = 1;
 
     private const int MAX_RECENT_FAILURES_HOURS = 168;
@@ -121,5 +123,39 @@ class DomainMonitorSettings
         );
 
         Cache::forget(self::PRUNE_ELIGIBILITY_CHECKS_DAYS_KEY);
+    }
+
+    public function pruneAlertsDays(): int
+    {
+        return Cache::rememberForever(self::PRUNE_ALERTS_DAYS_KEY, function (): int {
+            $default = (int) config('domain_monitor.prune_alerts_days', 14);
+
+            $raw = AppSetting::query()
+                ->where('key', self::PRUNE_ALERTS_DAYS_KEY)
+                ->value('value');
+
+            if ($raw === null || $raw === '') {
+                return $default;
+            }
+
+            $days = (int) $raw;
+            if ($days < self::MIN_PRUNE_DAYS || $days > self::MAX_PRUNE_DAYS) {
+                return $default;
+            }
+
+            return $days;
+        });
+    }
+
+    public function setPruneAlertsDays(int $days): void
+    {
+        $days = max(self::MIN_PRUNE_DAYS, min(self::MAX_PRUNE_DAYS, $days));
+
+        AppSetting::query()->updateOrCreate(
+            ['key' => self::PRUNE_ALERTS_DAYS_KEY],
+            ['value' => (string) $days]
+        );
+
+        Cache::forget(self::PRUNE_ALERTS_DAYS_KEY);
     }
 }
