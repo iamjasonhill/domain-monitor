@@ -30,7 +30,7 @@ class RunHealthChecks extends Command
     /**
      * Execute the console command.
      */
-    public function handle(HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck, \App\Services\ReputationHealthCheck $reputationCheck, \App\Services\SecurityHeadersHealthCheck $securityHeadersCheck, \App\Services\SeoHealthCheck $seoCheck, \App\Services\BrokenLinkHealthCheck $brokenLinkCheck): int
+    public function handle(HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck, \App\Services\ReputationHealthCheck $reputationCheck, \App\Services\SecurityHeadersHealthCheck $securityHeadersCheck, \App\Services\SeoHealthCheck $seoCheck, \App\Services\BrokenLinkHealthCheck $brokenLinkCheck, \App\Services\UptimeHealthCheck $uptimeCheck): int
     {
         $domainOption = $this->option('domain');
         $allOption = $this->option('all');
@@ -51,7 +51,7 @@ class RunHealthChecks extends Command
                 return Command::FAILURE;
             }
 
-            return $this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck, $reputationCheck, $securityHeadersCheck, $seoCheck, $brokenLinkCheck);
+            return $this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck, $reputationCheck, $securityHeadersCheck, $seoCheck, $brokenLinkCheck, $uptimeCheck);
         }
 
         if ($allOption) {
@@ -77,7 +77,7 @@ class RunHealthChecks extends Command
 
             $successCount = 0;
             foreach ($domains as $domain) {
-                if ($this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck, $reputationCheck, $securityHeadersCheck, $seoCheck, $brokenLinkCheck, false) === Command::SUCCESS) {
+                if ($this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck, $reputationCheck, $securityHeadersCheck, $seoCheck, $brokenLinkCheck, $uptimeCheck, false) === Command::SUCCESS) {
                     $successCount++;
                 }
                 $bar->advance();
@@ -98,7 +98,7 @@ class RunHealthChecks extends Command
     /**
      * Run health check for a single domain
      */
-    private function runCheckForDomain(Domain $domain, string $type, HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck, \App\Services\ReputationHealthCheck $reputationCheck, \App\Services\SecurityHeadersHealthCheck $securityHeadersCheck, \App\Services\SeoHealthCheck $seoCheck, \App\Services\BrokenLinkHealthCheck $brokenLinkCheck, bool $verbose = true): int
+    private function runCheckForDomain(Domain $domain, string $type, HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck, \App\Services\ReputationHealthCheck $reputationCheck, \App\Services\SecurityHeadersHealthCheck $securityHeadersCheck, \App\Services\SeoHealthCheck $seoCheck, \App\Services\BrokenLinkHealthCheck $brokenLinkCheck, \App\Services\UptimeHealthCheck $uptimeCheck, bool $verbose = true): int
     {
         if ($verbose) {
             $this->info("Running {$type} check for: {$domain->domain}");
@@ -131,6 +131,7 @@ class RunHealthChecks extends Command
             $payload = [];
 
             $httpResult = null;
+            $uptimeResult = null;
             $sslResult = null;
             $dnsResult = null;
             $emailSecurityResult = null;
@@ -148,6 +149,11 @@ class RunHealthChecks extends Command
                 $responseCode = $httpResult['status_code'];
                 $errorMessage = $httpResult['error_message'];
                 $payload = $httpResult['payload'];
+            } elseif ($type === 'uptime') {
+                $uptimeResult = $uptimeCheck->check($domain->domain);
+                $status = $uptimeResult['is_valid'] ? 'ok' : 'fail';
+                $errorMessage = $uptimeResult['error_message'];
+                $payload = $uptimeResult['payload'];
             } elseif ($type === 'ssl') {
                 $sslResult = $sslCheck->check($domain->domain);
                 $status = $sslResult['is_valid'] ? 'ok' : 'fail';
@@ -223,6 +229,12 @@ class RunHealthChecks extends Command
                 $this->line("  Status: {$status}");
                 if ($type === 'http' && $responseCode) {
                     $this->line("  Response Code: {$responseCode}");
+                }
+                if ($uptimeResult) {
+                    $this->line('  Uptime: '.($uptimeResult['is_valid'] ? 'Up' : 'Down'));
+                    if ($uptimeResult['status_code']) {
+                        $this->line("  Status Code: {$uptimeResult['status_code']}");
+                    }
                 }
                 if ($sslResult && isset($sslResult['days_until_expiry'])) {
                     $this->line("  Days Until Expiry: {$sslResult['days_until_expiry']}");

@@ -580,6 +580,51 @@
                         $isAustralianTld = preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$|\.au$/', $domain->domain);
                     @endphp
 
+                    <!-- Uptime & Performance -->
+                    @php
+                        $latestUptimeCheck = $domain->checks()->where('check_type', 'uptime')->latest()->first();
+                        $uptimePayload = $latestUptimeCheck?->payload ?? [];
+                    @endphp
+                    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                        <div class="p-6">
+                             <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                    Uptime & Performance
+                                </h3>
+                                @if($latestUptimeCheck)
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $latestUptimeCheck->status === 'ok' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' }}">
+                                        {{ $latestUptimeCheck->status === 'ok' ? 'Online' : 'Offline' }}
+                                    </span>
+                                @endif
+                             </div>
+
+                             @if($latestUptimeCheck)
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                                        <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Response Time</div>
+                                        <div class="mt-1 flex items-baseline">
+                                            <span class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $latestUptimeCheck->duration_ms }}</span>
+                                            <span class="ml-1 text-sm text-gray-500 dark:text-gray-400">ms</span>
+                                        </div>
+                                    </div>
+                                    <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                                        <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Last Checked</div>
+                                        <div class="mt-1 flex items-baseline">
+                                            <span class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $latestUptimeCheck->created_at->diffForHumans() }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                             @else
+                                <div class="text-center py-4 text-gray-500 dark:text-gray-400">
+                                    No uptime data available yet.
+                                </div>
+                             @endif
+                        </div>
+                    </div>
+
                     <!-- SSL/TLS Configuration -->
                     @php
                         $latestSslCheck = $domain->checks()
