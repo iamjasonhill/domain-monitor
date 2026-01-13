@@ -468,6 +468,9 @@ class DomainsList extends Component
             $query->orderBy('domains.updated_at', 'DESC');
         }
 
+        // Apply subquery scope after main select to ensure columns aren't overwritten
+        $query->withLatestCheckStatuses();
+
         $domains = $query->paginate(50);
 
         return view('livewire.domains-list', [
