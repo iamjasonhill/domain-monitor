@@ -153,7 +153,9 @@ class Domain extends Model
      */
     public function latestHttpCheck(): HasOne
     {
-        return $this->hasOne(DomainCheck::class)->ofMany('created_at', 'max')->where('check_type', 'http');
+        return $this->hasOne(DomainCheck::class)->ofMany(['id' => 'max'], function ($query) {
+            $query->where('check_type', 'http');
+        });
     }
 
     /**
@@ -161,7 +163,9 @@ class Domain extends Model
      */
     public function latestSslCheck(): HasOne
     {
-        return $this->hasOne(DomainCheck::class)->ofMany('created_at', 'max')->where('check_type', 'ssl');
+        return $this->hasOne(DomainCheck::class)->ofMany(['id' => 'max'], function ($query) {
+            $query->where('check_type', 'ssl');
+        });
     }
 
     /**
@@ -169,7 +173,9 @@ class Domain extends Model
      */
     public function latestDnsCheck(): HasOne
     {
-        return $this->hasOne(DomainCheck::class)->ofMany('created_at', 'max')->where('check_type', 'dns');
+        return $this->hasOne(DomainCheck::class)->ofMany(['id' => 'max'], function ($query) {
+            $query->where('check_type', 'dns');
+        });
     }
 
     /**
@@ -177,7 +183,9 @@ class Domain extends Model
      */
     public function latestEmailSecurityCheck(): HasOne
     {
-        return $this->hasOne(DomainCheck::class)->ofMany('created_at', 'max')->where('check_type', 'email_security');
+        return $this->hasOne(DomainCheck::class)->ofMany(['id' => 'max'], function ($query) {
+            $query->where('check_type', 'email_security');
+        });
     }
 
     /**
@@ -185,7 +193,9 @@ class Domain extends Model
      */
     public function latestSeoCheck(): HasOne
     {
-        return $this->hasOne(DomainCheck::class)->ofMany('created_at', 'max')->where('check_type', 'seo');
+        return $this->hasOne(DomainCheck::class)->ofMany(['id' => 'max'], function ($query) {
+            $query->where('check_type', 'seo');
+        });
     }
 
     /**
@@ -193,7 +203,9 @@ class Domain extends Model
      */
     public function latestSecurityHeadersCheck(): HasOne
     {
-        return $this->hasOne(DomainCheck::class)->ofMany('created_at', 'max')->where('check_type', 'security_headers');
+        return $this->hasOne(DomainCheck::class)->ofMany(['id' => 'max'], function ($query) {
+            $query->where('check_type', 'security_headers');
+        });
     }
 
     /**
