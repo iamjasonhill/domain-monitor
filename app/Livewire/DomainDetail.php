@@ -54,6 +54,8 @@ class DomainDetail extends Component
 
     public bool $showHealthChecks = false;
 
+    public string $dkimSelectorsInput = '';
+
     #[Computed]
     /** @return \Illuminate\Database\Eloquent\Collection<int, DomainCheck>|\Illuminate\Support\Collection<int, never> */
     public function recentChecks(): mixed
@@ -99,6 +101,10 @@ class DomainDetail extends Component
             // Manually update attribute to avoid refresh() destroying relations
             $this->domain->setAttribute('platform', $platformModel->platform_type);
         }
+
+        /** @var array<int, string> $dkimSelectors */
+        $dkimSelectors = $this->domain->dkim_selectors ?? [];
+        $this->dkimSelectorsInput = implode(', ', $dkimSelectors);
     }
 
     public function syncFromSynergy(): void
@@ -188,6 +194,24 @@ class DomainDetail extends Component
             'message',
             $enabled ? 'Domain manually marked as parked. Health checks are now disabled.' : 'Domain unmarked as parked. Health checks are now enabled.'
         );
+    }
+
+    public function saveDkimSelectors(): void
+    {
+        if (! $this->domain) {
+            return;
+        }
+
+        $selectors = array_filter(array_map('trim', explode(',', $this->dkimSelectorsInput)));
+        $selectors = array_unique($selectors);
+
+        $this->domain->update([
+            'dkim_selectors' => $selectors,
+        ]);
+
+        $this->loadDomain();
+        session()->flash('message', 'DKIM selectors updated successfully!');
+        $this->runHealthCheck('email_security');
     }
 
     public function confirmDelete(): void

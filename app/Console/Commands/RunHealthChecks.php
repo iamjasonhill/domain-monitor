@@ -160,7 +160,9 @@ class RunHealthChecks extends Command
                 $errorMessage = $dnsResult['error_message'];
                 $payload = $dnsResult['payload'];
             } elseif ($type === 'email_security') {
-                $emailSecurityResult = $emailSecurityCheck->check($domain->domain);
+                /** @var array<int, string> $selectors */
+                $selectors = $domain->dkim_selectors ?? [];
+                $emailSecurityResult = $emailSecurityCheck->check($domain->domain, $selectors);
                 $status = $emailSecurityResult['is_valid'] ? 'ok' : 'fail';
                 $errorMessage = $emailSecurityResult['error_message'];
                 $payload = $emailSecurityResult['payload'];

@@ -15,17 +15,19 @@ class EmailSecurityHealthCheck
     /**
      * Perform Email & DNS Security health check (SPF, DMARC, DNSSEC, CAA)
      *
+     * @param  array<int, string>  $customSelectors
      * @return array{
      *     is_valid: bool,
      *     spf: array{present: bool, valid: bool, record: string|null, mechanism: string|null, error: string|null},
      *     dmarc: array{present: bool, valid: bool, record: string|null, policy: string|null, error: string|null},
      *     dnssec: array{enabled: bool, error: string|null},
      *     caa: array{present: bool, records: array<int, string>, error: string|null},
+     *     dkim: array{present: bool, selectors: array<int, array{selector: string, record: string}>, error: string|null},
      *     error_message: string|null,
      *     payload: array<string, mixed>
      * }
      */
-    public function check(string $domain): array
+    public function check(string $domain, array $customSelectors = []): array
     {
         $startTime = microtime(true);
 
@@ -43,7 +45,7 @@ class EmailSecurityHealthCheck
             $caaResult = $this->checkCaa($domain);
 
             // DKIM Check (Selector Discovery)
-            $dkimResult = $this->checkDkim($domain);
+            $dkimResult = $this->checkDkim($domain, $customSelectors);
 
             $isValid = $spfResult['valid'] && $dmarcResult['valid'];
             $duration = (int) ((microtime(true) - $startTime) * 1000);
@@ -85,17 +87,21 @@ class EmailSecurityHealthCheck
     }
 
     /**
+     * @param  array<int, string>  $customSelectors
      * @return array{present: bool, selectors: array<int, array{selector: string, record: string}>, error: string|null}
      */
-    private function checkDkim(string $domain): array
+    private function checkDkim(string $domain, array $customSelectors = []): array
     {
-        // Common selectors to check (expanded list)
-        $selectors = [
+        // Internal default selectors to check (expanded list)
+        $defaultSelectors = [
             'google', 'default', 'mail', 'k1', 'smtp', 's1', 's2019', 's2020', '20230601',
             'mandrill', 'sendgrid', 'mailchimp', 'sparkpost', 'postmark', 'amazonses',
             'protonmail', 'office365', 'outlook', 'm1', 'm2', 'dkim', 'dkim1', 'dkim2',
             'dns1', 'dns2', 'zoho', 'fastmail', 'ms', 'key1',
         ];
+
+        // Merge custom selectors with defaults, removing duplicates
+        $selectors = array_unique(array_merge($defaultSelectors, $customSelectors));
 
         $foundSelectors = [];
 

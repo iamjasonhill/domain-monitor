@@ -47,6 +47,7 @@ use Illuminate\Support\Str;
  * @property string|null $ip_country
  * @property string|null $ip_city
  * @property bool|null $ip_hosting_flag
+ * @property array<int, string>|null $dkim_selectors
  *
  * @method static \Database\Factories\DomainFactory factory()
  */
@@ -100,6 +101,7 @@ class Domain extends Model
         'ip_hosting_flag',
         'parked_override',
         'parked_override_set_at',
+        'dkim_selectors',
     ];
 
     protected function casts(): array
@@ -122,6 +124,7 @@ class Domain extends Model
             'parked_override_set_at' => 'datetime',
             'scaffolded_at' => 'datetime',
             'migration_tier' => 'integer',
+            'dkim_selectors' => 'array',
         ];
     }
 

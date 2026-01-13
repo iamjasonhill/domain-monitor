@@ -936,10 +936,31 @@
                                         </p>
                                     @endif
                                 </div>
-                            @else
-                                <p class="text-sm text-gray-500">No data available.</p>
-                            @endif
-                        </div>
+                                <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                    <label for="dkim_selectors" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        Custom DKIM Selectors (comma separated)
+                                    </label>
+                                    <div class="flex gap-2">
+                                        <input 
+                                            type="text" 
+                                            id="dkim_selectors" 
+                                            wire:model="dkimSelectorsInput" 
+                                            placeholder="e.g. key1, selector1"
+                                            class="block w-full text-xs rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                        >
+                                        <button 
+                                            wire:click="saveDkimSelectors" 
+                                            wire:loading.attr="disabled"
+                                            class="inline-flex items-center px-2 py-1 bg-gray-600 border border-transparent rounded-md font-semibold text-[10px] text-white uppercase tracking-widest hover:bg-gray-700 disabled:opacity-50"
+                                        >
+                                            <span wire:loading.remove wire:target="saveDkimSelectors">Save</span>
+                                            <span wire:loading wire:target="saveDkimSelectors">...</span>
+                                        </button>
+                                    </div>
+                                    <p class="mt-1 text-[10px] text-gray-500">
+                                        Add selectors used by your email providers to help discovery.
+                                    </p>
+                                </div>
                             @endif
                         </div>
 
@@ -1392,4 +1413,5 @@
             </div>
         </form>
     </x-modal>
+    @endif
 </div>
