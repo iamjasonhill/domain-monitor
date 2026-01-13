@@ -263,8 +263,28 @@
                                     </button>
                                 </th>
                                 <th
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                    Issues
+                                    class="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-10">
+                                    SSL
+                                </th>
+                                <th
+                                    class="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-10">
+                                    Email
+                                </th>
+                                <th
+                                    class="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-10">
+                                    SEO
+                                </th>
+                                <th
+                                    class="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-10">
+                                    Rep
+                                </th>
+                                <th
+                                    class="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-10">
+                                    Sec
+                                </th>
+                                <th
+                                    class="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-10">
+                                    Link
                                 </th>
                                 <th
                                     class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -362,43 +382,59 @@
                                             <span class="text-gray-400">N/A</span>
                                         @endif
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                        @php
-                                            $failedSsl = $domain->latest_ssl_status === 'fail';
-                                            $failedDmarc = $domain->latest_email_security_status === 'fail';
-                                            $failedDns = $domain->latest_dns_status === 'fail';
-                                            $failedSeo = $domain->latest_seo_status === 'fail';
-                                            $failedHeaders = $domain->latest_security_headers_status === 'fail';
-                                            
-                                            $hasChecks = $domain->latest_http_status || $domain->latest_ssl_status || $domain->latest_email_security_status || $domain->latest_dns_status;
-                                            $hasIssues = $failedSsl || $failedDmarc || $failedDns || $failedSeo || $failedHeaders;
-                                        @endphp
-
-                                        <div class="flex flex-wrap gap-1">
-                                            @if(!$hasChecks)
-                                                <span class="text-xs text-gray-400">Pending</span>
-                                            @elseif(!$hasIssues)
-                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
-                                                    OK
-                                                </span>
-                                            @else
-                                                @if($failedSsl)
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">SSL</span>
-                                                @endif
-                                                @if($failedDmarc)
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">DMARC</span>
-                                                @endif
-                                                @if($failedDns)
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">DNS</span>
-                                                @endif
-                                                @if($failedSeo)
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">SEO</span>
-                                                @endif
-                                                @if($failedHeaders)
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">Security</span>
-                                                @endif
-                                            @endif
-                                        </div>
+                                    <td class="px-2 py-4 whitespace-nowrap text-center text-sm">
+                                        @if($domain->latest_ssl_status === 'fail')
+                                            <span class="text-red-500" title="SSL Issue">❌</span>
+                                        @elseif($domain->latest_ssl_status === 'pass')
+                                            <span class="text-green-500" title="Valid">✓</span>
+                                        @else
+                                            <span class="text-gray-300">-</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-2 py-4 whitespace-nowrap text-center text-sm">
+                                        @if($domain->latest_email_security_status === 'fail')
+                                            <span class="text-red-500" title="Email Security Issue">❌</span>
+                                        @elseif($domain->latest_email_security_status === 'pass')
+                                            <span class="text-green-500" title="Valid">✓</span>
+                                        @else
+                                            <span class="text-gray-300">-</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-2 py-4 whitespace-nowrap text-center text-sm">
+                                        @if($domain->latest_seo_status === 'fail')
+                                            <span class="text-red-500" title="SEO Issue">❌</span>
+                                        @elseif($domain->latest_seo_status === 'pass')
+                                            <span class="text-green-500" title="Valid">✓</span>
+                                        @else
+                                            <span class="text-gray-300">-</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-2 py-4 whitespace-nowrap text-center text-sm">
+                                        @if($domain->latest_reputation_status === 'fail')
+                                            <span class="text-red-500" title="Reputation Issue">❌</span>
+                                        @elseif($domain->latest_reputation_status === 'pass')
+                                            <span class="text-green-500" title="Clean">✓</span>
+                                        @else
+                                            <span class="text-gray-300">-</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-2 py-4 whitespace-nowrap text-center text-sm">
+                                        @if($domain->latest_security_headers_status === 'fail')
+                                            <span class="text-red-500" title="Security Headers Issue">❌</span>
+                                        @elseif($domain->latest_security_headers_status === 'pass')
+                                            <span class="text-green-500" title="Valid">✓</span>
+                                        @else
+                                            <span class="text-gray-300">-</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-2 py-4 whitespace-nowrap text-center text-sm">
+                                        @if($domain->latest_broken_links_status === 'fail')
+                                            <span class="text-red-500" title="Broken Links Found">❌</span>
+                                        @elseif($domain->latest_broken_links_status === 'pass')
+                                            <span class="text-green-500" title="No Broken Links">✓</span>
+                                        @else
+                                            <span class="text-gray-300">-</span>
+                                        @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <a href="{{ route('domains.show', $domain->id) }}" wire:navigate

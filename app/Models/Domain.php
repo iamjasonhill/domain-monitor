@@ -163,6 +163,8 @@ class Domain extends Model
             'email_security',
             'seo',
             'security_headers',
+            'reputation',
+            'broken_links',
         ];
 
         foreach ($checkTypes as $type) {
