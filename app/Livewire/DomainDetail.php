@@ -11,6 +11,7 @@ use App\Services\PlatformDetector;
 use App\Services\SynergyWholesaleClient;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 class DomainDetail extends Component
@@ -47,6 +48,13 @@ class DomainDetail extends Component
 
     public string $subdomainNotes = '';
 
+    #[Computed]
+    /** @return \Illuminate\Database\Eloquent\Collection<int, DomainCheck>|\Illuminate\Support\Collection<int, never> */
+    public function recentChecks(): mixed
+    {
+        return $this->domain?->checks()->latest()->limit(20)->get() ?? collect();
+    }
+
     public function mount(): void
     {
         $this->loadDomain();
@@ -71,9 +79,6 @@ class DomainDetail extends Component
             'subdomains' => function ($query) {
                 $query->where('is_active', true)->orderBy('subdomain');
             },
-            'checks' => function ($query) {
-                $query->latest()->limit(20);
-            },
             'dnsRecords' => function ($query) {
                 $query->orderByRaw('LOWER(host)');
             },
@@ -85,7 +90,8 @@ class DomainDetail extends Component
 
         if ($platformModel instanceof \App\Models\WebsitePlatform && $platformModel->platform_type && empty($platformString)) {
             $this->domain->update(['platform' => $platformModel->platform_type]);
-            $this->domain->refresh();
+            // Manually update attribute to avoid refresh() destroying relations
+            $this->domain->setAttribute('platform', $platformModel->platform_type);
         }
     }
 
