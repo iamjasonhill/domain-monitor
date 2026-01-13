@@ -20,6 +20,6 @@ return [
     | How long we retain history tables before pruning old records.
     |
     */
-    'prune_domain_checks_days' => (int) env('DOMAIN_MONITOR_PRUNE_DOMAIN_CHECKS_DAYS', 90),
-    'prune_eligibility_checks_days' => (int) env('DOMAIN_MONITOR_PRUNE_ELIGIBILITY_CHECKS_DAYS', 180),
+    'prune_domain_checks_days' => (int) env('DOMAIN_MONITOR_PRUNE_DOMAIN_CHECKS_DAYS', 14),
+    'prune_eligibility_checks_days' => (int) env('DOMAIN_MONITOR_PRUNE_ELIGIBILITY_CHECKS_DAYS', 14),
 ];
