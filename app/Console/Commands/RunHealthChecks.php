@@ -30,14 +30,14 @@ class RunHealthChecks extends Command
     /**
      * Execute the console command.
      */
-    public function handle(HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck, \App\Services\ReputationHealthCheck $reputationCheck, \App\Services\SecurityHeadersHealthCheck $securityHeadersCheck, \App\Services\SeoHealthCheck $seoCheck): int
+    public function handle(HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck, \App\Services\ReputationHealthCheck $reputationCheck, \App\Services\SecurityHeadersHealthCheck $securityHeadersCheck, \App\Services\SeoHealthCheck $seoCheck, \App\Services\BrokenLinkHealthCheck $brokenLinkCheck): int
     {
         $domainOption = $this->option('domain');
         $allOption = $this->option('all');
         $type = $this->option('type');
 
-        if (! in_array($type, ['http', 'ssl', 'dns', 'uptime', 'email_security', 'reputation', 'security_headers', 'seo'])) {
-            $this->error("Invalid check type: {$type}. Must be one of: http, ssl, dns, uptime, email_security, reputation, security_headers, seo");
+        if (! in_array($type, ['http', 'ssl', 'dns', 'uptime', 'email_security', 'reputation', 'security_headers', 'seo', 'broken_links'])) {
+            $this->error("Invalid check type: {$type}. Must be one of: http, ssl, dns, uptime, email_security, reputation, security_headers, seo, broken_links");
 
             return Command::FAILURE;
         }
@@ -51,7 +51,7 @@ class RunHealthChecks extends Command
                 return Command::FAILURE;
             }
 
-            return $this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck, $reputationCheck, $securityHeadersCheck, $seoCheck);
+            return $this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck, $reputationCheck, $securityHeadersCheck, $seoCheck, $brokenLinkCheck);
         }
 
         if ($allOption) {
@@ -77,7 +77,7 @@ class RunHealthChecks extends Command
 
             $successCount = 0;
             foreach ($domains as $domain) {
-                if ($this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck, $reputationCheck, $securityHeadersCheck, $seoCheck, false) === Command::SUCCESS) {
+                if ($this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck, $reputationCheck, $securityHeadersCheck, $seoCheck, $brokenLinkCheck, false) === Command::SUCCESS) {
                     $successCount++;
                 }
                 $bar->advance();
@@ -98,7 +98,7 @@ class RunHealthChecks extends Command
     /**
      * Run health check for a single domain
      */
-    private function runCheckForDomain(Domain $domain, string $type, HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck, \App\Services\ReputationHealthCheck $reputationCheck, \App\Services\SecurityHeadersHealthCheck $securityHeadersCheck, \App\Services\SeoHealthCheck $seoCheck, bool $verbose = true): int
+    private function runCheckForDomain(Domain $domain, string $type, HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck, \App\Services\ReputationHealthCheck $reputationCheck, \App\Services\SecurityHeadersHealthCheck $securityHeadersCheck, \App\Services\SeoHealthCheck $seoCheck, \App\Services\BrokenLinkHealthCheck $brokenLinkCheck, bool $verbose = true): int
     {
         if ($verbose) {
             $this->info("Running {$type} check for: {$domain->domain}");
@@ -137,6 +137,7 @@ class RunHealthChecks extends Command
             $reputationResult = null;
             $securityHeadersResult = null;
             $seoResult = null;
+            $brokenLinkResult = null;
 
             if ($type === 'http') {
                 $httpResult = $httpCheck->check($domain->domain);
@@ -186,6 +187,11 @@ class RunHealthChecks extends Command
                 $status = $seoResult['is_valid'] ? 'ok' : 'warn';
                 $errorMessage = $seoResult['error_message'];
                 $payload = $seoResult['payload'];
+            } elseif ($type === 'broken_links') {
+                $brokenLinkResult = $brokenLinkCheck->check($domain->domain);
+                $status = $brokenLinkResult['is_valid'] ? 'ok' : 'fail';
+                $errorMessage = $brokenLinkResult['error_message'];
+                $payload = $brokenLinkResult['payload'];
             } else {
                 if ($verbose) {
                     $this->warn("  Check type '{$type}' not yet implemented");
@@ -249,6 +255,18 @@ class RunHealthChecks extends Command
                 if ($seoResult) {
                     $this->line('  Robots.txt: '.($seoResult['results']['robots']['exists'] ? 'Found' : 'Missing'));
                     $this->line('  Sitemap.xml: '.($seoResult['results']['sitemap']['exists'] ? 'Found' : 'Missing'));
+                }
+                if ($brokenLinkResult) {
+                    $this->line("  Pages Scanned: {$brokenLinkResult['pages_scanned']}");
+                    $this->line("  Broken Links: {$brokenLinkResult['broken_links_count']}");
+                    if (! empty($brokenLinkResult['broken_links'])) {
+                        foreach (array_slice($brokenLinkResult['broken_links'], 0, 5) as $link) {
+                            $this->line("    - {$link['url']} ({$link['status']}) on {$link['found_on']}");
+                        }
+                        if (count($brokenLinkResult['broken_links']) > 5) {
+                            $this->line('    ... and '.(count($brokenLinkResult['broken_links']) - 5).' more');
+                        }
+                    }
                 }
                 $this->line("  Duration: {$duration}ms");
                 if ($errorMessage) {
