@@ -207,7 +207,8 @@ class EmailSecurityHealthCheck
     {
         try {
             // Check for DNSKEY records which indicate DNSSEC is enabled
-            $records = $this->dns->getRecords($domain, 'DNSKEY');
+            // We use getDnsKey() to allow mocking in tests and to avoid Spatie\Dns v2.7 type validation errors
+            $records = $this->getDnsKey($domain);
 
             return [
                 'enabled' => ! empty($records),
@@ -219,6 +220,19 @@ class EmailSecurityHealthCheck
                 'error' => $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Fetch DNSKEY records using native PHP function
+     *
+     * @return array<int, mixed>
+     */
+    public function getDnsKey(string $domain): array
+    {
+        // DNS_DNSKEY constant might not be defined depending on PHP build
+        $type = defined('DNS_DNSKEY') ? DNS_DNSKEY : 48;
+
+        return @dns_get_record($domain, $type) ?: [];
     }
 
     /**

@@ -34,14 +34,6 @@ class EmailSecurityHealthCheckTest extends TestCase
                     new TXT(['host' => '_dmarc.example.com', 'class' => 'IN', 'ttl' => 300, 'type' => 'TXT', 'txt' => 'v=DMARC1; p=reject;']),
                 ]);
 
-            // Mock DNSSEC
-            $mockDnskey = \Mockery::mock(\Spatie\Dns\Records\Record::class);
-            $mockDnskey->shouldReceive('__toString')->andReturn('256 3 8 ...');
-
-            $mock->shouldReceive('getRecords')
-                ->with('example.com', 'DNSKEY')
-                ->andReturn([$mockDnskey]);
-
             // Mock CAA
             $mock->shouldReceive('getRecords')
                 ->with('example.com', 'CAA')
@@ -49,6 +41,14 @@ class EmailSecurityHealthCheckTest extends TestCase
                     new \Spatie\Dns\Records\CAA(['host' => 'example.com', 'class' => 'IN', 'ttl' => 300, 'type' => 'CAA', 'tag' => 'issue', 'value' => 'letsencrypt.org', 'flags' => 0]),
                 ]);
         });
+
+        // Mock the EmailSecurityHealthCheck service to control getDnsKey
+        $mockService = \Mockery::mock(\App\Services\EmailSecurityHealthCheck::class, [app(Dns::class)])->makePartial();
+        $mockService->shouldReceive('getDnsKey')
+            ->with('example.com')
+            ->andReturn([['type' => 'DNSKEY']]); // Simulate DNSSEC being present
+
+        $this->instance(\App\Services\EmailSecurityHealthCheck::class, $mockService);
 
         // Act
         $this->artisan('domains:health-check', ['--type' => 'email_security', '--domain' => 'example.com'])
@@ -97,16 +97,19 @@ class EmailSecurityHealthCheckTest extends TestCase
                 ->with('_dmarc.bad-config.com', 'TXT')
                 ->andReturn([]);
 
-            // Missing DNSSEC
-            $mock->shouldReceive('getRecords')
-                ->with('bad-config.com', 'DNSKEY')
-                ->andReturn([]);
-
             // Missing CAA
             $mock->shouldReceive('getRecords')
                 ->with('bad-config.com', 'CAA')
                 ->andReturn([]);
         });
+
+        // Mock the EmailSecurityHealthCheck service to control getDnsKey
+        $mockService = \Mockery::mock(\App\Services\EmailSecurityHealthCheck::class, [app(Dns::class)])->makePartial();
+        $mockService->shouldReceive('getDnsKey')
+            ->with('bad-config.com')
+            ->andReturn([]); // Simulate DNSSEC being missing
+
+        $this->instance(\App\Services\EmailSecurityHealthCheck::class, $mockService);
 
         // Act
         $this->artisan('domains:health-check', ['--type' => 'email_security', '--domain' => 'bad-config.com'])

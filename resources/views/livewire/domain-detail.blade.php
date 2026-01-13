@@ -654,6 +654,13 @@
                     $dmarc = $payload['dmarc'] ?? null;
                     $dnssec = $payload['dnssec'] ?? null;
                     $caa = $payload['caa'] ?? null;
+                    
+                    $helpers = [
+                        'spf' => 'Specifies which mail servers are authorized to send email on behalf of your domain.',
+                        'dmarc' => 'Tells email receivers how to handle mail that isn\'t authenticated using SPF or DKIM.',
+                        'dnssec' => 'Protects your DNS records from being tampered with (spoofing).',
+                        'caa' => 'Limits which Certificate Authorities can issue SSL certificates for your domain.'
+                    ];
                 @endphp
 
                 @if($latestSecurityCheck)
@@ -661,7 +668,12 @@
                         <!-- SPF Status -->
                         <div class="border rounded-md p-4 {{ $spf && $spf['valid'] ? 'border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800' : 'border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800' }}">
                             <div class="flex items-center justify-between mb-2">
-                                <h4 class="font-semibold {{ $spf && $spf['valid'] ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300' }}">SPF</h4>
+                                <h4 class="font-semibold flex items-center {{ $spf && $spf['valid'] ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300' }}">
+                                    SPF
+                                    <span title="{{ $helpers['spf'] }}" class="ml-1.5 inline-flex items-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 cursor-help">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+                                    </span>
+                                </h4>
                                 @if($spf && $spf['valid'])
                                     <span class="px-2 py-1 text-xs font-bold rounded bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100">PASS</span>
                                 @else
@@ -701,7 +713,12 @@
                         <!-- DMARC Status -->
                         <div class="border rounded-md p-4 {{ $dmarc && $dmarc['valid'] ? 'border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800' : 'border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800' }}">
                             <div class="flex items-center justify-between mb-2">
-                                <h4 class="font-semibold {{ $dmarc && $dmarc['valid'] ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300' }}">DMARC</h4>
+                                <h4 class="font-semibold flex items-center {{ $dmarc && $dmarc['valid'] ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300' }}">
+                                    DMARC
+                                    <span title="{{ $helpers['dmarc'] }}" class="ml-1.5 inline-flex items-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 cursor-help">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+                                    </span>
+                                </h4>
                                 @if($dmarc && $dmarc['valid'])
                                     <span class="px-2 py-1 text-xs font-bold rounded bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100">PASS</span>
                                 @else
@@ -741,7 +758,12 @@
                         <!-- DNSSEC Status -->
                         <div class="border rounded-md p-4 {{ $dnssec && $dnssec['enabled'] ? 'border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800' : 'border-gray-200 bg-gray-50 dark:bg-gray-900/20 dark:border-gray-800' }}">
                             <div class="flex items-center justify-between mb-2">
-                                <h4 class="font-semibold {{ $dnssec && $dnssec['enabled'] ? 'text-green-800 dark:text-green-300' : 'text-gray-800 dark:text-gray-300' }}">DNSSEC</h4>
+                                <h4 class="font-semibold flex items-center {{ $dnssec && $dnssec['enabled'] ? 'text-green-800 dark:text-green-300' : 'text-gray-800 dark:text-gray-300' }}">
+                                    DNSSEC
+                                    <span title="{{ $helpers['dnssec'] }}" class="ml-1.5 inline-flex items-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 cursor-help">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+                                    </span>
+                                </h4>
                                 @if($dnssec && $dnssec['enabled'])
                                     <span class="px-2 py-1 text-xs font-bold rounded bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100">SECURE</span>
                                 @else
@@ -765,7 +787,12 @@
                         <!-- CAA Status -->
                         <div class="border rounded-md p-4 {{ $caa && $caa['present'] ? 'border-indigo-200 bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-800' : 'border-gray-200 bg-gray-50 dark:bg-gray-900/20 dark:border-gray-800' }}">
                             <div class="flex items-center justify-between mb-2">
-                                <h4 class="font-semibold {{ $caa && $caa['present'] ? 'text-indigo-800 dark:text-indigo-300' : 'text-gray-800 dark:text-gray-300' }}">CAA</h4>
+                                <h4 class="font-semibold flex items-center {{ $caa && $caa['present'] ? 'text-indigo-800 dark:text-indigo-300' : 'text-gray-800 dark:text-gray-300' }}">
+                                    CAA
+                                    <span title="{{ $helpers['caa'] }}" class="ml-1.5 inline-flex items-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 cursor-help">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+                                    </span>
+                                </h4>
                                 @if($caa && $caa['present'])
                                     <span class="px-2 py-1 text-xs font-bold rounded bg-indigo-200 text-indigo-800 dark:bg-indigo-800 dark:text-indigo-100">PRESENT</span>
                                 @else
