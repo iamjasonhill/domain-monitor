@@ -587,7 +587,7 @@
                             ->latest('started_at')
                             ->first();
                         $sslPayload = $latestSslCheck ? $latestSslCheck->payload : null;
-                        $chain = $latestSslCheck ? ($latestSslCheck->chain ?? []) : [];
+                        $chain = $latestSslCheck ? ($latestSslCheck->chain ?? ($sslPayload['chain'] ?? [])) : [];
                         $protocol = $latestSslCheck->protocol ?? ($sslPayload['protocol'] ?? null);
                         $cipher = $latestSslCheck->cipher ?? ($sslPayload['cipher'] ?? null);
                     @endphp
