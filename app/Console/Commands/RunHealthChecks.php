@@ -55,7 +55,7 @@ class RunHealthChecks extends Command
         }
 
         if ($allOption) {
-            $excludeEmailOnly = in_array($type, ['http', 'ssl', 'security_headers', 'seo', 'uptime'], true);
+            $excludeEmailOnly = in_array($type, ['http', 'ssl', 'security_headers', 'seo', 'uptime', 'broken_links'], true);
 
             $domains = Domain::with('platform')
                 ->where('is_active', true)
