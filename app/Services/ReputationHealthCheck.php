@@ -166,10 +166,30 @@ class ReputationHealthCheck
                 ];
             }
 
-            // If we get records, it means it is listed.
-            // Spamhaus return codes: 127.0.0.2 (SBL), 127.0.0.3 (SBL CSS), 127.0.0.4 (XBL), 127.0.0.10/11 (PBL)
+            // Process records
             $details = [];
+            $error = null;
+            $listed = false;
+
             foreach ($records as $r) {
+                // Check for Spamhaus error codes (Query Refused)
+                // 127.255.255.252: Open Resolver Refused
+                // 127.255.255.254: Public Resolver Refused
+                // 127.255.255.255: Excessive Queries
+                if (str_starts_with($r, '127.255.255.')) {
+                    $code = substr($r, strrpos($r, '.') + 1);
+                    $error = match ($code) {
+                        '252' => 'Spamhaus Error: Open Resolver Refused',
+                        '254' => 'Spamhaus Error: Public Resolver Refused',
+                        '255' => 'Spamhaus Error: Excessive Queries',
+                        default => "Spamhaus Error: Query Refused (Code 127.255.255.$code)",
+                    };
+
+                    continue;
+                }
+
+                // If it's not an error code, it's a listing
+                $listed = true;
                 $code = substr($r, strrpos($r, '.') + 1);
                 switch ($code) {
                     case '2': $details[] = 'SBL (Spam Source)';
@@ -188,9 +208,9 @@ class ReputationHealthCheck
 
             return [
                 'spamhaus' => [
-                    'listed' => true,
-                    'details' => implode(', ', array_unique($details)),
-                    'error' => null,
+                    'listed' => $listed,
+                    'details' => $listed ? implode(', ', array_unique($details)) : null,
+                    'error' => $error,
                 ],
             ];
         } catch (Exception $e) {
