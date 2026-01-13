@@ -72,6 +72,25 @@ Schedule::command('domains:health-check --all --type=reputation')
     ->at('04:00')
     ->timezone('UTC');
 
+// Security headers checks - run daily for active domains
+Schedule::command('domains:health-check --all --type=security_headers')
+    ->daily()
+    ->at('04:30')
+    ->timezone('UTC');
+
+// SEO fundamentals checks - run daily for active domains
+Schedule::command('domains:health-check --all --type=seo')
+    ->daily()
+    ->at('05:00')
+    ->timezone('UTC');
+
+// Broken links checks - run weekly (resource intensive)
+Schedule::command('domains:health-check --all --type=broken_links')
+    ->weekly()
+    ->sundays()
+    ->at('05:30')
+    ->timezone('UTC');
+
 // Synergy Wholesale expiry sync - run daily for Australian TLD domains
 Schedule::command('domains:sync-synergy-expiry --all')
     ->daily()
