@@ -385,8 +385,19 @@
         <!-- Recent Health Checks -->
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
             <div class="p-6">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Recent Health Checks</h3>
-                @if($this->recentChecks->count() > 0)
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-2 cursor-pointer" wire:click="$toggle('showHealthChecks')">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Recent Health Checks</h3>
+                        <svg class="w-5 h-5 text-gray-500 transform transition-transform {{ $showHealthChecks ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                    @if(!$showHealthChecks)
+                        <button wire:click="$toggle('showHealthChecks')" class="inline-flex items-center px-3 py-1.5 bg-gray-100 dark:bg-gray-700 border border-transparent rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-gray-600">
+                            Show ({{ $this->recentChecks->count() }})
+                        </button>
+                    @endif
+                </div>
+                @if($showHealthChecks)
+                    @if($this->recentChecks->count() > 0)
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-900">
@@ -427,8 +438,9 @@
                             </tbody>
                         </table>
                     </div>
-                @else
-                    <p class="text-gray-500 dark:text-gray-400">No health checks yet. Run a check using the buttons above.</p>
+                    @else
+                        <p class="text-gray-500 dark:text-gray-400">No health checks yet. Run a check using the buttons above.</p>
+                    @endif
                 @endif
             </div>
         </div>

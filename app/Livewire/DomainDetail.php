@@ -52,6 +52,8 @@ class DomainDetail extends Component
 
     public bool $showSubdomains = false;
 
+    public bool $showHealthChecks = false;
+
     #[Computed]
     /** @return \Illuminate\Database\Eloquent\Collection<int, DomainCheck>|\Illuminate\Support\Collection<int, never> */
     public function recentChecks(): mixed
