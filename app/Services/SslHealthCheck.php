@@ -23,6 +23,7 @@ class SslHealthCheck
             $context = stream_context_create([
                 'ssl' => [
                     'capture_peer_cert' => true,
+                    'capture_peer_cert_chain' => true,
                     'verify_peer' => false,
                     'verify_peer_name' => false,
                 ],
@@ -45,6 +46,9 @@ class SslHealthCheck
                     'expires_at' => null,
                     'days_until_expiry' => null,
                     'issuer' => null,
+                    'protocol' => null,
+                    'cipher' => null,
+                    'chain' => [],
                     'error_message' => "SSL connection failed: {$errstr} ({$errno})",
                     'payload' => [
                         'domain' => $domainOnly,
@@ -56,6 +60,14 @@ class SslHealthCheck
 
             $params = stream_context_get_params($socket);
             $cert = $params['options']['ssl']['peer_certificate'] ?? null;
+            $chainData = $params['options']['ssl']['peer_certificate_chain'] ?? [];
+
+            // Get crypto metadata (Protocol, Cipher)
+            $meta = stream_get_meta_data($socket);
+            $crypto = $meta['crypto'] ?? [];
+            $protocol = $crypto['protocol'] ?? 'Unknown';
+            $cipher = $crypto['cipher_name'] ?? 'Unknown';
+            $cipherBits = $crypto['cipher_bits'] ?? 0;
 
             if (! $cert) {
                 fclose($socket);
@@ -66,6 +78,9 @@ class SslHealthCheck
                     'expires_at' => null,
                     'days_until_expiry' => null,
                     'issuer' => null,
+                    'protocol' => $protocol,
+                    'cipher' => "{$cipher} ({$cipherBits} bits)",
+                    'chain' => [],
                     'error_message' => 'Could not retrieve SSL certificate',
                     'payload' => [
                         'domain' => $domainOnly,
@@ -88,6 +103,9 @@ class SslHealthCheck
                     'expires_at' => null,
                     'days_until_expiry' => null,
                     'issuer' => null,
+                    'protocol' => $protocol,
+                    'cipher' => "{$cipher} ({$cipherBits} bits)",
+                    'chain' => [],
                     'error_message' => 'Could not parse SSL certificate',
                     'payload' => [
                         'domain' => $domainOnly,
@@ -100,6 +118,20 @@ class SslHealthCheck
             $validFrom = $certInfo['validFrom_time_t'] ?? null;
             $validTo = $certInfo['validTo_time_t'] ?? null;
             $issuer = $certInfo['issuer']['CN'] ?? ($certInfo['issuer']['O'] ?? null);
+
+            // Parse Chain
+            $chain = [];
+            foreach ($chainData as $chainCert) {
+                $parsedChain = openssl_x509_parse($chainCert);
+                if ($parsedChain) {
+                    $chain[] = [
+                        'subject' => $parsedChain['subject']['CN'] ?? ($parsedChain['subject']['O'] ?? 'Unknown'),
+                        'issuer' => $parsedChain['issuer']['CN'] ?? ($parsedChain['issuer']['O'] ?? 'Unknown'),
+                        'valid_to' => isset($parsedChain['validTo_time_t']) ? date('Y-m-d', $parsedChain['validTo_time_t']) : null,
+                    ];
+                }
+            }
+
             $duration = (int) ((microtime(true) - $startTime) * 1000);
 
             if (! $validTo) {
@@ -108,6 +140,9 @@ class SslHealthCheck
                     'expires_at' => null,
                     'days_until_expiry' => null,
                     'issuer' => $issuer,
+                    'protocol' => $protocol,
+                    'cipher' => "{$cipher} ({$cipherBits} bits)",
+                    'chain' => $chain,
                     'error_message' => 'Could not determine certificate expiry',
                     'payload' => [
                         'domain' => $domainOnly,
@@ -127,10 +162,16 @@ class SslHealthCheck
                 'expires_at' => $expiresAt,
                 'days_until_expiry' => $daysUntilExpiry,
                 'issuer' => $issuer,
+                'protocol' => $protocol,
+                'cipher' => "{$cipher} ({$cipherBits} bits)",
+                'chain' => $chain,
                 'error_message' => $isValid ? null : 'Certificate expired or not yet valid',
                 'payload' => [
                     'domain' => $domainOnly,
                     'issuer' => $issuer,
+                    'protocol' => $protocol,
+                    'cipher' => "{$cipher} ({$cipherBits} bits)",
+                    'chain' => $chain,
                     'valid_from' => $validFrom ? date('c', $validFrom) : null,
                     'valid_to' => $expiresAt,
                     'days_until_expiry' => $daysUntilExpiry,

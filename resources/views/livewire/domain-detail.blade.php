@@ -579,7 +579,113 @@
                     @php
                         $isAustralianTld = preg_match('/\.(com|net|org|edu|gov|asn|id)\.au$|\.au$/', $domain->domain);
                     @endphp
+
+                    <!-- SSL/TLS Configuration -->
+                    @php
+                        $latestSslCheck = $domain->checks()
+                            ->where('check_type', 'ssl')
+                            ->latest('started_at')
+                            ->first();
+                        $sslPayload = $latestSslCheck ? $latestSslCheck->payload : null;
+                        $chain = $latestSslCheck ? ($latestSslCheck->chain ?? []) : [];
+                        $protocol = $latestSslCheck->protocol ?? ($sslPayload['protocol'] ?? null);
+                        $cipher = $latestSslCheck->cipher ?? ($sslPayload['cipher'] ?? null);
+                    @endphp
+                    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                        <div class="p-6">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                                SSL/TLS Configuration
+                            </h3>
+
+                            @if($latestSslCheck)
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <!-- Protocol & Cipher -->
+                                    <div class="space-y-4">
+                                        <div class="p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700">
+                                            <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Connection Security</h4>
+                                            
+                                            <div class="mb-3">
+                                                <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Protocol</div>
+                                                <div class="font-mono text-sm dark:text-gray-200">
+                                                    @if($protocol)
+                                                        @if(in_array($protocol, ['TLSv1.2', 'TLSv1.3']))
+                                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                                                {{ $protocol }}
+                                                            </span>
+                                                        @else
+                                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                                                {{ $protocol }} (Obsolete)
+                                                            </span>
+                                                        @endif
+                                                    @else
+                                                        <span class="text-gray-400 italic">Unknown</span>
+                                                    @endif
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Cipher Suite</div>
+                                                <div class="font-mono text-xs dark:text-gray-200 break-all">
+                                                    {{ $cipher ?? 'Unknown' }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Certificate Chain -->
+                                    <div>
+                                        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Certificate Chain</h4>
+                                        @if(!empty($chain))
+                                            <div class="space-y-2 relative pl-2">
+                                                <!-- Visual line connecting chain items -->
+                                                <div class="absolute left-4 top-2 bottom-4 w-0.5 bg-gray-200 dark:bg-gray-700"></div>
+
+                                                @foreach($chain as $index => $cert)
+                                                    <div class="relative flex items-start pl-6">
+                                                        <!-- Dot visual -->
+                                                        <div class="absolute left-3 top-2.5 w-2.5 h-2.5 rounded-full {{ $index === 0 ? 'bg-indigo-500' : ($index === count($chain) - 1 ? 'bg-indigo-300' : 'bg-indigo-400') }} ring-4 ring-white dark:ring-gray-800"></div>
+                                                        
+                                                        <div class="flex-1 min-w-0 bg-gray-50 dark:bg-gray-700/50 rounded p-2 text-xs border border-gray-100 dark:border-gray-700">
+                                                            <div class="font-medium text-gray-900 dark:text-gray-100 truncate">
+                                                                {{ $cert['subject'] }}
+                                                            </div>
+                                                            <div class="text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                                                                Issued by: {{ $cert['issuer'] }}
+                                                            </div>
+                                                            @if(isset($cert['valid_to']))
+                                                                <div class="text-gray-400 dark:text-gray-500 mt-1 flex items-center gap-1">
+                                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                                                    Expires: {{ $cert['valid_to'] }}
+                                                                </div>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <div class="text-xs text-gray-500 dark:text-gray-400 italic">
+                                                Chain information not available. Run a new SSL check to capture full details.
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 text-right">
+                                    Last checked: {{ $latestSslCheck->created_at->diffForHumans() }}
+                                </div>
+                            @else
+                                <div class="text-center py-6 text-gray-500 dark:text-gray-400">
+                                    <p>No detailed SSL data available.</p>
+                                    <p class="text-sm mt-2">Run an SSL check to analyze connection security.</p>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+
                     @if($showDnsRecords)
+
                         @if($isAustralianTld)
                         <div class="flex gap-2">
                             <button wire:click="openAddDnsRecordModal" class="inline-flex items-center px-3 py-1.5 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700">
