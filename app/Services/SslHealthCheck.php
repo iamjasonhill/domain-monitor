@@ -11,7 +11,7 @@ class SslHealthCheck
      *
      * @param  string  $domain  Domain name (with or without protocol)
      * @param  int  $timeout  Timeout in seconds (default 10)
-     * @return array{is_valid: bool, expires_at: string|null, days_until_expiry: int|null, issuer: string|null, error_message: string|null, payload: array<string, mixed>}
+     * @return array{is_valid: bool, expires_at: string|null, days_until_expiry: int|null, issuer: string|null, protocol: string|null, cipher: string|null, chain: array<int, array{subject: string, issuer: string, valid_to: string|null}>, error_message: string|null, payload: array<string, mixed>}
      */
     public function check(string $domain, int $timeout = 10): array
     {
@@ -191,6 +191,9 @@ class SslHealthCheck
                 'expires_at' => null,
                 'days_until_expiry' => null,
                 'issuer' => null,
+                'protocol' => null,
+                'cipher' => null,
+                'chain' => [],
                 'error_message' => 'Unexpected error: '.$e->getMessage(),
                 'payload' => [
                     'domain' => $domainOnly,

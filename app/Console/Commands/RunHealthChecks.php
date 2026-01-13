@@ -223,6 +223,8 @@ class RunHealthChecks extends Command
                     if ($sslResult['issuer']) {
                         $this->line("  Issuer: {$sslResult['issuer']}");
                     }
+                    $this->line('  Protocol: '.($sslResult['protocol'] ?? 'N/A'));
+                    $this->line('  Cipher: '.($sslResult['cipher'] ?? 'N/A'));
                 }
                 if ($dnsResult) {
                     $this->line('  Has A Record: '.($dnsResult['has_a_record'] ? 'Yes' : 'No'));
