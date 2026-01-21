@@ -25,3 +25,7 @@ Thumbs.db
 storage/phpstan/
 
 /SERVER_ACCESS.md
+
+
+#Ignore cursor AI rules
+.cursor/rules/codacy.mdc

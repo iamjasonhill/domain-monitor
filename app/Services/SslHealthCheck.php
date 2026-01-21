@@ -62,13 +62,6 @@ class SslHealthCheck
             $cert = $params['options']['ssl']['peer_certificate'] ?? null;
             $chainData = $params['options']['ssl']['peer_certificate_chain'] ?? [];
 
-            // Get crypto metadata (Protocol, Cipher)
-            $meta = stream_get_meta_data($socket);
-            $crypto = $meta['crypto'] ?? [];
-            $protocol = $crypto['protocol'] ?? 'Unknown';
-            $cipher = $crypto['cipher_name'] ?? 'Unknown';
-            $cipherBits = $crypto['cipher_bits'] ?? 0;
-
             if (! $cert) {
                 fclose($socket);
                 $duration = (int) ((microtime(true) - $startTime) * 1000);
@@ -78,8 +71,8 @@ class SslHealthCheck
                     'expires_at' => null,
                     'days_until_expiry' => null,
                     'issuer' => null,
-                    'protocol' => $protocol,
-                    'cipher' => "{$cipher} ({$cipherBits} bits)",
+                    'protocol' => null,
+                    'cipher' => null,
                     'chain' => [],
                     'error_message' => 'Could not retrieve SSL certificate',
                     'payload' => [
@@ -90,12 +83,11 @@ class SslHealthCheck
                 ];
             }
 
-            fclose($socket);
-
             // Parse certificate information
             $certInfo = openssl_x509_parse($cert);
 
             if (! $certInfo) {
+                fclose($socket);
                 $duration = (int) ((microtime(true) - $startTime) * 1000);
 
                 return [
@@ -103,8 +95,8 @@ class SslHealthCheck
                     'expires_at' => null,
                     'days_until_expiry' => null,
                     'issuer' => null,
-                    'protocol' => $protocol,
-                    'cipher' => "{$cipher} ({$cipherBits} bits)",
+                    'protocol' => null,
+                    'cipher' => null,
                     'chain' => [],
                     'error_message' => 'Could not parse SSL certificate',
                     'payload' => [
@@ -114,6 +106,16 @@ class SslHealthCheck
                     ],
                 ];
             }
+
+            // Only extract crypto metadata (Protocol, Cipher) if we have a valid certificate
+            $meta = stream_get_meta_data($socket);
+            $crypto = $meta['crypto'] ?? [];
+            $protocol = $crypto['protocol'] ?? null;
+            $cipher = $crypto['cipher_name'] ?? null;
+            $cipherBits = $crypto['cipher_bits'] ?? 0;
+            $cipherString = $cipher ? ($cipherBits > 0 ? "{$cipher} ({$cipherBits} bits)" : $cipher) : null;
+
+            fclose($socket);
 
             $validFrom = $certInfo['validFrom_time_t'] ?? null;
             $validTo = $certInfo['validTo_time_t'] ?? null;
@@ -141,7 +143,7 @@ class SslHealthCheck
                     'days_until_expiry' => null,
                     'issuer' => $issuer,
                     'protocol' => $protocol,
-                    'cipher' => "{$cipher} ({$cipherBits} bits)",
+                    'cipher' => $cipherString,
                     'chain' => $chain,
                     'error_message' => 'Could not determine certificate expiry',
                     'payload' => [
@@ -163,14 +165,14 @@ class SslHealthCheck
                 'days_until_expiry' => $daysUntilExpiry,
                 'issuer' => $issuer,
                 'protocol' => $protocol,
-                'cipher' => "{$cipher} ({$cipherBits} bits)",
+                'cipher' => $cipherString,
                 'chain' => $chain,
                 'error_message' => $isValid ? null : 'Certificate expired or not yet valid',
                 'payload' => [
                     'domain' => $domainOnly,
                     'issuer' => $issuer,
                     'protocol' => $protocol,
-                    'cipher' => "{$cipher} ({$cipherBits} bits)",
+                    'cipher' => $cipherString,
                     'chain' => $chain,
                     'valid_from' => $validFrom ? date('c', $validFrom) : null,
                     'valid_to' => $expiresAt,

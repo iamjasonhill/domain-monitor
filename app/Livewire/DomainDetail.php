@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Spatie\Dns\Dns;
 
 class DomainDetail extends Component
 {
@@ -1080,17 +1081,34 @@ class DomainDetail extends Component
      */
     private function fixCaa(SynergyWholesaleClient $client, array $records, string &$message): bool
     {
-        // Look for any existing CAA
-        $hasCaa = false;
+        // First, check Synergy API records
+        $hasCaaInApi = false;
         foreach ($records as $record) {
             if ($record['type'] === 'CAA') {
-                $hasCaa = true;
+                $hasCaaInApi = true;
                 break;
             }
         }
 
-        if ($hasCaa) {
-            $message = 'CAA records already exist. Automatic fix skipped to avoid breaking existing authorization.';
+        // Also verify via actual DNS lookup to be extra safe
+        $hasCaaInDns = false;
+        try {
+            $dns = new Dns;
+            $caaRecords = $dns->getRecords($this->domain->domain, 'CAA');
+            $hasCaaInDns = ! empty($caaRecords);
+        } catch (\Exception $e) {
+            Log::warning('CAA DNS lookup failed during fix check', [
+                'domain' => $this->domain->domain,
+                'error' => $e->getMessage(),
+            ]);
+            // If DNS lookup fails, we'll be conservative and skip creation
+            $message = 'Could not verify CAA records via DNS lookup. Skipping automatic creation to avoid conflicts.';
+
+            return false;
+        }
+
+        if ($hasCaaInApi || $hasCaaInDns) {
+            $message = 'CAA records already exist (verified via API and DNS lookup). Automatic fix skipped to avoid breaking existing authorization.';
 
             return false;
         }
