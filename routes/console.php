@@ -123,6 +123,17 @@ Schedule::command('domains:queue-sync-jobs --type=import')
     ->dailyAt('08:10')
     ->timezone('UTC');
 
+// Domain contacts sync - queue jobs 3 times daily (8:15am, 2:15pm, 8:15pm UTC)
+Schedule::command('domains:queue-sync-jobs --type=contacts')
+    ->dailyAt('08:15')
+    ->timezone('UTC');
+Schedule::command('domains:queue-sync-jobs --type=contacts')
+    ->dailyAt('14:15')
+    ->timezone('UTC');
+Schedule::command('domains:queue-sync-jobs --type=contacts')
+    ->dailyAt('20:15')
+    ->timezone('UTC');
+
 // Auto-renew domains - run daily to renew domains with auto_renew=true expiring in 30 days
 Schedule::command('domains:auto-renew')
     ->daily()

@@ -87,11 +87,14 @@ Returns:
 - Technical contact
 - Billing contact
 
-**Status**: ✅ **COMPLETED** - `getDomainContacts()` method implemented
-**Next Steps**: 
-- ❌ Create `domain_contacts` table or JSON field to store contacts
-- ❌ Add scheduled job to sync contacts periodically
-- ❌ Display contacts in UI (with privacy considerations)
+**Status**: ✅ **COMPLETED** - Full implementation done
+- ✅ `getDomainContacts()` method implemented
+- ✅ `domain_contacts` table created with encrypted fields for sensitive data
+- ✅ `DomainContact` model with encryption helpers
+- ✅ `SyncDomainContactsJob` created and scheduled 3 times daily
+- ✅ Contact relationships added to Domain model
+- ✅ Privacy: Email, phone, and address are encrypted at rest
+- ❌ Display contacts in UI (next step)
 
 ### 2. ✅ **domainRenewRequired** / **canRenewDomain** ⭐⭐⭐
 **Value**: Very High
@@ -188,11 +191,15 @@ Returns:
    - ✅ Auto-resolves alerts when domains become compliant
    - ✅ Updates domain's `au_compliance_reason` field
 
-2. **Contact information storage**:
+2. ✅ **Contact information storage**:
    - ✅ `getDomainContacts()` method implemented
-   - ❌ Contact storage not yet implemented
-   - ❌ Contact change tracking not yet implemented
-   - **Next Step**: Create `domain_contacts` table or add JSON field to domains table
+   - ✅ `domain_contacts` table created with encrypted fields
+   - ✅ `DomainContact` model with encryption for sensitive data (email, phone, address)
+   - ✅ `SyncDomainContactsJob` created and scheduled 3 times daily
+   - ✅ Contact relationships and helper methods added to Domain model
+   - ✅ Full API response stored in `raw_data` for audit trail
+   - ❌ Contact change tracking not yet implemented (could add history table)
+   - ❌ Display contacts in UI (next step)
 
 ### Phase 3: Enhanced Features ⏳ PENDING
 
@@ -248,6 +255,7 @@ The debug log at line 115-120 logs `response_keys` which shows all available fie
 6. ✅ **Convert sync operations to queue jobs** - DONE
 7. ✅ **Schedule syncs 3 times daily** - DONE
 8. ✅ **Create compliance monitoring job** - DONE
+9. ✅ **Implement contact information storage** - DONE
 
 ### 🎯 Next Priority Items
 
@@ -257,11 +265,13 @@ The debug log at line 115-120 logs `response_keys` which shows all available fie
    - ✅ Alerts created for non-compliant domains
    - ✅ Compliance history stored in database
 
-2. **Implement contact information storage** (High Priority)
-   - Create `domain_contacts` table or add JSON field to domains
-   - Create `SyncDomainContactsJob` to periodically sync contacts
-   - Display contacts in UI (with privacy/encryption considerations)
-   - Track contact changes over time
+2. ✅ **Implement contact information storage** (High Priority) - **COMPLETED**
+   - ✅ `domain_contacts` table created with encrypted fields
+   - ✅ `SyncDomainContactsJob` created and scheduled 3 times daily
+   - ✅ Sensitive data (email, phone, address) encrypted at rest
+   - ✅ Contact relationships and helper methods added to Domain model
+   - ❌ Display contacts in UI (next step)
+   - ❌ Track contact changes over time (could add history table)
 
 3. **Add renewal alerts** (Medium Priority)
    - Create alerts for domains with `renewal_required = true`

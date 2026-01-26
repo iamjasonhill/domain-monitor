@@ -242,6 +242,43 @@ class Domain extends Model
     }
 
     /**
+     * @return HasMany<DomainContact, $this>
+     */
+    public function contacts(): HasMany
+    {
+        return $this->hasMany(DomainContact::class)->orderByDesc('synced_at');
+    }
+
+    /**
+     * Get the latest contacts for this domain
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, DomainContact>
+     */
+    public function latestContacts(): \Illuminate\Database\Eloquent\Collection
+    {
+        $latestSync = $this->contacts()->max('synced_at');
+
+        if (! $latestSync) {
+            return new \Illuminate\Database\Eloquent\Collection;
+        }
+
+        return $this->contacts()
+            ->where('synced_at', $latestSync)
+            ->get();
+    }
+
+    /**
+     * Get a specific contact type (latest)
+     */
+    public function getContact(string $type): ?DomainContact
+    {
+        return $this->contacts()
+            ->where('contact_type', $type)
+            ->latest('synced_at')
+            ->first();
+    }
+
+    /**
      * @return HasOne<WebsitePlatform, $this>
      */
     public function platform(): HasOne
