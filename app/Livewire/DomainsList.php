@@ -326,32 +326,32 @@ class DomainsList extends Component
                 return;
             }
 
-            $exitCode = Artisan::call('domains:sync-synergy-expiry', ['--all' => true]);
-            $output = Artisan::output();
+            // Get all active Australian TLD domains
+            $domains = \App\Models\Domain::where('is_active', true)
+                ->get()
+                ->filter(function ($domain) {
+                    return \App\Services\SynergyWholesaleClient::isAustralianTld($domain->domain);
+                });
 
-            // Extract error message from output if command failed
-            $outputLines = explode("\n", trim($output));
-            $errorLine = null;
-            foreach ($outputLines as $line) {
-                if (stripos($line, 'error') !== false || stripos($line, 'failed') !== false || stripos($line, 'exception') !== false) {
-                    $errorLine = trim($line);
-                    break;
-                }
+            if ($domains->isEmpty()) {
+                $this->dispatch('flash-message', message: 'No active Australian TLD domains found.', type: 'info');
+                $this->syncingExpiry = false;
+
+                return;
             }
 
-            if ($exitCode === 0) {
-                $this->dispatch('flash-message', message: 'Domain information synced successfully!', type: 'success');
-            } else {
-                $errorMessage = $errorLine ?: (trim($output) ?: 'Sync failed. Check logs for details.');
-                // Truncate long error messages
-                if (strlen($errorMessage) > 200) {
-                    $errorMessage = substr($errorMessage, 0, 197).'...';
-                }
-                $this->dispatch('flash-message', message: $errorMessage, type: 'error');
+            // Queue jobs for each domain with delays to space them out
+            $delay = 0;
+            foreach ($domains as $domain) {
+                \App\Jobs\SyncDomainInfoJob::dispatch($domain->id)
+                    ->delay(now()->addSeconds($delay));
+                $delay += 5; // 5 second delay between each domain
             }
+
+            $this->dispatch('flash-message', message: "Queued {$domains->count()} domain(s) for sync. Jobs will process in the background via Horizon.", type: 'success');
         } catch (\Exception $e) {
             \Log::error('Sync Synergy Expiry Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            $this->dispatch('flash-message', message: 'Error syncing domain information: '.$e->getMessage(), type: 'error');
+            $this->dispatch('flash-message', message: 'Error queueing domain sync: '.$e->getMessage(), type: 'error');
         } finally {
             $this->syncingExpiry = false;
             $this->resetPage();
@@ -372,32 +372,32 @@ class DomainsList extends Component
                 return;
             }
 
-            $exitCode = Artisan::call('domains:sync-dns-records', ['--all' => true]);
-            $output = Artisan::output();
+            // Get all active Australian TLD domains
+            $domains = \App\Models\Domain::where('is_active', true)
+                ->get()
+                ->filter(function ($domain) {
+                    return \App\Services\SynergyWholesaleClient::isAustralianTld($domain->domain);
+                });
 
-            // Extract error message from output if command failed
-            $outputLines = explode("\n", trim($output));
-            $errorLine = null;
-            foreach ($outputLines as $line) {
-                if (stripos($line, 'error') !== false || stripos($line, 'failed') !== false || stripos($line, 'exception') !== false) {
-                    $errorLine = trim($line);
-                    break;
-                }
+            if ($domains->isEmpty()) {
+                $this->dispatch('flash-message', message: 'No active Australian TLD domains found.', type: 'info');
+                $this->syncingDns = false;
+
+                return;
             }
 
-            if ($exitCode === 0) {
-                $this->dispatch('flash-message', message: 'DNS records synced successfully!', type: 'success');
-            } else {
-                $errorMessage = $errorLine ?: (trim($output) ?: 'DNS sync failed. Check logs for details.');
-                // Truncate long error messages
-                if (strlen($errorMessage) > 200) {
-                    $errorMessage = substr($errorMessage, 0, 197).'...';
-                }
-                $this->dispatch('flash-message', message: $errorMessage, type: 'error');
+            // Queue jobs for each domain with delays to space them out
+            $delay = 0;
+            foreach ($domains as $domain) {
+                \App\Jobs\SyncDnsRecordsJob::dispatch($domain->id)
+                    ->delay(now()->addSeconds($delay));
+                $delay += 5; // 5 second delay between each domain
             }
+
+            $this->dispatch('flash-message', message: "Queued {$domains->count()} domain(s) for DNS sync. Jobs will process in the background via Horizon.", type: 'success');
         } catch (\Exception $e) {
             \Log::error('Sync DNS Records Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            $this->dispatch('flash-message', message: 'Error syncing DNS records: '.$e->getMessage(), type: 'error');
+            $this->dispatch('flash-message', message: 'Error queueing DNS sync: '.$e->getMessage(), type: 'error');
         } finally {
             $this->syncingDns = false;
             $this->resetPage();
@@ -418,32 +418,13 @@ class DomainsList extends Component
                 return;
             }
 
-            $exitCode = Artisan::call('domains:import-synergy');
-            $output = Artisan::output();
+            // Dispatch import job to queue
+            \App\Jobs\ImportSynergyDomainsJob::dispatch();
 
-            // Extract error message from output if command failed
-            $outputLines = explode("\n", trim($output));
-            $errorLine = null;
-            foreach ($outputLines as $line) {
-                if (stripos($line, 'error') !== false || stripos($line, 'failed') !== false || stripos($line, 'exception') !== false) {
-                    $errorLine = trim($line);
-                    break;
-                }
-            }
-
-            if ($exitCode === 0) {
-                $this->dispatch('flash-message', message: 'Domains imported successfully!', type: 'success');
-            } else {
-                $errorMessage = $errorLine ?: (trim($output) ?: 'Import failed. Check logs for details.');
-                // Truncate long error messages
-                if (strlen($errorMessage) > 200) {
-                    $errorMessage = substr($errorMessage, 0, 197).'...';
-                }
-                $this->dispatch('flash-message', message: $errorMessage, type: 'error');
-            }
+            $this->dispatch('flash-message', message: 'Domain import queued. Job will process in the background via Horizon.', type: 'success');
         } catch (\Exception $e) {
             \Log::error('Import Synergy Domains Error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            $this->dispatch('flash-message', message: 'Error importing domains: '.$e->getMessage(), type: 'error');
+            $this->dispatch('flash-message', message: 'Error queueing domain import: '.$e->getMessage(), type: 'error');
         } finally {
             $this->importingDomains = false;
             $this->resetPage();

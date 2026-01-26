@@ -91,16 +91,36 @@ Schedule::command('domains:health-check --all --type=broken_links')
     ->at('05:30')
     ->timezone('UTC');
 
-// Synergy Wholesale expiry sync - run daily for Australian TLD domains
-Schedule::command('domains:sync-synergy-expiry --all')
-    ->daily()
-    ->at('08:00')
+// Synergy Wholesale domain sync - queue jobs 3 times daily (8am, 2pm, 8pm UTC)
+// Jobs are processed via Horizon to prevent gateway timeouts
+Schedule::command('domains:queue-sync-jobs --type=info')
+    ->dailyAt('08:00')
     ->timezone('UTC');
 
-// DNS records sync - run daily for Australian TLD domains
-Schedule::command('domains:sync-dns-records --all')
-    ->daily()
-    ->at('08:10')
+Schedule::command('domains:queue-sync-jobs --type=info')
+    ->dailyAt('14:00')
+    ->timezone('UTC');
+
+Schedule::command('domains:queue-sync-jobs --type=info')
+    ->dailyAt('20:00')
+    ->timezone('UTC');
+
+// DNS records sync - queue jobs 3 times daily (8:05am, 2:05pm, 8:05pm UTC)
+Schedule::command('domains:queue-sync-jobs --type=dns')
+    ->dailyAt('08:05')
+    ->timezone('UTC');
+
+Schedule::command('domains:queue-sync-jobs --type=dns')
+    ->dailyAt('14:05')
+    ->timezone('UTC');
+
+Schedule::command('domains:queue-sync-jobs --type=dns')
+    ->dailyAt('20:05')
+    ->timezone('UTC');
+
+// Domain import - run once daily (8:10am UTC)
+Schedule::command('domains:queue-sync-jobs --type=import')
+    ->dailyAt('08:10')
     ->timezone('UTC');
 
 // Auto-renew domains - run daily to renew domains with auto_renew=true expiring in 30 days

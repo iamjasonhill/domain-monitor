@@ -134,17 +134,14 @@ class DomainDetail extends Component
         $this->syncMessage = '';
 
         try {
-            Artisan::call('domains:sync-synergy-expiry', [
-                '--domain' => $this->domain->domain,
-            ]);
+            \App\Jobs\SyncDomainInfoJob::dispatch($this->domain->id);
 
-            $this->loadDomain();
-            $this->syncMessage = 'Domain information synced successfully!';
-            session()->flash('message', 'Domain information synced successfully!');
+            $this->syncMessage = 'Domain sync queued. Job will process in the background via Horizon.';
+            session()->flash('message', 'Domain sync queued. Job will process in the background via Horizon.');
             $this->dispatch('sync-complete');
         } catch (\Exception $e) {
-            $this->syncMessage = 'Error syncing: '.$e->getMessage();
-            session()->flash('error', 'Error syncing domain information: '.$e->getMessage());
+            $this->syncMessage = 'Error queueing sync: '.$e->getMessage();
+            session()->flash('error', 'Error queueing domain sync: '.$e->getMessage());
             $this->dispatch('sync-complete');
         } finally {
             $this->syncing = false;
@@ -312,15 +309,12 @@ class DomainDetail extends Component
         }
 
         try {
-            Artisan::call('domains:sync-dns-records', [
-                '--domain' => $this->domain->domain,
-            ]);
+            \App\Jobs\SyncDnsRecordsJob::dispatch($this->domain->id);
 
-            $this->loadDomain();
-            session()->flash('message', 'DNS records synced successfully!');
+            session()->flash('message', 'DNS sync queued. Job will process in the background via Horizon.');
             $this->dispatch('dns-sync-complete');
         } catch (\Exception $e) {
-            session()->flash('error', 'Error syncing DNS records: '.$e->getMessage());
+            session()->flash('error', 'Error queueing DNS sync: '.$e->getMessage());
             $this->dispatch('dns-sync-complete');
         }
     }
