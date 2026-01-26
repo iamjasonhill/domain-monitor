@@ -18,6 +18,18 @@ class DomainsList extends Component
     #[Url(as: 'search', history: true, keep: false)]
     public string $search = '';
 
+    #[Url(as: 'searchMode', history: true, keep: false)]
+    public string $searchMode = 'all'; // 'all', 'domain', 'dns'
+
+    #[Url(as: 'dnsType', history: true, keep: false)]
+    public ?string $dnsType = null; // Filter by DNS record type (MX, A, CNAME, etc.)
+
+    #[Url(as: 'dnsHost', history: true, keep: false)]
+    public ?string $dnsHost = null; // Filter by DNS host/subdomain
+
+    #[Url(as: 'dnsMissing', history: true, keep: false)]
+    public bool $dnsMissing = false; // Show domains WITHOUT matching DNS records
+
     #[Url(as: 'active', history: true, keep: false)]
     public ?string $filterActive = null;
 
@@ -64,6 +76,10 @@ class DomainsList extends Component
     public function clearFilters(): void
     {
         $this->search = '';
+        $this->searchMode = 'all';
+        $this->dnsType = null;
+        $this->dnsHost = null;
+        $this->dnsMissing = false;
         $this->filterActive = null;
         $this->filterExpiring = false;
         $this->filterExcludeParked = false;
@@ -74,6 +90,36 @@ class DomainsList extends Component
     }
 
     public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingSearchMode(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSearchMode(string $value): void
+    {
+        // Clear DNS-specific filters when switching away from DNS mode
+        // $value is the NEW value after update
+        if ($value !== 'dns' && $value !== 'all') {
+            $this->dnsType = null;
+            $this->dnsHost = null;
+        }
+    }
+
+    public function updatingDnsType(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingDnsHost(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingDnsMissing(): void
     {
         $this->resetPage();
     }
@@ -217,6 +263,53 @@ class DomainsList extends Component
 
         // Stable tie-breaker to avoid jitter across pages
         $query->orderBy('domains.id', 'asc');
+    }
+
+    /**
+     * Apply DNS record filters to a query builder
+     * Used for both positive and negative searches
+     *
+     * @param  Builder<\App\Models\DnsRecord>|\Illuminate\Database\Eloquent\Builder<\Illuminate\Database\Eloquent\Model>  $query
+     */
+    private function applyDnsRecordFilters(Builder $query): void
+    {
+        $connection = \DB::getDriverName();
+
+        if (! empty($this->search)) {
+            $searchTerm = trim($this->search);
+            $searchTerm = str_replace(['%', '_'], ['\%', '\_'], $searchTerm);
+
+            if ($connection === 'pgsql') {
+                $query->where(function ($subQuery) use ($searchTerm) {
+                    $subQuery->where('host', 'ilike', '%'.$searchTerm.'%')
+                        ->orWhere('type', 'ilike', '%'.$searchTerm.'%')
+                        ->orWhere('value', 'ilike', '%'.$searchTerm.'%');
+                });
+            } else {
+                $lowerTerm = mb_strtolower($searchTerm);
+                $query->where(function ($subQuery) use ($lowerTerm) {
+                    $subQuery->whereRaw('LOWER(host) LIKE ?', ['%'.$lowerTerm.'%'])
+                        ->orWhereRaw('LOWER(type) LIKE ?', ['%'.$lowerTerm.'%'])
+                        ->orWhereRaw('LOWER(value) LIKE ?', ['%'.$lowerTerm.'%']);
+                });
+            }
+        }
+
+        if ($this->dnsType) {
+            if ($connection === 'pgsql') {
+                $query->where('type', 'ilike', $this->dnsType);
+            } else {
+                $query->whereRaw('LOWER(type) = ?', [mb_strtolower($this->dnsType)]);
+            }
+        }
+
+        if ($this->dnsHost) {
+            if ($connection === 'pgsql') {
+                $query->where('host', 'ilike', '%'.$this->dnsHost.'%');
+            } else {
+                $query->whereRaw('LOWER(host) LIKE ?', ['%'.mb_strtolower($this->dnsHost).'%']);
+            }
+        }
     }
 
     public function syncSynergyExpiry(): void
@@ -434,7 +527,6 @@ class DomainsList extends Component
             'tags',
         ])
             ->withLatestCheckStatuses()
-            ->search($this->search)
             ->filterActive($isActive)
             ->filterExpiring($this->filterExpiring)
             ->excludeParked($this->filterExcludeParked)
@@ -444,6 +536,80 @@ class DomainsList extends Component
                 $query->whereHas('tags', function (Builder $q) {
                     $q->where('domain_tags.id', $this->filterTag);
                 });
+            })
+            ->when(! empty($this->search), function (Builder $query) {
+                if ($this->searchMode === 'dns') {
+                    // DNS-only search
+                    if ($this->dnsMissing) {
+                        // Show domains WITHOUT matching DNS records
+                        $query->whereDoesntHave('dnsRecords', function ($q) {
+                            $this->applyDnsRecordFilters($q);
+                        });
+                    } else {
+                        // Show domains WITH matching DNS records
+                        $query->searchDns($this->search, $this->dnsType, $this->dnsHost);
+                    }
+                } elseif ($this->searchMode === 'domain') {
+                    // Domain-only search (excludes DNS)
+                    $query->search($this->search);
+                } else {
+                    // Search both domain fields and DNS records
+                    if ($this->dnsMissing && ($this->searchMode === 'all' || $this->dnsType || $this->dnsHost)) {
+                        // When "missing" is checked, search domain fields but exclude domains with matching DNS
+                        $query->search($this->search)
+                            ->whereDoesntHave('dnsRecords', function ($q) {
+                                $this->applyDnsRecordFilters($q);
+                            });
+                    } else {
+                        // Normal search: both domain and DNS
+                        $query->where(function ($q) {
+                            $q->search($this->search)
+                                ->orWhere(function ($dnsQuery) {
+                                    $dnsQuery->searchDns($this->search, $this->dnsType, $this->dnsHost);
+                                });
+                        });
+                    }
+                }
+            })
+            ->when(($this->searchMode === 'dns' || $this->searchMode === 'all') && empty($this->search) && ($this->dnsType || $this->dnsHost), function (Builder $query) use ($connection) {
+                // Allow filtering by DNS type/host even without search term (works in both 'dns' and 'all' modes)
+                if ($this->dnsMissing) {
+                    // Show domains WITHOUT the specified DNS records
+                    $query->whereDoesntHave('dnsRecords', function ($q) use ($connection) {
+                        if ($this->dnsType) {
+                            if ($connection === 'pgsql') {
+                                $q->where('type', 'ilike', $this->dnsType);
+                            } else {
+                                $q->whereRaw('LOWER(type) = ?', [mb_strtolower($this->dnsType)]);
+                            }
+                        }
+                        if ($this->dnsHost) {
+                            if ($connection === 'pgsql') {
+                                $q->where('host', 'ilike', '%'.$this->dnsHost.'%');
+                            } else {
+                                $q->whereRaw('LOWER(host) LIKE ?', ['%'.mb_strtolower($this->dnsHost).'%']);
+                            }
+                        }
+                    });
+                } else {
+                    // Show domains WITH the specified DNS records
+                    $query->whereHas('dnsRecords', function ($q) use ($connection) {
+                        if ($this->dnsType) {
+                            if ($connection === 'pgsql') {
+                                $q->where('type', 'ilike', $this->dnsType);
+                            } else {
+                                $q->whereRaw('LOWER(type) = ?', [mb_strtolower($this->dnsType)]);
+                            }
+                        }
+                        if ($this->dnsHost) {
+                            if ($connection === 'pgsql') {
+                                $q->where('host', 'ilike', '%'.$this->dnsHost.'%');
+                            } else {
+                                $q->whereRaw('LOWER(host) LIKE ?', ['%'.mb_strtolower($this->dnsHost).'%']);
+                            }
+                        }
+                    });
+                }
             })
             ->select('domains.*');
 

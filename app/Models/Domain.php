@@ -278,6 +278,67 @@ class Domain extends Model
     }
 
     /**
+     * Scope a query to search domains by DNS record values.
+     * Searches across all DNS record types (A, AAAA, MX, CNAME, TXT, etc.)
+     * and matches against host, type, and value fields.
+     *
+     * @param  Builder<Domain>  $query
+     * @param  string  $term  Search term
+     * @param  string|null  $recordType  Optional: filter by specific DNS record type (MX, A, CNAME, etc.)
+     * @param  string|null  $host  Optional: filter by host/subdomain
+     */
+    public function scopeSearchDns(Builder $query, string $term, ?string $recordType = null, ?string $host = null): void
+    {
+        $searchTerm = trim($term);
+        // Require minimum 2 characters for search to avoid performance issues
+        if (empty($searchTerm) || mb_strlen($searchTerm) < 2) {
+            return;
+        }
+
+        // Escape special LIKE characters
+        $searchTerm = str_replace(['%', '_'], ['\%', '\_'], $searchTerm);
+
+        // Get database connection type
+        $connection = $query->getModel()->getConnection()->getDriverName();
+
+        $query->whereHas('dnsRecords', function ($q) use ($searchTerm, $recordType, $host, $connection) {
+            if ($connection === 'pgsql') {
+                // PostgreSQL: Use ILIKE for case-insensitive search
+                $q->where(function ($subQuery) use ($searchTerm) {
+                    $subQuery->where('host', 'ilike', '%'.$searchTerm.'%')
+                        ->orWhere('type', 'ilike', '%'.$searchTerm.'%')
+                        ->orWhere('value', 'ilike', '%'.$searchTerm.'%');
+                });
+
+                if ($recordType) {
+                    $q->where('type', 'ilike', $recordType);
+                }
+
+                if ($host) {
+                    $q->where('host', 'ilike', '%'.$host.'%');
+                }
+            } else {
+                // MySQL/SQLite: Use LOWER() for case-insensitive search
+                $lowerTerm = mb_strtolower($searchTerm);
+                $q->where(function ($subQuery) use ($lowerTerm) {
+                    $subQuery->whereRaw('LOWER(host) LIKE ?', ['%'.$lowerTerm.'%'])
+                        ->orWhereRaw('LOWER(type) LIKE ?', ['%'.$lowerTerm.'%'])
+                        ->orWhereRaw('LOWER(value) LIKE ?', ['%'.$lowerTerm.'%']);
+                });
+
+                if ($recordType) {
+                    $q->whereRaw('LOWER(type) = ?', [mb_strtolower($recordType)]);
+                }
+
+                if ($host) {
+                    $lowerHost = mb_strtolower($host);
+                    $q->whereRaw('LOWER(host) LIKE ?', ['%'.$lowerHost.'%']);
+                }
+            }
+        });
+    }
+
+    /**
      * Scope a query to filter by active status.
      *
      * @param  Builder<Domain>  $query

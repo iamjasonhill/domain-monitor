@@ -18,12 +18,22 @@
         <script>
             // Initialize dark mode immediately to prevent flash
             (function() {
-                const theme = localStorage.getItem('theme') || 'light';
+                const theme = localStorage.getItem('theme') || 'dark';
                 if (theme === 'dark') {
                     document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
                 }
                 // Make functions available immediately
                 window.getDarkMode = function() {
+                    // If localStorage has a value, use it
+                    const stored = localStorage.getItem('theme');
+                    if (stored) {
+                        return stored === 'dark';
+                    }
+                    // Fallback: check if dark class is already on html element
+                    // (should be set by initialization above if defaulting to dark)
+                    // Return the actual class state - initialization script handles defaulting to dark
                     return document.documentElement.classList.contains('dark');
                 };
                 window.toggleDarkMode = function() {

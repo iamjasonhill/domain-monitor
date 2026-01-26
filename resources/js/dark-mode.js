@@ -5,9 +5,9 @@
  */
 
 (function () {
-    // Get the current theme from localStorage or default to 'light'
+    // Get the current theme from localStorage or default to 'dark'
     const getTheme = () => {
-        return localStorage.getItem('theme') || 'light';
+        return localStorage.getItem('theme') || 'dark';
     };
 
     // Set the theme
@@ -37,12 +37,14 @@
     // Expose functions globally for Livewire/Alpine (before initialization)
     window.toggleDarkMode = toggleTheme;
     window.getDarkMode = () => {
-        // If localStorage hasn't been set yet, check if dark class exists
+        // If localStorage has a value, use it
         const stored = localStorage.getItem('theme');
         if (stored) {
             return stored === 'dark';
         }
         // Fallback: check if dark class is already on html element
+        // (should be set by inline initialization script if defaulting to dark)
+        // Return the actual class state - initialization script handles defaulting to dark
         return document.documentElement.classList.contains('dark');
     };
     window.setDarkMode = setTheme;
