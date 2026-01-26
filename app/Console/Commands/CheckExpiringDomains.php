@@ -22,7 +22,7 @@ class CheckExpiringDomains extends Command
      *
      * @var string
      */
-    protected $description = 'Check for expiring domains and send Brain events at 30, 14, and 7 days before expiry';
+    protected $description = 'Check for expiring domains and domains requiring renewal, send Brain events at 30, 14, and 7 days before expiry';
 
     /**
      * Execute the console command.
@@ -34,6 +34,10 @@ class CheckExpiringDomains extends Command
         $totalAlerts = 0;
 
         $this->info('Checking for expiring domains...');
+        $this->newLine();
+
+        // Check for domains with renewal_required = true
+        $this->checkRenewalRequiredDomains($brain, $now, $totalAlerts);
         $this->newLine();
 
         foreach ($thresholds as $days) {
@@ -99,9 +103,9 @@ class CheckExpiringDomains extends Command
         }
 
         if ($totalAlerts > 0) {
-            $this->info("Sent {$totalAlerts} expiry alert(s) to Brain.");
+            $this->info("Sent {$totalAlerts} alert(s) to Brain.");
         } else {
-            $this->info('No new expiry alerts to send.');
+            $this->info('No new alerts to send.');
         }
 
         return Command::SUCCESS;
@@ -161,5 +165,99 @@ class CheckExpiringDomains extends Command
             7 => 'error',
             default => 'info',
         };
+    }
+
+    /**
+     * Check for domains with renewal_required = true
+     */
+    private function checkRenewalRequiredDomains(BrainEventClient $brain, \Illuminate\Support\Carbon $now, int &$totalAlerts): void
+    {
+        $domains = Domain::where('is_active', true)
+            ->where('renewal_required', true)
+            ->get();
+
+        if ($domains->isEmpty()) {
+            $this->line('  No domains requiring renewal.');
+
+            return;
+        }
+
+        $this->info("Found {$domains->count()} domain(s) requiring renewal:");
+
+        foreach ($domains as $domain) {
+            // Check if we've already sent an alert for this domain today
+            $existingAlert = DomainAlert::where('domain_id', $domain->id)
+                ->where('alert_type', 'renewal_required')
+                ->whereNull('resolved_at')
+                ->whereDate('triggered_at', $now->toDateString())
+                ->first();
+
+            if ($existingAlert) {
+                $this->line("    {$domain->domain} - Alert already sent today");
+
+                continue;
+            }
+
+            // Calculate days until expiry if available
+            $daysUntilExpiry = null;
+            if ($domain->expires_at) {
+                $daysUntilExpiry = (int) $now->diffInDays($domain->expires_at, false);
+            }
+
+            // Send Brain event
+            $this->sendRenewalRequiredEvent($brain, $domain, $daysUntilExpiry);
+
+            // Create alert record
+            DomainAlert::create([
+                'domain_id' => $domain->id,
+                'alert_type' => 'renewal_required',
+                'severity' => $domain->can_renew ? 'warning' : 'error',
+                'triggered_at' => $now,
+                'payload' => [
+                    'renewal_required' => true,
+                    'can_renew' => $domain->can_renew ?? false,
+                    'days_until_expiry' => $daysUntilExpiry,
+                    'expires_at' => $domain->expires_at?->toIso8601String(),
+                    'auto_renew' => $domain->auto_renew ?? false,
+                ],
+            ]);
+
+            $status = $domain->can_renew ? 'can be renewed' : 'cannot be renewed';
+            $this->line("    ✓ {$domain->domain} - Renewal required ({$status})");
+            $totalAlerts++;
+        }
+    }
+
+    /**
+     * Send renewal required event to Brain
+     */
+    private function sendRenewalRequiredEvent(BrainEventClient $brain, Domain $domain, ?int $daysUntilExpiry): void
+    {
+        $severity = $domain->can_renew ? 'warning' : 'error';
+        $eventType = 'domain.renewal.required';
+
+        $fingerprint = "domain.renewal.required:{$domain->domain}";
+
+        $message = sprintf(
+            'Domain %s requires renewal%s',
+            $domain->domain,
+            $daysUntilExpiry !== null ? " (expires in {$daysUntilExpiry} days)" : ''
+        );
+
+        $payload = [
+            'domain' => $domain->domain,
+            'domain_id' => $domain->id,
+            'renewal_required' => true,
+            'can_renew' => $domain->can_renew ?? false,
+            'days_until_expiry' => $daysUntilExpiry,
+            'expires_at' => $domain->expires_at?->toIso8601String(),
+            'auto_renew' => $domain->auto_renew ?? false,
+            'registrar' => $domain->registrar,
+            'severity' => $severity,
+            'fingerprint' => $fingerprint,
+            'message' => $message,
+        ];
+
+        $brain->sendAsync($eventType, $payload);
     }
 }

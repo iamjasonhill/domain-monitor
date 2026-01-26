@@ -259,6 +259,7 @@ The debug log at line 115-120 logs `response_keys` which shows all available fie
 8. ✅ **Create compliance monitoring job** - DONE
 9. ✅ **Implement contact information storage** - DONE
 10. ✅ **Display contacts in UI** - DONE
+11. ✅ **Add renewal alerts** - DONE
 
 ### 🎯 Next Priority Items
 
@@ -270,10 +271,12 @@ The debug log at line 115-120 logs `response_keys` which shows all available fie
    - ✅ Clickable email and phone links
    - ✅ Responsive design (1 column mobile, 2 columns tablet, 4 columns desktop)
 
-2. **Add renewal alerts** (Medium Priority)
-   - Create alerts for domains with `renewal_required = true`
-   - Create alerts for domains expiring soon (30, 14, 7 days)
-   - Integrate with existing `domains:check-expiring` command
+2. ✅ **Add renewal alerts** (Medium Priority) - **COMPLETED**
+   - ✅ Enhanced `CheckExpiringDomains` command to check for `renewal_required = true`
+   - ✅ Creates alerts for domains requiring renewal
+   - ✅ Sends Brain events with severity based on `can_renew` status
+   - ✅ Integrates with existing expiry alerts (30, 14, 7 days)
+   - ✅ Prevents duplicate alerts (one per day per domain)
 
 3. **Implement bulk operations** (Medium Priority)
    - Research `bulkDomainInfo` API method
