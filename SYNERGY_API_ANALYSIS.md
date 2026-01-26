@@ -94,7 +94,7 @@ Returns:
 - ✅ `SyncDomainContactsJob` created and scheduled 3 times daily
 - ✅ Contact relationships added to Domain model
 - ✅ Privacy: Email, phone, and address are encrypted at rest
-- ❌ Display contacts in UI (next step)
+- ✅ Display contacts in UI (domain detail view)
 
 ### 2. ✅ **domainRenewRequired** / **canRenewDomain** ⭐⭐⭐
 **Value**: Very High
@@ -258,14 +258,17 @@ The debug log at line 115-120 logs `response_keys` which shows all available fie
 7. ✅ **Schedule syncs 3 times daily** - DONE
 8. ✅ **Create compliance monitoring job** - DONE
 9. ✅ **Implement contact information storage** - DONE
+10. ✅ **Display contacts in UI** - DONE
 
 ### 🎯 Next Priority Items
 
-1. **Display contacts in UI** (High Priority)
-   - Add contact information display to domain detail view
-   - Show registrant, admin, tech, and billing contacts
-   - Respect privacy (decrypt only when displaying)
-   - Consider access controls for sensitive data
+1. ✅ **Display contacts in UI** (High Priority) - **COMPLETED**
+   - ✅ Contact information display added to domain detail view
+   - ✅ Shows registrant, admin, tech, and billing contacts in grid layout
+   - ✅ Privacy respected (decrypts only when displaying via helper methods)
+   - ✅ Shows last sync time
+   - ✅ Clickable email and phone links
+   - ✅ Responsive design (1 column mobile, 2 columns tablet, 4 columns desktop)
 
 2. **Add renewal alerts** (Medium Priority)
    - Create alerts for domains with `renewal_required = true`
