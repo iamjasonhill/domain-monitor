@@ -2,7 +2,7 @@
 
 ## Currently Extracted Fields ✅
 
-From `getDomainInfo()`, we're already extracting:
+From `getDomainInfo()`, we're extracting:
 - ✅ `domain` (domainName)
 - ✅ `expiry_date` (domain_expiry)
 - ✅ `created_date` (createdDate)
@@ -11,57 +11,49 @@ From `getDomainInfo()`, we're already extracting:
 - ✅ `nameservers` (nameServers array)
 - ✅ `nameserver_details` (detailed NS info with IPs)
 - ✅ `dns_config_name` (dnsConfigName)
+- ✅ `dns_config_id` (dnsConfig) - **NEW**
 - ✅ `registrant_name` (auRegistrantName)
 - ✅ `registrant_id_type` (auRegistrantIDType)
 - ✅ `registrant_id` (auRegistrantID)
 - ✅ `eligibility_type` (auEligibilityType)
 - ✅ `eligibility_valid` (au_valid_eligibility / auValidEligibility)
 - ✅ `eligibility_last_check` (auEligibilityLastCheck)
+- ✅ `au_policy_id` (auPolicyID) - **NEW**
+- ✅ `au_policy_desc` (auPolicyIDDesc) - **NEW**
+- ✅ `au_compliance_reason` (auComplianceReason) - **NEW**
+- ✅ `au_association_id` (auAssociationID) - **NEW**
+- ✅ `domain_roid` (domainRoid) - **NEW**
+- ✅ `registry_id` (registryID) - **NEW**
+- ✅ `id_protect` (idProtect) - **NEW**
+- ✅ `categories` (categories array) - **NEW**
+- ✅ `transfer_lock` (derived from domain_status) - **NEW**
+- ✅ `renewal_required` (from checkRenewalRequired) - **NEW**
+- ✅ `can_renew` (from checkRenewalRequired) - **NEW**
 - ✅ `registrar`
 - ✅ `status` (API response status)
 
-## Available But NOT Currently Extracted ❌
+## Previously Missing Fields - Now Extracted ✅
 
-### High Value Fields (Recommended to Add)
+All high-priority and medium-priority fields have been implemented! All fields listed below are now extracted and stored in the database. See "Currently Extracted Fields" section above for the complete list.
 
-1. **domainRoid** - Registry Object ID
-   - Unique identifier from registry
-   - Useful for tracking and API operations
-   - **Recommendation**: Add to Domain model
+**Summary of Completed Fields:**
+- ✅ `domain_roid` - Registry Object ID
+- ✅ `au_policy_id` & `au_policy_desc` - Policy Information
+- ✅ `au_compliance_reason` - Compliance Status
+- ✅ `au_association_id` - Association ID
+- ✅ `registry_id` - Registry Identifier
+- ✅ `id_protect` - ID Protection Status
+- ✅ `categories` - Domain Categories (JSON)
+- ✅ `dns_config_id` - DNS Configuration ID
+- ✅ `transfer_lock` - Transfer Lock Status
+- ✅ `renewal_required` & `can_renew` - Renewal Status
 
-2. **auPolicyID** & **auPolicyIDDesc** - Policy Information
-   - Policy ID and description for .au domains
-   - Shows which eligibility policy applies
-   - **Recommendation**: Add `au_policy_id` and `au_policy_desc` fields
-
-3. **auComplianceReason** - Compliance Status
-   - Reason why domain is non-compliant (if applicable)
-   - Critical for .au domain compliance monitoring
-   - **Recommendation**: Add `au_compliance_reason` field
-
-4. **auAssociationID** - Association ID
-   - Association identifier for .au domains
-   - **Recommendation**: Add `au_association_id` field
-
-5. **registryID** - Registry Identifier
-   - Registry ID (e.g., `85` for .au registry)
-   - Useful for identifying which registry manages the domain
-   - **Recommendation**: Add `registry_id` field
-
-### Medium Value Fields
-
-6. **idProtect** - ID Protection Status
-   - Shows if domain has ID protection enabled
-   - **Recommendation**: Add `id_protect` field (nullable string)
-
-7. **categories** - Domain Categories
-   - Array of category IDs/names
-   - Could be useful for organization
-   - **Recommendation**: Add `categories` JSON field
-
-8. **dnsConfig** - DNS Configuration ID
-   - Numeric ID for DNS config (we have name, but not ID)
-   - **Recommendation**: Add `dns_config_id` field
+**All fields are:**
+- Extracted in `SynergyWholesaleClient::getDomainInfo()`
+- Stored in database via migration (`2026_01_26_162643_add_additional_synergy_fields_to_domains_table.php`)
+- Synced in `SyncDomainInfoJob` (queued via Horizon)
+- Displayed in UI (domain detail view)
+- Included in API responses (`DomainFullResource`)
 
 ### Low Priority / Security Fields
 
@@ -85,7 +77,7 @@ From `getDomainInfo()`, we're already extracting:
 
 ## Unused API Methods (High Value) 🚀
 
-### 1. **rawDomainContacts** - Contact Information ⭐⭐⭐
+### 1. ✅ **rawDomainContacts** - Contact Information ⭐⭐⭐
 **Value**: Very High
 **Use Case**: Compliance, audit trails, contact management
 
@@ -95,47 +87,55 @@ Returns:
 - Technical contact
 - Billing contact
 
-**Recommendation**: 
-- Create `domain_contacts` table or JSON field
-- Store encrypted if containing sensitive data
-- Useful for compliance audits
+**Status**: ✅ **COMPLETED** - `getDomainContacts()` method implemented
+**Next Steps**: 
+- ❌ Create `domain_contacts` table or JSON field to store contacts
+- ❌ Add scheduled job to sync contacts periodically
+- ❌ Display contacts in UI (with privacy considerations)
 
-### 2. **domainRenewRequired** / **canRenewDomain** ⭐⭐⭐
+### 2. ✅ **domainRenewRequired** / **canRenewDomain** ⭐⭐⭐
 **Value**: Very High
 **Use Case**: Automated renewal management
 
-**Recommendation**:
-- Add `renewal_required` boolean field
-- Add `can_renew` boolean field
-- Create scheduled job to check renewal status
-- Alert when domains need renewal
+**Status**: ✅ **COMPLETED** - `checkRenewalRequired()` method implemented
+- ✅ `renewal_required` boolean field added
+- ✅ `can_renew` boolean field added
+- ✅ Fields are synced during domain info sync
+- ❌ Create scheduled job to check renewal status (separate from sync)
+- ❌ Alert when domains need renewal
 
-### 3. **listAuNonCompliantDomains** ⭐⭐⭐
+### 3. ✅ **listAuNonCompliantDomains** ⭐⭐⭐
 **Value**: Very High (for .au domains)
 **Use Case**: Compliance monitoring
 
-**Recommendation**:
-- Create scheduled job to check compliance
-- Alert on non-compliant domains
-- Track compliance history
+**Status**: ✅ **COMPLETED** - Full implementation done
+- ✅ `listNonCompliantAuDomains()` method implemented
+- ✅ `CheckComplianceJob` created and scheduled weekly
+- ✅ Alerts created for non-compliant domains
+- ✅ Compliance history tracked in `domain_compliance_checks` table
+- ✅ Brain events sent for compliance issues
+- ✅ Auto-resolves alerts when domains become compliant
 
-### 4. **bulkDomainInfo** ⭐⭐
+### 4. ❌ **bulkDomainInfo** ⭐⭐
 **Value**: High
 **Use Case**: Efficient bulk syncing
 
+**Status**: ❌ **NOT IMPLEMENTED**
 **Recommendation**:
 - Use for bulk import/sync operations
 - More efficient than individual `domainInfo` calls
 - Reduces API rate limiting issues
+- Could optimize the queue jobs we just created
 
-### 5. **lockDomain** / **unlockDomain** / **isDomainLocked** ⭐⭐
+### 5. ✅ **lockDomain** / **unlockDomain** / **isDomainLocked** ⭐⭐
 **Value**: Medium-High
 **Use Case**: Transfer protection monitoring
 
-**Recommendation**:
-- Add `transfer_lock` boolean field
-- Track lock status changes
-- Alert if domain is unlocked (security risk)
+**Status**: ✅ **PARTIALLY COMPLETED**
+- ✅ `getDomainLockStatus()` method implemented (reads lock status)
+- ✅ `transfer_lock` boolean field added and synced
+- ❌ `lockDomain()` / `unlockDomain()` methods not implemented (write operations)
+- ❌ Alert if domain is unlocked (security risk)
 
 ### 6. **getDomainPricing** ⭐
 **Value**: Medium
@@ -153,70 +153,65 @@ Returns:
 
 ## Implementation Recommendations
 
-### Phase 1: High Priority Additions
+### Phase 1: High Priority Additions ✅ COMPLETED
 
-1. **Add missing .au compliance fields**:
-   ```php
-   // Migration
-   $table->string('au_policy_id')->nullable();
-   $table->text('au_policy_desc')->nullable();
-   $table->text('au_compliance_reason')->nullable();
-   $table->string('au_association_id')->nullable();
-   $table->string('registry_id')->nullable();
-   $table->string('domain_roid')->nullable()->unique();
-   ```
+1. ✅ **Add missing .au compliance fields**:
+   - ✅ Migration created: `2026_01_26_162643_add_additional_synergy_fields_to_domains_table.php`
+   - ✅ All fields added to Domain model
+   - ✅ Fields synced in `SyncDomainInfoJob`
+   - ✅ Fields displayed in UI
 
-2. **Implement `rawDomainContacts` method**:
-   ```php
-   public function getDomainContacts(string $domain): ?array
-   {
-       // Returns: registrant, admin, tech, billing contacts
-   }
-   ```
+2. ✅ **Implement `rawDomainContacts` method**:
+   - ✅ `getDomainContacts()` method implemented in `SynergyWholesaleClient`
+   - ❌ Contact storage not yet implemented (next step)
 
-3. **Implement `domainRenewRequired` check**:
-   ```php
-   public function checkRenewalRequired(string $domain): ?array
-   {
-       // Returns: can_renew, renewal_required, days_until_expiry
-   }
-   ```
+3. ✅ **Implement `domainRenewRequired` check**:
+   - ✅ `checkRenewalRequired()` method implemented
+   - ✅ Returns: `can_renew`, `renewal_required`, `days_until_expiry`
+   - ✅ Fields synced during domain info sync
+   - ✅ Fields displayed in UI
 
-4. **Add transfer lock status**:
-   ```php
-   public function getDomainLockStatus(string $domain): ?bool
-   {
-       // Check if domain is locked (prevents transfers)
-   }
-   ```
+4. ✅ **Add transfer lock status**:
+   - ✅ `getDomainLockStatus()` method implemented
+   - ✅ `transfer_lock` field added and synced
+   - ✅ Field displayed in UI
+   - ❌ `lockDomain()` / `unlockDomain()` write methods not implemented
 
-### Phase 2: Compliance Monitoring
+### Phase 2: Compliance Monitoring ✅ COMPLETED
 
-1. **Scheduled job for compliance checking**:
-   - Use `listAuNonCompliantDomains` weekly
-   - Alert on non-compliant domains
-   - Track compliance history
+1. ✅ **Scheduled job for compliance checking**:
+   - ✅ `listNonCompliantAuDomains()` method implemented
+   - ✅ `CheckComplianceJob` created and scheduled weekly (Sunday 6:30 AM UTC)
+   - ✅ Alert system integrated (creates `DomainAlert` records)
+   - ✅ Compliance history tracking implemented (`DomainComplianceCheck` model)
+   - ✅ Brain events sent for non-compliant domains
+   - ✅ Auto-resolves alerts when domains become compliant
+   - ✅ Updates domain's `au_compliance_reason` field
 
 2. **Contact information storage**:
-   - Store domain contacts (encrypted if sensitive)
-   - Track contact changes over time
-   - Useful for compliance audits
+   - ✅ `getDomainContacts()` method implemented
+   - ❌ Contact storage not yet implemented
+   - ❌ Contact change tracking not yet implemented
+   - **Next Step**: Create `domain_contacts` table or add JSON field to domains table
 
-### Phase 3: Enhanced Features
+### Phase 3: Enhanced Features ⏳ PENDING
 
 1. **Bulk operations**:
-   - Use `bulkDomainInfo` for efficient syncing
-   - Batch operations for better performance
+   - ❌ `bulkDomainInfo` not yet implemented
+   - ✅ Queue jobs created for efficient processing (alternative approach)
+   - **Next Step**: Consider implementing `bulkDomainInfo` to optimize API calls
 
 2. **Renewal management**:
-   - Track which domains can be renewed
-   - Automated renewal reminders
-   - Integration with `renewDomain` method
+   - ✅ `renewal_required` and `can_renew` fields tracked
+   - ✅ Fields synced during domain info sync
+   - ❌ Automated renewal reminders not yet implemented
+   - ✅ `renewDomain()` method already exists
+   - **Next Step**: Create alerts/notifications for domains requiring renewal
 
 ## Current API Method Usage
 
 ### ✅ Implemented Methods:
-- `domainInfo` - Get domain information
+- `domainInfo` - Get domain information (enhanced with all new fields)
 - `listDomains` - List all domains
 - `listDNSZone` - Get DNS records
 - `addDNSRecord` - Add DNS record
@@ -224,14 +219,15 @@ Returns:
 - `deleteDNSRecord` - Delete DNS record
 - `balanceQuery` - Get account balance
 - `renewDomain` - Renew domain
+- ✅ `rawDomainContacts` - Contact information (`getDomainContacts()`)
+- ✅ `domainRenewRequired` - Renewal status (`checkRenewalRequired()`)
+- ✅ `canRenewDomain` - Can domain be renewed (included in `checkRenewalRequired()`)
+- ✅ `listAuNonCompliantDomains` - Compliance check (`listNonCompliantAuDomains()`)
+- ✅ `getDomainLockStatus` - Transfer lock status (read-only)
 
 ### ❌ Not Implemented (High Value):
-- `rawDomainContacts` - Contact information
-- `domainRenewRequired` - Renewal status
-- `canRenewDomain` - Can domain be renewed
-- `listAuNonCompliantDomains` - Compliance check
-- `bulkDomainInfo` - Bulk domain info
-- `lockDomain` / `unlockDomain` - Transfer lock
+- `bulkDomainInfo` - Bulk domain info (could optimize queue jobs)
+- `lockDomain` / `unlockDomain` - Transfer lock (write operations)
 - `isDomainTransferrable` - Transfer status
 
 ## Data We're Missing in Logs
@@ -241,10 +237,48 @@ The debug log at line 115-120 logs `response_keys` which shows all available fie
 2. Compare with what we're extracting
 3. Add any missing high-value fields
 
-## Next Steps
+## Next Steps (Priority Order)
 
-1. **Review production logs** to see actual API response structure
-2. **Add high-priority fields** (compliance, renewal status)
-3. **Implement contact information** storage
-4. **Add compliance monitoring** job
-5. **Enhance renewal management** with renewal status checks
+### ✅ Completed
+1. ✅ **Add high-priority fields** (compliance, renewal status) - DONE
+2. ✅ **Implement API methods** (contacts, renewal, compliance, lock status) - DONE
+3. ✅ **Create database migration** for new fields - DONE
+4. ✅ **Update sync jobs** to extract and store new fields - DONE
+5. ✅ **Display new fields in UI** - DONE
+6. ✅ **Convert sync operations to queue jobs** - DONE
+7. ✅ **Schedule syncs 3 times daily** - DONE
+8. ✅ **Create compliance monitoring job** - DONE
+
+### 🎯 Next Priority Items
+
+1. ✅ **Create compliance monitoring job** (High Priority) - **COMPLETED**
+   - ✅ `CheckComplianceJob` created
+   - ✅ Scheduled weekly (Sunday 6:30 AM UTC)
+   - ✅ Alerts created for non-compliant domains
+   - ✅ Compliance history stored in database
+
+2. **Implement contact information storage** (High Priority)
+   - Create `domain_contacts` table or add JSON field to domains
+   - Create `SyncDomainContactsJob` to periodically sync contacts
+   - Display contacts in UI (with privacy/encryption considerations)
+   - Track contact changes over time
+
+3. **Add renewal alerts** (Medium Priority)
+   - Create alerts for domains with `renewal_required = true`
+   - Create alerts for domains expiring soon (30, 14, 7 days)
+   - Integrate with existing `domains:check-expiring` command
+
+4. **Implement bulk operations** (Medium Priority)
+   - Research `bulkDomainInfo` API method
+   - Implement if it significantly improves performance
+   - Use in queue jobs to reduce API calls
+
+5. **Add transfer lock management** (Low Priority)
+   - Implement `lockDomain()` and `unlockDomain()` methods
+   - Add UI controls to lock/unlock domains
+   - Alert when domain is unlocked (security risk)
+
+6. **Review production logs** (Ongoing)
+   - Check actual API responses in logs
+   - Verify all fields are being extracted correctly
+   - Identify any additional useful fields we're missing

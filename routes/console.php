@@ -149,6 +149,13 @@ Schedule::command('domains:queue-subdomain-checks')
     ->at('06:00')
     ->timezone('UTC');
 
+// Weekly compliance check for .au domains - queue job to check all domains
+Schedule::job(new \App\Jobs\CheckComplianceJob)
+    ->weekly()
+    ->sundays()
+    ->at('06:30')
+    ->timezone('UTC');
+
 // Prune old monitoring/history rows to keep tables lean
 Schedule::command('domains:prune-monitoring-data')
     ->daily()

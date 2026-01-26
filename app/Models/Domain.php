@@ -216,6 +216,32 @@ class Domain extends Model
     }
 
     /**
+     * @return HasMany<DomainComplianceCheck, $this>
+     */
+    public function complianceChecks(): HasMany
+    {
+        return $this->hasMany(DomainComplianceCheck::class)->orderByDesc('checked_at');
+    }
+
+    /**
+     * Get the latest compliance check
+     */
+    public function latestComplianceCheck(): ?DomainComplianceCheck
+    {
+        return $this->complianceChecks()->latest('checked_at')->first();
+    }
+
+    /**
+     * Check if domain is currently compliant
+     */
+    public function isCompliant(): bool
+    {
+        $latest = $this->latestComplianceCheck();
+
+        return $latest ? $latest->is_compliant : true; // Assume compliant if no check exists
+    }
+
+    /**
      * @return HasOne<WebsitePlatform, $this>
      */
     public function platform(): HasOne
