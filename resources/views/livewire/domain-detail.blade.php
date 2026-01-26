@@ -557,6 +557,116 @@
             </div>
         @endif
 
+        <!-- Active Alerts -->
+        @php
+            $activeAlerts = $domain->alerts()->whereNull('resolved_at')->orderByDesc('triggered_at')->get();
+        @endphp
+        @if($activeAlerts->isNotEmpty())
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                <div class="p-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Active Alerts</h3>
+                    <div class="space-y-3">
+                        @foreach($activeAlerts as $alert)
+                            <div class="border-l-4 @if($alert->severity === 'critical' || $alert->severity === 'error') border-red-500 @elseif($alert->severity === 'warning') border-yellow-500 @else border-blue-500 @endif bg-@if($alert->severity === 'critical' || $alert->severity === 'error') red-50 dark:bg-red-900/20 @elseif($alert->severity === 'warning') yellow-50 dark:bg-yellow-900/20 @else blue-50 dark:bg-blue-900/20 @endif p-4 rounded-r">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <span class="px-2 py-1 text-xs font-semibold rounded @if($alert->severity === 'critical' || $alert->severity === 'error') bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 @elseif($alert->severity === 'warning') bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 @else bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 @endif uppercase">
+                                                {{ $alert->severity }}
+                                            </span>
+                                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                @if($alert->alert_type === 'compliance_issue')
+                                                    Compliance Issue
+                                                @elseif($alert->alert_type === 'renewal_required')
+                                                    Renewal Required
+                                                @elseif($alert->alert_type === 'domain_expiring')
+                                                    Domain Expiring
+                                                @elseif($alert->alert_type === 'ssl_expiring')
+                                                    SSL Expiring
+                                                @else
+                                                    {{ ucfirst(str_replace('_', ' ', $alert->alert_type)) }}
+                                                @endif
+                                            </span>
+                                        </div>
+                                        @if($alert->payload)
+                                            @php
+                                                $payload = $alert->payload;
+                                            @endphp
+                                            <div class="text-sm text-gray-700 dark:text-gray-300 mt-1">
+                                                @if(isset($payload['reason']))
+                                                    <p><strong>Reason:</strong> {{ $payload['reason'] }}</p>
+                                                @endif
+                                                @if(isset($payload['days_until_expiry']))
+                                                    <p><strong>Days until expiry:</strong> {{ $payload['days_until_expiry'] }}</p>
+                                                @endif
+                                                @if(isset($payload['expires_at']))
+                                                    <p><strong>Expires at:</strong> {{ \Carbon\Carbon::parse($payload['expires_at'])->format('Y-m-d H:i:s') }}</p>
+                                                @endif
+                                            </div>
+                                        @endif
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                            Triggered {{ $alert->triggered_at->diffForHumans() }} ({{ $alert->triggered_at->format('Y-m-d H:i:s') }})
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        <!-- Compliance Check History -->
+        @php
+            $complianceChecks = $domain->complianceChecks()->orderByDesc('checked_at')->limit(10)->get();
+        @endphp
+        @if($isAustralianTld && $complianceChecks->isNotEmpty())
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                <div class="p-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Compliance Check History</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-900">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Reason</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Source</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                @foreach($complianceChecks as $check)
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                            {{ $check->checked_at->format('Y-m-d H:i:s') }}
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">{{ $check->checked_at->diffForHumans() }}</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            @if($check->is_compliant)
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Compliant</span>
+                                            @else
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Non-Compliant</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                                            @if($check->compliance_reason)
+                                                <span class="text-red-600 dark:text-red-400">{{ $check->compliance_reason }}</span>
+                                            @else
+                                                <span class="text-gray-500 dark:text-gray-400">—</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                            {{ ucfirst($check->source) }}
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <!-- Health Check Actions -->
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
             <div class="p-6">

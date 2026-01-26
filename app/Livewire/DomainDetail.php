@@ -107,6 +107,12 @@ class DomainDetail extends Component
             'uptimeIncidents' => function ($query) {
                 $query->orderByDesc('started_at')->limit(10);
             },
+            'alerts' => function ($query) {
+                $query->whereNull('resolved_at')->orderByDesc('triggered_at');
+            },
+            'complianceChecks' => function ($query) {
+                $query->orderByDesc('checked_at')->limit(10);
+            },
         ])->findOrFail($this->domainId);
 
         // Sync simple platform field with relationship if relationship exists but field is empty

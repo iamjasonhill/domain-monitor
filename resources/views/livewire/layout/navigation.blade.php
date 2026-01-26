@@ -39,6 +39,10 @@ new class extends Component
                     <x-nav-link :href="route('health-checks.index')" :active="request()->routeIs('health-checks.*')" wire:navigate>
                         {{ __('Health Checks') }}
                     </x-nav-link>
+
+                    <x-nav-link :href="route('alerts.index')" :active="request()->routeIs('alerts.*')" wire:navigate>
+                        {{ __('Alerts') }}
+                    </x-nav-link>
                     <x-nav-link :href="route('hosting.index')" :active="request()->routeIs('hosting.*')" wire:navigate>
                         {{ __('Hosting') }}
                     </x-nav-link>
@@ -101,6 +105,10 @@ new class extends Component
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('health-checks.index')" :active="request()->routeIs('health-checks.*')" wire:navigate>
                 {{ __('Health Checks') }}
+            </x-responsive-nav-link>
+
+            <x-responsive-nav-link :href="route('alerts.index')" :active="request()->routeIs('alerts.*')" wire:navigate>
+                {{ __('Alerts') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('hosting.index')" :active="request()->routeIs('hosting.*')" wire:navigate>
                 {{ __('Hosting') }}

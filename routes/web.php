@@ -44,6 +44,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return view('eligibility-checks.index');
     })->name('eligibility-checks.index');
 
+    Route::get('/alerts', function () {
+        return view('alerts.index');
+    })->name('alerts.index');
+
     Route::get('/hosting', \App\Livewire\HostingReliability::class)->name('hosting.index');
 
     // Settings routes
