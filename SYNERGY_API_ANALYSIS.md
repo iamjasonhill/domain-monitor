@@ -166,7 +166,9 @@ Returns:
 
 2. ✅ **Implement `rawDomainContacts` method**:
    - ✅ `getDomainContacts()` method implemented in `SynergyWholesaleClient`
-   - ❌ Contact storage not yet implemented (next step)
+   - ✅ Contact storage implemented with encrypted fields
+   - ✅ `SyncDomainContactsJob` scheduled 3 times daily
+   - ❌ Display contacts in UI (next step)
 
 3. ✅ **Implement `domainRenewRequired` check**:
    - ✅ `checkRenewalRequired()` method implemented
@@ -259,34 +261,30 @@ The debug log at line 115-120 logs `response_keys` which shows all available fie
 
 ### 🎯 Next Priority Items
 
-1. ✅ **Create compliance monitoring job** (High Priority) - **COMPLETED**
-   - ✅ `CheckComplianceJob` created
-   - ✅ Scheduled weekly (Sunday 6:30 AM UTC)
-   - ✅ Alerts created for non-compliant domains
-   - ✅ Compliance history stored in database
+1. **Display contacts in UI** (High Priority)
+   - Add contact information display to domain detail view
+   - Show registrant, admin, tech, and billing contacts
+   - Respect privacy (decrypt only when displaying)
+   - Consider access controls for sensitive data
 
-2. ✅ **Implement contact information storage** (High Priority) - **COMPLETED**
-   - ✅ `domain_contacts` table created with encrypted fields
-   - ✅ `SyncDomainContactsJob` created and scheduled 3 times daily
-   - ✅ Sensitive data (email, phone, address) encrypted at rest
-   - ✅ Contact relationships and helper methods added to Domain model
-   - ❌ Display contacts in UI (next step)
-   - ❌ Track contact changes over time (could add history table)
-
-3. **Add renewal alerts** (Medium Priority)
+2. **Add renewal alerts** (Medium Priority)
    - Create alerts for domains with `renewal_required = true`
    - Create alerts for domains expiring soon (30, 14, 7 days)
    - Integrate with existing `domains:check-expiring` command
 
-4. **Implement bulk operations** (Medium Priority)
+3. **Implement bulk operations** (Medium Priority)
    - Research `bulkDomainInfo` API method
    - Implement if it significantly improves performance
    - Use in queue jobs to reduce API calls
 
-5. **Add transfer lock management** (Low Priority)
+4. **Add transfer lock management** (Low Priority)
    - Implement `lockDomain()` and `unlockDomain()` methods
    - Add UI controls to lock/unlock domains
    - Alert when domain is unlocked (security risk)
+
+5. **Track contact changes over time** (Low Priority)
+   - Create contact history table to track changes
+   - Useful for compliance audits and change tracking
 
 6. **Review production logs** (Ongoing)
    - Check actual API responses in logs
