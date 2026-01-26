@@ -10,7 +10,9 @@ use App\Models\SynergyCredential;
 use App\Services\HostingDetector;
 use App\Services\PlatformDetector;
 use App\Services\SynergyWholesaleClient;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -375,7 +377,6 @@ class DomainDetail extends Component
         // Validate domain and TLD
         if (! $this->domain || ! \App\Services\SynergyWholesaleClient::isAustralianTld($this->domain->domain)) {
             $this->addError('dnsRecordHost', 'Only Australian TLD domains (.com.au, .net.au, etc.) can manage DNS records.');
-            session()->flash('error', 'Only Australian TLD domains (.com.au, .net.au, etc.) can manage DNS records.');
 
             return;
         }
@@ -422,7 +423,6 @@ class DomainDetail extends Component
         $credential = SynergyCredential::where('is_active', true)->first();
         if (! $credential) {
             $this->addError('dnsRecordHost', 'No active domain registrar credentials found. Please configure Synergy Wholesale credentials in Settings.');
-            session()->flash('error', 'No active domain registrar credentials found. Please configure Synergy Wholesale credentials in Settings.');
 
             return;
         }
@@ -457,14 +457,16 @@ class DomainDetail extends Component
                 );
 
                 if ($result && $result['status'] === 'OK') {
-                    // Update local record
-                    $record->update([
-                        'host' => $this->dnsRecordHost,
-                        'type' => strtoupper($this->dnsRecordType),
-                        'value' => $this->dnsRecordValue,
-                        'ttl' => $this->dnsRecordTtl,
-                        'priority' => $this->dnsRecordPriority,
-                    ]);
+                    // Update local record within transaction
+                    DB::transaction(function () use ($record) {
+                        $record->update([
+                            'host' => $this->dnsRecordHost,
+                            'type' => strtoupper($this->dnsRecordType),
+                            'value' => $this->dnsRecordValue,
+                            'ttl' => $this->dnsRecordTtl,
+                            'priority' => $this->dnsRecordPriority,
+                        ]);
+                    });
 
                     session()->flash('message', 'DNS record updated successfully!');
                     $this->closeDnsRecordModal();
@@ -472,7 +474,6 @@ class DomainDetail extends Component
                 } else {
                     $errorMessage = $result['error_message'] ?? 'Failed to update DNS record.';
                     $this->addError('dnsRecordValue', $errorMessage);
-                    session()->flash('error', $errorMessage);
                 }
             } else {
                 // Add new record
@@ -486,17 +487,19 @@ class DomainDetail extends Component
                 );
 
                 if ($result && $result['status'] === 'OK' && $result['record_id']) {
-                    // Create local record
-                    DnsRecord::create([
-                        'domain_id' => $this->domain->id,
-                        'host' => $this->dnsRecordHost,
-                        'type' => strtoupper($this->dnsRecordType),
-                        'value' => $this->dnsRecordValue,
-                        'ttl' => $this->dnsRecordTtl,
-                        'priority' => $this->dnsRecordPriority,
-                        'record_id' => $result['record_id'],
-                        'synced_at' => now(),
-                    ]);
+                    // Create local record within transaction
+                    DB::transaction(function () use ($result) {
+                        DnsRecord::create([
+                            'domain_id' => $this->domain->id,
+                            'host' => $this->dnsRecordHost,
+                            'type' => strtoupper($this->dnsRecordType),
+                            'value' => $this->dnsRecordValue,
+                            'ttl' => $this->dnsRecordTtl,
+                            'priority' => $this->dnsRecordPriority,
+                            'record_id' => $result['record_id'],
+                            'synced_at' => now(),
+                        ]);
+                    });
 
                     session()->flash('message', 'DNS record added successfully!');
                     $this->closeDnsRecordModal();
@@ -504,13 +507,11 @@ class DomainDetail extends Component
                 } else {
                     $errorMessage = $result['error_message'] ?? 'Failed to add DNS record. Please check the values and try again.';
                     $this->addError('dnsRecordValue', $errorMessage);
-                    session()->flash('error', $errorMessage);
                 }
             }
         } catch (\Exception $e) {
             $errorMessage = 'Error saving DNS record: '.$e->getMessage();
             $this->addError('dnsRecordValue', $errorMessage);
-            session()->flash('error', $errorMessage);
         }
     }
 
@@ -549,7 +550,11 @@ class DomainDetail extends Component
             $result = $client->deleteDnsRecord($this->domain->domain, $record->record_id);
 
             if ($result && $result['status'] === 'OK') {
-                $record->delete();
+                // Delete local record within transaction
+                DB::transaction(function () use ($record) {
+                    $record->delete();
+                });
+
                 session()->flash('message', 'DNS record deleted successfully!');
                 $this->loadDomain();
             } else {
@@ -557,6 +562,11 @@ class DomainDetail extends Component
             }
         } catch (\Exception $e) {
             session()->flash('error', 'Error deleting DNS record: '.$e->getMessage());
+            Log::error('DNS record deletion failed', [
+                'domain_id' => $this->domain->id,
+                'record_id' => $record->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
@@ -637,26 +647,39 @@ class DomainDetail extends Component
 
             session()->flash('message', 'Subdomain updated successfully!');
         } else {
-            // Create new subdomain
-            $existing = Subdomain::where('domain_id', $this->domain->id)
-                ->where('subdomain', $this->subdomainName)
-                ->first();
+            // Create new subdomain - use firstOrCreate to prevent race conditions
+            try {
+                $subdomain = Subdomain::firstOrCreate(
+                    [
+                        'domain_id' => $this->domain->id,
+                        'subdomain' => $this->subdomainName,
+                    ],
+                    [
+                        'full_domain' => $fullDomain,
+                        'notes' => $this->subdomainNotes ?: null,
+                        'is_active' => true,
+                    ]
+                );
 
-            if ($existing) {
-                session()->flash('error', 'A subdomain with this name already exists.');
-
-                return;
+                // Check if it was just created or already existed
+                if ($subdomain->wasRecentlyCreated) {
+                    session()->flash('message', 'Subdomain added successfully!');
+                } else {
+                    session()->flash('error', 'A subdomain with this name already exists.');
+                }
+            } catch (QueryException $e) {
+                // Handle unique constraint violation (race condition)
+                if ($e->getCode() === '23000' || str_contains($e->getMessage(), 'UNIQUE constraint')) {
+                    session()->flash('error', 'A subdomain with this name already exists.');
+                } else {
+                    session()->flash('error', 'Failed to create subdomain: '.$e->getMessage());
+                    Log::error('Subdomain creation failed', [
+                        'domain_id' => $this->domain->id,
+                        'subdomain' => $this->subdomainName,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             }
-
-            Subdomain::create([
-                'domain_id' => $this->domain->id,
-                'subdomain' => $this->subdomainName,
-                'full_domain' => $fullDomain,
-                'notes' => $this->subdomainNotes ?: null,
-                'is_active' => true,
-            ]);
-
-            session()->flash('message', 'Subdomain added successfully!');
         }
 
         $this->closeSubdomainModal();

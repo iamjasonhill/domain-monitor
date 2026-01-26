@@ -175,39 +175,42 @@ class DomainsList extends Component
 
         $dir = $this->normalizeSortDirection($this->sortDirection);
 
+        // Ensure $dir is safe (already validated, but double-check)
+        $safeDir = $dir === 'desc' ? 'desc' : 'asc';
+
         switch ($this->sortField) {
             case 'domain':
-                $query->orderByRaw('LOWER(domains.domain) '.$dir);
+                $query->orderByRaw('LOWER(domains.domain) '.$safeDir);
                 break;
 
             case 'expires':
                 if ($connection === 'pgsql') {
-                    $query->orderByRaw("domains.expires_at {$dir} NULLS LAST");
+                    $query->orderByRaw("domains.expires_at {$safeDir} NULLS LAST");
                 } else {
                     $query->orderByRaw('domains.expires_at IS NULL ASC')
-                        ->orderBy('domains.expires_at', $dir);
+                        ->orderBy('domains.expires_at', $safeDir);
                 }
                 break;
 
             case 'hosting':
                 if ($connection === 'pgsql') {
-                    $query->orderByRaw("LOWER(domains.hosting_provider) {$dir} NULLS LAST");
+                    $query->orderByRaw("LOWER(domains.hosting_provider) {$safeDir} NULLS LAST");
                 } else {
                     $query->orderByRaw('domains.hosting_provider IS NULL ASC')
-                        ->orderByRaw('LOWER(domains.hosting_provider) '.$dir);
+                        ->orderByRaw('LOWER(domains.hosting_provider) '.$safeDir);
                 }
                 break;
 
             case 'active':
-                $query->orderBy('domains.is_active', $dir);
+                $query->orderBy('domains.is_active', $safeDir);
                 break;
 
             case 'platform':
                 if ($connection === 'pgsql') {
-                    $query->orderByRaw("LOWER(COALESCE(wp.platform_type, domains.platform)) {$dir} NULLS LAST");
+                    $query->orderByRaw("LOWER(COALESCE(wp.platform_type, domains.platform)) {$safeDir} NULLS LAST");
                 } else {
                     $query->orderByRaw('COALESCE(wp.platform_type, domains.platform) IS NULL ASC')
-                        ->orderByRaw('LOWER(COALESCE(wp.platform_type, domains.platform)) '.$dir);
+                        ->orderByRaw('LOWER(COALESCE(wp.platform_type, domains.platform)) '.$safeDir);
                 }
                 break;
         }
