@@ -1,46 +1,15 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" x-data="{ darkMode: window.getDarkMode() }" x-bind:class="{ 'dark': darkMode }">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Domain Monitor - Welcome</title>
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         
-        <!-- Initialize dark mode before Alpine.js -->
+        <!-- Force dark mode always -->
         <script>
-            // Initialize dark mode immediately to prevent flash
-            (function() {
-                const theme = localStorage.getItem('theme') || 'dark';
-                if (theme === 'dark') {
-                    document.documentElement.classList.add('dark');
-                } else {
-                    document.documentElement.classList.remove('dark');
-                }
-                // Make functions available immediately
-                window.getDarkMode = function() {
-                    // If localStorage has a value, use it
-                    const stored = localStorage.getItem('theme');
-                    if (stored) {
-                        return stored === 'dark';
-                    }
-                    // Fallback: check if dark class is already on html element
-                    // (should be set by initialization above if defaulting to dark)
-                    // Return the actual class state - initialization script handles defaulting to dark
-                    return document.documentElement.classList.contains('dark');
-                };
-                window.toggleDarkMode = function() {
-                    const isDark = document.documentElement.classList.contains('dark');
-                    if (isDark) {
-                        document.documentElement.classList.remove('dark');
-                        localStorage.setItem('theme', 'light');
-                        return 'light';
-                    } else {
-                        document.documentElement.classList.add('dark');
-                        localStorage.setItem('theme', 'dark');
-                        return 'dark';
-                    }
-                };
-            })();
+            // Force dark mode immediately to prevent flash
+            document.documentElement.classList.add('dark');
         </script>
     </head>
     <body class="antialiased bg-gray-50 dark:bg-gray-900">
