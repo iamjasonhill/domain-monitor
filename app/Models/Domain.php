@@ -35,6 +35,18 @@ use Illuminate\Support\Str;
  * @property string|null $eligibility_type
  * @property bool|null $eligibility_valid
  * @property \Illuminate\Support\Carbon|null $eligibility_last_check
+ * @property string|null $domain_roid
+ * @property string|null $registry_id
+ * @property int|null $dns_config_id
+ * @property string|null $au_policy_id
+ * @property string|null $au_policy_desc
+ * @property string|null $au_compliance_reason
+ * @property string|null $au_association_id
+ * @property string|null $id_protect
+ * @property array<int, mixed>|null $categories
+ * @property bool|null $transfer_lock
+ * @property bool|null $renewal_required
+ * @property bool|null $can_renew
  * @property \Illuminate\Support\Carbon|null $last_checked_at
  * @property int $check_frequency_minutes
  * @property string|null $notes
@@ -87,6 +99,18 @@ class Domain extends Model
         'eligibility_type',
         'eligibility_valid',
         'eligibility_last_check',
+        'domain_roid',
+        'registry_id',
+        'dns_config_id',
+        'au_policy_id',
+        'au_policy_desc',
+        'au_compliance_reason',
+        'au_association_id',
+        'id_protect',
+        'categories',
+        'transfer_lock',
+        'renewal_required',
+        'can_renew',
         'last_checked_at',
         'check_frequency_minutes',
         'notes',
@@ -115,6 +139,10 @@ class Domain extends Model
             'nameserver_details' => 'array',
             'eligibility_valid' => 'boolean',
             'eligibility_last_check' => 'date',
+            'categories' => 'array',
+            'transfer_lock' => 'boolean',
+            'renewal_required' => 'boolean',
+            'can_renew' => 'boolean',
             'last_checked_at' => 'datetime',
             'is_active' => 'boolean',
             'check_frequency_minutes' => 'integer',

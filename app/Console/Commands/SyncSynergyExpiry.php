@@ -196,6 +196,54 @@ class SyncSynergyExpiry extends Command
                 }
             }
 
+            // Additional .au compliance fields
+            if (isset($domainInfo['au_policy_id'])) {
+                $updateData['au_policy_id'] = $domainInfo['au_policy_id'];
+            }
+            if (isset($domainInfo['au_policy_desc'])) {
+                $updateData['au_policy_desc'] = $domainInfo['au_policy_desc'];
+            }
+            if (isset($domainInfo['au_compliance_reason'])) {
+                $updateData['au_compliance_reason'] = $domainInfo['au_compliance_reason'];
+            }
+            if (isset($domainInfo['au_association_id'])) {
+                $updateData['au_association_id'] = $domainInfo['au_association_id'];
+            }
+
+            // Registry and domain identifiers
+            if (isset($domainInfo['domain_roid'])) {
+                $updateData['domain_roid'] = $domainInfo['domain_roid'];
+            }
+            if (isset($domainInfo['registry_id'])) {
+                $updateData['registry_id'] = $domainInfo['registry_id'];
+            }
+
+            // DNS configuration
+            if (isset($domainInfo['dns_config_id'])) {
+                $updateData['dns_config_id'] = $domainInfo['dns_config_id'];
+            }
+
+            // ID protection and categories
+            if (isset($domainInfo['id_protect'])) {
+                $updateData['id_protect'] = $domainInfo['id_protect'];
+            }
+            if (isset($domainInfo['categories'])) {
+                $updateData['categories'] = $domainInfo['categories'];
+            }
+
+            // Check transfer lock status
+            $lockStatus = $client->getDomainLockStatus($domain->domain);
+            if ($lockStatus && ! isset($lockStatus['error_message'])) {
+                $updateData['transfer_lock'] = $lockStatus['locked'];
+            }
+
+            // Check renewal status
+            $renewalStatus = $client->checkRenewalRequired($domain->domain);
+            if ($renewalStatus && ! isset($renewalStatus['error_message'])) {
+                $updateData['renewal_required'] = $renewalStatus['renewal_required'];
+                $updateData['can_renew'] = $renewalStatus['can_renew'];
+            }
+
             // Update registrar if not set
             if (! $domain->registrar && isset($domainInfo['registrar'])) {
                 $updateData['registrar'] = $domainInfo['registrar'];

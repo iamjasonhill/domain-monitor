@@ -249,6 +249,10 @@ class ImportSynergyDomains extends Command
             }
         }
 
+        // Additional .au compliance fields (from getDomainInfo, not listDomains)
+        // These will be populated during sync operations
+        // Note: listDomains may not return all fields, so we rely on sync commands
+
         return $data;
     }
 }
