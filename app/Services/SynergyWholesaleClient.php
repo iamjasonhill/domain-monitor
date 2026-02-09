@@ -562,6 +562,7 @@ class SynergyWholesaleClient
                 'recordType' => strtoupper($recordType),
                 'recordContent' => $recordContent,
                 'recordTTL' => (string) $recordTTL, // API expects string for TTL in update
+                'recordPrio' => $recordPrio,
                 'recordID' => $recordId,
             ];
 
