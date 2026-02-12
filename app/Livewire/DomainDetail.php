@@ -4,13 +4,12 @@ namespace App\Livewire;
 
 use App\Models\Domain;
 use App\Models\DomainCheck;
-use App\Models\Subdomain;
 use App\Models\SynergyCredential;
 use App\Services\DomainDnsRecordService;
+use App\Services\DomainSubdomainService;
 use App\Services\HostingDetector;
 use App\Services\PlatformDetector;
 use App\Services\SynergyWholesaleClient;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
@@ -481,8 +480,8 @@ class DomainDetail extends Component
 
     public function openEditSubdomainModal(string $subdomainId): void
     {
-        $subdomain = Subdomain::find($subdomainId);
-        if (! $subdomain || $subdomain->domain_id !== $this->domain->id) {
+        $subdomain = app(DomainSubdomainService::class)->findForDomain($this->domain, $subdomainId);
+        if (! $subdomain) {
             session()->flash('error', 'Subdomain not found.');
 
             return;
@@ -504,83 +503,19 @@ class DomainDetail extends Component
 
     public function saveSubdomain(): void
     {
-        if (empty($this->subdomainName)) {
-            session()->flash('error', 'Subdomain name is required.');
+        $result = app(DomainSubdomainService::class)->saveSubdomain(
+            $this->domain,
+            $this->subdomainName,
+            $this->subdomainNotes,
+            $this->editingSubdomainId
+        );
 
-            return;
-        }
-
-        // Validate subdomain format (alphanumeric, hyphens, underscores)
-        if (! preg_match('/^[a-z0-9]([a-z0-9\-_]*[a-z0-9])?$/i', $this->subdomainName)) {
-            session()->flash('error', 'Invalid subdomain format. Use only letters, numbers, hyphens, and underscores.');
-
-            return;
-        }
-
-        $fullDomain = "{$this->subdomainName}.{$this->domain->domain}";
-
-        if ($this->editingSubdomainId) {
-            // Update existing subdomain
-            $subdomain = Subdomain::find($this->editingSubdomainId);
-            if (! $subdomain || $subdomain->domain_id !== $this->domain->id) {
-                session()->flash('error', 'Subdomain not found.');
-
-                return;
-            }
-
-            // Check if another subdomain with this name exists
-            $existing = Subdomain::where('domain_id', $this->domain->id)
-                ->where('subdomain', $this->subdomainName)
-                ->where('id', '!=', $this->editingSubdomainId)
-                ->first();
-
-            if ($existing) {
-                session()->flash('error', 'A subdomain with this name already exists.');
-
-                return;
-            }
-
-            $subdomain->update([
-                'subdomain' => $this->subdomainName,
-                'full_domain' => $fullDomain,
-                'notes' => $this->subdomainNotes ?: null,
-            ]);
-
-            session()->flash('message', 'Subdomain updated successfully!');
+        if ($result['ok']) {
+            session()->flash('message', $result['message'] ?? 'Subdomain saved successfully!');
         } else {
-            // Create new subdomain - use firstOrCreate to prevent race conditions
-            try {
-                $subdomain = Subdomain::firstOrCreate(
-                    [
-                        'domain_id' => $this->domain->id,
-                        'subdomain' => $this->subdomainName,
-                    ],
-                    [
-                        'full_domain' => $fullDomain,
-                        'notes' => $this->subdomainNotes ?: null,
-                        'is_active' => true,
-                    ]
-                );
+            session()->flash('error', $result['error'] ?? 'Failed to save subdomain.');
 
-                // Check if it was just created or already existed
-                if ($subdomain->wasRecentlyCreated) {
-                    session()->flash('message', 'Subdomain added successfully!');
-                } else {
-                    session()->flash('error', 'A subdomain with this name already exists.');
-                }
-            } catch (QueryException $e) {
-                // Handle unique constraint violation (race condition)
-                if ($e->getCode() === '23000' || str_contains($e->getMessage(), 'UNIQUE constraint')) {
-                    session()->flash('error', 'A subdomain with this name already exists.');
-                } else {
-                    session()->flash('error', 'Failed to create subdomain: '.$e->getMessage());
-                    Log::error('Subdomain creation failed', [
-                        'domain_id' => $this->domain->id,
-                        'subdomain' => $this->subdomainName,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
+            return;
         }
 
         $this->closeSubdomainModal();
@@ -589,15 +524,15 @@ class DomainDetail extends Component
 
     public function deleteSubdomain(string $subdomainId): void
     {
-        $subdomain = Subdomain::find($subdomainId);
-        if (! $subdomain || $subdomain->domain_id !== $this->domain->id) {
-            session()->flash('error', 'Subdomain not found.');
+        $result = app(DomainSubdomainService::class)->deleteSubdomain($this->domain, $subdomainId);
+
+        if (! $result['ok']) {
+            session()->flash('error', $result['error'] ?? 'Failed to delete subdomain.');
 
             return;
         }
 
-        $subdomain->delete();
-        session()->flash('message', 'Subdomain deleted successfully!');
+        session()->flash('message', $result['message'] ?? 'Subdomain deleted successfully!');
         $this->loadDomain();
     }
 
@@ -609,160 +544,37 @@ class DomainDetail extends Component
             return;
         }
 
-        $subdomains = $this->domain->subdomains()->where('is_active', true)->get();
+        $result = app(DomainSubdomainService::class)->updateAllSubdomainsIp($this->domain);
 
-        if ($subdomains->isEmpty()) {
-            session()->flash('info', 'No active subdomains to update.');
+        if (! $result['ok']) {
+            session()->flash('error', $result['error'] ?? 'Failed to update subdomains.');
 
             return;
         }
 
-        $updated = 0;
-        $ipApiService = app(\App\Services\IpApiService::class);
-
-        foreach ($subdomains as $subdomain) {
-            try {
-                // Get IP address first (from existing or resolve)
-                $ipAddress = $subdomain->ip_address;
-
-                if (! $ipAddress) {
-                    $ipAddresses = $this->getIpAddresses($subdomain->full_domain);
-                    $ipAddress = $ipAddresses[0] ?? null;
-                }
-
-                if (! $ipAddress) {
-                    continue;
-                }
-
-                // Query IP-API.com
-                $ipApiData = $ipApiService->query($ipAddress);
-
-                if ($ipApiData) {
-                    $updateData = [
-                        'ip_address' => $ipAddress,
-                        'ip_checked_at' => now(),
-                        'ip_isp' => $ipApiData['isp'] ?? null,
-                        'ip_organization' => $ipApiData['org'] ?? null,
-                        'ip_as_number' => $ipApiData['as'] ?? null,
-                        'ip_country' => $ipApiData['country'] ?? null,
-                        'ip_city' => $ipApiData['city'] ?? null,
-                        'ip_hosting_flag' => $ipApiData['hosting'] ?? null,
-                    ];
-
-                    $ipApiProvider = $ipApiService->extractHostingProvider($ipApiData);
-                    if ($ipApiProvider && ! $subdomain->hosting_provider) {
-                        $updateData['hosting_provider'] = $ipApiProvider;
-                    }
-
-                    $subdomain->update($updateData);
-                    $updated++;
-
-                    // Rate limiting: wait 2 seconds between requests
-                    sleep(2);
-                }
-            } catch (\Exception $e) {
-                // Continue with next subdomain
-            }
+        if (isset($result['info'])) {
+            session()->flash('info', $result['info']);
+        } elseif (isset($result['message'])) {
+            session()->flash('message', $result['message']);
         }
 
         $this->loadDomain();
-        session()->flash('message', "Updated IP information for {$updated}/{$subdomains->count()} subdomain(s).");
     }
 
     public function updateSubdomainIp(string $subdomainId): void
     {
-        $subdomain = Subdomain::find($subdomainId);
-        if (! $subdomain || $subdomain->domain_id !== $this->domain->id) {
-            session()->flash('error', 'Subdomain not found.');
-
-            return;
-        }
-
         try {
-            // Use the UpdateIpInfo service directly for subdomains
-            $ipApiService = app(\App\Services\IpApiService::class);
+            $result = app(DomainSubdomainService::class)->updateSubdomainIp($this->domain, $subdomainId);
 
-            // Get IP address first (from DNS or resolve)
-            $ipAddresses = $this->getIpAddresses($subdomain->full_domain);
-
-            if (empty($ipAddresses)) {
-                session()->flash('error', 'Could not resolve IP address for subdomain.');
-
-                return;
-            }
-
-            $primaryIp = $ipAddresses[0];
-
-            // Query IP-API.com
-            $ipApiData = $ipApiService->query($primaryIp);
-
-            if ($ipApiData) {
-                $updateData = [
-                    'ip_address' => $primaryIp,
-                    'ip_checked_at' => now(),
-                    'ip_isp' => $ipApiData['isp'] ?? null,
-                    'ip_organization' => $ipApiData['org'] ?? null,
-                    'ip_as_number' => $ipApiData['as'] ?? null,
-                    'ip_country' => $ipApiData['country'] ?? null,
-                    'ip_city' => $ipApiData['city'] ?? null,
-                    'ip_hosting_flag' => $ipApiData['hosting'] ?? null,
-                ];
-
-                // Also update hosting provider if IP-API suggests one
-                $ipApiProvider = $ipApiService->extractHostingProvider($ipApiData);
-                if ($ipApiProvider && ! $subdomain->hosting_provider) {
-                    $updateData['hosting_provider'] = $ipApiProvider;
-                    // Get suggested login URL for the provider
-                    $suggestedUrl = \App\Services\HostingProviderUrls::getLoginUrl($ipApiProvider);
-                    if ($suggestedUrl && ! $subdomain->hosting_admin_url) {
-                        $updateData['hosting_admin_url'] = $suggestedUrl;
-                    }
-                }
-
-                $subdomain->update($updateData);
+            if ($result['ok']) {
                 $this->loadDomain();
-                session()->flash('message', 'Subdomain IP information updated!');
+                session()->flash('message', $result['message'] ?? 'Subdomain IP information updated!');
             } else {
-                session()->flash('error', 'Could not retrieve IP information from IP-API.com.');
+                session()->flash('error', $result['error'] ?? 'Failed to update subdomain IP.');
             }
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to update subdomain IP: '.$e->getMessage());
         }
-    }
-
-    /**
-     * Get IP addresses for domain/subdomain
-     *
-     * @return array<int, string>
-     */
-    private function getIpAddresses(string $domain): array
-    {
-        $ipAddresses = [];
-
-        try {
-            // Get A records (IPv4)
-            /** @var list<array{ip?: string}>|false $aRecords */
-            $aRecords = @dns_get_record($domain, DNS_A);
-            if (is_array($aRecords) && $aRecords !== []) {
-                foreach ($aRecords as $record) {
-                    if (isset($record['ip']) && filter_var($record['ip'], FILTER_VALIDATE_IP)) {
-                        $ipAddresses[] = $record['ip'];
-                    }
-                }
-            }
-
-            // Also try gethostbyname as fallback
-            $ip = @gethostbyname($domain);
-            if ($ip && $ip !== $domain && filter_var($ip, FILTER_VALIDATE_IP)) {
-                if (! in_array($ip, $ipAddresses)) {
-                    $ipAddresses[] = $ip;
-                }
-            }
-        } catch (\Exception $e) {
-            // Silently fail
-        }
-
-        return array_unique($ipAddresses);
     }
 
     public function discoverSubdomainsFromDns(): void
