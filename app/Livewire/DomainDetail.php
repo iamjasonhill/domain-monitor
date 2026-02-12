@@ -4,17 +4,15 @@ namespace App\Livewire;
 
 use App\Models\Domain;
 use App\Models\DomainCheck;
-use App\Models\SynergyCredential;
+use App\Services\DomainDnsAutoFixService;
 use App\Services\DomainDnsRecordService;
 use App\Services\DomainSubdomainService;
 use App\Services\HostingDetector;
 use App\Services\PlatformDetector;
-use App\Services\SynergyWholesaleClient;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
-use Spatie\Dns\Dns;
 
 class DomainDetail extends Component
 {
@@ -647,226 +645,23 @@ class DomainDetail extends Component
 
     public function applyFix(string $checkType): void
     {
-        Log::info('Automated DNS fix initiated', [
-            'domain' => $this->domain->domain,
-            'type' => $checkType,
-        ]);
-
-        // 1. Validate Eligibility
-        if (! $this->domain || ! \App\Services\SynergyWholesaleClient::isAustralianTld($this->domain->domain)) {
-            Log::warning('Automated DNS fix skipped: not eligible', ['domain' => $this->domain->domain ?? 'unknown']);
-            session()->flash('error', 'Automated fixes are only available for Australian TLD domains.');
+        if (! $this->domain) {
+            session()->flash('error', 'Domain not found.');
 
             return;
         }
 
-        // 2. Get Credentials
-        $credential = SynergyCredential::where('is_active', true)->first();
-        if (! $credential) {
-            Log::error('Automated DNS fix failed: no credentials');
-            session()->flash('error', 'No active Synergy credentials found.');
+        $result = app(DomainDnsAutoFixService::class)->applyFix($this->domain, $checkType);
+
+        if ($result['ok']) {
+            session()->flash('message', $result['message']);
+            $this->syncDnsRecords();
+            $this->runHealthCheck('email_security');
 
             return;
         }
 
-        $client = SynergyWholesaleClient::fromEncryptedCredentials(
-            $credential->reseller_id,
-            $credential->api_key_encrypted,
-            $credential->api_url
-        );
-
-        try {
-            // 3. Fetch current live records to ensure we aren't duplicating
-            $liveRecords = $client->getDnsRecords($this->domain->domain);
-            if (! $liveRecords) {
-                throw new \Exception('Could not fetch current DNS records from Synergy.');
-            }
-
-            $success = false;
-            $message = '';
-
-            switch ($checkType) {
-                case 'spf':
-                    $success = $this->fixSpf($client, $liveRecords, $message);
-                    break;
-                case 'dmarc':
-                    $success = $this->fixDmarc($client, $liveRecords, $message);
-                    break;
-                case 'caa':
-                    $success = $this->fixCaa($client, $liveRecords, $message);
-                    break;
-                default:
-                    throw new \Exception("Unknown fix type: {$checkType}");
-            }
-
-            if ($success) {
-                session()->flash('message', $message);
-                $this->syncDnsRecords(); // Sync back to local DB
-                // Trigger health check to verify (might be too fast for propagation, but good UX)
-                $this->runHealthCheck('email_security');
-            } else {
-                session()->flash('error', $message);
-            }
-        } catch (\Exception $e) {
-            session()->flash('error', 'Failed to apply fix: '.$e->getMessage());
-        }
-    }
-
-    /**
-     * @param  array<int, array{host: string, type: string, value: string, ttl: int|null, priority?: int|null, id?: string|null}>  $records
-     */
-    private function fixSpf(SynergyWholesaleClient $client, array $records, string &$message): bool
-    {
-        // Look for existing SPF
-        $existingSpf = null;
-        foreach ($records as $record) {
-            if ($record['type'] === 'TXT' && ($record['host'] === '@' || $record['host'] === $this->domain->domain) && str_starts_with($record['value'], 'v=spf1')) {
-                $existingSpf = $record;
-                break;
-            }
-        }
-
-        $defaultValue = 'v=spf1 a mx ~all';
-
-        Log::info('Checking for existing SPF record', ['found' => $existingSpf ? true : false]);
-
-        if ($existingSpf && ! empty($existingSpf['id'])) {
-            // Update
-            $result = $client->updateDnsRecord(
-                $this->domain->domain,
-                (string) $existingSpf['id'],
-                '@',
-                'TXT',
-                $defaultValue,
-                300
-            );
-            $message = 'Updated existing SPF record to safe default.';
-        } else {
-            // Create
-            $result = $client->addDnsRecord(
-                $this->domain->domain,
-                '@',
-                'TXT',
-                $defaultValue,
-                300
-            );
-            $message = 'Created new SPF record.';
-        }
-
-        if (isset($result['status']) && $result['status'] === 'OK') {
-            return true;
-        }
-
-        $message = $result['error_message'] ?? 'Unknown API error.';
-
-        return false;
-    }
-
-    /**
-     * @param  array<int, array{host: string, type: string, value: string, ttl: int|null, priority?: int|null, id?: string|null}>  $records
-     */
-    private function fixDmarc(SynergyWholesaleClient $client, array $records, string &$message): bool
-    {
-        // Look for existing DMARC at _dmarc
-        $existingDmarc = null;
-        foreach ($records as $record) {
-            if ($record['type'] === 'TXT' && $record['host'] === '_dmarc') {
-                $existingDmarc = $record;
-                break;
-            }
-        }
-
-        $defaultValue = 'v=DMARC1; p=none;';
-
-        Log::info('Checking for existing DMARC record', ['found' => $existingDmarc ? true : false]);
-
-        if ($existingDmarc && ! empty($existingDmarc['id'])) {
-            // Update
-            $result = $client->updateDnsRecord(
-                $this->domain->domain,
-                (string) $existingDmarc['id'],
-                '_dmarc',
-                'TXT',
-                $defaultValue,
-                300
-            );
-            $message = 'Updated existing DMARC record to p=none.';
-        } else {
-            // Create
-            $result = $client->addDnsRecord(
-                $this->domain->domain,
-                '_dmarc',
-                'TXT',
-                $defaultValue,
-                300
-            );
-            $message = 'Created new DMARC record.';
-        }
-
-        if (isset($result['status']) && $result['status'] === 'OK') {
-            return true;
-        }
-
-        $message = $result['error_message'] ?? 'Unknown API error.';
-
-        return false;
-    }
-
-    /**
-     * @param  array<int, array{host: string, type: string, value: string, ttl: int|null, priority?: int|null, id?: string|null}>  $records
-     */
-    private function fixCaa(SynergyWholesaleClient $client, array $records, string &$message): bool
-    {
-        // First, check Synergy API records
-        $hasCaaInApi = false;
-        foreach ($records as $record) {
-            if ($record['type'] === 'CAA') {
-                $hasCaaInApi = true;
-                break;
-            }
-        }
-
-        // Also verify via actual DNS lookup to be extra safe
-        $hasCaaInDns = false;
-        try {
-            $dns = new Dns;
-            $caaRecords = $dns->getRecords($this->domain->domain, 'CAA');
-            $hasCaaInDns = ! empty($caaRecords);
-        } catch (\Exception $e) {
-            Log::warning('CAA DNS lookup failed during fix check', [
-                'domain' => $this->domain->domain,
-                'error' => $e->getMessage(),
-            ]);
-            // If DNS lookup fails, we'll be conservative and skip creation
-            $message = 'Could not verify CAA records via DNS lookup. Skipping automatic creation to avoid conflicts.';
-
-            return false;
-        }
-
-        if ($hasCaaInApi || $hasCaaInDns) {
-            $message = 'CAA records already exist (verified via API and DNS lookup). Automatic fix skipped to avoid breaking existing authorization.';
-
-            return false;
-        }
-
-        // Create for Let's Encrypt
-        $result = $client->addDnsRecord(
-            $this->domain->domain,
-            '@',
-            'CAA',
-            '0 issue "letsencrypt.org"',
-            300
-        );
-
-        if (isset($result['status']) && $result['status'] === 'OK') {
-            $message = "Created CAA record for Let's Encrypt.";
-
-            return true;
-        }
-
-        $message = $result['error_message'] ?? 'Unknown API error.';
-
-        return false;
+        session()->flash('error', $result['message']);
     }
 
     public function render(): \Illuminate\Contracts\View\View
