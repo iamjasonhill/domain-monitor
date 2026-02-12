@@ -40,6 +40,17 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --no-interaction --no-progress --prefer-dist
 
+      - name: Validate production Horizon allowlist guard
+        run: |
+          chmod +x ./scripts/check-production-env.sh
+
+          if APP_ENV=production HORIZON_ALLOWED_EMAILS= ./scripts/check-production-env.sh; then
+            echo "::error::Expected production guard to fail when HORIZON_ALLOWED_EMAILS is empty."
+            exit 1
+          fi
+
+          APP_ENV=production HORIZON_ALLOWED_EMAILS=ops@example.com ./scripts/check-production-env.sh
+
       - name: Pint (style)
         run: ./vendor/bin/pint --test
 
@@ -92,5 +103,4 @@ jobs:
 
       - name: npm audit (high+)
         run: npm audit --audit-level=high
-
 

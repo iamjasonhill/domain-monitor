@@ -7,6 +7,9 @@ $CREATE_RELEASE()
 
 cd $FORGE_RELEASE_DIRECTORY
 
+# Validate production-only safeguards before deploying.
+./scripts/check-production-env.sh
+
 # Install PHP dependencies
 $FORGE_COMPOSER install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 
@@ -31,4 +34,3 @@ $ACTIVATE_RELEASE()
 
 # Restart queue workers (if configured)
 $RESTART_QUEUES()
-
