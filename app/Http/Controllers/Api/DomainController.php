@@ -14,28 +14,43 @@ use Illuminate\Support\Arr;
 
 class DomainController extends Controller
 {
+    private const DEFAULT_PER_PAGE = 50;
+
+    private const MAX_PER_PAGE = 100;
+
     /**
      * Display a listing of all domains.
      */
     public function index(Request $request): AnonymousResourceCollection
     {
+        $validated = $request->validate([
+            'tag' => 'nullable|string|max:100',
+            'status' => 'nullable|in:active,inactive',
+            'platform' => 'nullable|string|max:100',
+            'scaffolding_status' => 'nullable|in:pending,in_progress,complete,failed',
+            'target_platform' => 'nullable|string|max:100',
+            'per_page' => 'nullable|integer|min:1',
+        ]);
+
+        $perPage = min((int) ($validated['per_page'] ?? self::DEFAULT_PER_PAGE), self::MAX_PER_PAGE);
+
         $query = Domain::query()->orderBy('domain');
 
         // Optional tag filter
-        if ($request->has('tag')) {
-            $query->whereHas('tags', function ($q) use ($request) {
-                $q->where('name', 'like', $request->get('tag'));
+        if (isset($validated['tag'])) {
+            $query->whereHas('tags', function ($q) use ($validated) {
+                $q->where('name', 'like', $validated['tag']);
             });
         }
 
         // Optional status filter
-        if ($request->has('status')) {
-            $query->where('is_active', $request->get('status') === 'active');
+        if (isset($validated['status'])) {
+            $query->where('is_active', $validated['status'] === 'active');
         }
 
         // Optional platform filter
-        if ($request->has('platform')) {
-            $platformFilter = $request->get('platform');
+        if (isset($validated['platform'])) {
+            $platformFilter = $validated['platform'];
             $query->where(function ($q) use ($platformFilter) {
                 $q->where('platform', 'like', "%{$platformFilter}%")
                     ->orWhereHas('platform', function ($pq) use ($platformFilter) {
@@ -45,16 +60,18 @@ class DomainController extends Controller
         }
 
         // Optional scaffolding status filter
-        if ($request->has('scaffolding_status')) {
-            $query->where('scaffolding_status', $request->get('scaffolding_status'));
+        if (isset($validated['scaffolding_status'])) {
+            $query->where('scaffolding_status', $validated['scaffolding_status']);
         }
 
         // Optional target platform filter
-        if ($request->has('target_platform')) {
-            $query->where('target_platform', 'like', '%'.$request->get('target_platform').'%');
+        if (isset($validated['target_platform'])) {
+            $query->where('target_platform', 'like', '%'.$validated['target_platform'].'%');
         }
 
-        return DomainResource::collection($query->get());
+        return DomainResource::collection(
+            $query->paginate($perPage)->appends($request->query())
+        );
     }
 
     /**

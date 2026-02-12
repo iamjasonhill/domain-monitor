@@ -11,6 +11,10 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class TagController extends Controller
 {
+    private const DEFAULT_PER_PAGE = 50;
+
+    private const MAX_PER_PAGE = 100;
+
     /**
      * List all tags with domain counts.
      */
@@ -39,6 +43,12 @@ class TagController extends Controller
      */
     public function domains(Request $request, string $tagId): AnonymousResourceCollection|JsonResponse
     {
+        $validated = $request->validate([
+            'per_page' => 'nullable|integer|min:1',
+        ]);
+
+        $perPage = min((int) ($validated['per_page'] ?? self::DEFAULT_PER_PAGE), self::MAX_PER_PAGE);
+
         $tag = DomainTag::find($tagId);
 
         if (! $tag) {
@@ -54,7 +64,8 @@ class TagController extends Controller
 
         $domains = $tag->domains()
             ->orderBy('domain')
-            ->get();
+            ->paginate($perPage)
+            ->appends($request->query());
 
         return DomainResource::collection($domains);
     }
