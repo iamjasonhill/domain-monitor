@@ -14,6 +14,16 @@ jobs:
   php:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php-version: "8.2"
+            run-quality: false
+          - php-version: "8.3"
+            run-quality: false
+          - php-version: "8.4"
+            run-quality: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,7 +37,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.4"
+          php-version: ${{ matrix.php-version }}
           coverage: none
           tools: composer:v2
 
@@ -41,6 +51,7 @@ jobs:
         run: composer install --no-interaction --no-progress --prefer-dist
 
       - name: Validate production Horizon allowlist guard
+        if: ${{ matrix.run-quality }}
         run: |
           chmod +x ./scripts/check-production-env.sh
 
@@ -52,9 +63,11 @@ jobs:
           APP_ENV=production HORIZON_ALLOWED_EMAILS=ops@example.com ./scripts/check-production-env.sh
 
       - name: Pint (style)
+        if: ${{ matrix.run-quality }}
         run: ./vendor/bin/pint --test
 
       - name: PHPStan
+        if: ${{ matrix.run-quality }}
         run: ./vendor/bin/phpstan analyse --memory-limit=2G
 
       - name: PHPUnit
@@ -77,6 +90,7 @@ jobs:
           path: storage/logs/laravel.log
 
       - name: Composer audit
+        if: ${{ matrix.run-quality }}
         run: |
           # composer audit exits with:
           # - 0: no vulnerabilities / no abandoned packages
@@ -103,4 +117,3 @@ jobs:
 
       - name: npm audit (high+)
         run: npm audit --audit-level=high
-
