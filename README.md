@@ -73,9 +73,12 @@ See `DEPLOYMENT.md` for a complete list of required environment variables.
 
 ### Optional
 - `SYNERGY_WHOLESALE_*` - Synergy Wholesale API credentials (for .com.au domains)
+- `HORIZON_ALLOWED_EMAILS` - Comma-separated allowlist for Horizon dashboard access in non-local environments (recommended in production).
 - `DOMAIN_MONITOR_RECENT_FAILURES_HOURS` - Default “Recent failures” window (hours). Can be overridden in-app at `/settings/monitoring`.
 - `DOMAIN_MONITOR_PRUNE_DOMAIN_CHECKS_DAYS` - Retain `domain_checks` history for N days (default 90).
 - `DOMAIN_MONITOR_PRUNE_ELIGIBILITY_CHECKS_DAYS` - Retain `domain_eligibility_checks` history for N days (default 180).
+
+Production note: set `HORIZON_ALLOWED_EMAILS` before exposing `/horizon` so only approved operator accounts can access queue internals.
 
 ## Scheduled Tasks
 
@@ -139,4 +142,3 @@ See `CONTRIBUTING.md`.
 ## Security
 
 See `SECURITY.md`.
-

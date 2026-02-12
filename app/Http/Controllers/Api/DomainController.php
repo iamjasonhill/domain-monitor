@@ -140,7 +140,7 @@ class DomainController extends Controller
         $tag = DomainTag::find($tagId);
         if (! $tag) {
             // Try finding by name
-            $tag = DomainTag::where('name', 'like', $tagId)->first();
+            $tag = DomainTag::where('name', $tagId)->first();
         }
 
         if (! $tag) {
@@ -168,7 +168,7 @@ class DomainController extends Controller
         $tag = DomainTag::find($tagId);
         if (! $tag) {
             // Try finding by name
-            $tag = DomainTag::where('name', 'like', $tagId)->first();
+            $tag = DomainTag::where('name', $tagId)->first();
         }
 
         if (! $tag) {

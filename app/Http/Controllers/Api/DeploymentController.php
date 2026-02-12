@@ -3,12 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendDeploymentCompletedEventJob;
 use App\Models\Deployment;
 use App\Models\Domain;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 class DeploymentController extends Controller
 {
@@ -41,8 +40,13 @@ class DeploymentController extends Controller
             'deployed_at' => now(),
         ]);
 
-        // Fire event to Brain (async, don't block response)
-        $this->notifyBrain($domain, $deployment);
+        // Queue event to Brain so API responses are never blocked by remote calls
+        SendDeploymentCompletedEventJob::dispatch(
+            $domain->domain,
+            $deployment->id,
+            $deployment->git_commit,
+            $deployment->deployed_at->toIso8601String(),
+        );
 
         return response()->json([
             'success' => true,
@@ -50,44 +54,5 @@ class DeploymentController extends Controller
             'domain' => $domain->domain,
             'deployed_at' => $deployment->deployed_at->toIso8601String(),
         ], 201);
-    }
-
-    /**
-     * Send deployment event to Brain.
-     */
-    private function notifyBrain(Domain $domain, Deployment $deployment): void
-    {
-        $brainUrl = config('services.brain.base_url');
-        $brainKey = config('services.brain.api_key');
-
-        if (! $brainUrl || ! $brainKey) {
-            Log::warning('Brain not configured, skipping deployment notification');
-
-            return;
-        }
-
-        try {
-            /** @var \Illuminate\Http\Client\Response $response */
-            $response = Http::withHeaders([
-                'X-Brain-Key' => $brainKey,
-            ])->post("{$brainUrl}/api/v1/events", [
-                'event_type' => 'deployment.completed',
-                'project' => 'domain-monitor',
-                'payload' => [
-                    'domain' => $domain->domain,
-                    'deployment_id' => $deployment->id,
-                    'git_commit' => $deployment->git_commit,
-                    'deployed_at' => $deployment->deployed_at->toIso8601String(),
-                ],
-            ]);
-
-            if ($response->successful()) {
-                Log::info("Deployment event sent to Brain for {$domain->domain}");
-            } else {
-                Log::error("Brain rejected deployment event: {$response->status()} - {$response->body()}");
-            }
-        } catch (\Exception $e) {
-            Log::error('Failed to notify Brain of deployment: '.$e->getMessage());
-        }
     }
 }

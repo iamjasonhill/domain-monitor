@@ -43,7 +43,7 @@ class TagController extends Controller
 
         if (! $tag) {
             // Try finding by name (slug-like lookup)
-            $tag = DomainTag::where('name', 'like', $tagId)->first();
+            $tag = DomainTag::where('name', $tagId)->first();
         }
 
         if (! $tag) {

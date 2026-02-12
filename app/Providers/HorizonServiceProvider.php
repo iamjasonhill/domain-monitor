@@ -3,7 +3,6 @@
 namespace App\Providers;
 
 use Illuminate\Support\Facades\Gate;
-use Laravel\Horizon\Horizon;
 use Laravel\Horizon\HorizonApplicationServiceProvider;
 
 class HorizonServiceProvider extends HorizonApplicationServiceProvider
@@ -28,8 +27,26 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
     protected function gate(): void
     {
         Gate::define('viewHorizon', function ($user = null) {
-            // Allow all authenticated users to view Horizon
-            return $user !== null;
+            if (! $user) {
+                return false;
+            }
+
+            if (config('app.env') === 'local') {
+                return true;
+            }
+
+            $allowedEmails = array_filter(
+                array_map(
+                    static fn ($email): string => mb_strtolower(trim((string) $email)),
+                    (array) config('horizon.allowed_emails', [])
+                )
+            );
+
+            if ($allowedEmails === []) {
+                return false;
+            }
+
+            return in_array(mb_strtolower((string) $user->email), $allowedEmails, true);
         });
     }
 }

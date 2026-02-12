@@ -46,8 +46,16 @@ class AuthenticateApiKey
             ], 500);
         }
 
+        $isAuthenticated = false;
+        foreach ($allowedKeys as $allowedKey) {
+            if (is_string($allowedKey) && hash_equals($allowedKey, $token)) {
+                $isAuthenticated = true;
+                break;
+            }
+        }
+
         // Check if the provided token matches any allowed key
-        if (! in_array($token, $allowedKeys, true)) {
+        if (! $isAuthenticated) {
             Log::warning('Invalid API key authentication attempt', [
                 'ip' => $request->ip(),
                 'path' => $request->path(),

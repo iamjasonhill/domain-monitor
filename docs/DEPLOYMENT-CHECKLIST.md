@@ -42,6 +42,7 @@ Use this checklist before deploying to Laravel Forge to ensure everything is rea
 ### 6. Queue Workers with Laravel Horizon (REQUIRED for Brain Events)
 - [x] Queue workers are REQUIRED - Brain events use async dispatch
 - [x] Laravel Horizon installed and configured
+- [ ] `HORIZON_ALLOWED_EMAILS` configured with operator/admin emails before exposing `/horizon`
 - [ ] Redis installed and configured (required for Horizon metadata)
 - [ ] Configure daemon in Forge for `php artisan horizon`
 - [ ] Verify Horizon is running: `ps aux | grep 'horizon'`
@@ -103,6 +104,7 @@ CACHE_STORE=database
 QUEUE_CONNECTION=database
 BRAIN_BASE_URL=https://your-brain-instance.com
 BRAIN_API_KEY=your-brain-api-key
+HORIZON_ALLOWED_EMAILS=ops@example.com,admin@example.com
 ```
 
 **Optional (for .com.au domains):**
@@ -181,4 +183,3 @@ After deployment, verify:
 - Test scheduled tasks after first deployment
 - Set up database backups in Forge
 - Consider setting up queue workers if performance is an issue
-

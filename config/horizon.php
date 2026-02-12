@@ -87,6 +87,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Horizon Allowed Emails
+    |--------------------------------------------------------------------------
+    |
+    | In non-local environments, only authenticated users whose email
+    | addresses appear in this list may access the Horizon dashboard.
+    |
+    */
+
+    'allowed_emails' => env('HORIZON_ALLOWED_EMAILS')
+        ? array_map('trim', explode(',', (string) env('HORIZON_ALLOWED_EMAILS')))
+        : [],
+
+    /*
+    |--------------------------------------------------------------------------
     | Queue Wait Time Thresholds
     |--------------------------------------------------------------------------
     |
