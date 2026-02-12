@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Contracts\SynergyDnsFixClient;
 use App\Models\Domain;
 use App\Models\SynergyCredential;
 use Illuminate\Support\Facades\Log;
@@ -67,7 +68,7 @@ class DomainDnsAutoFixService
      * @param  string  $message  Output message
      * @return array{ok: bool, message: string}
      */
-    private function fixSpf(Domain $domain, SynergyWholesaleClient $client, array $records, string &$message): array
+    private function fixSpf(Domain $domain, SynergyDnsFixClient $client, array $records, string &$message): array
     {
         $existingSpf = null;
         foreach ($records as $record) {
@@ -114,7 +115,7 @@ class DomainDnsAutoFixService
      * @param  string  $message  Output message
      * @return array{ok: bool, message: string}
      */
-    private function fixDmarc(Domain $domain, SynergyWholesaleClient $client, array $records, string &$message): array
+    private function fixDmarc(Domain $domain, SynergyDnsFixClient $client, array $records, string &$message): array
     {
         $existingDmarc = null;
         foreach ($records as $record) {
@@ -161,7 +162,7 @@ class DomainDnsAutoFixService
      * @param  string  $message  Output message
      * @return array{ok: bool, message: string}
      */
-    private function fixCaa(Domain $domain, SynergyWholesaleClient $client, array $records, string &$message): array
+    private function fixCaa(Domain $domain, SynergyDnsFixClient $client, array $records, string &$message): array
     {
         $hasCaaInApi = false;
         foreach ($records as $record) {
@@ -173,7 +174,7 @@ class DomainDnsAutoFixService
 
         $hasCaaInDns = false;
         try {
-            $dns = new Dns;
+            $dns = app(Dns::class);
             $caaRecords = $dns->getRecords($domain->domain, 'CAA');
             $hasCaaInDns = ! empty($caaRecords);
         } catch (\Exception $e) {

@@ -2,12 +2,13 @@
 
 namespace App\Services;
 
+use App\Contracts\SynergyDnsFixClient;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 use SoapClient;
 use SoapFault;
 
-class SynergyWholesaleClient
+class SynergyWholesaleClient implements SynergyDnsFixClient
 {
     private ?SoapClient $client = null;
 
