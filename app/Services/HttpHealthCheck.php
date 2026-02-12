@@ -23,6 +23,7 @@ class HttpHealthCheck
             // Try HTTPS first, but allow fallback to HTTP for parked domains with SSL issues
             try {
                 $response = Http::timeout($timeout)
+                    ->async(false)
                     ->withoutVerifying() // Allow self-signed certificates
                     ->withHeaders([
                         'User-Agent' => 'DomainMonitor/1.0',
@@ -33,6 +34,7 @@ class HttpHealthCheck
                 if (str_contains($e->getMessage(), 'SSL') || str_contains($e->getMessage(), 'TLS')) {
                     $httpUrl = str_replace('https://', 'http://', $url);
                     $response = Http::timeout($timeout)
+                        ->async(false)
                         ->withHeaders([
                             'User-Agent' => 'DomainMonitor/1.0',
                         ])
@@ -44,33 +46,23 @@ class HttpHealthCheck
 
             $duration = (int) ((microtime(true) - $startTime) * 1000);
 
-            if ($response instanceof \Illuminate\Http\Client\Response) {
-                $statusCode = $response->status();
-                $isUp = $response->successful() || $statusCode < 500;
+            /** @var \Illuminate\Http\Client\Response $response */
+            $statusCode = $response->status();
+            $isUp = $response->successful() || $statusCode < 500;
 
-                /** @var array<string, array<int, string>|string> $headers */
-                $headers = $response->headers();
+            /** @var array<string, array<int, string>|string> $headers */
+            $headers = $response->headers();
 
-                return [
-                    'status_code' => $statusCode,
-                    'duration_ms' => $duration,
-                    'is_up' => $isUp,
-                    'error_message' => $isUp ? null : "HTTP {$statusCode}",
-                    'payload' => [
-                        'url' => $url,
-                        'headers' => $this->normalizeHeaders($headers),
-                        'redirected' => $response->redirect(),
-                    ],
-                ];
-            }
-
-            // Fallback if response is not the expected type
             return [
-                'status_code' => null,
-                'duration_ms' => (int) ((microtime(true) - $startTime) * 1000),
-                'is_up' => false,
-                'error_message' => 'Invalid response type',
-                'payload' => ['url' => $url],
+                'status_code' => $statusCode,
+                'duration_ms' => $duration,
+                'is_up' => $isUp,
+                'error_message' => $isUp ? null : "HTTP {$statusCode}",
+                'payload' => [
+                    'url' => $url,
+                    'headers' => $this->normalizeHeaders($headers),
+                    'redirected' => $response->redirect(),
+                ],
             ];
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
             $duration = (int) ((microtime(true) - $startTime) * 1000);

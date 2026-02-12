@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Http\Client\Response;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
@@ -39,6 +38,7 @@ class SendDeploymentCompletedEventJob implements ShouldQueue
         }
 
         $response = Http::timeout(5)
+            ->async(false)
             ->retry(2, 250)
             ->withHeaders([
                 'X-Brain-Key' => $brainKey,
@@ -53,12 +53,7 @@ class SendDeploymentCompletedEventJob implements ShouldQueue
                 ],
             ]);
 
-        if (! $response instanceof Response) {
-            Log::error('Unexpected response type from Brain deployment notification request');
-
-            return;
-        }
-
+        /** @var \Illuminate\Http\Client\Response $response */
         if ($response->successful()) {
             Log::info("Deployment event sent to Brain for {$this->domain}");
 

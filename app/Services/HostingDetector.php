@@ -393,12 +393,14 @@ class HostingDetector
     {
         try {
             $response = Http::timeout(10)
+                ->async(false)
                 ->withHeaders([
                     'User-Agent' => 'DomainMonitor/1.0',
                 ])
                 ->get($url);
 
-            if ($response instanceof \Illuminate\Http\Client\Response && $response->successful()) {
+            /** @var \Illuminate\Http\Client\Response $response */
+            if ($response->successful()) {
                 /** @var array<string, array<int, string>|string> $headers */
                 $headers = $response->headers();
 
