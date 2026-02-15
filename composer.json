@@ -20,7 +20,7 @@
         "deinte/laravel-blade-validator": "^0.0.1",
         "fakerphp/faker": "^1.23",
         "larastan/larastan": "^3.8",
-        "laravel/boost": "^1.8",
+        "laravel/boost": "^2.1",
         "laravel/breeze": "^2.3",
         "laravel/pail": "^1.2.2",
         "laravel/pint": "^1.24",
