@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\DeploymentController;
 use App\Http\Controllers\Api\DomainController;
 use App\Http\Controllers\Api\TagController;
+use App\Http\Controllers\Api\WebPropertyController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -23,6 +24,12 @@ Route::middleware(['api-key'])->group(function () {
     Route::patch('/domains/{domain}', [DomainController::class, 'update']);
     Route::post('/domains/{domain}/tags/{tag}', [DomainController::class, 'addTag']);
     Route::delete('/domains/{domain}/tags/{tag}', [DomainController::class, 'removeTag']);
+
+    // Web properties
+    Route::get('/web-properties', [WebPropertyController::class, 'index']);
+    Route::get('/web-properties-summary', [WebPropertyController::class, 'summary']);
+    Route::get('/web-properties/{slug}', [WebPropertyController::class, 'show']);
+    Route::get('/web-properties/{slug}/health-summary', [WebPropertyController::class, 'healthSummary']);
 
     // Tags
     Route::get('/tags', [TagController::class, 'index']);

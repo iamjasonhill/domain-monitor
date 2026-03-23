@@ -319,6 +319,24 @@ class Domain extends Model
     }
 
     /**
+     * @return HasMany<WebPropertyDomain, $this>
+     */
+    public function webPropertyLinks(): HasMany
+    {
+        return $this->hasMany(WebPropertyDomain::class);
+    }
+
+    /**
+     * @return BelongsToMany<WebProperty, $this>
+     */
+    public function webProperties(): BelongsToMany
+    {
+        return $this->belongsToMany(WebProperty::class, 'web_property_domains', 'domain_id', 'web_property_id')
+            ->withPivot(['id', 'usage_type', 'is_canonical', 'notes'])
+            ->withTimestamps();
+    }
+
+    /**
      * Scope a query to search domains by domain name, project key, registrar, hosting provider, or notes.
      * Supports case-insensitive search and multiple search terms.
      * Requires minimum 2 characters to avoid performance issues.
