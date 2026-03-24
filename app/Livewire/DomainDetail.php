@@ -128,7 +128,7 @@ class DomainDetail extends Component
 
     public function syncFromSynergy(): void
     {
-        if (! \App\Services\SynergyWholesaleClient::isAustralianTld($this->domain->domain)) {
+        if (! $this->isAustralianTld()) {
             $this->syncMessage = 'Only Australian TLD domains (.com.au, .net.au, etc.) can be synced.';
             $this->dispatch('sync-complete');
 
@@ -302,7 +302,7 @@ class DomainDetail extends Component
 
     public function syncDnsRecords(): void
     {
-        if (! \App\Services\SynergyWholesaleClient::isAustralianTld($this->domain->domain)) {
+        if (! $this->isAustralianTld()) {
             session()->flash('error', 'Only Australian TLD domains (.com.au, .net.au, etc.) can sync DNS records.');
             $this->dispatch('dns-sync-complete');
 
@@ -322,12 +322,7 @@ class DomainDetail extends Component
 
     public function openAddDnsRecordModal(): void
     {
-        $this->editingDnsRecordId = null;
-        $this->dnsRecordHost = '';
-        $this->dnsRecordType = 'A';
-        $this->dnsRecordValue = '';
-        $this->dnsRecordTtl = 300;
-        $this->dnsRecordPriority = 0;
+        $this->resetDnsRecordForm();
         $this->showDnsRecordModal = true;
     }
 
@@ -357,12 +352,7 @@ class DomainDetail extends Component
     public function closeDnsRecordModal(): void
     {
         $this->showDnsRecordModal = false;
-        $this->editingDnsRecordId = null;
-        $this->dnsRecordHost = '';
-        $this->dnsRecordType = 'A';
-        $this->dnsRecordValue = '';
-        $this->dnsRecordTtl = 300;
-        $this->dnsRecordPriority = 0;
+        $this->resetDnsRecordForm();
     }
 
     public function saveDnsRecord(): void
@@ -466,9 +456,7 @@ class DomainDetail extends Component
 
     public function openAddSubdomainModal(): void
     {
-        $this->editingSubdomainId = null;
-        $this->subdomainName = '';
-        $this->subdomainNotes = '';
+        $this->resetSubdomainForm();
         $this->showSubdomainModal = true;
     }
 
@@ -490,9 +478,30 @@ class DomainDetail extends Component
     public function closeSubdomainModal(): void
     {
         $this->showSubdomainModal = false;
+        $this->resetSubdomainForm();
+    }
+
+    private function resetDnsRecordForm(): void
+    {
+        $this->editingDnsRecordId = null;
+        $this->dnsRecordHost = '';
+        $this->dnsRecordType = 'A';
+        $this->dnsRecordValue = '';
+        $this->dnsRecordTtl = 300;
+        $this->dnsRecordPriority = 0;
+    }
+
+    private function resetSubdomainForm(): void
+    {
         $this->editingSubdomainId = null;
         $this->subdomainName = '';
         $this->subdomainNotes = '';
+    }
+
+    private function isAustralianTld(): bool
+    {
+        return $this->domain instanceof Domain
+            && \App\Services\SynergyWholesaleClient::isAustralianTld($this->domain->domain);
     }
 
     public function saveSubdomain(): void
