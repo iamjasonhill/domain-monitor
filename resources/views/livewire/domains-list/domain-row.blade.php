@@ -144,9 +144,9 @@
         @if($domain->latest_security_headers_status === 'fail')
             <span class="text-red-500" title="Security Headers Issue">❌</span>
         @elseif($domain->latest_security_headers_status === 'warn')
-            <span class="text-orange-500" title="Warning">⚠️</span>
+            <span class="text-orange-500" title="Needs Improvement">⚠️</span>
         @elseif(in_array($domain->latest_security_headers_status, ['pass', 'ok']))
-            <span class="text-green-500" title="Valid">✓</span>
+            <span class="text-green-500" title="Meets Baseline Standard">✓</span>
         @elseif($domain->latest_security_headers_status === 'unknown')
             <span class="text-gray-500" title="Unknown">?</span>
         @else

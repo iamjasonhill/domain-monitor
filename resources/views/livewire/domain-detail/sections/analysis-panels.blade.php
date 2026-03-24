@@ -7,6 +7,7 @@
     $securityHeadersPayload = $latestSecurityHeadersCheck ? $latestSecurityHeadersCheck->payload : null;
     $securityHeaders = $securityHeadersPayload['results'] ?? [];
     $securityScore = $securityHeadersPayload['score'] ?? null;
+    $securityStandardSummary = $securityHeadersPayload['standard_summary'] ?? 'Checks response headers against a baseline standard.';
 @endphp
 <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
     <div class="p-6">
@@ -24,13 +25,17 @@
                         ($securityScore >= 50 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
                         'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300')
                     }}">
-                        Score: {{ $securityScore }}/100
+                        Baseline Score: {{ $securityScore }}/100
                     </span>
                 @else
                     <span class="text-gray-400 text-sm italic">Not checked</span>
                 @endif
             </div>
         </div>
+
+        <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+            {{ $securityStandardSummary }}
+        </p>
 
         @if($latestSecurityHeadersCheck)
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -43,17 +48,17 @@
                                     @if($data['status'] === 'pass')
                                         <span class="inline-flex items-center text-xs font-medium text-green-600 dark:text-green-400">
                                             <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                            Present
+                                            Meets Standard
                                         </span>
                                     @elseif($data['status'] === 'warn')
                                         <span class="inline-flex items-center text-xs font-medium text-yellow-600 dark:text-yellow-400">
                                             <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                                            Review
+                                            Needs Improvement
                                         </span>
                                     @else
                                         <span class="inline-flex items-center text-xs font-medium text-red-600 dark:text-red-400">
                                             <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                            Missing
+                                            Missing Or Invalid
                                         </span>
                                     @endif
                                 </div>
@@ -73,6 +78,10 @@
                                 {{ $data['recommendation'] }}
                             </div>
                         @endif
+
+                        <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            {{ $data['assessment'] ?? '' }}
+                        </div>
                     </div>
                 @endforeach
             </div>

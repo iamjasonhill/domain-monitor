@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Http;
 
 class SecurityHeadersHealthCheck
 {
+    private const MIN_HSTS_MAX_AGE = 31536000;
+
     /**
      * Perform Security Headers health check
      *
@@ -14,7 +16,7 @@ class SecurityHeadersHealthCheck
      *     is_valid: bool,
      *     verified: bool,
      *     score: int,
-     *     headers: array<string, array{present: bool, value: string|null, status: string, recommendation: string|null}>,
+     *     headers: array<string, array{name: string, present: bool, value: string|null, status: string, recommendation: string|null, assessment: string}>,
      *     error_message: string|null,
      *     payload: array<string, mixed>
      * }
@@ -33,11 +35,7 @@ class SecurityHeadersHealthCheck
             $headers = $response->headers();
             $results = $this->analyzeHeaders($headers);
             $score = $this->calculateScore($results);
-
-            // Consider valid if score is acceptable (e.g. > 50) or if critical headers are present
-            // For now, valid means no critical failures (red status)
-            $criticalFailures = collect($results)->where('status', 'fail')->count();
-            $isValid = $criticalFailures === 0;
+            $isValid = collect($results)->every(fn (array $result): bool => $result['status'] === 'pass');
 
             $duration = (int) ((microtime(true) - $startTime) * 1000);
 
@@ -50,6 +48,8 @@ class SecurityHeadersHealthCheck
                 'payload' => [
                     'domain' => $domain,
                     'score' => $score,
+                    'standard_name' => 'Domain Monitor security header baseline',
+                    'standard_summary' => 'Checks six response headers against a baseline standard. This is not a full browser security audit.',
                     'results' => $results,
                     'duration_ms' => $duration,
                 ],
@@ -80,14 +80,13 @@ class SecurityHeadersHealthCheck
     }
 
     /**
-     * Analyze critical security headers
+     * Analyze security headers against the Domain Monitor baseline standard.
      *
      * @param  array<string, array<int, string>|string>  $headers
-     * @return array<string, array{present: bool, value: string|null, status: string, recommendation: string|null}>
+     * @return array<string, array{name: string, present: bool, value: string|null, status: string, recommendation: string|null, assessment: string}>
      */
     private function analyzeHeaders(array $headers): array
     {
-        // Normalize headers to lowercase keys for easier lookup
         $normalizedHeaders = [];
         foreach ($headers as $key => $value) {
             $normalizedHeaders[strtolower($key)] = is_array($value) ? implode('; ', $value) : $value;
@@ -96,33 +95,27 @@ class SecurityHeadersHealthCheck
         $checks = [
             'strict-transport-security' => [
                 'name' => 'HSTS',
-                'critical' => true,
-                'recommendation' => ' Enable HSTS to enforce HTTPS.',
+                'validator' => fn (?string $value): array => $this->validateHsts($value),
             ],
             'content-security-policy' => [
                 'name' => 'CSP',
-                'critical' => false, // CSP is complex, missing it is a warning not a failure
-                'recommendation' => 'Add a Content Security Policy to prevent XSS.',
+                'validator' => fn (?string $value): array => $this->validateCsp($value),
             ],
             'x-frame-options' => [
                 'name' => 'X-Frame-Options',
-                'critical' => true,
-                'recommendation' => 'Set to DENY or SAMEORIGIN to prevent clickjacking.',
+                'validator' => fn (?string $value): array => $this->validateXFrameOptions($value),
             ],
             'x-content-type-options' => [
                 'name' => 'X-Content-Type-Options',
-                'critical' => true,
-                'recommendation' => 'Set to "nosniff" to prevent MIME sniffing.',
+                'validator' => fn (?string $value): array => $this->validateXContentTypeOptions($value),
             ],
             'referrer-policy' => [
                 'name' => 'Referrer-Policy',
-                'critical' => false,
-                'recommendation' => 'Set a Referrer Policy to control data leakage.',
+                'validator' => fn (?string $value): array => $this->validateReferrerPolicy($value),
             ],
             'permissions-policy' => [
                 'name' => 'Permissions-Policy',
-                'critical' => false,
-                'recommendation' => 'Restrict browser features with Permissions Policy.',
+                'validator' => fn (?string $value): array => $this->validatePermissionsPolicy($value),
             ],
         ];
 
@@ -131,20 +124,15 @@ class SecurityHeadersHealthCheck
         foreach ($checks as $header => $config) {
             $present = isset($normalizedHeaders[$header]);
             $value = $present ? $normalizedHeaders[$header] : null;
-
-            $status = $present ? 'pass' : ($config['critical'] ? 'fail' : 'warn');
-
-            // Special check for HSTS max-age
-            if ($header === 'strict-transport-security' && $present && ! str_contains($value, 'max-age')) {
-                $status = 'warn'; // HSTS present but invalid
-            }
+            $assessment = $config['validator']($value);
 
             $results[$header] = [
                 'name' => $config['name'],
                 'present' => $present,
                 'value' => $value,
-                'status' => $status,
-                'recommendation' => $present ? null : $config['recommendation'],
+                'status' => $assessment['status'],
+                'recommendation' => $assessment['recommendation'],
+                'assessment' => $assessment['assessment'],
             ];
         }
 
@@ -154,7 +142,7 @@ class SecurityHeadersHealthCheck
     /**
      * Calculate a security score (0-100)
      *
-     * @param  array<string, array{present: bool, value: string|null, status: string, recommendation: string|null}>  $results
+     * @param  array<string, array{name: string, present: bool, value: string|null, status: string, recommendation: string|null, assessment: string}>  $results
      */
     private function calculateScore(array $results): int
     {
@@ -174,5 +162,209 @@ class SecurityHeadersHealthCheck
         $score = (($passed * 1.0) + ($warned * 0.5)) / $total * 100;
 
         return (int) round($score);
+    }
+
+    /**
+     * @return array{status: string, recommendation: string|null, assessment: string}
+     */
+    private function validateHsts(?string $value): array
+    {
+        if ($value === null) {
+            return [
+                'status' => 'fail',
+                'recommendation' => 'Add Strict-Transport-Security with a max-age of at least 31536000 seconds.',
+                'assessment' => 'Missing.',
+            ];
+        }
+
+        if (! preg_match('/max-age=(\d+)/i', $value, $matches)) {
+            return [
+                'status' => 'fail',
+                'recommendation' => 'Include max-age in Strict-Transport-Security.',
+                'assessment' => 'Present, but missing max-age.',
+            ];
+        }
+
+        $maxAge = (int) $matches[1];
+        $hasIncludeSubdomains = str_contains(strtolower($value), 'includesubdomains');
+
+        if ($maxAge < self::MIN_HSTS_MAX_AGE) {
+            return [
+                'status' => 'warn',
+                'recommendation' => 'Increase Strict-Transport-Security max-age to at least 31536000 seconds.',
+                'assessment' => "Present, but max-age is only {$maxAge}.",
+            ];
+        }
+
+        if (! $hasIncludeSubdomains) {
+            return [
+                'status' => 'warn',
+                'recommendation' => 'Add includeSubDomains when all subdomains are ready for HTTPS-only enforcement.',
+                'assessment' => 'Present, but missing includeSubDomains.',
+            ];
+        }
+
+        return [
+            'status' => 'pass',
+            'recommendation' => null,
+            'assessment' => 'Meets the baseline standard.',
+        ];
+    }
+
+    /**
+     * @return array{status: string, recommendation: string|null, assessment: string}
+     */
+    private function validateCsp(?string $value): array
+    {
+        if ($value === null) {
+            return [
+                'status' => 'fail',
+                'recommendation' => 'Add Content-Security-Policy with at least default-src, object-src, base-uri, and frame-ancestors.',
+                'assessment' => 'Missing.',
+            ];
+        }
+
+        $requiredDirectives = ['default-src', 'object-src', 'base-uri', 'frame-ancestors'];
+        $missingDirectives = [];
+        foreach ($requiredDirectives as $directive) {
+            if (! preg_match('/(^|;)\s*'.preg_quote($directive, '/').'\s+/i', $value)) {
+                $missingDirectives[] = $directive;
+            }
+        }
+
+        if ($missingDirectives !== []) {
+            return [
+                'status' => 'warn',
+                'recommendation' => 'Add missing CSP directives: '.implode(', ', $missingDirectives).'.',
+                'assessment' => 'Present, but missing '.implode(', ', $missingDirectives).'.',
+            ];
+        }
+
+        return [
+            'status' => 'pass',
+            'recommendation' => null,
+            'assessment' => 'Meets the baseline standard.',
+        ];
+    }
+
+    /**
+     * @return array{status: string, recommendation: string|null, assessment: string}
+     */
+    private function validateXFrameOptions(?string $value): array
+    {
+        if ($value === null) {
+            return [
+                'status' => 'fail',
+                'recommendation' => 'Set X-Frame-Options to DENY or SAMEORIGIN.',
+                'assessment' => 'Missing.',
+            ];
+        }
+
+        $normalized = strtoupper(trim($value));
+        if (! in_array($normalized, ['DENY', 'SAMEORIGIN'], true)) {
+            return [
+                'status' => 'fail',
+                'recommendation' => 'Use DENY or SAMEORIGIN for X-Frame-Options.',
+                'assessment' => "Present, but '{$value}' is not an accepted value.",
+            ];
+        }
+
+        return [
+            'status' => 'pass',
+            'recommendation' => null,
+            'assessment' => 'Meets the baseline standard.',
+        ];
+    }
+
+    /**
+     * @return array{status: string, recommendation: string|null, assessment: string}
+     */
+    private function validateXContentTypeOptions(?string $value): array
+    {
+        if ($value === null) {
+            return [
+                'status' => 'fail',
+                'recommendation' => 'Set X-Content-Type-Options to nosniff.',
+                'assessment' => 'Missing.',
+            ];
+        }
+
+        if (strtolower(trim($value)) !== 'nosniff') {
+            return [
+                'status' => 'fail',
+                'recommendation' => 'Use "nosniff" for X-Content-Type-Options.',
+                'assessment' => "Present, but '{$value}' is not an accepted value.",
+            ];
+        }
+
+        return [
+            'status' => 'pass',
+            'recommendation' => null,
+            'assessment' => 'Meets the baseline standard.',
+        ];
+    }
+
+    /**
+     * @return array{status: string, recommendation: string|null, assessment: string}
+     */
+    private function validateReferrerPolicy(?string $value): array
+    {
+        if ($value === null) {
+            return [
+                'status' => 'warn',
+                'recommendation' => 'Add Referrer-Policy, ideally strict-origin-when-cross-origin or stricter.',
+                'assessment' => 'Missing.',
+            ];
+        }
+
+        $normalized = strtolower(trim($value));
+        $allowed = [
+            'no-referrer',
+            'same-origin',
+            'strict-origin',
+            'strict-origin-when-cross-origin',
+        ];
+
+        if (! in_array($normalized, $allowed, true)) {
+            return [
+                'status' => 'warn',
+                'recommendation' => 'Use strict-origin-when-cross-origin or a stricter Referrer-Policy.',
+                'assessment' => "Present, but '{$value}' is weaker than the baseline standard.",
+            ];
+        }
+
+        return [
+            'status' => 'pass',
+            'recommendation' => null,
+            'assessment' => 'Meets the baseline standard.',
+        ];
+    }
+
+    /**
+     * @return array{status: string, recommendation: string|null, assessment: string}
+     */
+    private function validatePermissionsPolicy(?string $value): array
+    {
+        if ($value === null) {
+            return [
+                'status' => 'warn',
+                'recommendation' => 'Add Permissions-Policy to disable browser features your site does not need.',
+                'assessment' => 'Missing.',
+            ];
+        }
+
+        if (trim($value) === '') {
+            return [
+                'status' => 'warn',
+                'recommendation' => 'Populate Permissions-Policy with explicit feature controls.',
+                'assessment' => 'Present, but empty.',
+            ];
+        }
+
+        return [
+            'status' => 'pass',
+            'recommendation' => null,
+            'assessment' => 'Meets the baseline standard.',
+        ];
     }
 }
