@@ -98,6 +98,25 @@
     <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
         <div class="overflow-x-auto">
             @if($properties->count() > 0)
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-700/20">
+                    <div class="flex flex-col gap-2 text-xs text-gray-500 dark:text-gray-400 sm:flex-row sm:items-center sm:justify-between">
+                        <p>
+                            The colored dot shows <span class="font-semibold text-gray-700 dark:text-gray-300">registry review status</span>, not site health.
+                            Use the <span class="font-semibold text-gray-700 dark:text-gray-300">Health</span> column for monitoring status.
+                        </p>
+                        <div class="flex flex-wrap items-center gap-4">
+                            <span class="inline-flex items-center gap-2">
+                                <span class="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+                                Registry looks linked cleanly
+                            </span>
+                            <span class="inline-flex items-center gap-2">
+                                <span class="inline-flex h-2.5 w-2.5 rounded-full bg-amber-500"></span>
+                                Review links or grouping
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead class="bg-gray-50 dark:bg-gray-700/50">
                         <tr>
@@ -119,9 +138,9 @@
                                     <div class="flex items-start gap-3">
                                         <div class="mt-1">
                                             @if($isReviewCandidate)
-                                                <span class="inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" title="Needs review"></span>
+                                                <span class="inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" title="Registry review needed: missing links or multi-domain grouping to check"></span>
                                             @else
-                                                <span class="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" title="Linked cleanly"></span>
+                                                <span class="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" title="Registry linked cleanly"></span>
                                             @endif
                                         </div>
                                         <div>
