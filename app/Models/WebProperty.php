@@ -142,6 +142,17 @@ class WebProperty extends Model
         return $this->canonicalDomainLink()?->domain?->domain;
     }
 
+    public function primaryDomainModel(): ?Domain
+    {
+        $primaryDomain = $this->relationLoaded('primaryDomain') ? $this->primaryDomain : null;
+
+        if ($primaryDomain instanceof Domain) {
+            return $primaryDomain;
+        }
+
+        return $this->canonicalDomainLink()?->domain;
+    }
+
     /**
      * @return array<int, array<string, mixed>>
      */
@@ -343,6 +354,101 @@ class WebProperty extends Model
             'deployment_summary' => $this->deploymentSummary(),
             'tags' => $this->tagSummaries(),
             'updated_at' => $this->updated_at?->toIso8601String(),
+        ];
+    }
+
+    public function primaryAnalyticsSource(string $provider): ?PropertyAnalyticsSource
+    {
+        $sources = $this->relationLoaded('analyticsSources')
+            ? $this->analyticsSources
+            : $this->analyticsSources()->get();
+
+        return $sources
+            ->where('provider', $provider)
+            ->sortByDesc(fn (PropertyAnalyticsSource $source) => $source->is_primary)
+            ->first();
+    }
+
+    /**
+     * @return array{eligible: bool, reason: string|null}
+     */
+    public function matomoEligibility(): array
+    {
+        if ($this->status !== 'active') {
+            return ['eligible' => false, 'reason' => 'property is not active'];
+        }
+
+        if ($this->property_type === 'domain_asset') {
+            return ['eligible' => false, 'reason' => 'property is a domain asset'];
+        }
+
+        $domain = $this->primaryDomainModel();
+        if (! $domain instanceof Domain) {
+            return ['eligible' => false, 'reason' => 'no primary domain linked'];
+        }
+
+        if (! $domain->is_active) {
+            return ['eligible' => false, 'reason' => 'primary domain is inactive'];
+        }
+
+        if ($domain->isParked()) {
+            return ['eligible' => false, 'reason' => 'primary domain is parked'];
+        }
+
+        if ($domain->isEmailOnly()) {
+            return ['eligible' => false, 'reason' => 'primary domain is email-only'];
+        }
+
+        return ['eligible' => true, 'reason' => null];
+    }
+
+    /**
+     * @return array{status: string, label: string, reason: string|null}
+     */
+    public function matomoCoverageSummary(): array
+    {
+        $eligibility = $this->matomoEligibility();
+        if (! $eligibility['eligible']) {
+            return [
+                'status' => 'excluded',
+                'label' => 'Excluded',
+                'reason' => $eligibility['reason'],
+            ];
+        }
+
+        $source = $this->primaryAnalyticsSource('matomo');
+        if (! $source instanceof PropertyAnalyticsSource) {
+            return [
+                'status' => 'needs_binding',
+                'label' => 'Needs Matomo',
+                'reason' => 'eligible property has no Matomo binding yet',
+            ];
+        }
+
+        $audit = $source->relationLoaded('latestInstallAudit')
+            ? $source->latestInstallAudit
+            : $source->latestInstallAudit()->first();
+
+        if (! $audit instanceof AnalyticsInstallAudit) {
+            return [
+                'status' => 'bound_unverified',
+                'label' => 'Bound, not verified',
+                'reason' => 'Matomo is linked but no install audit has been imported yet',
+            ];
+        }
+
+        if ($audit->install_verdict === 'installed_match') {
+            return [
+                'status' => 'covered',
+                'label' => 'Covered',
+                'reason' => $audit->summary,
+            ];
+        }
+
+        return [
+            'status' => 'bound_attention',
+            'label' => 'Needs attention',
+            'reason' => $audit->summary,
         ];
     }
 

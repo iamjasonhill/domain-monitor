@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\AnalyticsInstallAudit;
+use App\Models\AnalyticsSourceObservation;
 use App\Models\PropertyAnalyticsSource;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -70,7 +71,30 @@ class ImportMatomoInstallAudit extends Command
                 ->where('external_id', $externalId)
                 ->first();
 
+            $observationAttributes = [
+                'external_name' => $audit['site_name'] ?? null,
+                'expected_tracker_host' => $audit['expected_tracker_host'] ?? null,
+                'install_verdict' => $audit['verdict'] ?? 'unknown',
+                'best_url' => $audit['best_url'] ?? null,
+                'detected_site_ids' => $audit['detected_site_ids'] ?? [],
+                'detected_tracker_hosts' => $audit['detected_tracker_hosts'] ?? [],
+                'summary' => $audit['summary'] ?? null,
+                'checked_at' => isset($payload['generated_at']) ? Carbon::parse($payload['generated_at']) : now(),
+                'raw_payload' => $audit,
+            ];
+
             if (! $source instanceof PropertyAnalyticsSource) {
+                AnalyticsSourceObservation::query()->updateOrCreate(
+                    [
+                        'provider' => 'matamo',
+                        'external_id' => $externalId,
+                    ],
+                    array_merge($observationAttributes, [
+                        'matched_property_analytics_source_id' => null,
+                        'matched_web_property_id' => null,
+                    ])
+                );
+
                 $unmapped++;
                 $this->warn(sprintf('No linked property analytics source found for Matomo site [%s].', $externalId));
 
@@ -82,6 +106,17 @@ class ImportMatomoInstallAudit extends Command
                     'external_name' => $audit['site_name'],
                 ])->save();
             }
+
+            AnalyticsSourceObservation::query()->updateOrCreate(
+                [
+                    'provider' => 'matomo',
+                    'external_id' => $externalId,
+                ],
+                array_merge($observationAttributes, [
+                    'matched_property_analytics_source_id' => $source->id,
+                    'matched_web_property_id' => $source->web_property_id,
+                ])
+            );
 
             AnalyticsInstallAudit::query()->updateOrCreate(
                 ['property_analytics_source_id' => $source->id],

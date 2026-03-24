@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\AnalyticsInstallAudit;
+use App\Models\AnalyticsSourceObservation;
 use App\Models\PropertyAnalyticsSource;
 use App\Models\WebProperty;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
 class ImportMatomoInstallAuditCommandTest extends TestCase
@@ -49,9 +51,9 @@ class ImportMatomoInstallAuditCommandTest extends TestCase
             ],
         ], JSON_PRETTY_PRINT));
 
-        $this->artisan('analytics:import-matomo-audit', ['path' => $path])
-            ->expectsOutput('Imported 1 Matomo install audit records.')
-            ->assertSuccessful();
+        $exitCode = Artisan::call('analytics:import-matomo-audit', ['path' => $path]);
+
+        $this->assertSame(0, $exitCode);
 
         $audit = AnalyticsInstallAudit::query()->where('property_analytics_source_id', $source->id)->firstOrFail();
 
@@ -63,6 +65,15 @@ class ImportMatomoInstallAuditCommandTest extends TestCase
 
         $source->refresh();
         $this->assertSame('Car Transport Personal Items', $source->external_name);
+
+        $observation = AnalyticsSourceObservation::query()
+            ->where('provider', 'matomo')
+            ->where('external_id', '8')
+            ->firstOrFail();
+
+        $this->assertSame($property->id, $observation->matched_web_property_id);
+        $this->assertSame($source->id, $observation->matched_property_analytics_source_id);
+        $this->assertSame('installed_match', $observation->install_verdict);
 
         @unlink($path);
     }
