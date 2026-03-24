@@ -105,6 +105,15 @@ return [
                     'local_path' => '/Users/jasonhill/Projects/websites/movingcars-com-au-astro',
                     'framework' => 'Astro',
                 ],
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '12',
+                        'external_name' => 'movingcars.com.au',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
+
             ],
             'movingagain.com.au' => [
                 'slug' => 'moving-again',
