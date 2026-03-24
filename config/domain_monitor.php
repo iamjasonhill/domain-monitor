@@ -78,6 +78,24 @@ return [
                     ],
                 ],
             ],
+            'cartransport.au' => [
+                'slug' => 'cartransport-au',
+                'name' => 'cartransport.au',
+                'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => 'cartransport-au-astro',
+                    'local_path' => '/Users/jasonhill/Projects/websites/cartransport-au-astro',
+                    'framework' => 'Astro',
+                ],
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '11',
+                        'external_name' => 'cartransport.au',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
+            ],
             'movingagain.com.au' => [
                 'slug' => 'moving-again',
                 'name' => 'Moving Again',
