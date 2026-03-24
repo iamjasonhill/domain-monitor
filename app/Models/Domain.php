@@ -197,6 +197,7 @@ class Domain extends Model
     public function scopeWithLatestCheckStatuses(Builder $query): void
     {
         $checkTypes = [
+            'uptime',
             'http',
             'ssl',
             'dns',

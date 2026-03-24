@@ -185,4 +185,34 @@ class EmailSecurityHealthCheckTest extends TestCase
         $this->assertFalse($payload['dnssec']['enabled']);
         $this->assertFalse($payload['caa']['present']);
     }
+
+    public function test_it_marks_email_security_as_unknown_when_verification_fails(): void
+    {
+        $domain = Domain::factory()->create([
+            'domain' => 'unknown-email.com',
+            'is_active' => true,
+        ]);
+
+        $this->mock(Dns::class, function (MockInterface $mock) {
+            $mock->shouldReceive('getRecords')
+                ->andThrow(new \RuntimeException('DNS lookup failed'));
+        });
+
+        $mockService = \Mockery::mock(\App\Services\EmailSecurityHealthCheck::class, [app(Dns::class)])->makePartial();
+        $mockService->shouldReceive('getDnsKey')
+            ->with('unknown-email.com')
+            ->andReturn([]);
+
+        $this->instance(\App\Services\EmailSecurityHealthCheck::class, $mockService);
+
+        $this->artisan('domains:health-check', ['--type' => 'email_security', '--domain' => 'unknown-email.com'])
+            ->assertSuccessful();
+
+        $check = $domain->checks()->latest()->first();
+        $this->assertEquals('unknown', $check->status);
+
+        $payload = $check->payload;
+        $this->assertFalse($payload['spf']['verified']);
+        $this->assertFalse($payload['dmarc']['verified']);
+    }
 }

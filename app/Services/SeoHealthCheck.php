@@ -12,9 +12,10 @@ class SeoHealthCheck
      *
      * @return array{
      *     is_valid: bool,
+     *     verified: bool,
      *     results: array{
-     *         robots: array{exists: bool, status: int, url: string, error: string|null},
-     *         sitemap: array{exists: bool, status: int, url: string, error: string|null}
+     *         robots: array{exists: bool, verified: bool, status: int, url: string, error: string|null},
+     *         sitemap: array{exists: bool, verified: bool, status: int, url: string, error: string|null}
      *     },
      *     error_message: string|null,
      *     payload: array<string, mixed>
@@ -49,6 +50,7 @@ class SeoHealthCheck
 
             return [
                 'is_valid' => $isValid,
+                'verified' => $robotsResult['verified'] || $sitemapResult['verified'],
                 'results' => [
                     'robots' => $robotsResult,
                     'sitemap' => $sitemapResult,
@@ -66,9 +68,10 @@ class SeoHealthCheck
         } catch (Exception $e) {
             return [
                 'is_valid' => false,
+                'verified' => false,
                 'results' => [
-                    'robots' => ['exists' => false, 'status' => 0, 'url' => '', 'error' => 'Check failed'],
-                    'sitemap' => ['exists' => false, 'status' => 0, 'url' => '', 'error' => 'Check failed'],
+                    'robots' => ['exists' => false, 'verified' => false, 'status' => 0, 'url' => '', 'error' => 'Check failed'],
+                    'sitemap' => ['exists' => false, 'verified' => false, 'status' => 0, 'url' => '', 'error' => 'Check failed'],
                 ],
                 'error_message' => 'Exception: '.$e->getMessage(),
                 'payload' => [
@@ -90,7 +93,7 @@ class SeoHealthCheck
     }
 
     /**
-     * @return array{exists: bool, status: int, url: string, error: string|null}
+     * @return array{exists: bool, verified: bool, status: int, url: string, error: string|null}
      */
     private function checkFile(string $baseUrl, string $path): array
     {
@@ -107,6 +110,7 @@ class SeoHealthCheck
 
             return [
                 'exists' => $exists,
+                'verified' => true,
                 'status' => $status,
                 'url' => $url,
                 'error' => $exists ? null : "Returned status {$status}",
@@ -114,6 +118,7 @@ class SeoHealthCheck
         } catch (Exception $e) {
             return [
                 'exists' => false,
+                'verified' => false,
                 'status' => 0,
                 'url' => $url,
                 'error' => $e->getMessage(),

@@ -99,6 +99,17 @@ class WebPropertyApiTest extends TestCase
             DB::table('domain_checks')->insert([
                 'id' => (string) Str::uuid(),
                 'domain_id' => $primaryDomain->id,
+                'check_type' => 'uptime',
+                'status' => 'ok',
+                'started_at' => now()->subMinute(),
+                'finished_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            DB::table('domain_checks')->insert([
+                'id' => (string) Str::uuid(),
+                'domain_id' => $primaryDomain->id,
                 'check_type' => 'http',
                 'status' => 'ok',
                 'started_at' => now()->subMinute(),
@@ -140,6 +151,7 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.repositories.0.repo_name', 'moveroo-website-astro')
             ->assertJsonPath('web_properties.0.analytics_sources.0.external_id', '6')
             ->assertJsonPath('web_properties.0.analytics_sources.0.install_audit.install_verdict', 'installed_match')
+            ->assertJsonPath('web_properties.0.health_summary.checks.uptime', 'ok')
             ->assertJsonPath('web_properties.0.health_summary.checks.http', 'ok')
             ->assertJsonPath('web_properties.0.health_summary.checks.ssl', 'warn')
             ->assertJsonPath('web_properties.0.health_summary.active_alerts_count', 1);

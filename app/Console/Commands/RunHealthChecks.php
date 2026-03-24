@@ -166,30 +166,27 @@ class RunHealthChecks extends Command
                 /** @var array<int, string> $selectors */
                 $selectors = $domain->dkim_selectors ?? [];
                 $emailSecurityResult = $emailSecurityCheck->check($domain->domain, $selectors);
-                $status = $emailSecurityResult['is_valid'] ? 'ok' : 'fail';
+                $status = $this->determineEmailSecurityStatus($emailSecurityResult);
                 $errorMessage = $emailSecurityResult['error_message'];
                 $payload = $emailSecurityResult['payload'];
             } elseif ($type === 'reputation') {
                 $reputationResult = $reputationCheck->check($domain->domain);
-                $status = $reputationResult['is_valid'] ? 'ok' : 'fail';
+                $status = $this->determineReputationStatus($reputationResult);
                 $errorMessage = $reputationResult['error_message'];
                 $payload = $reputationResult['payload'];
             } elseif ($type === 'security_headers') {
                 $securityHeadersResult = $securityHeadersCheck->check($domain->domain);
-                $status = $securityHeadersResult['is_valid'] ? 'ok' : 'warn';
-                if (! $securityHeadersResult['is_valid']) {
-                    $status = 'warn';
-                }
+                $status = $this->determineSecurityHeadersStatus($securityHeadersResult);
                 $errorMessage = $securityHeadersResult['error_message'];
                 $payload = $securityHeadersResult['payload'];
             } elseif ($type === 'seo') {
                 $seoResult = $seoCheck->check($domain->domain);
-                $status = $seoResult['is_valid'] ? 'ok' : 'warn';
+                $status = $this->determineSeoStatus($seoResult);
                 $errorMessage = $seoResult['error_message'];
                 $payload = $seoResult['payload'];
             } elseif ($type === 'broken_links') {
                 $brokenLinkResult = $brokenLinkCheck->check($domain->domain);
-                $status = $brokenLinkResult['is_valid'] ? 'ok' : 'fail';
+                $status = $this->determineBrokenLinksStatus($brokenLinkResult);
                 $errorMessage = $brokenLinkResult['error_message'];
                 $payload = $brokenLinkResult['payload'];
             } else {
@@ -288,5 +285,74 @@ class RunHealthChecks extends Command
 
             return Command::FAILURE;
         }
+    }
+
+    /**
+     * @param  array{
+     *     is_valid: bool,
+     *     spf: array{verified?: bool},
+     *     dmarc: array{verified?: bool}
+     * }  $result
+     */
+    private function determineEmailSecurityStatus(array $result): string
+    {
+        if (($result['spf']['verified'] ?? false) !== true || ($result['dmarc']['verified'] ?? false) !== true) {
+            return 'unknown';
+        }
+
+        return $result['is_valid'] ? 'ok' : 'fail';
+    }
+
+    /**
+     * @param  array{
+     *     is_valid: bool,
+     *     google_safe_browsing: array{verified?: bool},
+     *     dnsbl: array{spamhaus: array{verified?: bool}}
+     * }  $result
+     */
+    private function determineReputationStatus(array $result): string
+    {
+        if (($result['google_safe_browsing']['verified'] ?? false) !== true
+            || ($result['dnsbl']['spamhaus']['verified'] ?? false) !== true) {
+            return 'unknown';
+        }
+
+        return $result['is_valid'] ? 'ok' : 'fail';
+    }
+
+    /**
+     * @param  array{is_valid: bool, verified?: bool}  $result
+     */
+    private function determineSecurityHeadersStatus(array $result): string
+    {
+        if (($result['verified'] ?? false) !== true) {
+            return 'unknown';
+        }
+
+        return $result['is_valid'] ? 'ok' : 'warn';
+    }
+
+    /**
+     * @param  array{is_valid: bool, verified?: bool}  $result
+     */
+    private function determineSeoStatus(array $result): string
+    {
+        if (($result['verified'] ?? false) !== true) {
+            return 'unknown';
+        }
+
+        return $result['is_valid'] ? 'ok' : 'warn';
+    }
+
+    /**
+     * @param  array{is_valid: bool, verified?: bool}  $result
+     */
+    private function determineBrokenLinksStatus(array $result): string
+    {
+        if (($result['verified'] ?? false) !== true) {
+            return 'unknown';
+        }
+
+        return $result['is_valid'] ? 'ok' : 'fail';
     }
 }

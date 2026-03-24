@@ -28,7 +28,7 @@ class BrokenLinkHealthCheck
      *
      * @param  string  $domain  Domain name (with or without protocol)
      * @param  int  $timeout  Timeout in seconds (default 10 per request)
-     * @return array{is_valid: bool, broken_links_count: int, pages_scanned: int, broken_links: array<int, array{url: string, status: int, found_on: string}>, error_message: string|null, payload: array<string, mixed>}
+     * @return array{is_valid: bool, verified: bool, broken_links_count: int, pages_scanned: int, broken_links: array<int, array{url: string, status: int, found_on: string}>, error_message: string|null, payload: array<string, mixed>}
      */
     public function check(string $domain, int $timeout = 10): array
     {
@@ -54,6 +54,7 @@ class BrokenLinkHealthCheck
 
             return [
                 'is_valid' => $brokenCount === 0,
+                'verified' => true,
                 'broken_links_count' => $brokenCount,
                 'pages_scanned' => $this->pagesScanned,
                 'broken_links' => $this->brokenLinks,
@@ -72,6 +73,7 @@ class BrokenLinkHealthCheck
 
             return [
                 'is_valid' => false,
+                'verified' => false,
                 'broken_links_count' => 0,
                 'pages_scanned' => $this->pagesScanned,
                 'broken_links' => [],

@@ -74,9 +74,15 @@ class ScheduledTasks extends Component
         $descriptions = [
             'domains:detect-platforms' => 'Platform Detection',
             'domains:detect-hosting' => 'Hosting Detection',
+            'domains:health-check --all --type=uptime' => 'Uptime Checks',
             'domains:health-check --all --type=http' => 'HTTP Health Checks',
             'domains:health-check --all --type=ssl' => 'SSL Certificate Checks',
             'domains:health-check --all --type=dns' => 'DNS Health Checks',
+            'domains:health-check --all --type=email_security' => 'Email Security Checks',
+            'domains:health-check --all --type=reputation' => 'Reputation Checks',
+            'domains:health-check --all --type=security_headers' => 'Security Header Checks',
+            'domains:health-check --all --type=seo' => 'SEO Fundamentals Checks',
+            'domains:health-check --all --type=broken_links' => 'Broken Link Checks',
             'domains:sync-synergy-expiry' => 'Synergy Wholesale Expiry Sync',
             'domains:sync-dns-records' => 'DNS Records Sync',
         ];

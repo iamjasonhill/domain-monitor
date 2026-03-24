@@ -18,11 +18,11 @@ class EmailSecurityHealthCheck
      * @param  array<int, string>  $customSelectors
      * @return array{
      *     is_valid: bool,
-     *     spf: array{present: bool, valid: bool, record: string|null, mechanism: string|null, error: string|null},
-     *     dmarc: array{present: bool, valid: bool, record: string|null, policy: string|null, error: string|null},
-     *     dnssec: array{enabled: bool, error: string|null},
-     *     caa: array{present: bool, records: array<int, string>, error: string|null},
-     *     dkim: array{present: bool, selectors: array<int, array{selector: string, record: string}>, error: string|null},
+     *     spf: array{present: bool, valid: bool, verified: bool, record: string|null, mechanism: string|null, error: string|null},
+     *     dmarc: array{present: bool, valid: bool, verified: bool, record: string|null, policy: string|null, error: string|null},
+     *     dnssec: array{enabled: bool, verified: bool, error: string|null},
+     *     caa: array{present: bool, verified: bool, records: array<int, string>, error: string|null},
+     *     dkim: array{present: bool, verified: bool, selectors: array<int, array{selector: string, record: string}>, error: string|null},
      *     error_message: string|null,
      *     payload: array<string, mixed>
      * }
@@ -71,11 +71,11 @@ class EmailSecurityHealthCheck
         } catch (Exception $e) {
             return [
                 'is_valid' => false,
-                'spf' => ['present' => false, 'valid' => false, 'record' => null, 'mechanism' => null, 'error' => 'Check failed'],
-                'dmarc' => ['present' => false, 'valid' => false, 'record' => null, 'policy' => null, 'error' => 'Check failed'],
-                'dnssec' => ['enabled' => false, 'error' => 'Check failed'],
-                'caa' => ['present' => false, 'records' => [], 'error' => 'Check failed'],
-                'dkim' => ['present' => false, 'selectors' => [], 'error' => 'Check failed'],
+                'spf' => ['present' => false, 'valid' => false, 'verified' => false, 'record' => null, 'mechanism' => null, 'error' => 'Check failed'],
+                'dmarc' => ['present' => false, 'valid' => false, 'verified' => false, 'record' => null, 'policy' => null, 'error' => 'Check failed'],
+                'dnssec' => ['enabled' => false, 'verified' => false, 'error' => 'Check failed'],
+                'caa' => ['present' => false, 'verified' => false, 'records' => [], 'error' => 'Check failed'],
+                'dkim' => ['present' => false, 'verified' => false, 'selectors' => [], 'error' => 'Check failed'],
                 'error_message' => 'Exception: '.$e->getMessage(),
                 'payload' => [
                     'domain' => $domain,
@@ -88,7 +88,7 @@ class EmailSecurityHealthCheck
 
     /**
      * @param  array<int, string>  $customSelectors
-     * @return array{present: bool, selectors: array<int, array{selector: string, record: string}>, error: string|null}
+     * @return array{present: bool, verified: bool, selectors: array<int, array{selector: string, record: string}>, error: string|null}
      */
     private function checkDkim(string $domain, array $customSelectors = []): array
     {
@@ -125,12 +125,14 @@ class EmailSecurityHealthCheck
 
             return [
                 'present' => ! empty($foundSelectors),
+                'verified' => true,
                 'selectors' => $foundSelectors,
                 'error' => null,
             ];
         } catch (Exception $e) {
             return [
                 'present' => false,
+                'verified' => false,
                 'selectors' => [],
                 'error' => $e->getMessage(),
             ];
@@ -138,7 +140,7 @@ class EmailSecurityHealthCheck
     }
 
     /**
-     * @return array{present: bool, valid: bool, record: string|null, mechanism: string|null, error: string|null}
+     * @return array{present: bool, valid: bool, verified: bool, record: string|null, mechanism: string|null, error: string|null}
      */
     private function checkSpf(string $domain): array
     {
@@ -150,6 +152,7 @@ class EmailSecurityHealthCheck
                 return [
                     'present' => false,
                     'valid' => false,
+                    'verified' => true,
                     'record' => null,
                     'mechanism' => null,
                     'error' => 'No SPF record found',
@@ -160,6 +163,7 @@ class EmailSecurityHealthCheck
                 return [
                     'present' => true,
                     'valid' => false,
+                    'verified' => true,
                     'record' => implode(' | ', array_map(fn ($r) => $r->txt(), $spfRecords)),
                     'mechanism' => null,
                     'error' => 'Multiple SPF records found (Invalid)',
@@ -186,6 +190,7 @@ class EmailSecurityHealthCheck
             return [
                 'present' => true,
                 'valid' => $valid,
+                'verified' => true,
                 'record' => $record,
                 'mechanism' => $mechanism,
                 'error' => null,
@@ -194,6 +199,7 @@ class EmailSecurityHealthCheck
             return [
                 'present' => false,
                 'valid' => false,
+                'verified' => false,
                 'record' => null,
                 'mechanism' => null,
                 'error' => $e->getMessage(),
@@ -202,7 +208,7 @@ class EmailSecurityHealthCheck
     }
 
     /**
-     * @return array{present: bool, valid: bool, record: string|null, policy: string|null, error: string|null}
+     * @return array{present: bool, valid: bool, verified: bool, record: string|null, policy: string|null, error: string|null}
      */
     private function checkDmarc(string $domain): array
     {
@@ -216,6 +222,7 @@ class EmailSecurityHealthCheck
                 return [
                     'present' => false,
                     'valid' => false, // DMARC is recommended, so missing = invalid/fail for our strict monitor
+                    'verified' => true,
                     'record' => null,
                     'policy' => null,
                     'error' => 'No DMARC record found',
@@ -226,6 +233,7 @@ class EmailSecurityHealthCheck
                 return [
                     'present' => true,
                     'valid' => false,
+                    'verified' => true,
                     'record' => implode(' | ', array_map(fn ($r) => $r->txt(), $dmarcRecords)),
                     'policy' => null,
                     'error' => 'Multiple DMARC records found',
@@ -243,6 +251,7 @@ class EmailSecurityHealthCheck
             return [
                 'present' => true,
                 'valid' => $valid,
+                'verified' => true,
                 'record' => $record,
                 'policy' => $policy,
                 'error' => $valid ? null : 'Invalid or missing policy (p=)',
@@ -251,6 +260,7 @@ class EmailSecurityHealthCheck
             return [
                 'present' => false,
                 'valid' => false,
+                'verified' => false,
                 'record' => null,
                 'policy' => null,
                 'error' => $e->getMessage(),
@@ -259,7 +269,7 @@ class EmailSecurityHealthCheck
     }
 
     /**
-     * @return array{enabled: bool, error: string|null}
+     * @return array{enabled: bool, verified: bool, error: string|null}
      */
     private function checkDnssec(string $domain): array
     {
@@ -270,11 +280,13 @@ class EmailSecurityHealthCheck
 
             return [
                 'enabled' => ! empty($records),
+                'verified' => true,
                 'error' => null,
             ];
         } catch (Exception $e) {
             return [
                 'enabled' => false,
+                'verified' => false,
                 'error' => $e->getMessage(),
             ];
         }
@@ -294,7 +306,7 @@ class EmailSecurityHealthCheck
     }
 
     /**
-     * @return array{present: bool, records: array<int, string>, error: string|null}
+     * @return array{present: bool, verified: bool, records: array<int, string>, error: string|null}
      */
     private function checkCaa(string $domain): array
     {
@@ -305,6 +317,7 @@ class EmailSecurityHealthCheck
             if (empty($records)) {
                 return [
                     'present' => false,
+                    'verified' => true,
                     'records' => [],
                     'error' => null,
                 ];
@@ -312,12 +325,14 @@ class EmailSecurityHealthCheck
 
             return [
                 'present' => true,
+                'verified' => true,
                 'records' => array_map(fn ($r) => (string) $r, $records),
                 'error' => null,
             ];
         } catch (Exception $e) {
             return [
                 'present' => false,
+                'verified' => false,
                 'records' => [],
                 'error' => $e->getMessage(),
             ];

@@ -12,6 +12,7 @@ class SecurityHeadersHealthCheck
      *
      * @return array{
      *     is_valid: bool,
+     *     verified: bool,
      *     score: int,
      *     headers: array<string, array{present: bool, value: string|null, status: string, recommendation: string|null}>,
      *     error_message: string|null,
@@ -42,6 +43,7 @@ class SecurityHeadersHealthCheck
 
             return [
                 'is_valid' => $isValid,
+                'verified' => true,
                 'score' => $score,
                 'headers' => $results,
                 'error_message' => null,
@@ -55,6 +57,7 @@ class SecurityHeadersHealthCheck
         } catch (Exception $e) {
             return [
                 'is_valid' => false,
+                'verified' => false,
                 'score' => 0,
                 'headers' => [],
                 'error_message' => 'Exception: '.$e->getMessage(),

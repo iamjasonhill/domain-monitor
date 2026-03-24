@@ -275,6 +275,7 @@ class WebProperty extends Model
     public function healthSummary(): array
     {
         $checkTypes = [
+            'uptime',
             'http',
             'ssl',
             'dns',

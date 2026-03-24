@@ -22,9 +22,15 @@
                 <div>
                     <select wire:model.live="filterType" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-blue-500 focus:ring-blue-500">
                         <option value="">All Types</option>
+                        <option value="uptime">Uptime</option>
                         <option value="http">HTTP</option>
                         <option value="ssl">SSL</option>
                         <option value="dns">DNS</option>
+                        <option value="email_security">Email Security</option>
+                        <option value="reputation">Reputation</option>
+                        <option value="security_headers">Security Headers</option>
+                        <option value="seo">SEO</option>
+                        <option value="broken_links">Broken Links</option>
                     </select>
                 </div>
             </div>
@@ -37,6 +43,7 @@
                         <option value="ok">OK</option>
                         <option value="warn">Warning</option>
                         <option value="fail">Failed</option>
+                        <option value="unknown">Unknown</option>
                     </select>
                 </div>
 
@@ -91,6 +98,8 @@
                                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">OK</span>
                                         @elseif($check->status === 'warn')
                                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Warn</span>
+                                        @elseif($check->status === 'unknown')
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">Unknown</span>
                                         @else
                                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Fail</span>
                                         @endif

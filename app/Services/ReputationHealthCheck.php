@@ -12,8 +12,8 @@ class ReputationHealthCheck
      *
      * @return array{
      *     is_valid: bool,
-     *     google_safe_browsing: array{safe: bool, matches: array<mixed>, error: string|null},
-     *     dnsbl: array{spamhaus: array{listed: bool, details: string|null, error: string|null}},
+     *     google_safe_browsing: array{safe: bool, verified: bool, matches: array<mixed>, error: string|null},
+     *     dnsbl: array{spamhaus: array{listed: bool, verified: bool, details: string|null, error: string|null}},
      *     error_message: string|null,
      *     payload: array<string, mixed>
      * }
@@ -55,8 +55,8 @@ class ReputationHealthCheck
         } catch (Exception $e) {
             return [
                 'is_valid' => false,
-                'google_safe_browsing' => ['safe' => true, 'matches' => [], 'error' => 'Check failed'],
-                'dnsbl' => ['spamhaus' => ['listed' => false, 'details' => null, 'error' => 'Check failed']],
+                'google_safe_browsing' => ['safe' => true, 'verified' => false, 'matches' => [], 'error' => 'Check failed'],
+                'dnsbl' => ['spamhaus' => ['listed' => false, 'verified' => false, 'details' => null, 'error' => 'Check failed']],
                 'error_message' => 'Exception: '.$e->getMessage(),
                 'payload' => [
                     'domain' => $domain,
@@ -68,7 +68,7 @@ class ReputationHealthCheck
     }
 
     /**
-     * @return array{safe: bool, matches: array<mixed>, error: string|null}
+     * @return array{safe: bool, verified: bool, matches: array<mixed>, error: string|null}
      */
     private function checkGoogleSafeBrowsing(string $domain): array
     {
@@ -77,6 +77,7 @@ class ReputationHealthCheck
         if (empty($apiKey)) {
             return [
                 'safe' => true, // Fail open if no key
+                'verified' => false,
                 'matches' => [],
                 'error' => 'API Key missing',
             ];
@@ -105,6 +106,7 @@ class ReputationHealthCheck
             if ($response->failed()) {
                 return [
                     'safe' => true,
+                    'verified' => false,
                     'matches' => [],
                     'error' => 'API Request Failed: '.$response->status(),
                 ];
@@ -116,12 +118,14 @@ class ReputationHealthCheck
 
             return [
                 'safe' => empty($matches),
+                'verified' => true,
                 'matches' => is_array($matches) ? $matches : [],
                 'error' => null,
             ];
         } catch (Exception $e) {
             return [
                 'safe' => true,
+                'verified' => false,
                 'matches' => [],
                 'error' => $e->getMessage(),
             ];
@@ -129,7 +133,7 @@ class ReputationHealthCheck
     }
 
     /**
-     * @return array{spamhaus: array{listed: bool, details: string|null, error: string|null}}
+     * @return array{spamhaus: array{listed: bool, verified: bool, details: string|null, error: string|null}}
      */
     private function checkDnsbl(string $domain): array
     {
@@ -142,6 +146,7 @@ class ReputationHealthCheck
                 return [
                     'spamhaus' => [
                         'listed' => false,
+                        'verified' => false,
                         'details' => null,
                         'error' => 'Could not resolve domain IP',
                     ],
@@ -160,6 +165,7 @@ class ReputationHealthCheck
                 return [
                     'spamhaus' => [
                         'listed' => false,
+                        'verified' => true,
                         'details' => null,
                         'error' => null,
                     ],
@@ -209,6 +215,7 @@ class ReputationHealthCheck
             return [
                 'spamhaus' => [
                     'listed' => $listed,
+                    'verified' => $error === null,
                     'details' => $listed ? implode(', ', array_unique($details)) : null,
                     'error' => $error,
                 ],
@@ -217,6 +224,7 @@ class ReputationHealthCheck
             return [
                 'spamhaus' => [
                     'listed' => false,
+                    'verified' => false,
                     'details' => null,
                     'error' => $e->getMessage(),
                 ],

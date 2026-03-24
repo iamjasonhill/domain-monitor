@@ -140,4 +140,31 @@ class ReputationHealthCheckTest extends TestCase
         $this->assertTrue($payload['dnsbl']['spamhaus']['listed']);
         $this->assertStringContainsString('Spam Source', $payload['dnsbl']['spamhaus']['details']);
     }
+
+    public function test_it_marks_reputation_as_unknown_when_verification_is_incomplete(): void
+    {
+        $domain = Domain::factory()->create([
+            'domain' => 'unknown-reputation.com',
+            'is_active' => true,
+        ]);
+
+        config()->set('services.google.safe_browsing_key', null);
+
+        $this->mock(ReputationHealthCheck::class, function (MockInterface $mock) {
+            $mock->makePartial()->shouldAllowMockingProtectedMethods();
+            $mock->shouldReceive('resolveIp')->andReturn('1.2.3.4');
+            $mock->shouldReceive('resolveDns')->andReturn(false);
+        });
+
+        $this->artisan('domains:health-check', ['--type' => 'reputation', '--domain' => 'unknown-reputation.com'])
+            ->assertSuccessful();
+
+        $check = $domain->checks()->latest()->first();
+        $this->assertEquals('unknown', $check->status);
+
+        $payload = $check->payload;
+        $this->assertFalse($payload['google_safe_browsing']['verified']);
+        $this->assertSame('API Key missing', $payload['google_safe_browsing']['error']);
+        $this->assertTrue($payload['dnsbl']['spamhaus']['verified']);
+    }
 }
