@@ -109,7 +109,7 @@ HORIZON_ALLOWED_EMAILS=ops@example.com,admin@example.com
 
 **Optional (for .com.au domains):**
 ```
-SYNERGY_WHOLESALE_API_URL=https://api.synergywholesale.com/soap
+SYNERGY_WHOLESALE_API_URL=https://api.synergywholesale.com
 SYNERGY_WHOLESALE_RESELLER_ID=your_reseller_id
 SYNERGY_WHOLESALE_API_KEY=your_api_key
 ```

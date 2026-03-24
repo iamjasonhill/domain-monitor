@@ -41,7 +41,10 @@ return [
     ],
 
     'synergy' => [
-        'api_url' => env('SYNERGY_API_URL', 'https://api.synergywholesale.com/soap'),
+        'api_url' => env(
+            'SYNERGY_WHOLESALE_API_URL',
+            env('SYNERGY_API_URL', 'https://api.synergywholesale.com')
+        ),
     ],
 
     'google' => [

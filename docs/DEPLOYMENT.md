@@ -45,7 +45,7 @@ Ensure all required environment variables are set in Laravel Forge:
 - `DOMAIN_MONITOR_PRUNE_ELIGIBILITY_CHECKS_DAYS` - Retain `domain_eligibility_checks` history for N days (default 180).
 
 #### Synergy Wholesale API (Optional - for .com.au domains)
-- `SYNERGY_WHOLESALE_API_URL` - Default: `https://api.synergywholesale.com/soap`
+- `SYNERGY_WHOLESALE_API_URL` - Default: `https://api.synergywholesale.com`
 - `SYNERGY_WHOLESALE_RESELLER_ID` - Your reseller ID
 - `SYNERGY_WHOLESALE_API_KEY` - Your API key
 
@@ -223,7 +223,7 @@ If you're managing .com.au domains:
    $credential = \App\Models\SynergyCredential::create([
        'reseller_id' => env('SYNERGY_WHOLESALE_RESELLER_ID'),
        'api_key' => env('SYNERGY_WHOLESALE_API_KEY'),
-       'api_url' => env('SYNERGY_WHOLESALE_API_URL', 'https://api.synergywholesale.com/soap'),
+       'api_url' => env('SYNERGY_WHOLESALE_API_URL', 'https://api.synergywholesale.com'),
        'is_active' => true,
    ]);
    ```
@@ -288,4 +288,3 @@ For issues or questions:
 - Check Laravel logs: `storage/logs/laravel.log`
 - Review Forge server logs
 - Check scheduled task execution in Forge dashboard
-

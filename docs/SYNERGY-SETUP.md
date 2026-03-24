@@ -4,7 +4,7 @@
 
 ✅ **Reseller ID:** 27549  
 ✅ **API Key:** Configured (encrypted in database)  
-✅ **API URL:** https://api.synergywholesale.com/soap
+✅ **API URL:** https://api.synergywholesale.com
 
 ## Current Status
 
@@ -70,4 +70,3 @@ php artisan domains:sync-synergy-expiry --all
 
 - [Synergy Wholesale API Documentation](https://synergywholesale.com/documentation/api-whmcs-modules/)
 - [Support Centre](https://synergywholesale.com/support-centre/)
-

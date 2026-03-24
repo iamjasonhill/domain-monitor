@@ -20,7 +20,7 @@ class SynergyCredentialFactory extends Factory
         return [
             'reseller_id' => fake()->numerify('RES#######'),
             'api_key_encrypted' => Crypt::encryptString(fake()->uuid()),
-            'api_url' => 'https://api.synergywholesale.com/soap/soap.php?wsdl',
+            'api_url' => 'https://api.synergywholesale.com',
             'is_active' => true,
             'last_sync_at' => fake()->optional()->dateTimeBetween('-1 week', 'now'),
             'notes' => fake()->optional()->sentence(),
