@@ -1,0 +1,463 @@
+<?php
+
+namespace App\Console\Commands;
+
+use App\Models\Domain;
+use App\Models\PropertyAnalyticsSource;
+use App\Models\PropertyRepository;
+use App\Models\WebProperty;
+use App\Models\WebPropertyDomain;
+use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
+
+class BootstrapWebProperties extends Command
+{
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $signature = 'web-properties:bootstrap
+                            {--dry-run : Preview changes without writing them}
+                            {--domain=* : Limit bootstrap to one or more domain names}
+                            {--refresh-links : Refresh repository and analytics links for already-linked properties}';
+
+    /**
+     * The console command description.
+     *
+     * @var string
+     */
+    protected $description = 'Bootstrap web_properties from the existing domain inventory';
+
+    /**
+     * @var array<string, mixed>
+     */
+    private array $bootstrapConfig = [];
+
+    /**
+     * @var array<string, array<int, array<string, mixed>>>
+     */
+    private array $repoIndex = [];
+
+    /**
+     * Execute the console command.
+     */
+    public function handle(): int
+    {
+        $this->bootstrapConfig = (array) config('domain_monitor.web_property_bootstrap', []);
+        $this->repoIndex = $this->buildRepoIndex();
+
+        $targetDomains = collect((array) $this->option('domain'))
+            ->filter(fn ($domain) => is_string($domain) && $domain !== '')
+            ->map(fn (string $domain) => mb_strtolower(trim($domain)))
+            ->values();
+
+        $domains = Domain::query()
+            ->where('is_active', true)
+            ->when(
+                $targetDomains->isNotEmpty(),
+                fn ($query) => $query->whereIn('domain', $targetDomains->all())
+            )
+            ->orderBy('domain')
+            ->get();
+
+        if ($domains->isEmpty()) {
+            $this->warn('No matching active domains found.');
+
+            return self::SUCCESS;
+        }
+
+        $dryRun = (bool) $this->option('dry-run');
+        $refreshLinks = (bool) $this->option('refresh-links');
+
+        $createdProperties = 0;
+        $linkedDomains = 0;
+        $attachedRepositories = 0;
+        $attachedAnalytics = 0;
+        $skippedDomains = 0;
+
+        foreach ($domains as $domain) {
+            $domainName = mb_strtolower($domain->domain);
+            $existingLink = WebPropertyDomain::query()
+                ->where('domain_id', $domain->id)
+                ->with('webProperty')
+                ->first();
+
+            $override = $this->domainOverride($domainName);
+
+            if ($existingLink instanceof WebPropertyDomain) {
+                $skippedDomains++;
+
+                if ($refreshLinks && $existingLink->webProperty instanceof WebProperty) {
+                    [$repoAttached, $analyticsAttached] = $this->syncPropertyLinks(
+                        $existingLink->webProperty,
+                        $domain,
+                        $override,
+                        $dryRun
+                    );
+
+                    $attachedRepositories += $repoAttached;
+                    $attachedAnalytics += $analyticsAttached;
+                }
+
+                continue;
+            }
+
+            $propertyAttributes = $this->makePropertyAttributes($domain, $override);
+
+            if ($dryRun) {
+                $this->line(sprintf(
+                    '[dry-run] would create property %s for %s',
+                    $propertyAttributes['slug'],
+                    $domain->domain
+                ));
+
+                [$repoAttached, $analyticsAttached] = $this->syncPropertyLinks(
+                    new WebProperty($propertyAttributes),
+                    $domain,
+                    $override,
+                    true
+                );
+
+                $createdProperties++;
+                $linkedDomains++;
+                $attachedRepositories += $repoAttached;
+                $attachedAnalytics += $analyticsAttached;
+
+                continue;
+            }
+
+            $property = WebProperty::create($propertyAttributes);
+
+            WebPropertyDomain::create([
+                'web_property_id' => $property->id,
+                'domain_id' => $domain->id,
+                'usage_type' => 'primary',
+                'is_canonical' => true,
+                'notes' => 'Bootstrapped from domain inventory.',
+            ]);
+
+            [$repoAttached, $analyticsAttached] = $this->syncPropertyLinks(
+                $property,
+                $domain,
+                $override,
+                false
+            );
+
+            $createdProperties++;
+            $linkedDomains++;
+            $attachedRepositories += $repoAttached;
+            $attachedAnalytics += $analyticsAttached;
+        }
+
+        $summary = [
+            'domains_considered' => $domains->count(),
+            'properties_created' => $createdProperties,
+            'domain_links_created' => $linkedDomains,
+            'repositories_attached' => $attachedRepositories,
+            'analytics_sources_attached' => $attachedAnalytics,
+            'domains_skipped' => $skippedDomains,
+            'dry_run' => $dryRun,
+        ];
+
+        $this->table(
+            ['Metric', 'Value'],
+            collect($summary)->map(fn ($value, $key) => [$key, (string) $value])->all()
+        );
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * @param  array<string, mixed>  $override
+     * @return array{0:int,1:int}
+     */
+    private function syncPropertyLinks(WebProperty $property, Domain $domain, array $override, bool $dryRun): array
+    {
+        $repoAttached = 0;
+        $analyticsAttached = 0;
+
+        $repository = $this->resolveRepository($domain, $override);
+        if (is_array($repository) && $this->shouldAttachRepository($property, $repository['repo_name'])) {
+            if ($dryRun) {
+                $this->line(sprintf(
+                    '  [dry-run] would attach repo %s to %s',
+                    $repository['repo_name'],
+                    $property->slug
+                ));
+            } else {
+                PropertyRepository::create([
+                    'web_property_id' => $property->id,
+                    ...$repository,
+                ]);
+            }
+
+            $repoAttached++;
+        }
+
+        $analyticsSources = $this->resolveAnalyticsSources($override);
+        foreach ($analyticsSources as $analyticsSource) {
+            if (! $this->shouldAttachAnalytics($property, $analyticsSource['provider'], $analyticsSource['external_id'])) {
+                continue;
+            }
+
+            if ($dryRun) {
+                $this->line(sprintf(
+                    '  [dry-run] would attach analytics %s:%s to %s',
+                    $analyticsSource['provider'],
+                    $analyticsSource['external_id'],
+                    $property->slug
+                ));
+            } else {
+                PropertyAnalyticsSource::create([
+                    'web_property_id' => $property->id,
+                    ...$analyticsSource,
+                ]);
+            }
+
+            $analyticsAttached++;
+        }
+
+        return [$repoAttached, $analyticsAttached];
+    }
+
+    /**
+     * @param  array<string, mixed>  $override
+     * @return array<string, mixed>
+     */
+    private function makePropertyAttributes(Domain $domain, array $override): array
+    {
+        $slug = (string) ($override['slug'] ?? $this->defaultSlugForDomain($domain->domain));
+        $propertyType = (string) ($override['property_type'] ?? $this->inferPropertyType($domain));
+        $notes = trim(collect([
+            'Bootstrapped from domain inventory. Review grouping and links.',
+            $override['notes'] ?? null,
+        ])->filter()->implode(' '));
+
+        return [
+            'slug' => $slug,
+            'name' => (string) ($override['name'] ?? $domain->domain),
+            'property_type' => $propertyType,
+            'status' => $domain->is_active ? 'active' : 'inactive',
+            'primary_domain_id' => $domain->id,
+            'production_url' => (string) ($override['production_url'] ?? "https://{$domain->domain}"),
+            'staging_url' => $override['staging_url'] ?? null,
+            'platform' => $override['platform'] ?? $domain->platform,
+            'target_platform' => $override['target_platform'] ?? null,
+            'owner' => $override['owner'] ?? null,
+            'priority' => $override['priority'] ?? null,
+            'notes' => $notes !== '' ? $notes : null,
+        ];
+    }
+
+    private function inferPropertyType(Domain $domain): string
+    {
+        if ($domain->dns_config_name === 'Parked') {
+            return 'domain_asset';
+        }
+
+        return 'website';
+    }
+
+    private function defaultSlugForDomain(string $domainName): string
+    {
+        return Str::slug(str_replace('.', '-', mb_strtolower($domainName)));
+    }
+
+    /**
+     * @return array<string, array<int, array<string, mixed>>>
+     */
+    private function buildRepoIndex(): array
+    {
+        $websitesRoot = (string) data_get($this->bootstrapConfig, 'websites_root', '');
+        if ($websitesRoot === '' || ! File::isDirectory($websitesRoot)) {
+            return [];
+        }
+
+        /** @var Collection<int, string> $directories */
+        $directories = collect(File::directories($websitesRoot));
+
+        return $directories
+            ->filter(fn (string $path) => File::exists($path.'/package.json'))
+            ->map(function (string $path): array {
+                $repoName = basename($path);
+                $packageJson = json_decode((string) File::get($path.'/package.json'), true);
+
+                return [
+                    'match_key' => $this->normalizeRepoKey($repoName),
+                    'repo_name' => $repoName,
+                    'repo_provider' => 'local_only',
+                    'repo_url' => null,
+                    'local_path' => $path,
+                    'default_branch' => null,
+                    'deployment_branch' => null,
+                    'framework' => $this->detectFramework($repoName, is_array($packageJson) ? $packageJson : []),
+                    'is_primary' => true,
+                    'notes' => 'Auto-matched from local websites inventory.',
+                ];
+            })
+            ->filter(fn (array $repository) => $repository['match_key'] !== '')
+            ->groupBy('match_key')
+            ->map(fn (Collection $items) => $items->values()->all())
+            ->all();
+    }
+
+    private function normalizeRepoKey(string $repoName): string
+    {
+        $tokens = preg_split('/[^a-z0-9]+/', mb_strtolower($repoName)) ?: [];
+
+        $filtered = collect($tokens)
+            ->filter()
+            ->reject(fn (string $token) => in_array($token, [
+                'astro',
+                'website',
+                'site',
+                'new',
+                'app',
+                'com',
+                'net',
+                'org',
+                'au',
+            ], true))
+            ->values();
+
+        return $filtered->implode('');
+    }
+
+    private function normalizeDomainKey(string $domainName): string
+    {
+        $tokens = preg_split('/[^a-z0-9]+/', mb_strtolower($domainName)) ?: [];
+
+        $filtered = collect($tokens)
+            ->filter()
+            ->reject(fn (string $token) => in_array($token, [
+                'com',
+                'net',
+                'org',
+                'au',
+                'click',
+            ], true))
+            ->values();
+
+        return $filtered->implode('');
+    }
+
+    /**
+     * @param  array<string, mixed>  $override
+     * @return array<string, mixed>|null
+     */
+    private function resolveRepository(Domain $domain, array $override): ?array
+    {
+        $repoOverride = data_get($override, 'repository');
+        if (is_array($repoOverride)) {
+            return [
+                'repo_name' => (string) ($repoOverride['repo_name'] ?? basename((string) ($repoOverride['local_path'] ?? 'repository'))),
+                'repo_provider' => (string) ($repoOverride['repo_provider'] ?? 'local_only'),
+                'repo_url' => $repoOverride['repo_url'] ?? null,
+                'local_path' => $repoOverride['local_path'] ?? null,
+                'default_branch' => $repoOverride['default_branch'] ?? null,
+                'deployment_branch' => $repoOverride['deployment_branch'] ?? null,
+                'framework' => $repoOverride['framework'] ?? null,
+                'is_primary' => (bool) ($repoOverride['is_primary'] ?? true),
+                'notes' => $repoOverride['notes'] ?? 'Mapped from bootstrap override.',
+            ];
+        }
+
+        $domainKey = $this->normalizeDomainKey($domain->domain);
+        $matches = $this->repoIndex[$domainKey] ?? [];
+
+        return count($matches) === 1 ? $matches[0] : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $override
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolveAnalyticsSources(array $override): array
+    {
+        $sources = data_get($override, 'analytics_sources', []);
+
+        if (! is_array($sources)) {
+            return [];
+        }
+
+        return collect($sources)
+            ->filter(fn ($source) => is_array($source) && ! empty($source['provider']) && ! empty($source['external_id']))
+            ->map(function (array $source): array {
+                return [
+                    'provider' => (string) $source['provider'],
+                    'external_id' => (string) $source['external_id'],
+                    'external_name' => $source['external_name'] ?? null,
+                    'workspace_path' => $source['workspace_path'] ?? null,
+                    'is_primary' => (bool) ($source['is_primary'] ?? true),
+                    'status' => (string) ($source['status'] ?? 'active'),
+                    'notes' => $source['notes'] ?? 'Mapped from bootstrap override.',
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function domainOverride(string $domainName): array
+    {
+        $overrides = (array) data_get($this->bootstrapConfig, 'overrides', []);
+
+        $override = $overrides[$domainName] ?? [];
+
+        return is_array($override) ? $override : [];
+    }
+
+    private function shouldAttachRepository(WebProperty $property, string $repoName): bool
+    {
+        if (! $property->exists) {
+            return true;
+        }
+
+        return ! $property->repositories()
+            ->where('repo_name', $repoName)
+            ->exists();
+    }
+
+    private function shouldAttachAnalytics(WebProperty $property, string $provider, string $externalId): bool
+    {
+        if (! $property->exists) {
+            return true;
+        }
+
+        return ! $property->analyticsSources()
+            ->where('provider', $provider)
+            ->where('external_id', $externalId)
+            ->exists();
+    }
+
+    /**
+     * @param  array<string, mixed>  $packageJson
+     */
+    private function detectFramework(string $repoName, array $packageJson): ?string
+    {
+        $repoName = mb_strtolower($repoName);
+        $dependencies = array_merge(
+            (array) ($packageJson['dependencies'] ?? []),
+            (array) ($packageJson['devDependencies'] ?? [])
+        );
+
+        if (str_contains($repoName, 'astro') || array_key_exists('astro', $dependencies)) {
+            return 'Astro';
+        }
+
+        if (array_key_exists('next', $dependencies)) {
+            return 'Next.js';
+        }
+
+        if (array_key_exists('react', $dependencies)) {
+            return 'React';
+        }
+
+        return null;
+    }
+}

@@ -23,4 +23,69 @@ return [
     'prune_domain_checks_days' => (int) env('DOMAIN_MONITOR_PRUNE_DOMAIN_CHECKS_DAYS', 14),
     'prune_eligibility_checks_days' => (int) env('DOMAIN_MONITOR_PRUNE_ELIGIBILITY_CHECKS_DAYS', 14),
     'prune_alerts_days' => (int) env('DOMAIN_MONITOR_PRUNE_ALERTS_DAYS', 14),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Web Property Bootstrap
+    |--------------------------------------------------------------------------
+    |
+    | Conservative bootstrap settings for seeding the web_properties layer
+    | from the domain inventory. Start with narrow overrides and let the
+    | bootstrap command create a reviewable baseline instead of trying to
+    | infer every relationship automatically.
+    |
+    */
+    'web_property_bootstrap' => [
+        'websites_root' => env('DOMAIN_MONITOR_WEBSITES_ROOT', '/Users/jasonhill/Projects/websites'),
+        'overrides' => [
+            'again.com.au' => [
+                'slug' => 'again-com-au',
+                'name' => 'Again.com.au',
+                'property_type' => 'marketing_site',
+                'repository' => [
+                    'repo_name' => 'again-com-au-astro',
+                    'local_path' => '/Users/jasonhill/Projects/websites/again-com-au-astro',
+                    'framework' => 'Astro',
+                ],
+            ],
+            'moveroo.com.au' => [
+                'slug' => 'moveroo-website',
+                'name' => 'Moveroo Website',
+                'property_type' => 'marketing_site',
+                'repository' => [
+                    'repo_name' => 'moveroo-website-astro',
+                    'local_path' => '/Users/jasonhill/Projects/websites/moveroo-website-astro',
+                    'framework' => 'Astro',
+                ],
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '6',
+                        'external_name' => 'Moveroo website',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
+            ],
+            'movingagain.com.au' => [
+                'slug' => 'moving-again',
+                'name' => 'Moving Again',
+                'property_type' => 'marketing_site',
+                'repository' => [
+                    'repo_name' => 'moving-again-astro',
+                    'local_path' => '/Users/jasonhill/Projects/websites/moving-again-astro',
+                    'framework' => 'Astro',
+                ],
+            ],
+            'movinginsurance.com.au' => [
+                'slug' => 'moving-insurance',
+                'name' => 'Moving Insurance',
+                'property_type' => 'marketing_site',
+                'repository' => [
+                    'repo_name' => 'moving-insurance-astro',
+                    'local_path' => '/Users/jasonhill/Projects/websites/moving-insurance-astro',
+                    'framework' => 'Astro',
+                ],
+            ],
+        ],
+    ],
 ];
