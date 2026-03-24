@@ -108,17 +108,11 @@ class RunHealthChecks extends Command
             // Ensure platform relationship is available for accurate parked detection
             $domain->loadMissing('platform');
 
-            if ($domain->isParked() && $type !== 'reputation') {
-                if ($verbose) {
-                    $this->line('  Skipped: domain is marked as parked');
-                }
+            $skipReason = $domain->monitoringSkipReason($type);
 
-                return Command::SUCCESS;
-            }
-
-            if ($domain->isEmailOnly() && in_array($type, ['http', 'ssl', 'security_headers', 'seo'], true)) {
+            if ($skipReason !== null) {
                 if ($verbose) {
-                    $this->line('  Skipped: domain is marked as email-only (HTTP/SSL checks disabled)');
+                    $this->line("  Skipped: {$skipReason}");
                 }
 
                 return Command::SUCCESS;

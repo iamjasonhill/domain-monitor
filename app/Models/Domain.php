@@ -551,6 +551,28 @@ class Domain extends Model
         return $platformType === 'Email Only';
     }
 
+    public function monitoringSkipReason(string $checkType): ?string
+    {
+        if (! $this->is_active) {
+            return 'domain is inactive';
+        }
+
+        if ($this->isParked() && $checkType !== 'reputation') {
+            return 'domain is marked as parked';
+        }
+
+        if ($this->isEmailOnly() && in_array($checkType, ['http', 'ssl', 'security_headers', 'seo', 'uptime', 'broken_links'], true)) {
+            return 'domain is marked as email-only for web-facing checks';
+        }
+
+        return null;
+    }
+
+    public function shouldSkipMonitoringCheck(string $checkType): bool
+    {
+        return $this->monitoringSkipReason($checkType) !== null;
+    }
+
     public function isParkedForHosting(): bool
     {
         if ($this->dns_config_name === 'Parked') {

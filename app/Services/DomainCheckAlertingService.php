@@ -23,6 +23,14 @@ class DomainCheckAlertingService
 
     public function handle(DomainCheck $check): void
     {
+        $check->loadMissing('domain.platform');
+
+        if (! $check->domain || $check->domain->shouldSkipMonitoringCheck($check->check_type)) {
+            $this->resetAlertStateIfNeeded($check);
+
+            return;
+        }
+
         $isFailure = in_array($check->status, self::FAILURE_STATUSES, true);
 
         // Handle Uptime History (Incident Logging)
@@ -97,6 +105,22 @@ class DomainCheckAlertingService
                 'ended_at' => $check->finished_at ?? now(),
             ]);
         }
+    }
+
+    private function resetAlertStateIfNeeded(DomainCheck $check): void
+    {
+        if (! in_array($check->check_type, self::THREE_STRIKE_TYPES, true)) {
+            return;
+        }
+
+        DomainCheckAlertState::query()
+            ->where('domain_id', $check->domain_id)
+            ->where('check_type', $check->check_type)
+            ->update([
+                'consecutive_failure_count' => 0,
+                'alert_active' => false,
+                'recovered_at' => now(),
+            ]);
     }
 
     private function lockOrCreateState(DomainCheck $check): DomainCheckAlertState
