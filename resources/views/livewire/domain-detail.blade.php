@@ -144,6 +144,10 @@
                         <span wire:loading.remove wire:target="runHealthCheck('dns')">DNS Check</span>
                         <span wire:loading wire:target="runHealthCheck('dns')">Running...</span>
                     </button>
+                    <button wire:click="runHealthCheck('security_headers')" wire:loading.attr="disabled" {{ $isParked ? 'disabled' : '' }} class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50">
+                        <span wire:loading.remove wire:target="runHealthCheck('security_headers')">Security Headers Check</span>
+                        <span wire:loading wire:target="runHealthCheck('security_headers')">Running...</span>
+                    </button>
                 </div>
             </div>
         </div>
