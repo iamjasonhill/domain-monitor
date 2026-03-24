@@ -243,7 +243,7 @@ class HostingDetector
                 $records = array_merge($records, $cnameRecords);
             }
         } catch (\Exception $e) {
-            Log::debug('DNS lookup failed', ['domain' => $domain, 'error' => $e->getMessage()]);
+            $this->logProbeFailure('DNS lookup failed', ['domain' => $domain, 'error' => $e->getMessage()]);
         }
 
         return $records;
@@ -287,7 +287,7 @@ class HostingDetector
                 }
             }
         } catch (\Exception $e) {
-            Log::debug('IP lookup failed', ['domain' => $domain, 'error' => $e->getMessage()]);
+            $this->logProbeFailure('IP lookup failed', ['domain' => $domain, 'error' => $e->getMessage()]);
         }
 
         return array_unique($ipAddresses);
@@ -304,7 +304,7 @@ class HostingDetector
                 return $hostname;
             }
         } catch (\Exception $e) {
-            Log::debug('Reverse DNS lookup failed', ['ip' => $ip, 'error' => $e->getMessage()]);
+            $this->logProbeFailure('Reverse DNS lookup failed', ['ip' => $ip, 'error' => $e->getMessage()]);
         }
 
         return null;
@@ -407,10 +407,22 @@ class HostingDetector
                 return $headers;
             }
         } catch (\Exception $e) {
-            Log::debug('HTTP request failed', ['url' => $url, 'error' => $e->getMessage()]);
+            $this->logProbeFailure('HTTP request failed', ['url' => $url, 'error' => $e->getMessage()]);
         }
 
         return [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    private function logProbeFailure(string $message, array $context): void
+    {
+        if (! config('domain_monitor.log_probe_failures')) {
+            return;
+        }
+
+        Log::debug($message, $context);
     }
 
     /**

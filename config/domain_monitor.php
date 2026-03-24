@@ -14,6 +14,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Probe logging
+    |--------------------------------------------------------------------------
+    |
+    | Hosting/platform detection often probes dead, parked, or broken domains.
+    | Keep the low-level probe noise available in development, but suppress it
+    | in production unless explicitly enabled.
+    |
+    */
+    'log_probe_failures' => (bool) env('DOMAIN_MONITOR_LOG_PROBE_FAILURES', env('APP_DEBUG', false)),
+
+    /*
+    |--------------------------------------------------------------------------
     | Data retention (pruning)
     |--------------------------------------------------------------------------
     |
