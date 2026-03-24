@@ -551,6 +551,20 @@ class Domain extends Model
         return $platformType === 'Email Only';
     }
 
+    public function isParkedForHosting(): bool
+    {
+        if ($this->dns_config_name === 'Parked') {
+            return true;
+        }
+
+        return $this->isParked();
+    }
+
+    public function hostingUsageType(): string
+    {
+        return $this->isParkedForHosting() ? 'parking' : 'live';
+    }
+
     /**
      * @param  array{provider?: string|null, confidence?: string|null, admin_url?: string|null}  $result
      * @param  array{source?: string|null, detected_at?: \Illuminate\Support\Carbon|\DateTimeInterface|string|null, review_status?: string|null, reviewed_at?: \Illuminate\Support\Carbon|\DateTimeInterface|string|null}  $extra

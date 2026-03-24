@@ -131,4 +131,31 @@ class HostingReliabilityTest extends TestCase
             'hosting_review_status' => 'confirmed',
         ]);
     }
+
+    public function test_it_separates_parked_domains_from_live_hosting_providers(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        Domain::factory()->create([
+            'domain' => 'parked-example.com.au',
+            'hosting_provider' => 'Synergy Wholesale PTY',
+            'dns_config_name' => 'Parked',
+        ]);
+
+        Domain::factory()->create([
+            'domain' => 'live-example.com.au',
+            'hosting_provider' => 'Netlify',
+            'platform' => 'Astro',
+        ]);
+
+        Livewire::test(\App\Livewire\HostingReliability::class)
+            ->assertSee('Parking / Non-live Providers')
+            ->assertSee('Synergy Wholesale PTY')
+            ->assertSee('parked-example.com.au')
+            ->assertSee('Live Hosting Providers')
+            ->assertSee('Netlify')
+            ->assertSee('Parked Domains')
+            ->assertSee('1');
+    }
 }

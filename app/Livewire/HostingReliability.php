@@ -22,7 +22,9 @@ class HostingReliability extends Component
         return Domain::query()
             ->whereNotNull('hosting_provider')
             ->where('hosting_provider', '!=', '')
+            ->with('platform')
             ->get()
+            ->reject(fn (Domain $domain) => $domain->isParkedForHosting())
             ->groupBy('hosting_provider')
             ->map(function ($domains, $host) {
                 $domainIds = $domains->pluck('id');
@@ -52,11 +54,33 @@ class HostingReliability extends Component
 
     /** @return Collection<int, mixed> */
     #[Computed]
+    public function parkingStats(): Collection
+    {
+        return Domain::query()
+            ->whereNotNull('hosting_provider')
+            ->where('hosting_provider', '!=', '')
+            ->with('platform')
+            ->get()
+            ->filter(fn (Domain $domain) => $domain->isParkedForHosting())
+            ->groupBy('hosting_provider')
+            ->map(function ($domains, $provider) {
+                return [
+                    'provider' => (string) $provider,
+                    'domain_count' => $domains->count(),
+                    'domains' => $domains->pluck('domain')->sort()->values(),
+                ];
+            })
+            ->sortByDesc('domain_count')
+            ->values();
+    }
+
+    /** @return Collection<int, mixed> */
+    #[Computed]
     public function reviewQueue(): Collection
     {
         $query = Domain::query()
             ->where('is_active', true)
-            ->with(['webProperties'])
+            ->with(['webProperties', 'platform'])
             ->where(function ($builder) {
                 $builder->whereNull('hosting_provider')
                     ->orWhere('hosting_provider', '')
@@ -103,6 +127,9 @@ class HostingReliability extends Component
                     'hosting_detected_at' => $domain->hosting_detected_at,
                     'hosting_review_status' => $domain->hosting_review_status,
                     'hosting_reviewed_at' => $domain->hosting_reviewed_at,
+                    'hosting_usage_type' => $domain->hostingUsageType(),
+                    'is_parked_for_hosting' => $domain->isParkedForHosting(),
+                    'dns_config_name' => $domain->dns_config_name,
                     'linked_properties' => $linkedProperties,
                 ];
             });
@@ -126,6 +153,11 @@ class HostingReliability extends Component
                         ->orWhere('hosting_review_status', 'pending');
                 })->count(),
             'reviewed' => (clone $baseQuery)->whereIn('hosting_review_status', ['confirmed', 'manual'])->count(),
+            'parked' => (clone $baseQuery)->where(function ($builder) {
+                $builder->where('dns_config_name', 'Parked')
+                    ->orWhere('platform', 'Parked')
+                    ->orWhere('parked_override', true);
+            })->count(),
         ];
     }
 

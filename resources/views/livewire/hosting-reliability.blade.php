@@ -30,10 +30,14 @@
         @endif
 
         @if(!$selectedHost)
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
                 <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                    <div class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Total Hosts</div>
+                    <div class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Live Hosts</div>
                     <div class="text-3xl font-black text-gray-900 dark:text-gray-100">{{ $this->hostStats->count() }}</div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <div class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Parked Domains</div>
+                    <div class="text-3xl font-black text-gray-900 dark:text-gray-100">{{ $this->reviewStats['parked'] }}</div>
                 </div>
                 <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                     <div class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Missing Provider</div>
@@ -111,6 +115,11 @@
                                             <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                                 {{ $item['hosting_detection_source'] ?? 'unknown source' }}
                                             </div>
+                                            @if($item['is_parked_for_hosting'])
+                                                <div class="mt-2 inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-200">
+                                                    Parking / non-live
+                                                </div>
+                                            @endif
                                         @else
                                             <span class="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-900/30 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">
                                                 Missing
@@ -195,11 +204,64 @@
                 </div>
             </div>
 
+            <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 mb-8">
+                <div class="p-6 border-b border-gray-100 dark:border-gray-700">
+                    <h3 class="text-xl font-black text-gray-900 dark:text-gray-100">Parking / Non-live Providers</h3>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        Parked domains can still be delegated to a provider like Synergy, but they are kept separate here so they do not read like actively hosted websites.
+                    </p>
+                </div>
+
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-900/50">
+                        <tr>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Provider</th>
+                            <th scope="col" class="px-6 py-4 text-center text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Domains</th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Examples</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                        @if($this->parkingStats->isNotEmpty())
+                            @foreach($this->parkingStats as $stat)
+                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-extrabold text-gray-900 dark:text-gray-100">{{ $stat['provider'] }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <span class="px-2.5 py-1 text-xs font-bold bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200 rounded-full">
+                                            {{ $stat['domain_count'] }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="flex flex-wrap gap-2">
+                                            @foreach($stat['domains']->take(5) as $domain)
+                                                <span class="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-2.5 py-0.5 text-xs font-medium text-gray-700 dark:text-gray-200">
+                                                    {{ $domain }}
+                                                </span>
+                                            @endforeach
+                                            @if($stat['domain_count'] > 5)
+                                                <span class="text-xs text-gray-500 dark:text-gray-400">+{{ $stat['domain_count'] - 5 }} more</span>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        @else
+                            <tr>
+                                <td colspan="3" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                    No parked or non-live hosting providers are currently grouped separately.
+                                </td>
+                            </tr>
+                        @endif
+                    </tbody>
+                </table>
+            </div>
+
             <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700">
                 <div class="p-6 border-b border-gray-100 dark:border-gray-700">
-                    <h3 class="text-xl font-black text-gray-900 dark:text-gray-100">Provider Overview</h3>
+                    <h3 class="text-xl font-black text-gray-900 dark:text-gray-100">Live Hosting Providers</h3>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        These groups use the current `hosting_provider` values. Treat them as reliable once domains move out of the review queue.
+                        These groups are limited to domains that do not appear parked, so the overview reflects actively hosted websites rather than parked inventory.
                     </p>
                 </div>
 
@@ -256,7 +318,7 @@
                         @else
                             <tr>
                                 <td colspan="6" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                                    No hosting providers found yet. Use the review queue above to detect and confirm them.
+                                    No live hosting providers found yet. Use the review queue above to detect and confirm them.
                                 </td>
                             </tr>
                         @endif
