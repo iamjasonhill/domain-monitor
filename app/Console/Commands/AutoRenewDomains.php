@@ -124,13 +124,15 @@ class AutoRenewDomains extends Command
 
             // Skip if already renewed (expiry is more than 30 days away)
             $daysUntilExpiry = $now->diffInDays($domain->expires_at, false);
+            $displayDaysUntilExpiry = $this->displayDaysUntilExpiry($daysUntilExpiry);
+
             if ($daysUntilExpiry > 31) {
-                $this->line("  {$domain->domain} - Skipped (already renewed, expires in {$daysUntilExpiry} days)");
+                $this->line("  {$domain->domain} - Skipped (already renewed, expires in {$displayDaysUntilExpiry} days)");
 
                 continue;
             }
 
-            $this->line("  {$domain->domain} - Expires: {$domain->expires_at->format('Y-m-d')} ({$daysUntilExpiry} days)");
+            $this->line("  {$domain->domain} - Expires: {$domain->expires_at->format('Y-m-d')} ({$displayDaysUntilExpiry} days)");
 
             if ($dryRun) {
                 $this->line('    [DRY RUN] Would renew for 1 year');
@@ -179,6 +181,15 @@ class AutoRenewDomains extends Command
         }
 
         return Command::SUCCESS;
+    }
+
+    private function displayDaysUntilExpiry(float|int $daysUntilExpiry): int
+    {
+        if ($daysUntilExpiry >= 0) {
+            return (int) ceil($daysUntilExpiry);
+        }
+
+        return (int) floor($daysUntilExpiry);
     }
 
     /**
