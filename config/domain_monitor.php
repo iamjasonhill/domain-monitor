@@ -105,6 +105,14 @@ return [
                     'local_path' => '/Users/jasonhill/Projects/websites/moving-insurance-astro',
                     'framework' => 'Astro',
                 ],
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '10',
+                        'external_name' => 'Moving Insurance',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
             ],
         ],
     ],
