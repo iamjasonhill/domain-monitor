@@ -87,6 +87,14 @@ return [
                     'local_path' => '/Users/jasonhill/Projects/websites/moving-again-astro',
                     'framework' => 'Astro',
                 ],
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '9',
+                        'external_name' => 'Moving Again',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
             ],
             'movinginsurance.com.au' => [
                 'slug' => 'moving-insurance',
