@@ -1,6 +1,6 @@
 <?php
 
-use App\Services\BrainEventClient;
+use Brain\Client\BrainEventClient;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -70,16 +70,14 @@ return Application::configure(basePath: dirname(__DIR__))
                     'file' => $e->getFile(),
                     'line' => $line,
                     'trace' => $e->getTraceAsString(),
-                ];
-
-                // Send asynchronously (non-blocking)
-                $brain->sendAsync('error.exception', $payload, [
                     'severity' => $severity,
                     'fingerprint' => $fingerprint,
                     'message' => $e->getMessage(),
                     'context' => $context,
-                    'occurred_at' => now(),
-                ]);
+                ];
+
+                // Send asynchronously (non-blocking)
+                $brain->sendAsync('error.exception', $payload, now());
             } catch (\Exception $sendException) {
                 // Don't let Brain event sending break exception handling
                 Log::warning('Failed to send error.exception to Brain', [
@@ -118,16 +116,14 @@ Event::listen(JobFailed::class, function (JobFailed $event) {
             'attempts' => $event->job->attempts() ?? 1,
             'exception' => $event->exception->getMessage(),
             'exception_class' => get_class($event->exception),
-        ];
-
-        // Send asynchronously (non-blocking)
-        $brain->sendAsync('queue.failed', $payload, [
             'severity' => 'error',
             'fingerprint' => $fingerprint,
             'message' => "Queue job {$jobClass} failed after {$context['attempts']} attempt(s)",
             'context' => $context,
-            'occurred_at' => now(),
-        ]);
+        ];
+
+        // Send asynchronously (non-blocking)
+        $brain->sendAsync('queue.failed', $payload, now());
     } catch (\Exception $e) {
         // Don't let Brain event sending break queue processing
         Log::warning('Failed to send queue.failed to Brain', [

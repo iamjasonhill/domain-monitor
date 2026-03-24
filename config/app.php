@@ -56,6 +56,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Public Registration
+    |--------------------------------------------------------------------------
+    |
+    | This flag controls whether guest users may self-register for accounts.
+    | Keep this disabled for internal operations tools unless you explicitly
+    | want public signups available.
+    |
+    */
+
+    'allow_registration' => (bool) env('APP_ALLOW_REGISTRATION', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |
