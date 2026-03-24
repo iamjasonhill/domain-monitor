@@ -19,6 +19,11 @@ use Illuminate\Support\Str;
  * @property string|null $registrar
  * @property string|null $hosting_provider
  * @property string|null $hosting_admin_url
+ * @property string|null $hosting_detection_confidence
+ * @property string|null $hosting_detection_source
+ * @property \Illuminate\Support\Carbon|null $hosting_detected_at
+ * @property string|null $hosting_review_status
+ * @property \Illuminate\Support\Carbon|null $hosting_reviewed_at
  * @property string|null $platform
  * @property \Illuminate\Support\Carbon|null $expires_at
  * @property \Illuminate\Support\Carbon|null $renewed_at
@@ -78,6 +83,11 @@ class Domain extends Model
         'registrar',
         'hosting_provider',
         'hosting_admin_url',
+        'hosting_detection_confidence',
+        'hosting_detection_source',
+        'hosting_detected_at',
+        'hosting_review_status',
+        'hosting_reviewed_at',
         'platform',
         'target_platform',
         'migration_tier',
@@ -147,6 +157,8 @@ class Domain extends Model
             'is_active' => 'boolean',
             'check_frequency_minutes' => 'integer',
             'ip_checked_at' => 'datetime',
+            'hosting_detected_at' => 'datetime',
+            'hosting_reviewed_at' => 'datetime',
             'ip_hosting_flag' => 'boolean',
             'parked_override' => 'boolean',
             'parked_override_set_at' => 'datetime',
@@ -537,6 +549,99 @@ class Domain extends Model
         $platformType ??= $this->getAttribute('platform');
 
         return $platformType === 'Email Only';
+    }
+
+    /**
+     * @param  array{provider?: string|null, confidence?: string|null, admin_url?: string|null}  $result
+     * @param  array{source?: string|null, detected_at?: \Illuminate\Support\Carbon|\DateTimeInterface|string|null, review_status?: string|null, reviewed_at?: \Illuminate\Support\Carbon|\DateTimeInterface|string|null}  $extra
+     */
+    public function applyHostingDetection(array $result, ?string $adminUrl = null, array $extra = []): void
+    {
+        $provider = $result['provider'] ?? null;
+        $resolvedAdminUrl = $adminUrl ?? ($result['admin_url'] ?? null);
+
+        $overrides = [];
+
+        if (array_key_exists('source', $extra)) {
+            $overrides['hosting_detection_source'] = $extra['source'];
+        }
+
+        if (array_key_exists('detected_at', $extra)) {
+            $overrides['hosting_detected_at'] = $extra['detected_at'];
+        }
+
+        if (array_key_exists('review_status', $extra)) {
+            $overrides['hosting_review_status'] = $extra['review_status'];
+        }
+
+        if (array_key_exists('reviewed_at', $extra)) {
+            $overrides['hosting_reviewed_at'] = $extra['reviewed_at'];
+        }
+
+        $this->forceFill(array_merge([
+            'hosting_provider' => $provider,
+            'hosting_admin_url' => $resolvedAdminUrl,
+            'hosting_detection_confidence' => $result['confidence'] ?? null,
+            'hosting_detection_source' => 'detector',
+            'hosting_detected_at' => now(),
+            'hosting_review_status' => 'pending',
+            'hosting_reviewed_at' => null,
+        ], $overrides))->save();
+    }
+
+    public function markHostingReviewed(string $status = 'confirmed'): void
+    {
+        $this->forceFill([
+            'hosting_review_status' => $status,
+            'hosting_reviewed_at' => now(),
+        ])->save();
+    }
+
+    public function applyManualHosting(?string $provider, ?string $adminUrl = null): void
+    {
+        $provider = $provider !== null ? trim($provider) : null;
+        $adminUrl = $adminUrl !== null ? trim($adminUrl) : null;
+
+        if ($provider === '') {
+            $provider = null;
+        }
+
+        if ($adminUrl === '') {
+            $adminUrl = null;
+        }
+
+        if ($provider === null) {
+            $this->forceFill([
+                'hosting_provider' => null,
+                'hosting_admin_url' => null,
+                'hosting_detection_confidence' => null,
+                'hosting_detection_source' => null,
+                'hosting_detected_at' => null,
+                'hosting_review_status' => null,
+                'hosting_reviewed_at' => null,
+            ])->save();
+
+            return;
+        }
+
+        $this->forceFill([
+            'hosting_provider' => $provider,
+            'hosting_admin_url' => $adminUrl,
+            'hosting_detection_confidence' => null,
+            'hosting_detection_source' => 'manual',
+            'hosting_detected_at' => now(),
+            'hosting_review_status' => 'manual',
+            'hosting_reviewed_at' => now(),
+        ])->save();
+    }
+
+    public function needsHostingReview(): bool
+    {
+        if (blank($this->hosting_provider)) {
+            return true;
+        }
+
+        return ! in_array($this->hosting_review_status, ['confirmed', 'manual'], true);
     }
 
     /**

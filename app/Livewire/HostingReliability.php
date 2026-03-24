@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Domain;
 use App\Models\UptimeIncident;
+use App\Services\HostingDetector;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -11,6 +12,8 @@ use Livewire\Component;
 class HostingReliability extends Component
 {
     public ?string $selectedHost = null;
+
+    public ?string $reviewFilter = 'all';
 
     /** @return Collection<int, mixed> */
     #[Computed]
@@ -47,6 +50,85 @@ class HostingReliability extends Component
             ->values();
     }
 
+    /** @return Collection<int, mixed> */
+    #[Computed]
+    public function reviewQueue(): Collection
+    {
+        $query = Domain::query()
+            ->where('is_active', true)
+            ->with(['webProperties'])
+            ->where(function ($builder) {
+                $builder->whereNull('hosting_provider')
+                    ->orWhere('hosting_provider', '')
+                    ->orWhereNull('hosting_review_status')
+                    ->orWhere('hosting_review_status', 'pending');
+            });
+
+        if ($this->reviewFilter === 'missing') {
+            $query->where(function ($builder) {
+                $builder->whereNull('hosting_provider')
+                    ->orWhere('hosting_provider', '');
+            });
+        }
+
+        if ($this->reviewFilter === 'pending') {
+            $query->whereNotNull('hosting_provider')
+                ->where('hosting_provider', '!=', '')
+                ->where(function ($builder) {
+                    $builder->whereNull('hosting_review_status')
+                        ->orWhere('hosting_review_status', 'pending');
+                });
+        }
+
+        return $query
+            ->orderByRaw("CASE WHEN hosting_provider IS NULL OR hosting_provider = '' THEN 0 ELSE 1 END")
+            ->orderBy('domain')
+            ->get()
+            ->map(function (Domain $domain): array {
+                $linkedProperties = $domain->webProperties
+                    ->map(fn ($property) => [
+                        'slug' => $property->slug,
+                        'name' => $property->name,
+                    ])
+                    ->values()
+                    ->all();
+
+                return [
+                    'id' => $domain->id,
+                    'domain' => $domain->domain,
+                    'hosting_provider' => $domain->hosting_provider,
+                    'hosting_admin_url' => $domain->hosting_admin_url,
+                    'hosting_detection_confidence' => $domain->hosting_detection_confidence,
+                    'hosting_detection_source' => $domain->hosting_detection_source,
+                    'hosting_detected_at' => $domain->hosting_detected_at,
+                    'hosting_review_status' => $domain->hosting_review_status,
+                    'hosting_reviewed_at' => $domain->hosting_reviewed_at,
+                    'linked_properties' => $linkedProperties,
+                ];
+            });
+    }
+
+    /** @return array<string, int> */
+    #[Computed]
+    public function reviewStats(): array
+    {
+        $baseQuery = Domain::query()->where('is_active', true);
+
+        return [
+            'missing' => (clone $baseQuery)->where(function ($builder) {
+                $builder->whereNull('hosting_provider')
+                    ->orWhere('hosting_provider', '');
+            })->count(),
+            'pending' => (clone $baseQuery)->whereNotNull('hosting_provider')
+                ->where('hosting_provider', '!=', '')
+                ->where(function ($builder) {
+                    $builder->whereNull('hosting_review_status')
+                        ->orWhere('hosting_review_status', 'pending');
+                })->count(),
+            'reviewed' => (clone $baseQuery)->whereIn('hosting_review_status', ['confirmed', 'manual'])->count(),
+        ];
+    }
+
     /** @return Collection<int, mixed>|null */
     #[Computed]
     public function selectedHostDetails(): ?Collection
@@ -72,6 +154,8 @@ class HostingReliability extends Component
                 return [
                     'domain' => $domain->domain,
                     'domain_id' => $domain->id,
+                    'hosting_review_status' => $domain->hosting_review_status,
+                    'hosting_detection_confidence' => $domain->hosting_detection_confidence,
                     'incident_count' => $domain->uptimeIncidents->count(),
                     'total_downtime' => $totalDowntime,
                     'incidents' => $domain->uptimeIncidents,
@@ -83,6 +167,36 @@ class HostingReliability extends Component
     public function selectHost(?string $host): void
     {
         $this->selectedHost = $host;
+    }
+
+    public function setReviewFilter(?string $filter): void
+    {
+        $this->reviewFilter = in_array($filter, ['all', 'missing', 'pending'], true) ? $filter : 'all';
+    }
+
+    public function detectHostingForDomain(string $domainId, HostingDetector $detector): void
+    {
+        $domain = Domain::findOrFail($domainId);
+        $result = $detector->detect($domain->domain);
+
+        $domain->applyHostingDetection($result);
+
+        session()->flash('message', "Hosting detected for {$domain->domain}: {$result['provider']} ({$result['confidence']} confidence)");
+    }
+
+    public function confirmHostingForDomain(string $domainId): void
+    {
+        $domain = Domain::findOrFail($domainId);
+
+        if (blank($domain->hosting_provider)) {
+            session()->flash('error', "No hosting provider set for {$domain->domain} yet.");
+
+            return;
+        }
+
+        $domain->markHostingReviewed('confirmed');
+
+        session()->flash('message', "Hosting confirmed for {$domain->domain}.");
     }
 
     public function render(): \Illuminate\Contracts\View\View

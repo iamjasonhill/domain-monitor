@@ -291,11 +291,7 @@ class DomainDetail extends Component
 
         try {
             $result = $detector->detect($this->domain->domain);
-
-            $this->domain->update([
-                'hosting_provider' => $result['provider'],
-                'hosting_admin_url' => $result['admin_url'],
-            ]);
+            $this->domain->applyHostingDetection($result);
 
             $this->loadDomain();
             session()->flash('message', "Hosting detected: {$result['provider']} ({$result['confidence']} confidence)");

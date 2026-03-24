@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Domain;
 use App\Models\UptimeIncident;
 use App\Models\User;
+use App\Services\HostingDetector;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -54,7 +55,6 @@ class HostingReliabilityTest extends TestCase
 
         // Total Host A = 66 mins = 1.1 hrs
         // Total Host B = 30 mins = 30 mins
-        // Grand Total = 96 mins = 1.6 hrs
 
         Livewire::test(\App\Livewire\HostingReliability::class)
             ->assertSet('selectedHost', null)
@@ -62,7 +62,8 @@ class HostingReliabilityTest extends TestCase
             ->assertSee($hostB)
             ->assertSee('1.1')
             ->assertSee('30 mins')
-            ->assertSee('1.6');
+            ->assertSee('Pending Review')
+            ->assertSee('3');
     }
 
     public function test_it_can_select_a_host_for_details(): void
@@ -85,5 +86,49 @@ class HostingReliabilityTest extends TestCase
             ->assertSet('selectedHost', $hostA)
             ->assertSee($domain->domain)
             ->assertSee('Test Error');
+    }
+
+    public function test_it_can_detect_and_confirm_hosting_from_review_queue(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $domain = Domain::factory()->create([
+            'domain' => 'review-me.com',
+            'hosting_provider' => null,
+            'hosting_review_status' => null,
+        ]);
+
+        $detector = $this->mock(HostingDetector::class);
+        $detector->shouldReceive('detect')
+            ->once()
+            ->with('review-me.com')
+            ->andReturn([
+                'provider' => 'Vercel',
+                'confidence' => 'high',
+                'admin_url' => 'https://vercel.com/dashboard',
+            ]);
+
+        $component = Livewire::test(\App\Livewire\HostingReliability::class)
+            ->assertSee($domain->domain)
+            ->call('detectHostingForDomain', $domain->id);
+
+        $component
+            ->assertSee('Vercel')
+            ->assertSee('PENDING');
+
+        $component
+            ->call('confirmHostingForDomain', $domain->id)
+            ->assertSee("Hosting confirmed for {$domain->domain}.")
+            ->assertSee('No domains currently need hosting review.');
+
+        $this->assertDatabaseHas('domains', [
+            'id' => $domain->id,
+            'hosting_provider' => 'Vercel',
+            'hosting_admin_url' => 'https://vercel.com/dashboard',
+            'hosting_detection_confidence' => 'high',
+            'hosting_detection_source' => 'detector',
+            'hosting_review_status' => 'confirmed',
+        ]);
     }
 }

@@ -97,10 +97,7 @@ class DetectHosting extends Command
                 $adminUrl = \App\Services\HostingProviderUrls::getLoginUrl($result['provider']);
             }
 
-            $updateData = [
-                'hosting_provider' => $result['provider'],
-                'hosting_admin_url' => $adminUrl,
-            ];
+            $updateData = [];
 
             // Save IP-API data if available
             if (isset($result['ip_api_data'])) {
@@ -119,7 +116,11 @@ class DetectHosting extends Command
                 }
             }
 
-            $domain->update($updateData);
+            if ($updateData !== []) {
+                $domain->update($updateData);
+            }
+
+            $domain->applyHostingDetection($result, $adminUrl);
 
             if ($verbose) {
                 $this->line("  Provider: {$result['provider']} ({$result['confidence']} confidence)");

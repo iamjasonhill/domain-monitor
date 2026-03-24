@@ -109,8 +109,6 @@ class DomainForm extends Component
         $this->domain->domain = $this->domain_name;
         $this->domain->project_key = $this->project_key;
         $this->domain->registrar = $this->registrar;
-        $this->domain->hosting_provider = $this->hosting_provider;
-        $this->domain->hosting_admin_url = $this->hosting_admin_url;
         $this->domain->platform = $this->platform;
         $this->domain->notes = $this->notes;
 
@@ -125,6 +123,7 @@ class DomainForm extends Component
         $this->domain->check_frequency_minutes = $this->check_frequency_minutes;
 
         $this->domain->save();
+        $this->domain->applyManualHosting($this->hosting_provider, $this->hosting_admin_url);
 
         // Sync tags
         $this->domain->tags()->sync($this->selectedTags);
