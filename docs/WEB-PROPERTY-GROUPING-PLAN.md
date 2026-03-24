@@ -158,13 +158,13 @@ Reasoning:
 - exact brand match across TLDs
 - `.com` is parked and does not look like a separate operating property
 
-## Moderate-Confidence Candidates
+## Confirmed Standalone Clusters
 
-These look related, but they should stay separate until we confirm redirects, brand intent, or repo ownership.
+These domains may sit in the same broader business area, but they are confirmed as separate properties and should not be merged into shared `web_property` records.
 
 ### Car Transport Portfolio
 
-Keep separate for now:
+Keep separate permanently unless you explicitly decide to retire or re-home one of them:
 
 - `cartransportaus.com.au`
 - `cartransportwithpersonalitems.com.au`
@@ -175,13 +175,13 @@ Keep separate for now:
 
 Reasoning:
 
-- these likely belong to the same transport portfolio
-- however, they read like distinct acquisition sites or product surfaces, not just aliases
-- some may later roll under a portfolio-level parent concept, but not a shared `web_property`
+- they belong to the same broader transport portfolio
+- they are distinct domains with distinct property intent
+- they should remain separate `web_property` records even if they later share tooling, analytics reporting, or a portfolio label
 
 ### Moving / Removals Portfolio
 
-Keep separate for now:
+Keep separate permanently unless you explicitly decide to retire or re-home one of them:
 
 - `moving.com.au`
 - `movinghome.com.au`
@@ -196,13 +196,12 @@ Keep separate for now:
 
 Reasoning:
 
-- similar market/theme, but not enough evidence they are aliases
-- several look like SEO-focused microsites or legacy acquisition domains
-- some are active DNS-hosted domains, which makes them less likely to be simple parked aliases
+- these are separate domains, not aliases
+- they may operate in the same market/theme, but they should remain distinct `web_property` records
 
 ### Backloading Portfolio
 
-Keep separate for now:
+Keep separate permanently unless you explicitly decide to retire or re-home one of them:
 
 - `backload.net.au`
 - `backloading-au.com.au`
@@ -215,8 +214,8 @@ Keep separate for now:
 
 Reasoning:
 
-- there is clear thematic overlap, but not enough proof they are all just aliases of one site
-- many are parked, but the naming suggests multiple acquisition domains rather than one canonical brand
+- these are separate domains and should remain separate `web_property` records
+- thematic overlap is not enough reason to merge them
 
 ## Keep Standalone
 
@@ -241,7 +240,7 @@ These should remain single-domain properties unless new evidence appears:
 
 Reasoning:
 
-- they appear to be standalone business/personal/utility properties
+- they are standalone business, personal, or utility properties
 - there is no alias evidence from the current registry pass
 
 ## Recommended Execution Order
@@ -265,19 +264,22 @@ After the alias merges:
 - review whether `ma-car-transport-astro` should map to a separate property tied to Matomo site `7`
 - add more curated Matomo bindings where we have confidence
 
-### Phase 3: Portfolio Review
+### Phase 3: Portfolio Enrichment
 
 Do a deliberate review of:
 
-- transport acquisition sites
-- moving/removals acquisition sites
-- backloading acquisition sites
+- transport portfolio properties
+- moving/removals portfolio properties
+- backloading portfolio properties
 
-Only merge these when we confirm:
+Use that review to improve:
 
-- they redirect to the same live site
-- they share the same product surface
-- they are intentionally just alternate brand domains
+- repository links
+- analytics bindings
+- tags
+- owner and priority metadata
+
+Do not merge these confirmed standalone properties just because they share a market or brand family.
 
 ## Important Rule
 
@@ -291,3 +293,5 @@ If a domain could reasonably be:
 - a future standalone property
 
 then leave it as its own `web_property` until there is explicit confirmation.
+
+In this project, the transport, moving/removals, and backloading clusters listed above are now explicitly confirmed as separate properties.
