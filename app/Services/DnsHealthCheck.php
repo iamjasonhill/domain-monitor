@@ -27,21 +27,21 @@ class DnsHealthCheck
             ];
 
             // Get A records (IPv4)
-            $aRecords = @dns_get_record($domainOnly, DNS_A);
+            $aRecords = $this->resolveRecords($domainOnly, DNS_A);
             if ($aRecords) {
                 $records['A'] = array_map(fn ($r) => $r['ip'] ?? null, $aRecords);
                 $records['A'] = array_filter($records['A']);
             }
 
             // Get AAAA records (IPv6)
-            $aaaaRecords = @dns_get_record($domainOnly, DNS_AAAA);
+            $aaaaRecords = $this->resolveRecords($domainOnly, DNS_AAAA);
             if ($aaaaRecords) {
                 $records['AAAA'] = array_map(fn ($r) => $r['ipv6'] ?? null, $aaaaRecords);
                 $records['AAAA'] = array_filter($records['AAAA']);
             }
 
             // Get MX records
-            $mxRecords = @dns_get_record($domainOnly, DNS_MX);
+            $mxRecords = $this->resolveRecords($domainOnly, DNS_MX);
             if ($mxRecords) {
                 $records['MX'] = array_map(fn ($r) => [
                     'priority' => $r['pri'] ?? null,
@@ -51,14 +51,14 @@ class DnsHealthCheck
             }
 
             // Get NS records (nameservers)
-            $nsRecords = @dns_get_record($domainOnly, DNS_NS);
+            $nsRecords = $this->resolveRecords($domainOnly, DNS_NS);
             if ($nsRecords) {
                 $records['NS'] = array_map(fn ($r) => $r['target'] ?? null, $nsRecords);
                 $records['NS'] = array_filter($records['NS']);
             }
 
             // Get CNAME records
-            $cnameRecords = @dns_get_record($domainOnly, DNS_CNAME);
+            $cnameRecords = $this->resolveRecords($domainOnly, DNS_CNAME);
             if ($cnameRecords) {
                 $records['CNAME'] = array_map(fn ($r) => $r['target'] ?? null, $cnameRecords);
                 $records['CNAME'] = array_filter($records['CNAME']);
@@ -123,5 +123,13 @@ class DnsHealthCheck
         $domain = explode('?', $domain)[0];
 
         return $domain;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>|false
+     */
+    protected function resolveRecords(string $domain, int $type): array|false
+    {
+        return @dns_get_record($domain, $type);
     }
 }

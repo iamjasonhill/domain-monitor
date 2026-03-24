@@ -20,7 +20,7 @@ class SslHealthCheck
 
         try {
             // Get SSL certificate information
-            $context = stream_context_create([
+            $context = $this->createContext([
                 'ssl' => [
                     'capture_peer_cert' => true,
                     'capture_peer_cert_chain' => true,
@@ -29,17 +29,15 @@ class SslHealthCheck
                 ],
             ]);
 
-            $socket = @stream_socket_client(
+            $socket = $this->openSocket(
                 "ssl://{$domainOnly}:443",
-                $errno,
-                $errstr,
                 $timeout,
-                STREAM_CLIENT_CONNECT,
                 $context
             );
 
             if (! $socket) {
                 $duration = (int) ((microtime(true) - $startTime) * 1000);
+                $error = $this->lastSocketError();
 
                 return [
                     'is_valid' => false,
@@ -49,7 +47,7 @@ class SslHealthCheck
                     'protocol' => null,
                     'cipher' => null,
                     'chain' => [],
-                    'error_message' => "SSL connection failed: {$errstr} ({$errno})",
+                    'error_message' => $error,
                     'payload' => [
                         'domain' => $domainOnly,
                         'error_type' => 'connection',
@@ -58,12 +56,12 @@ class SslHealthCheck
                 ];
             }
 
-            $params = stream_context_get_params($socket);
+            $params = $this->getContextParams($socket);
             $cert = $params['options']['ssl']['peer_certificate'] ?? null;
             $chainData = $params['options']['ssl']['peer_certificate_chain'] ?? [];
 
             if (! $cert) {
-                fclose($socket);
+                $this->closeSocket($socket);
                 $duration = (int) ((microtime(true) - $startTime) * 1000);
 
                 return [
@@ -84,10 +82,10 @@ class SslHealthCheck
             }
 
             // Parse certificate information
-            $certInfo = openssl_x509_parse($cert);
+            $certInfo = $this->parseCertificate($cert);
 
             if (! $certInfo) {
-                fclose($socket);
+                $this->closeSocket($socket);
                 $duration = (int) ((microtime(true) - $startTime) * 1000);
 
                 return [
@@ -108,14 +106,14 @@ class SslHealthCheck
             }
 
             // Only extract crypto metadata (Protocol, Cipher) if we have a valid certificate
-            $meta = stream_get_meta_data($socket);
+            $meta = $this->getMetaData($socket);
             $crypto = $meta['crypto'] ?? [];
             $protocol = $crypto['protocol'] ?? null;
             $cipher = $crypto['cipher_name'] ?? null;
             $cipherBits = $crypto['cipher_bits'] ?? 0;
             $cipherString = $cipher ? ($cipherBits > 0 ? "{$cipher} ({$cipherBits} bits)" : $cipher) : null;
 
-            fclose($socket);
+            $this->closeSocket($socket);
 
             $validFrom = $certInfo['validFrom_time_t'] ?? null;
             $validTo = $certInfo['validTo_time_t'] ?? null;
@@ -124,12 +122,12 @@ class SslHealthCheck
             // Parse Chain
             $chain = [];
             foreach ($chainData as $chainCert) {
-                $parsedChain = openssl_x509_parse($chainCert);
+                $parsedChain = $this->parseCertificate($chainCert);
                 if ($parsedChain) {
                     $chain[] = [
                         'subject' => $parsedChain['subject']['CN'] ?? ($parsedChain['subject']['O'] ?? 'Unknown'),
                         'issuer' => $parsedChain['issuer']['CN'] ?? ($parsedChain['issuer']['O'] ?? 'Unknown'),
-                        'valid_to' => isset($parsedChain['validTo_time_t']) ? date('Y-m-d', $parsedChain['validTo_time_t']) : null,
+                        'valid_to' => isset($parsedChain['validTo_time_t']) ? $this->formatDate('Y-m-d', $parsedChain['validTo_time_t']) : null,
                     ];
                 }
             }
@@ -154,8 +152,8 @@ class SslHealthCheck
                 ];
             }
 
-            $expiresAt = date('c', $validTo);
-            $now = time();
+            $expiresAt = $this->formatDate('c', $validTo);
+            $now = $this->currentTime();
             $daysUntilExpiry = (int) floor(($validTo - $now) / 86400);
             $isValid = $validTo > $now && $validFrom <= $now;
 
@@ -174,7 +172,7 @@ class SslHealthCheck
                     'protocol' => $protocol,
                     'cipher' => $cipherString,
                     'chain' => $chain,
-                    'valid_from' => $validFrom ? date('c', $validFrom) : null,
+                    'valid_from' => $validFrom ? $this->formatDate('c', $validFrom) : null,
                     'valid_to' => $expiresAt,
                     'days_until_expiry' => $daysUntilExpiry,
                     'duration_ms' => $duration,
@@ -216,5 +214,86 @@ class SslHealthCheck
         $domain = explode('?', $domain)[0];
 
         return $domain;
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     * @return resource
+     */
+    protected function createContext(array $options)
+    {
+        return stream_context_create($options);
+    }
+
+    /**
+     * @param  resource  $context
+     * @return resource|false
+     */
+    protected function openSocket(string $address, int $timeout, $context)
+    {
+        $errno = 0;
+        $errstr = '';
+
+        return @stream_socket_client(
+            $address,
+            $errno,
+            $errstr,
+            $timeout,
+            STREAM_CLIENT_CONNECT,
+            $context
+        );
+    }
+
+    /**
+     * @param  resource  $socket
+     * @return array<string, mixed>
+     */
+    protected function getContextParams($socket): array
+    {
+        return stream_context_get_params($socket);
+    }
+
+    /**
+     * @param  mixed  $certificate
+     * @return array<string, mixed>|false
+     */
+    protected function parseCertificate($certificate): array|false
+    {
+        return openssl_x509_parse($certificate);
+    }
+
+    /**
+     * @param  resource  $socket
+     * @return array<string, mixed>
+     */
+    protected function getMetaData($socket): array
+    {
+        return stream_get_meta_data($socket);
+    }
+
+    /**
+     * @param  resource  $socket
+     */
+    protected function closeSocket($socket): void
+    {
+        fclose($socket);
+    }
+
+    protected function currentTime(): int
+    {
+        return time();
+    }
+
+    protected function formatDate(string $format, int $timestamp): string
+    {
+        return date($format, $timestamp);
+    }
+
+    protected function lastSocketError(): string
+    {
+        $error = error_get_last();
+        $message = is_array($error) ? $error['message'] : null;
+
+        return $message ? 'SSL connection failed: '.$message : 'SSL connection failed';
     }
 }

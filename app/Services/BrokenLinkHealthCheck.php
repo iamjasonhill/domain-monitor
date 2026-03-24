@@ -51,14 +51,20 @@ class BrokenLinkHealthCheck
 
             $duration = (int) ((microtime(true) - $startTime) * 1000);
             $brokenCount = count($this->brokenLinks);
+            $verified = $this->pagesScanned > 0;
+            $errorMessage = null;
+
+            if (! $verified) {
+                $errorMessage = $this->brokenLinks[0]['error'] ?? 'Unable to crawl any pages for verification';
+            }
 
             return [
                 'is_valid' => $brokenCount === 0,
-                'verified' => true,
+                'verified' => $verified,
                 'broken_links_count' => $brokenCount,
                 'pages_scanned' => $this->pagesScanned,
                 'broken_links' => $this->brokenLinks,
-                'error_message' => null,
+                'error_message' => $errorMessage,
                 'payload' => [
                     'domain' => $this->host,
                     'broken_links_count' => $brokenCount,
