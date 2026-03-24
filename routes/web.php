@@ -28,6 +28,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return view('domains.create');
     })->name('domains.create');
 
+    Route::get('/web-properties', function () {
+        return view('web-properties.index');
+    })->name('web-properties.index');
+
+    Route::get('/web-properties/{propertySlug}', function (string $propertySlug) {
+        return view('web-properties.show', ['propertySlug' => $propertySlug]);
+    })->name('web-properties.show');
+
     Route::get('/domains/{domain}', function (string $domain) {
         return view('domains.show', ['domainId' => $domain]);
     })->name('domains.show');
