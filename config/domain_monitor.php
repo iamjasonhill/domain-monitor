@@ -96,6 +96,24 @@ return [
                     ],
                 ],
             ],
+            'cartransportwithpersonalitems.com.au' => [
+                'slug' => 'cartransportwithpersonalitems-com-au',
+                'name' => 'cartransportwithpersonalitems.com.au',
+                'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => 'cartransportwithpersonalitems-com-au-astro',
+                    'local_path' => '/Users/jasonhill/Projects/websites/cartransportwithpersonalitems-com-au-astro',
+                    'framework' => 'Astro',
+                ],
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '8',
+                        'external_name' => 'Car Transport Personal Items',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
+            ],
             'movingcars.com.au' => [
                 'slug' => 'movingcars-com-au',
                 'name' => 'movingcars.com.au',
