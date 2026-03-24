@@ -86,7 +86,7 @@ class ImportMatomoInstallAudit extends Command
             if (! $source instanceof PropertyAnalyticsSource) {
                 AnalyticsSourceObservation::query()->updateOrCreate(
                     [
-                        'provider' => 'matamo',
+                        'provider' => 'matomo',
                         'external_id' => $externalId,
                     ],
                     array_merge($observationAttributes, [
