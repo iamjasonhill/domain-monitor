@@ -96,6 +96,16 @@ return [
                     ],
                 ],
             ],
+            'movingcars.com.au' => [
+                'slug' => 'movingcars-com-au',
+                'name' => 'movingcars.com.au',
+                'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => 'movingcars-com-au-astro',
+                    'local_path' => '/Users/jasonhill/Projects/websites/movingcars-com-au-astro',
+                    'framework' => 'Astro',
+                ],
+            ],
             'movingagain.com.au' => [
                 'slug' => 'moving-again',
                 'name' => 'Moving Again',
