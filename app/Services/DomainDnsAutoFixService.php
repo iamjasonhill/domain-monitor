@@ -20,6 +20,18 @@ class DomainDnsAutoFixService
             'type' => $checkType,
         ]);
 
+        if (in_array($checkType, ['spf', 'dmarc', 'caa'], true)) {
+            Log::info('Automated DNS fix skipped: email security fixes require manual review', [
+                'domain' => $domain->domain,
+                'type' => $checkType,
+            ]);
+
+            return [
+                'ok' => false,
+                'message' => 'Automatic DNS fixes are disabled for email security because generic SPF, DMARC, and CAA records may be incorrect for the real mail and certificate setup.',
+            ];
+        }
+
         if (! SynergyWholesaleClient::isAustralianTld($domain->domain)) {
             Log::warning('Automated DNS fix skipped: not eligible', ['domain' => $domain->domain]);
 

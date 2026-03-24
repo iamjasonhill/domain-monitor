@@ -25,7 +25,7 @@ class EmailSecurityHealthCheckTest extends TestCase
             $mock->shouldReceive('getRecords')
                 ->with('example.com', 'TXT')
                 ->andReturn([
-                    new TXT(['host' => 'example.com', 'class' => 'IN', 'ttl' => 300, 'type' => 'TXT', 'txt' => 'v=spf1 include:_spf.google.com ~all']),
+                    new TXT(['host' => 'example.com', 'class' => 'IN', 'ttl' => 300, 'type' => 'TXT', 'txt' => 'v=spf1 include:_spf.google.com -all']),
                 ]);
 
             $mock->shouldReceive('getRecords')
@@ -65,10 +65,14 @@ class EmailSecurityHealthCheckTest extends TestCase
         $payload = $check->payload;
 
         $this->assertTrue($payload['spf']['valid']);
-        $this->assertEquals('soft_fail', $payload['spf']['mechanism']);
+        $this->assertEquals('hard_fail', $payload['spf']['mechanism']);
+        $this->assertEquals('ok', $payload['spf']['status']);
 
         $this->assertTrue($payload['dmarc']['valid']);
         $this->assertEquals('reject', $payload['dmarc']['policy']);
+        $this->assertEquals('ok', $payload['dmarc']['status']);
+        $this->assertEquals('ok', $payload['overall_status']);
+        $this->assertTrue($payload['is_valid']);
 
         $this->assertTrue($payload['dnssec']['enabled']);
         $this->assertTrue($payload['caa']['present']);
@@ -120,6 +124,7 @@ class EmailSecurityHealthCheckTest extends TestCase
         $payload = $check->payload;
 
         $this->assertTrue($payload['dkim']['present']);
+        $this->assertEquals('ok', $payload['dkim']['status']);
         $this->assertCount(1, $payload['dkim']['selectors']);
         $this->assertEquals('google', $payload['dkim']['selectors'][0]['selector']);
         $this->assertStringContainsString('v=DKIM1', $payload['dkim']['selectors'][0]['record']);
@@ -177,13 +182,75 @@ class EmailSecurityHealthCheckTest extends TestCase
         $payload = $check->payload;
 
         $this->assertFalse($payload['spf']['valid']);
+        $this->assertEquals('fail', $payload['spf']['status']);
         $this->assertStringContainsString('Multiple SPF records', $payload['spf']['error']);
 
         $this->assertFalse($payload['dmarc']['present']);
         $this->assertFalse($payload['dmarc']['valid']);
+        $this->assertEquals('fail', $payload['dmarc']['status']);
+        $this->assertEquals('fail', $payload['overall_status']);
 
         $this->assertFalse($payload['dnssec']['enabled']);
         $this->assertFalse($payload['caa']['present']);
+    }
+
+    public function test_it_marks_weak_but_verified_email_security_as_warn(): void
+    {
+        $domain = Domain::factory()->create([
+            'domain' => 'review-needed.com',
+            'is_active' => true,
+        ]);
+
+        $this->mock(Dns::class, function (MockInterface $mock) {
+            $mock->shouldReceive('getRecords')
+                ->with('review-needed.com', 'TXT')
+                ->andReturn([
+                    new TXT(['host' => 'review-needed.com', 'class' => 'IN', 'ttl' => 300, 'type' => 'TXT', 'txt' => 'v=spf1 include:_spf.google.com ~all']),
+                ]);
+
+            $mock->shouldReceive('getRecords')
+                ->with('_dmarc.review-needed.com', 'TXT')
+                ->andReturn([
+                    new TXT(['host' => '_dmarc.review-needed.com', 'class' => 'IN', 'ttl' => 300, 'type' => 'TXT', 'txt' => 'v=DMARC1; p=none;']),
+                ]);
+
+            $mock->shouldReceive('getRecords')
+                ->with('review-needed.com', 'CAA')
+                ->andReturn([]);
+
+            $mock->shouldReceive('getRecords')
+                ->withArgs(function ($host, $type) {
+                    return str_ends_with($host, '._domainkey.review-needed.com') && $type === 'TXT';
+                })
+                ->andReturn([]);
+        });
+
+        $mockService = \Mockery::mock(\App\Services\EmailSecurityHealthCheck::class, [app(Dns::class)])->makePartial();
+        $mockService->shouldReceive('getDnsKey')
+            ->with('review-needed.com')
+            ->andReturn([]);
+
+        $this->instance(\App\Services\EmailSecurityHealthCheck::class, $mockService);
+
+        $this->artisan('domains:health-check', ['--type' => 'email_security', '--domain' => 'review-needed.com'])
+            ->assertSuccessful();
+
+        $this->assertDatabaseHas('domain_checks', [
+            'domain_id' => $domain->id,
+            'check_type' => 'email_security',
+            'status' => 'warn',
+        ]);
+
+        $check = $domain->checks()->latest()->first();
+        $payload = $check->payload;
+
+        $this->assertEquals('warn', $payload['spf']['status']);
+        $this->assertEquals('soft_fail', $payload['spf']['mechanism']);
+        $this->assertEquals('warn', $payload['dmarc']['status']);
+        $this->assertEquals('none', $payload['dmarc']['policy']);
+        $this->assertEquals('warn', $payload['overall_status']);
+        $this->assertFalse($payload['is_valid']);
+        $this->assertStringContainsString('monitor-only', $payload['overall_assessment']);
     }
 
     public function test_it_marks_email_security_as_unknown_when_verification_fails(): void
@@ -212,6 +279,7 @@ class EmailSecurityHealthCheckTest extends TestCase
         $this->assertEquals('unknown', $check->status);
 
         $payload = $check->payload;
+        $this->assertEquals('unknown', $payload['overall_status']);
         $this->assertFalse($payload['spf']['verified']);
         $this->assertFalse($payload['dmarc']['verified']);
     }

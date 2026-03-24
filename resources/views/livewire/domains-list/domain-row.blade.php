@@ -103,13 +103,13 @@
     </td>
     <td class="px-2 py-4 whitespace-nowrap text-center text-sm">
         @if($domain->latest_email_security_status === 'fail')
-            <span class="text-red-500" title="Email Security Issue">❌</span>
+            <span class="text-red-500" title="Missing Baseline">❌</span>
         @elseif($domain->latest_email_security_status === 'warn')
-            <span class="text-orange-500" title="Warning">⚠️</span>
+            <span class="text-orange-500" title="Needs Review">⚠️</span>
         @elseif(in_array($domain->latest_email_security_status, ['pass', 'ok']))
-            <span class="text-green-500" title="Valid">✓</span>
+            <span class="text-green-500" title="Meets Baseline">✓</span>
         @elseif($domain->latest_email_security_status === 'unknown')
-            <span class="text-gray-500" title="Unknown">?</span>
+            <span class="text-gray-500" title="Could Not Verify">?</span>
         @else
             <span class="text-gray-300 text-xs">-</span>
         @endif

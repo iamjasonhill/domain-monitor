@@ -13,19 +13,13 @@ class EmailSecurityHealthCheck
     }
 
     /**
-     * Perform Email & DNS Security health check (SPF, DMARC, DNSSEC, CAA)
+     * Perform Email & DNS Security health check.
+     *
+     * Overall baseline status is based on verified SPF and DMARC only.
+     * DKIM selector discovery, DNSSEC, and CAA are supporting signals.
      *
      * @param  array<int, string>  $customSelectors
-     * @return array{
-     *     is_valid: bool,
-     *     spf: array{present: bool, valid: bool, verified: bool, record: string|null, mechanism: string|null, error: string|null},
-     *     dmarc: array{present: bool, valid: bool, verified: bool, record: string|null, policy: string|null, error: string|null},
-     *     dnssec: array{enabled: bool, verified: bool, error: string|null},
-     *     caa: array{present: bool, verified: bool, records: array<int, string>, error: string|null},
-     *     dkim: array{present: bool, verified: bool, selectors: array<int, array{selector: string, record: string}>, error: string|null},
-     *     error_message: string|null,
-     *     payload: array<string, mixed>
-     * }
+     * @return array<string, mixed>
      */
     public function check(string $domain, array $customSelectors = []): array
     {
@@ -47,19 +41,28 @@ class EmailSecurityHealthCheck
             // DKIM Check (Selector Discovery)
             $dkimResult = $this->checkDkim($domain, $customSelectors);
 
-            $isValid = $spfResult['valid'] && $dmarcResult['valid'];
+            $overallStatus = $this->determineOverallStatus($spfResult, $dmarcResult);
+            $overallAssessment = $this->buildOverallAssessment($overallStatus, $spfResult, $dmarcResult);
+            $isValid = $overallStatus === 'ok';
             $duration = (int) ((microtime(true) - $startTime) * 1000);
 
             return [
                 'is_valid' => $isValid,
+                'overall_status' => $overallStatus,
+                'overall_assessment' => $overallAssessment,
+                'methodology_note' => 'Overall email security is based on verified SPF and DMARC. DKIM discovery, DNSSEC, and CAA are supporting signals only.',
                 'spf' => $spfResult,
                 'dmarc' => $dmarcResult,
                 'dnssec' => $dnssecResult,
                 'caa' => $caaResult,
                 'dkim' => $dkimResult,
-                'error_message' => $isValid ? null : $this->buildErrorMessage($spfResult, $dmarcResult),
+                'error_message' => $isValid ? null : $overallAssessment,
                 'payload' => [
                     'domain' => $domain,
+                    'is_valid' => $isValid,
+                    'overall_status' => $overallStatus,
+                    'overall_assessment' => $overallAssessment,
+                    'methodology_note' => 'Overall email security is based on verified SPF and DMARC. DKIM discovery, DNSSEC, and CAA are supporting signals only.',
                     'spf' => $spfResult,
                     'dmarc' => $dmarcResult,
                     'dnssec' => $dnssecResult,
@@ -71,11 +74,14 @@ class EmailSecurityHealthCheck
         } catch (Exception $e) {
             return [
                 'is_valid' => false,
-                'spf' => ['present' => false, 'valid' => false, 'verified' => false, 'record' => null, 'mechanism' => null, 'error' => 'Check failed'],
-                'dmarc' => ['present' => false, 'valid' => false, 'verified' => false, 'record' => null, 'policy' => null, 'error' => 'Check failed'],
-                'dnssec' => ['enabled' => false, 'verified' => false, 'error' => 'Check failed'],
-                'caa' => ['present' => false, 'verified' => false, 'records' => [], 'error' => 'Check failed'],
-                'dkim' => ['present' => false, 'verified' => false, 'selectors' => [], 'error' => 'Check failed'],
+                'overall_status' => 'unknown',
+                'overall_assessment' => 'The email security checks could not be completed.',
+                'methodology_note' => 'Overall email security is based on verified SPF and DMARC. DKIM discovery, DNSSEC, and CAA are supporting signals only.',
+                'spf' => ['present' => false, 'valid' => false, 'verified' => false, 'record' => null, 'mechanism' => null, 'status' => 'unknown', 'assessment' => 'Could not verify SPF.', 'error' => 'Check failed'],
+                'dmarc' => ['present' => false, 'valid' => false, 'verified' => false, 'record' => null, 'policy' => null, 'status' => 'unknown', 'assessment' => 'Could not verify DMARC.', 'error' => 'Check failed'],
+                'dnssec' => ['enabled' => false, 'verified' => false, 'status' => 'unknown', 'assessment' => 'Could not verify DNSSEC.', 'error' => 'Check failed'],
+                'caa' => ['present' => false, 'verified' => false, 'records' => [], 'status' => 'unknown', 'assessment' => 'Could not verify CAA.', 'error' => 'Check failed'],
+                'dkim' => ['present' => false, 'verified' => false, 'selectors' => [], 'status' => 'unknown', 'assessment' => 'Could not verify DKIM discovery.', 'discovery_mode' => 'heuristic', 'error' => 'Check failed'],
                 'error_message' => 'Exception: '.$e->getMessage(),
                 'payload' => [
                     'domain' => $domain,
@@ -88,7 +94,7 @@ class EmailSecurityHealthCheck
 
     /**
      * @param  array<int, string>  $customSelectors
-     * @return array{present: bool, verified: bool, selectors: array<int, array{selector: string, record: string}>, error: string|null}
+     * @return array<string, mixed>
      */
     private function checkDkim(string $domain, array $customSelectors = []): array
     {
@@ -127,6 +133,11 @@ class EmailSecurityHealthCheck
                 'present' => ! empty($foundSelectors),
                 'verified' => true,
                 'selectors' => $foundSelectors,
+                'status' => ! empty($foundSelectors) ? 'ok' : 'warn',
+                'assessment' => ! empty($foundSelectors)
+                    ? 'DKIM selectors were discovered in the checked selector list.'
+                    : 'No DKIM selector was discovered in the checked selector list. This discovery is heuristic and does not prove DKIM is absent.',
+                'discovery_mode' => 'heuristic',
                 'error' => null,
             ];
         } catch (Exception $e) {
@@ -134,19 +145,22 @@ class EmailSecurityHealthCheck
                 'present' => false,
                 'verified' => false,
                 'selectors' => [],
+                'status' => 'unknown',
+                'assessment' => 'Could not verify DKIM selector discovery.',
+                'discovery_mode' => 'heuristic',
                 'error' => $e->getMessage(),
             ];
         }
     }
 
     /**
-     * @return array{present: bool, valid: bool, verified: bool, record: string|null, mechanism: string|null, error: string|null}
+     * @return array<string, mixed>
      */
     private function checkSpf(string $domain): array
     {
         try {
             $records = $this->dns->getRecords($domain, 'TXT');
-            $spfRecords = array_filter($records, fn ($r) => str_starts_with($r->txt(), 'v=spf1'));
+            $spfRecords = array_values(array_filter($records, fn ($r) => str_starts_with($r->txt(), 'v=spf1')));
 
             if (empty($spfRecords)) {
                 return [
@@ -155,6 +169,8 @@ class EmailSecurityHealthCheck
                     'verified' => true,
                     'record' => null,
                     'mechanism' => null,
+                    'status' => 'fail',
+                    'assessment' => 'No SPF record was found for this domain.',
                     'error' => 'No SPF record found',
                 ];
             }
@@ -166,26 +182,36 @@ class EmailSecurityHealthCheck
                     'verified' => true,
                     'record' => implode(' | ', array_map(fn ($r) => $r->txt(), $spfRecords)),
                     'mechanism' => null,
+                    'status' => 'fail',
+                    'assessment' => 'Multiple SPF records were found. SPF must exist as a single consolidated TXT record.',
                     'error' => 'Multiple SPF records found (Invalid)',
                 ];
             }
 
-            $record = reset($spfRecords)->txt();
+            $record = $spfRecords[0]->txt();
+            $mechanism = $this->detectSpfMechanism($record);
 
-            // Determine mechanism
-            $mechanism = 'unknown';
-            if (str_contains($record, '-all')) {
-                $mechanism = 'hard_fail';
-            } elseif (str_contains($record, '~all')) {
-                $mechanism = 'soft_fail';
-            } elseif (str_contains($record, '?all')) {
-                $mechanism = 'neutral';
-            } elseif (str_contains($record, '+all')) {
-                $mechanism = 'allow_all';
+            $status = 'fail';
+            $valid = false;
+            $assessment = 'The SPF record does not end with a recognized enforcement mechanism.';
+            $error = 'SPF record does not end with a recognized all mechanism.';
+
+            if ($mechanism === 'hard_fail') {
+                $status = 'ok';
+                $valid = true;
+                $assessment = 'A single SPF record was found and it ends with -all, which meets the current baseline.';
+                $error = null;
+            } elseif ($mechanism === 'soft_fail') {
+                $status = 'warn';
+                $assessment = 'A single SPF record was found, but it ends with ~all. That is softer than the current baseline and should be tightened once all legitimate senders are confirmed.';
+                $error = 'SPF ends with ~all rather than -all.';
+            } elseif ($mechanism === 'neutral') {
+                $assessment = 'The SPF record ends with ?all, which does not meaningfully restrict unauthorized senders.';
+                $error = 'SPF ends with ?all, which is too weak.';
+            } elseif ($mechanism === 'allow_all') {
+                $assessment = 'The SPF record ends with +all, which effectively allows any sender and is unsafe.';
+                $error = 'SPF ends with +all, which is unsafe.';
             }
-
-            // Basic syntax check (very loose)
-            $valid = true; // Assume valid unless flagged otherwise by strict parser later
 
             return [
                 'present' => true,
@@ -193,7 +219,9 @@ class EmailSecurityHealthCheck
                 'verified' => true,
                 'record' => $record,
                 'mechanism' => $mechanism,
-                'error' => null,
+                'status' => $status,
+                'assessment' => $assessment,
+                'error' => $error,
             ];
         } catch (Exception $e) {
             return [
@@ -202,13 +230,15 @@ class EmailSecurityHealthCheck
                 'verified' => false,
                 'record' => null,
                 'mechanism' => null,
+                'status' => 'unknown',
+                'assessment' => 'Could not verify SPF.',
                 'error' => $e->getMessage(),
             ];
         }
     }
 
     /**
-     * @return array{present: bool, valid: bool, verified: bool, record: string|null, policy: string|null, error: string|null}
+     * @return array<string, mixed>
      */
     private function checkDmarc(string $domain): array
     {
@@ -221,10 +251,12 @@ class EmailSecurityHealthCheck
             if (empty($dmarcRecords)) {
                 return [
                     'present' => false,
-                    'valid' => false, // DMARC is recommended, so missing = invalid/fail for our strict monitor
+                    'valid' => false,
                     'verified' => true,
                     'record' => null,
                     'policy' => null,
+                    'status' => 'fail',
+                    'assessment' => 'No DMARC record was found for this domain.',
                     'error' => 'No DMARC record found',
                 ];
             }
@@ -236,17 +268,31 @@ class EmailSecurityHealthCheck
                     'verified' => true,
                     'record' => implode(' | ', array_map(fn ($r) => $r->txt(), $dmarcRecords)),
                     'policy' => null,
+                    'status' => 'fail',
+                    'assessment' => 'Multiple DMARC records were found. DMARC must exist as a single TXT record at _dmarc.',
                     'error' => 'Multiple DMARC records found',
                 ];
             }
 
             $record = reset($dmarcRecords)->txt();
 
-            // Extract Policy (p=)
             preg_match('/p=([^;\s]+)/', $record, $matches);
             $policy = $matches[1] ?? 'unknown';
+            $status = 'fail';
+            $valid = false;
+            $assessment = 'The DMARC record is missing a supported p= policy.';
+            $error = 'Invalid or missing policy (p=)';
 
-            $valid = in_array($policy, ['reject', 'quarantine', 'none']);
+            if (in_array($policy, ['reject', 'quarantine'], true)) {
+                $status = 'ok';
+                $valid = true;
+                $assessment = "The DMARC record uses p={$policy}, which meets the current baseline.";
+                $error = null;
+            } elseif ($policy === 'none') {
+                $status = 'warn';
+                $assessment = 'The DMARC record is present, but p=none is monitor-only and does not enforce protection.';
+                $error = 'DMARC uses p=none, which is monitor-only.';
+            }
 
             return [
                 'present' => true,
@@ -254,7 +300,9 @@ class EmailSecurityHealthCheck
                 'verified' => true,
                 'record' => $record,
                 'policy' => $policy,
-                'error' => $valid ? null : 'Invalid or missing policy (p=)',
+                'status' => $status,
+                'assessment' => $assessment,
+                'error' => $error,
             ];
         } catch (Exception $e) {
             return [
@@ -263,30 +311,36 @@ class EmailSecurityHealthCheck
                 'verified' => false,
                 'record' => null,
                 'policy' => null,
+                'status' => 'unknown',
+                'assessment' => 'Could not verify DMARC.',
                 'error' => $e->getMessage(),
             ];
         }
     }
 
     /**
-     * @return array{enabled: bool, verified: bool, error: string|null}
+     * @return array<string, mixed>
      */
     private function checkDnssec(string $domain): array
     {
         try {
-            // Check for DNSKEY records which indicate DNSSEC is enabled
-            // We use getDnsKey() to allow mocking in tests and to avoid Spatie\Dns v2.7 type validation errors
             $records = $this->getDnsKey($domain);
 
             return [
                 'enabled' => ! empty($records),
                 'verified' => true,
+                'status' => ! empty($records) ? 'ok' : 'warn',
+                'assessment' => ! empty($records)
+                    ? 'DNSSEC appears to be enabled.'
+                    : 'DNSSEC does not appear to be enabled. This is advisory and handled at the registrar or DNS host level.',
                 'error' => null,
             ];
         } catch (Exception $e) {
             return [
                 'enabled' => false,
                 'verified' => false,
+                'status' => 'unknown',
+                'assessment' => 'Could not verify DNSSEC.',
                 'error' => $e->getMessage(),
             ];
         }
@@ -306,12 +360,11 @@ class EmailSecurityHealthCheck
     }
 
     /**
-     * @return array{present: bool, verified: bool, records: array<int, string>, error: string|null}
+     * @return array<string, mixed>
      */
     private function checkCaa(string $domain): array
     {
         try {
-            // Check for CAA (Certificate Authority Authorization) records
             $records = $this->dns->getRecords($domain, 'CAA');
 
             if (empty($records)) {
@@ -319,6 +372,8 @@ class EmailSecurityHealthCheck
                     'present' => false,
                     'verified' => true,
                     'records' => [],
+                    'status' => 'warn',
+                    'assessment' => 'No CAA records were found. This is advisory only and should only be changed if you know which certificate authorities you intend to authorize.',
                     'error' => null,
                 ];
             }
@@ -327,6 +382,8 @@ class EmailSecurityHealthCheck
                 'present' => true,
                 'verified' => true,
                 'records' => array_map(fn ($r) => (string) $r, $records),
+                'status' => 'ok',
+                'assessment' => 'CAA records are present.',
                 'error' => null,
             ];
         } catch (Exception $e) {
@@ -334,25 +391,78 @@ class EmailSecurityHealthCheck
                 'present' => false,
                 'verified' => false,
                 'records' => [],
+                'status' => 'unknown',
+                'assessment' => 'Could not verify CAA.',
                 'error' => $e->getMessage(),
             ];
         }
     }
 
-    /**
-     * @param  array{valid: bool, error: string|null}  $spf
-     * @param  array{valid: bool, error: string|null}  $dmarc
-     */
-    private function buildErrorMessage(array $spf, array $dmarc): ?string
+    private function detectSpfMechanism(string $record): string
     {
-        $errors = [];
-        if (! $spf['valid']) {
-            $errors[] = 'SPF: '.($spf['error'] ?? 'Invalid');
+        if (preg_match('/(?:^|\s)-all(?:\s|$)/', $record)) {
+            return 'hard_fail';
         }
-        if (! $dmarc['valid']) {
-            $errors[] = 'DMARC: '.($dmarc['error'] ?? 'Invalid');
+        if (preg_match('/(?:^|\s)~all(?:\s|$)/', $record)) {
+            return 'soft_fail';
+        }
+        if (preg_match('/(?:^|\s)\?all(?:\s|$)/', $record)) {
+            return 'neutral';
+        }
+        if (preg_match('/(?:^|\s)\+all(?:\s|$)/', $record)) {
+            return 'allow_all';
         }
 
-        return empty($errors) ? null : implode(', ', $errors);
+        return 'unknown';
+    }
+
+    /**
+     * @param  array<string, mixed>  $spf
+     * @param  array<string, mixed>  $dmarc
+     */
+    private function determineOverallStatus(array $spf, array $dmarc): string
+    {
+        if (($spf['verified'] ?? false) !== true || ($dmarc['verified'] ?? false) !== true) {
+            return 'unknown';
+        }
+
+        $spfStatus = $spf['status'] ?? 'unknown';
+        $dmarcStatus = $dmarc['status'] ?? 'unknown';
+
+        if ($spfStatus === 'fail' || $dmarcStatus === 'fail') {
+            return 'fail';
+        }
+
+        if ($spfStatus === 'warn' || $dmarcStatus === 'warn') {
+            return 'warn';
+        }
+
+        if ($spfStatus === 'ok' && $dmarcStatus === 'ok') {
+            return 'ok';
+        }
+
+        return 'unknown';
+    }
+
+    /**
+     * @param  array<string, mixed>  $spf
+     * @param  array<string, mixed>  $dmarc
+     */
+    private function buildOverallAssessment(string $overallStatus, array $spf, array $dmarc): string
+    {
+        return match ($overallStatus) {
+            'ok' => 'Verified SPF and DMARC meet the current baseline.',
+            'warn' => implode(' ', array_filter([
+                'Email security needs review before it meets the current baseline.',
+                ($spf['status'] ?? null) === 'warn' ? $spf['assessment'] : null,
+                ($dmarc['status'] ?? null) === 'warn' ? $dmarc['assessment'] : null,
+            ])),
+            'fail' => implode(' ', array_filter([
+                'Email security is missing required baseline protection.',
+                in_array($spf['status'] ?? null, ['fail', 'unknown'], true) ? $spf['assessment'] : null,
+                in_array($dmarc['status'] ?? null, ['fail', 'unknown'], true) ? $dmarc['assessment'] : null,
+            ])),
+            default => 'Could not verify SPF or DMARC, so the email security baseline could not be confirmed.',
+        };
     }
 }

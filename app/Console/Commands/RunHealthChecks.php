@@ -243,8 +243,11 @@ class RunHealthChecks extends Command
                     }
                 }
                 if ($emailSecurityResult) {
-                    $this->line('  SPF: '.($emailSecurityResult['spf']['valid'] ? 'Pass' : 'Fail'));
-                    $this->line('  DMARC: '.($emailSecurityResult['dmarc']['valid'] ? 'Pass' : 'Fail'));
+                    $this->line('  SPF: '.strtoupper($emailSecurityResult['spf']['status'] ?? 'unknown'));
+                    $this->line('  DMARC: '.strtoupper($emailSecurityResult['dmarc']['status'] ?? 'unknown'));
+                    if (! empty($emailSecurityResult['overall_assessment'])) {
+                        $this->line('  Assessment: '.$emailSecurityResult['overall_assessment']);
+                    }
                 }
                 if ($reputationResult) {
                     $this->line('  Safe Browsing: '.($reputationResult['google_safe_browsing']['safe'] ? 'Safe' : 'Unsafe'));
@@ -288,19 +291,27 @@ class RunHealthChecks extends Command
     }
 
     /**
-     * @param  array{
-     *     is_valid: bool,
-     *     spf: array{verified?: bool},
-     *     dmarc: array{verified?: bool}
-     * }  $result
+     * @param  array<string, mixed>  $result
      */
     private function determineEmailSecurityStatus(array $result): string
     {
+        if (is_string($result['overall_status'] ?? null)) {
+            return $result['overall_status'];
+        }
+
         if (($result['spf']['verified'] ?? false) !== true || ($result['dmarc']['verified'] ?? false) !== true) {
             return 'unknown';
         }
 
-        return $result['is_valid'] ? 'ok' : 'fail';
+        if (($result['spf']['status'] ?? null) === 'fail' || ($result['dmarc']['status'] ?? null) === 'fail') {
+            return 'fail';
+        }
+
+        if (($result['spf']['status'] ?? null) === 'warn' || ($result['dmarc']['status'] ?? null) === 'warn') {
+            return 'warn';
+        }
+
+        return $result['is_valid'] ? 'ok' : 'unknown';
     }
 
     /**
