@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AnalyticsInstallAudit;
 use App\Models\Domain;
 use App\Models\DomainAlert;
 use App\Models\DomainCheck;
@@ -76,6 +77,24 @@ class WebPropertyApiTest extends TestCase
             'is_primary' => true,
         ]);
 
+        $source = PropertyAnalyticsSource::query()->where('web_property_id', $property->id)->firstOrFail();
+
+        AnalyticsInstallAudit::create([
+            'property_analytics_source_id' => $source->id,
+            'web_property_id' => $property->id,
+            'provider' => 'matomo',
+            'external_id' => '6',
+            'external_name' => 'Moveroo website',
+            'expected_tracker_host' => 'stats.redirection.com.au',
+            'install_verdict' => 'installed_match',
+            'best_url' => 'https://moveroo.com.au/',
+            'detected_site_ids' => ['6'],
+            'detected_tracker_hosts' => ['stats.redirection.com.au'],
+            'summary' => 'Matomo snippet detected with the expected tracker host and site ID.',
+            'checked_at' => now(),
+            'raw_payload' => ['verdict' => 'installed_match'],
+        ]);
+
         DomainCheck::withoutEvents(function () use ($primaryDomain) {
             DB::table('domain_checks')->insert([
                 'id' => (string) Str::uuid(),
@@ -120,6 +139,7 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.primary_domain', 'moveroo.com.au')
             ->assertJsonPath('web_properties.0.repositories.0.repo_name', 'moveroo-website-astro')
             ->assertJsonPath('web_properties.0.analytics_sources.0.external_id', '6')
+            ->assertJsonPath('web_properties.0.analytics_sources.0.install_audit.install_verdict', 'installed_match')
             ->assertJsonPath('web_properties.0.health_summary.checks.http', 'ok')
             ->assertJsonPath('web_properties.0.health_summary.checks.ssl', 'warn')
             ->assertJsonPath('web_properties.0.health_summary.active_alerts_count', 1);

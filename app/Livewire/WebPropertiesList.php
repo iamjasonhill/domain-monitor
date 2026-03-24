@@ -208,6 +208,7 @@ class WebPropertiesList extends Component
                 'primaryDomain',
                 'repositories',
                 'analyticsSources',
+                'analyticsSources.latestInstallAudit',
                 'propertyDomains.domain' => function ($query): void {
                     $query->withLatestCheckStatuses()
                         ->with(['tags', 'alerts' => fn ($alertQuery) => $alertQuery->whereNull('resolved_at')]);

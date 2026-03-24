@@ -90,6 +90,7 @@ class WebPropertyController extends Controller
                 'primaryDomain',
                 'repositories',
                 'analyticsSources',
+                'analyticsSources.latestInstallAudit',
                 'propertyDomains.domain' => function ($query) {
                     $query->withLatestCheckStatuses()
                         ->with([

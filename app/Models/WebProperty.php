@@ -209,6 +209,7 @@ class WebProperty extends Model
             'is_primary' => $source->is_primary,
             'status' => $source->status,
             'notes' => $source->notes,
+            'install_audit' => $this->analyticsInstallAuditSummaryFor($source),
         ])->values()->all();
     }
 
@@ -363,5 +364,29 @@ class WebProperty extends Model
             1 => 'ok',
             default => 'unknown',
         };
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function analyticsInstallAuditSummaryFor(PropertyAnalyticsSource $source): ?array
+    {
+        $audit = $source->relationLoaded('latestInstallAudit')
+            ? $source->latestInstallAudit
+            : $source->latestInstallAudit()->first();
+
+        if (! $audit instanceof AnalyticsInstallAudit) {
+            return null;
+        }
+
+        return [
+            'install_verdict' => $audit->install_verdict,
+            'expected_tracker_host' => $audit->expected_tracker_host,
+            'best_url' => $audit->best_url,
+            'detected_site_ids' => $audit->detected_site_ids ?? [],
+            'detected_tracker_hosts' => $audit->detected_tracker_hosts ?? [],
+            'summary' => $audit->summary,
+            'checked_at' => $audit->checked_at?->toIso8601String(),
+        ];
     }
 }

@@ -262,6 +262,10 @@
                             <p class="text-sm text-gray-500 dark:text-gray-400">No analytics sources linked yet.</p>
                         @else
                             @foreach($analyticsSources as $source)
+                                @php
+                                    $installAudit = $source->latestInstallAudit;
+                                    $installVerdict = $installAudit?->install_verdict;
+                                @endphp
                                 <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
                                     <div class="flex flex-wrap items-center gap-2">
                                         <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ strtoupper($source->provider) }}: {{ $source->external_id }}</div>
@@ -270,11 +274,34 @@
                                                 Primary
                                             </span>
                                         @endif
+                                        @if($installVerdict)
+                                            <span @class([
+                                                'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                                                'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' => $installVerdict === 'installed_match',
+                                                'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' => in_array($installVerdict, ['partial_detection', 'unknown'], true),
+                                                'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300' => in_array($installVerdict, ['not_detected', 'installed_wrong_site_id', 'installed_other_tracker_host', 'fetch_failed'], true),
+                                                'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' => ! in_array($installVerdict, ['installed_match', 'partial_detection', 'unknown', 'not_detected', 'installed_wrong_site_id', 'installed_other_tracker_host', 'fetch_failed'], true),
+                                            ])>
+                                                {{ str_replace('_', ' ', $installVerdict) }}
+                                            </span>
+                                        @endif
                                     </div>
                                     <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 space-y-1">
                                         <div>Name: {{ $source->external_name ?? 'Not set' }}</div>
                                         <div>Status: {{ ucfirst($source->status) }}</div>
                                         <div class="break-all">Workspace: {{ $source->workspace_path ?? 'Not set' }}</div>
+                                        @if($installAudit)
+                                            <div>Tracker: {{ $installAudit->expected_tracker_host ?? 'Unknown' }}</div>
+                                            <div>Checked: {{ $installAudit->checked_at?->diffForHumans() ?? 'Unknown' }}</div>
+                                            @if($installAudit->best_url)
+                                                <div class="break-all">Best URL: {{ $installAudit->best_url }}</div>
+                                            @endif
+                                            @if($installAudit->summary)
+                                                <div>{{ $installAudit->summary }}</div>
+                                            @endif
+                                        @else
+                                            <div>No install audit imported yet.</div>
+                                        @endif
                                     </div>
                                 </div>
                             @endforeach

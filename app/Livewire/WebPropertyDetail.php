@@ -23,6 +23,7 @@ class WebPropertyDetail extends Component
                 'primaryDomain',
                 'repositories',
                 'analyticsSources',
+                'analyticsSources.latestInstallAudit',
                 'propertyDomains.domain' => function ($query): void {
                     $query->withLatestCheckStatuses()
                         ->with([

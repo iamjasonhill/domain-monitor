@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AnalyticsInstallAudit;
 use App\Models\Domain;
 use App\Models\PropertyAnalyticsSource;
 use App\Models\PropertyRepository;
@@ -103,6 +104,24 @@ class WebPropertyUiTest extends TestCase
             'status' => 'active',
         ]);
 
+        $source = PropertyAnalyticsSource::query()->where('web_property_id', $property->id)->firstOrFail();
+
+        AnalyticsInstallAudit::create([
+            'property_analytics_source_id' => $source->id,
+            'web_property_id' => $property->id,
+            'provider' => 'matomo',
+            'external_id' => '7',
+            'external_name' => 'Car transport by Moving Again',
+            'expected_tracker_host' => 'stats.redirection.com.au',
+            'install_verdict' => 'not_detected',
+            'best_url' => 'https://movingagain.com.au/',
+            'detected_site_ids' => [],
+            'detected_tracker_hosts' => [],
+            'summary' => 'No Matomo snippet detected.',
+            'checked_at' => now(),
+            'raw_payload' => ['verdict' => 'not_detected'],
+        ]);
+
         $response = $this->actingAs($user)->get('/web-properties/moving-again');
 
         $response->assertOk();
@@ -111,5 +130,7 @@ class WebPropertyUiTest extends TestCase
         $response->assertSee('movingagain.net.au');
         $response->assertSee('moving-again-astro');
         $response->assertSee('Car transport by Moving Again');
+        $response->assertSee('not detected');
+        $response->assertSee('No Matomo snippet detected.');
     }
 }

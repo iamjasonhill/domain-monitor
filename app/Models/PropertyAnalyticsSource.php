@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 /**
@@ -56,5 +57,13 @@ class PropertyAnalyticsSource extends Model
     public function webProperty(): BelongsTo
     {
         return $this->belongsTo(WebProperty::class);
+    }
+
+    /**
+     * @return HasOne<AnalyticsInstallAudit, $this>
+     */
+    public function latestInstallAudit(): HasOne
+    {
+        return $this->hasOne(AnalyticsInstallAudit::class);
     }
 }
