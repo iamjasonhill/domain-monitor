@@ -623,7 +623,6 @@
                         @endif
                     </p>
                 @endif
-                @endif
             </div>
         </div>
 
