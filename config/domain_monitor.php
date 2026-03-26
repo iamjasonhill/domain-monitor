@@ -166,6 +166,19 @@ return [
                     ],
                 ],
             ],
+            'mover.com.au' => [
+                'slug' => 'mover-com-au',
+                'name' => 'mover.com.au',
+                'property_type' => 'website',
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '17',
+                        'external_name' => 'Mover.com.au',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
+            ],
             'movingcars.com.au' => [
                 'slug' => 'movingcars-com-au',
                 'name' => 'movingcars.com.au',
