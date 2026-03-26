@@ -114,6 +114,19 @@ return [
                     ],
                 ],
             ],
+            'discountbackloading.com.au' => [
+                'slug' => 'discountbackloading-com-au',
+                'name' => 'discountbackloading.com.au',
+                'property_type' => 'website',
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '13',
+                        'external_name' => 'Discount Backloading',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
+            ],
             'movingcars.com.au' => [
                 'slug' => 'movingcars-com-au',
                 'name' => 'movingcars.com.au',
