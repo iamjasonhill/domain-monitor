@@ -153,6 +153,19 @@ return [
                     ],
                 ],
             ],
+            'interstatecarcarriers.com.au' => [
+                'slug' => 'interstatecarcarriers-com-au',
+                'name' => 'interstatecarcarriers.com.au',
+                'property_type' => 'website',
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '16',
+                        'external_name' => 'Interstate Car Carriers',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
+            ],
             'movingcars.com.au' => [
                 'slug' => 'movingcars-com-au',
                 'name' => 'movingcars.com.au',
