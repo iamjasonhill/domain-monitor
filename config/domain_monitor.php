@@ -242,6 +242,24 @@ return [
                     ],
                 ],
             ],
+            'cartransport.movingagain.com.au' => [
+                'slug' => 'ma-car-transport',
+                'name' => 'Moving Again Car Transport',
+                'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => 'ma-car-transport-astro',
+                    'local_path' => '/Users/jasonhill/Projects/websites/ma-car-transport-astro',
+                    'framework' => 'Astro',
+                ],
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '20',
+                        'external_name' => 'Moving Again Car Transport',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
+            ],
             'movinginsurance.com.au' => [
                 'slug' => 'moving-insurance',
                 'name' => 'Moving Insurance',
