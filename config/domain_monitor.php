@@ -140,6 +140,19 @@ return [
                     ],
                 ],
             ],
+            'backloadingremovals.com.au' => [
+                'slug' => 'backloadingremovals-com-au',
+                'name' => 'backloadingremovals.com.au',
+                'property_type' => 'website',
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '15',
+                        'external_name' => 'Backloading Removals',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
+            ],
             'movingcars.com.au' => [
                 'slug' => 'movingcars-com-au',
                 'name' => 'movingcars.com.au',
