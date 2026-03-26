@@ -179,6 +179,32 @@ return [
                     ],
                 ],
             ],
+            'perthinterstateremovalists.com.au' => [
+                'slug' => 'perthinterstateremovalists-com-au',
+                'name' => 'perthinterstateremovalists.com.au',
+                'property_type' => 'website',
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '18',
+                        'external_name' => 'Perth Interstate Removalists',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
+            ],
+            'interstate-car-transport.com.au' => [
+                'slug' => 'interstate-car-transport-com-au',
+                'name' => 'interstate-car-transport.com.au',
+                'property_type' => 'website',
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '19',
+                        'external_name' => 'Interstate Car Transport',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
+            ],
             'movingcars.com.au' => [
                 'slug' => 'movingcars-com-au',
                 'name' => 'movingcars.com.au',
