@@ -17,8 +17,7 @@ class HealthChecksListTest extends TestCase
     {
         $parkedDomain = Domain::factory()->create([
             'domain' => 'parked.example.com.au',
-            'platform' => 'Parked',
-            'parked_override' => true,
+            'dns_config_name' => 'Parked',
             'is_active' => true,
         ]);
 

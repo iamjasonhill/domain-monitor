@@ -81,7 +81,14 @@ class HealthChecksList extends Component
             ->when($this->filterRecentFailures, function ($query) {
                 $query->where('created_at', '>=', now()->subHours($this->recentFailuresHours));
                 $query->whereHas('domain', function (\Illuminate\Database\Eloquent\Builder $domainQuery) {
-                    $domainQuery->where('parked_override', false)
+                    $domainQuery->where(function ($parkedQuery) {
+                        $parkedQuery->where('parked_override', false)
+                            ->orWhereNull('parked_override');
+                    })
+                        ->where(function ($dnsConfigQuery) {
+                            $dnsConfigQuery->where('dns_config_name', '!=', 'Parked')
+                                ->orWhereNull('dns_config_name');
+                        })
                         ->where(function ($q) {
                             $q->where('platform', '!=', 'Parked')
                                 ->orWhereNull('platform');
@@ -108,7 +115,21 @@ class HealthChecksList extends Component
 
         $domains = Domain::where('is_active', true)
             ->when($this->filterRecentFailures, function (\Illuminate\Database\Eloquent\Builder $query) {
-                $query->excludeParked(true);
+                $query->where(function ($parkedQuery) {
+                    $parkedQuery->where('parked_override', false)
+                        ->orWhereNull('parked_override');
+                })
+                    ->where(function ($dnsConfigQuery) {
+                        $dnsConfigQuery->where('dns_config_name', '!=', 'Parked')
+                            ->orWhereNull('dns_config_name');
+                    })
+                    ->where(function ($platformQuery) {
+                        $platformQuery->where('platform', '!=', 'Parked')
+                            ->orWhereNull('platform');
+                    })
+                    ->whereDoesntHave('platform', function ($platformQ) {
+                        $platformQ->where('platform_type', 'Parked');
+                    });
             })
             ->orderBy('domain')
             ->get();
