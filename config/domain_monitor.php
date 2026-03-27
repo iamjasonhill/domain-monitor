@@ -231,6 +231,20 @@ return [
                     ],
                 ],
             ],
+            'removalist.net' => [
+                'slug' => 'removalist-net',
+                'name' => 'removalist.net',
+                'property_type' => 'website',
+                'priority' => 100,
+                'notes' => 'Operationally critical removals quoting platform. Keep alerts, analytics, and infrastructure issues highly visible.',
+            ],
+            'vehicle.net.au' => [
+                'slug' => 'vehicle-net-au',
+                'name' => 'vehicle.net.au',
+                'property_type' => 'website',
+                'priority' => 95,
+                'notes' => 'Operationally critical vehicle quoting platform. Treat health and alerting issues as high priority.',
+            ],
             'interstate-removals.com.au' => [
                 'slug' => 'interstate-removals-com-au',
                 'name' => 'interstate-removals.com.au',
