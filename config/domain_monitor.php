@@ -218,6 +218,32 @@ return [
                     ],
                 ],
             ],
+            'backloading-services.com.au' => [
+                'slug' => 'backloading-services-com-au',
+                'name' => 'backloading-services.com.au',
+                'property_type' => 'website',
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '23',
+                        'external_name' => 'Backloading Services',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
+            ],
+            'interstate-removals.com.au' => [
+                'slug' => 'interstate-removals-com-au',
+                'name' => 'interstate-removals.com.au',
+                'property_type' => 'website',
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '22',
+                        'external_name' => 'Interstate Removals',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
+            ],
             'movingcars.com.au' => [
                 'slug' => 'movingcars-com-au',
                 'name' => 'movingcars.com.au',
