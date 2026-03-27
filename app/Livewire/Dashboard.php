@@ -31,6 +31,7 @@ class Dashboard extends Component
 
         $domains = Domain::query()
             ->where('is_active', true)
+            ->with('platform')
             ->withLatestCheckStatuses()
             ->withCount([
                 'alerts as open_critical_alerts_count' => fn ($query) => $query
@@ -77,6 +78,10 @@ class Dashboard extends Component
         $shouldFixDomains = collect();
 
         foreach ($domains as $domain) {
+            if ($domain->isParkedForHosting()) {
+                continue;
+            }
+
             [$mustFixReasons, $shouldFixReasons] = $this->issueReasonsForDomain($domain);
 
             if ($mustFixReasons !== []) {

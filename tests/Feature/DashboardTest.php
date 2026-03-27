@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Dashboard;
 use App\Models\Domain;
 use App\Models\DomainAlert;
 use App\Models\DomainCheck;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class DashboardTest extends TestCase
@@ -73,5 +76,34 @@ class DashboardTest extends TestCase
             ->assertSee('Security headers need review')
             ->assertSee('Email security needs review')
             ->assertSee('Domain expires in 14 days');
+    }
+
+    public function test_dashboard_excludes_domains_marked_as_parked_in_synergy(): void
+    {
+        $parkedDomain = Domain::factory()->create([
+            'domain' => 'parked-domain.example.com',
+            'is_active' => true,
+            'dns_config_name' => 'Parked',
+        ]);
+
+        DomainCheck::factory()->create([
+            'domain_id' => $parkedDomain->id,
+            'check_type' => 'http',
+            'status' => 'fail',
+        ]);
+
+        DomainCheck::factory()->create([
+            'domain_id' => $parkedDomain->id,
+            'check_type' => 'ssl',
+            'status' => 'fail',
+        ]);
+
+        Livewire::test(Dashboard::class)
+            ->assertViewHas('mustFixDomains', function (Collection $items): bool {
+                return $items->every(fn (array $item): bool => $item['domain'] !== 'parked-domain.example.com');
+            })
+            ->assertViewHas('shouldFixDomains', function (Collection $items): bool {
+                return $items->every(fn (array $item): bool => $item['domain'] !== 'parked-domain.example.com');
+            });
     }
 }
