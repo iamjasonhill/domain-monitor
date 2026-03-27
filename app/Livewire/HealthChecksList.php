@@ -61,6 +61,9 @@ class HealthChecksList extends Component
     public function render(): \Illuminate\Contracts\View\View
     {
         $checks = DomainCheck::with('domain')
+            ->whereHas('domain', function ($query) {
+                $query->where('is_active', true);
+            })
             ->when($this->search, function ($query) {
                 $query->whereHas('domain', function ($q) {
                     $q->where('domain', 'like', '%'.$this->search.'%');
@@ -77,11 +80,36 @@ class HealthChecksList extends Component
             })
             ->when($this->filterRecentFailures, function ($query) {
                 $query->where('created_at', '>=', now()->subHours($this->recentFailuresHours));
+                $query->whereHas('domain', function (\Illuminate\Database\Eloquent\Builder $domainQuery) {
+                    $domainQuery->where('parked_override', false)
+                        ->where(function ($q) {
+                            $q->where('platform', '!=', 'Parked')
+                                ->orWhereNull('platform');
+                        })
+                        ->whereDoesntHave('platform', function ($platformQ) {
+                            $platformQ->where('platform_type', 'Parked');
+                        });
+                });
+                $query->where(function ($checkQuery) {
+                    $checkQuery->whereNotIn('check_type', ['http', 'ssl', 'security_headers', 'seo', 'uptime', 'broken_links'])
+                        ->orWhereHas('domain', function (\Illuminate\Database\Eloquent\Builder $domainQuery) {
+                            $domainQuery->where(function ($q) {
+                                $q->where('platform', '!=', 'Email Only')
+                                    ->orWhereNull('platform');
+                            })
+                                ->whereDoesntHave('platform', function ($platformQ) {
+                                    $platformQ->where('platform_type', 'Email Only');
+                                });
+                        });
+                });
             })
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
         $domains = Domain::where('is_active', true)
+            ->when($this->filterRecentFailures, function (\Illuminate\Database\Eloquent\Builder $query) {
+                $query->excludeParked(true);
+            })
             ->orderBy('domain')
             ->get();
 
