@@ -106,4 +106,44 @@ class DashboardTest extends TestCase
                 return $items->every(fn (array $item): bool => $item['domain'] !== 'parked-domain.example.com');
             });
     }
+
+    public function test_dashboard_suppresses_web_facing_failures_for_email_only_domains(): void
+    {
+        $emailOnlyDomain = Domain::factory()->create([
+            'domain' => 'email-only.example.com',
+            'is_active' => true,
+            'platform' => 'Email Only',
+        ]);
+
+        DomainCheck::factory()->create([
+            'domain_id' => $emailOnlyDomain->id,
+            'check_type' => 'http',
+            'status' => 'fail',
+        ]);
+
+        DomainCheck::factory()->create([
+            'domain_id' => $emailOnlyDomain->id,
+            'check_type' => 'ssl',
+            'status' => 'fail',
+        ]);
+
+        DomainCheck::factory()->create([
+            'domain_id' => $emailOnlyDomain->id,
+            'check_type' => 'email_security',
+            'status' => 'warn',
+        ]);
+
+        Livewire::test(Dashboard::class)
+            ->assertViewHas('mustFixDomains', function (Collection $items): bool {
+                return $items->every(fn (array $item): bool => $item['domain'] !== 'email-only.example.com');
+            })
+            ->assertViewHas('shouldFixDomains', function (Collection $items): bool {
+                $emailOnly = $items->firstWhere('domain', 'email-only.example.com');
+
+                return is_array($emailOnly)
+                    && in_array('Email security needs review', $emailOnly['primary_reasons'], true)
+                    && ! in_array('HTTP check is failing', $emailOnly['primary_reasons'], true)
+                    && ! in_array('SSL is failing', $emailOnly['primary_reasons'], true);
+            });
+    }
 }

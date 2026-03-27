@@ -165,6 +165,10 @@ class Dashboard extends Component
         $reasons = [];
 
         foreach ($definitions as $checkType => $messages) {
+            if ($domain->shouldSkipMonitoringCheck($checkType)) {
+                continue;
+            }
+
             $status = $domain->{'latest_'.$checkType.'_status'} ?? null;
 
             if (! is_string($status) || ! in_array($status, $matchingStatuses, true)) {
