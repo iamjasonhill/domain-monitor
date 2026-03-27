@@ -205,6 +205,19 @@ return [
                     ],
                 ],
             ],
+            'wemove.com.au' => [
+                'slug' => 'wemove-com-au',
+                'name' => 'wemove.com.au',
+                'property_type' => 'website',
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '21',
+                        'external_name' => 'We Move',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
+            ],
             'movingcars.com.au' => [
                 'slug' => 'movingcars-com-au',
                 'name' => 'movingcars.com.au',
