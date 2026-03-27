@@ -575,6 +575,7 @@
                                                 @elseif($record->type === 'SOA') bg-pink-100 text-pink-800 dark:bg-pink-500 dark:text-white
                                                 @elseif($record->type === 'TXT') bg-yellow-100 text-yellow-800 dark:bg-yellow-500 dark:text-gray-900
                                                 @elseif($record->type === 'SRV') bg-orange-100 text-orange-800 dark:bg-orange-500 dark:text-white
+                                                @elseif($record->type === 'CAA') bg-teal-100 text-teal-800 dark:bg-teal-500 dark:text-white
                                                 @else bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-100
                                                 @endif">
                                                 {{ $record->type }}

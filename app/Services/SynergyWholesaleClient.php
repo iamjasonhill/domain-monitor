@@ -467,7 +467,7 @@ class SynergyWholesaleClient implements SynergyDnsFixClient
      *
      * @param  string  $domain  Domain name
      * @param  string  $recordName  Record name (host/subdomain)
-     * @param  string  $recordType  Record type (A, AAAA, CNAME, MX, NS, TXT, SRV)
+     * @param  string  $recordType  Record type (A, AAAA, CNAME, MX, NS, TXT, SRV, CAA)
      * @param  string  $recordContent  Record value/content
      * @param  int  $recordTTL  TTL in seconds
      * @param  int  $recordPrio  Priority (for MX records, typically 10-100)
@@ -544,7 +544,7 @@ class SynergyWholesaleClient implements SynergyDnsFixClient
      * @param  string  $domain  Domain name
      * @param  string  $recordId  Record ID from Synergy Wholesale
      * @param  string  $recordName  Record name (host/subdomain)
-     * @param  string  $recordType  Record type (A, AAAA, CNAME, MX, NS, TXT, SRV)
+     * @param  string  $recordType  Record type (A, AAAA, CNAME, MX, NS, TXT, SRV, CAA)
      * @param  string  $recordContent  Record value/content
      * @param  int  $recordTTL  TTL in seconds
      * @param  int  $recordPrio  Priority (for MX records, typically 10-100)

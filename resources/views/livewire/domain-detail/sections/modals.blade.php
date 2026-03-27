@@ -44,13 +44,18 @@
                             <option value="NS">NS (Name Server)</option>
                             <option value="TXT">TXT (Text Record)</option>
                             <option value="SRV">SRV (Service Record)</option>
+                            <option value="CAA">CAA (Certificate Authority Authorization)</option>
                         </select>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Use CAA only when you intentionally manage certificate authorities. Format example: <code>0 issue "letsencrypt.org"</code></p>
                         <x-input-error :messages="$errors->get('dnsRecordType')" class="mt-2" />
                     </div>
 
                     <div>
                         <x-input-label for="dns_record_value" value="Value" />
                         <x-text-input wire:model="dnsRecordValue" id="dns_record_value" type="text" class="mt-1 block w-full" placeholder="e.g., 192.0.2.1 or example.com" required />
+                        @if($dnsRecordType === 'CAA')
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">CAA records must include a numeric flag, tag, and quoted value. Example: <code>0 issue "letsencrypt.org"</code></p>
+                        @endif
                         <x-input-error :messages="$errors->get('dnsRecordValue')" class="mt-2" />
                     </div>
 

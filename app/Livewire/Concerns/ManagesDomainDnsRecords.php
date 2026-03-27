@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Log;
 
 trait ManagesDomainDnsRecords
 {
+    private const DNS_RECORD_TYPES = 'A,AAAA,CNAME,MX,NS,TXT,SRV,CAA';
+
     public function syncDnsRecords(): void
     {
         if (! $this->isAustralianTld()) {
@@ -78,7 +80,7 @@ trait ManagesDomainDnsRecords
 
         $this->validate([
             'dnsRecordHost' => ['required', 'string', 'max:255'],
-            'dnsRecordType' => ['required', 'string', 'in:A,AAAA,CNAME,MX,NS,TXT,SRV'],
+            'dnsRecordType' => ['required', 'string', 'in:'.self::DNS_RECORD_TYPES],
             'dnsRecordValue' => ['required', 'string', 'max:65535'],
             'dnsRecordTtl' => ['required', 'integer', 'min:60', 'max:86400'],
             'dnsRecordPriority' => ['nullable', 'integer', 'min:0', 'max:65535'],
@@ -100,6 +102,12 @@ trait ManagesDomainDnsRecords
 
         if ($this->dnsRecordType === 'MX' && $this->dnsRecordPriority < 1) {
             $this->addError('dnsRecordPriority', 'Priority is required for MX records (typically 10-100).');
+
+            return;
+        }
+
+        if ($this->dnsRecordType === 'CAA' && ! preg_match('/^\d+\s+(issue|issuewild|iodef)\s+"[^"]+"$/i', trim($this->dnsRecordValue))) {
+            $this->addError('dnsRecordValue', 'CAA values must use the format `0 issue "letsencrypt.org"` (or issuewild/iodef with a quoted value).');
 
             return;
         }

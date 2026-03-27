@@ -93,6 +93,87 @@ class DomainDetailActionsTest extends TestCase
         ]);
     }
 
+    public function test_saving_caa_record_persists_when_value_is_valid(): void
+    {
+        $domain = Domain::factory()->create([
+            'domain' => 'example.com.au',
+        ]);
+
+        $credential = SynergyCredential::factory()->create([
+            'is_active' => true,
+        ]);
+
+        $synergyAlias = Mockery::mock('alias:App\Services\SynergyWholesaleClient');
+        /** @phpstan-ignore-next-line */
+        $synergyAlias->shouldReceive('isAustralianTld')
+            ->with($domain->domain)
+            ->andReturnTrue();
+
+        $synergyClient = Mockery::mock();
+        /** @phpstan-ignore-next-line */
+        $synergyAlias->shouldReceive('fromEncryptedCredentials')
+            ->with($credential->reseller_id, $credential->api_key_encrypted, $credential->api_url)
+            ->andReturn($synergyClient);
+
+        /** @phpstan-ignore-next-line */
+        $synergyClient->shouldReceive('addDnsRecord')
+            ->once()
+            ->with($domain->domain, '@', 'CAA', '0 issue "letsencrypt.org"', 300, 0)
+            ->andReturn([
+                'status' => 'OK',
+                'record_id' => 'RID-CAA-123',
+                'error_message' => null,
+            ]);
+
+        Livewire::test(DomainDetail::class, ['domainId' => $domain->id])
+            ->call('openAddDnsRecordModal')
+            ->set('dnsRecordHost', '@')
+            ->set('dnsRecordType', 'CAA')
+            ->set('dnsRecordValue', '0 issue "letsencrypt.org"')
+            ->set('dnsRecordTtl', 300)
+            ->set('dnsRecordPriority', 0)
+            ->call('saveDnsRecord')
+            ->assertHasNoErrors()
+            ->assertSet('showDnsRecordModal', false);
+
+        $this->assertDatabaseHas('dns_records', [
+            'domain_id' => $domain->id,
+            'host' => '@',
+            'type' => 'CAA',
+            'value' => '0 issue "letsencrypt.org"',
+            'record_id' => 'RID-CAA-123',
+        ]);
+    }
+
+    public function test_saving_caa_record_rejects_malformed_quoted_value(): void
+    {
+        $domain = Domain::factory()->create([
+            'domain' => 'example.com.au',
+        ]);
+
+        SynergyCredential::factory()->create([
+            'is_active' => true,
+        ]);
+
+        $synergyAlias = Mockery::mock('alias:App\Services\SynergyWholesaleClient');
+        /** @phpstan-ignore-next-line */
+        $synergyAlias->shouldReceive('isAustralianTld')
+            ->with($domain->domain)
+            ->andReturnTrue();
+        /** @phpstan-ignore-next-line */
+        $synergyAlias->shouldNotReceive('fromEncryptedCredentials');
+
+        Livewire::test(DomainDetail::class, ['domainId' => $domain->id])
+            ->call('openAddDnsRecordModal')
+            ->set('dnsRecordHost', '@')
+            ->set('dnsRecordType', 'CAA')
+            ->set('dnsRecordValue', '0 issue "\"letsencrypt.org\""')
+            ->set('dnsRecordTtl', 300)
+            ->set('dnsRecordPriority', 0)
+            ->call('saveDnsRecord')
+            ->assertHasErrors(['dnsRecordValue']);
+    }
+
     public function test_saving_subdomain_persists_and_closes_the_modal(): void
     {
         $domain = Domain::factory()->create([

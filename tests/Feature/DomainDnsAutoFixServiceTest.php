@@ -8,14 +8,51 @@ use App\Models\SynergyCredential;
 use App\Services\DomainDnsAutoFixService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
-use Spatie\Dns\Dns;
 use Tests\TestCase;
 
 class DomainDnsAutoFixServiceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_apply_fix_rejects_non_au_domain(): void
+    private const EMAIL_FIX_DISABLED_MESSAGE = 'Automatic DNS fixes are disabled for email security because generic SPF, DMARC, and CAA records may be incorrect for the real mail and certificate setup.';
+
+    public function test_apply_fix_skips_spf_autofix(): void
+    {
+        $domain = Domain::factory()->create([
+            'domain' => 'example.com.au',
+        ]);
+
+        $result = app(DomainDnsAutoFixService::class)->applyFix($domain, 'spf');
+
+        $this->assertFalse($result['ok']);
+        $this->assertSame(self::EMAIL_FIX_DISABLED_MESSAGE, $result['message']);
+    }
+
+    public function test_apply_fix_skips_dmarc_autofix(): void
+    {
+        $domain = Domain::factory()->create([
+            'domain' => 'example.com.au',
+        ]);
+
+        $result = app(DomainDnsAutoFixService::class)->applyFix($domain, 'dmarc');
+
+        $this->assertFalse($result['ok']);
+        $this->assertSame(self::EMAIL_FIX_DISABLED_MESSAGE, $result['message']);
+    }
+
+    public function test_apply_fix_skips_caa_autofix(): void
+    {
+        $domain = Domain::factory()->create([
+            'domain' => 'example.com.au',
+        ]);
+
+        $result = app(DomainDnsAutoFixService::class)->applyFix($domain, 'caa');
+
+        $this->assertFalse($result['ok']);
+        $this->assertSame(self::EMAIL_FIX_DISABLED_MESSAGE, $result['message']);
+    }
+
+    public function test_apply_fix_rejects_non_au_domain_for_non_email_fix(): void
     {
         $domain = Domain::factory()->create([
             'domain' => 'example.com',
@@ -27,13 +64,13 @@ class DomainDnsAutoFixServiceTest extends TestCase
             ->andReturnFalse();
         $synergyAlias->shouldNotReceive('fromEncryptedCredentials');
 
-        $result = app(DomainDnsAutoFixService::class)->applyFix($domain, 'spf');
+        $result = app(DomainDnsAutoFixService::class)->applyFix($domain, 'unknown');
 
         $this->assertFalse($result['ok']);
         $this->assertSame('Automated fixes are only available for Australian TLD domains.', $result['message']);
     }
 
-    public function test_apply_fix_requires_active_credentials(): void
+    public function test_apply_fix_requires_active_credentials_for_non_email_fix(): void
     {
         $domain = Domain::factory()->create([
             'domain' => 'example.com.au',
@@ -45,13 +82,13 @@ class DomainDnsAutoFixServiceTest extends TestCase
             ->andReturnTrue();
         $synergyAlias->shouldNotReceive('fromEncryptedCredentials');
 
-        $result = app(DomainDnsAutoFixService::class)->applyFix($domain, 'spf');
+        $result = app(DomainDnsAutoFixService::class)->applyFix($domain, 'unknown');
 
         $this->assertFalse($result['ok']);
         $this->assertSame('No active Synergy credentials found.', $result['message']);
     }
 
-    public function test_apply_fix_returns_unknown_type_error(): void
+    public function test_apply_fix_returns_unknown_type_error_after_loading_live_records(): void
     {
         $domain = Domain::factory()->create([
             'domain' => 'example.com.au',
@@ -87,279 +124,5 @@ class DomainDnsAutoFixServiceTest extends TestCase
 
         $this->assertFalse($result['ok']);
         $this->assertSame('Unknown fix type: unknown', $result['message']);
-    }
-
-    public function test_apply_fix_spf_updates_existing_record(): void
-    {
-        $domain = Domain::factory()->create([
-            'domain' => 'example.com.au',
-        ]);
-
-        $credential = SynergyCredential::factory()->create([
-            'is_active' => true,
-        ]);
-
-        $synergyAlias = Mockery::mock('alias:App\Services\SynergyWholesaleClient');
-        $synergyAlias->shouldReceive('isAustralianTld')
-            ->with($domain->domain)
-            ->andReturnTrue();
-
-        $synergyClient = Mockery::mock(SynergyDnsFixClient::class);
-        $synergyAlias->shouldReceive('fromEncryptedCredentials')
-            ->with($credential->reseller_id, $credential->api_key_encrypted, $credential->api_url)
-            ->andReturn($synergyClient);
-
-        $synergyClient->shouldReceive('getDnsRecords')
-            ->once()
-            ->andReturn([
-                [
-                    'host' => '@',
-                    'type' => 'TXT',
-                    'value' => 'v=spf1 old',
-                    'ttl' => 300,
-                    'id' => 'RID-SPF',
-                ],
-            ]);
-
-        $synergyClient->shouldReceive('updateDnsRecord')
-            ->once()
-            ->with($domain->domain, 'RID-SPF', '@', 'TXT', 'v=spf1 a mx ~all', 300)
-            ->andReturn(['status' => 'OK']);
-
-        $result = app(DomainDnsAutoFixService::class)->applyFix($domain, 'spf');
-
-        $this->assertTrue($result['ok']);
-        $this->assertSame('Updated existing SPF record to safe default.', $result['message']);
-    }
-
-    public function test_apply_fix_dmarc_creates_record_when_missing(): void
-    {
-        $domain = Domain::factory()->create([
-            'domain' => 'example.com.au',
-        ]);
-
-        $credential = SynergyCredential::factory()->create([
-            'is_active' => true,
-        ]);
-
-        $synergyAlias = Mockery::mock('alias:App\Services\SynergyWholesaleClient');
-        $synergyAlias->shouldReceive('isAustralianTld')
-            ->with($domain->domain)
-            ->andReturnTrue();
-
-        $synergyClient = Mockery::mock(SynergyDnsFixClient::class);
-        $synergyAlias->shouldReceive('fromEncryptedCredentials')
-            ->with($credential->reseller_id, $credential->api_key_encrypted, $credential->api_url)
-            ->andReturn($synergyClient);
-
-        $synergyClient->shouldReceive('getDnsRecords')
-            ->once()
-            ->andReturn([
-                [
-                    'host' => '@',
-                    'type' => 'TXT',
-                    'value' => 'v=spf1 old',
-                    'ttl' => 300,
-                ],
-            ]);
-
-        $synergyClient->shouldReceive('addDnsRecord')
-            ->once()
-            ->with($domain->domain, '_dmarc', 'TXT', 'v=DMARC1; p=none;', 300)
-            ->andReturn(['status' => 'OK']);
-
-        $result = app(DomainDnsAutoFixService::class)->applyFix($domain, 'dmarc');
-
-        $this->assertTrue($result['ok']);
-        $this->assertSame('Created new DMARC record.', $result['message']);
-    }
-
-    public function test_apply_fix_caa_skips_when_dns_already_has_caa_record(): void
-    {
-        $domain = Domain::factory()->create([
-            'domain' => 'example.com.au',
-        ]);
-
-        $credential = SynergyCredential::factory()->create([
-            'is_active' => true,
-        ]);
-
-        $synergyAlias = Mockery::mock('alias:App\Services\SynergyWholesaleClient');
-        $synergyAlias->shouldReceive('isAustralianTld')
-            ->with($domain->domain)
-            ->andReturnTrue();
-
-        $synergyClient = Mockery::mock(SynergyDnsFixClient::class);
-        $synergyAlias->shouldReceive('fromEncryptedCredentials')
-            ->with($credential->reseller_id, $credential->api_key_encrypted, $credential->api_url)
-            ->andReturn($synergyClient);
-
-        $synergyClient->shouldReceive('getDnsRecords')
-            ->once()
-            ->andReturn([
-                [
-                    'host' => '@',
-                    'type' => 'A',
-                    'value' => '1.2.3.4',
-                    'ttl' => 300,
-                ],
-            ]);
-
-        $synergyClient->shouldNotReceive('addDnsRecord');
-
-        $dnsClient = Mockery::mock(Dns::class);
-        $dnsClient->shouldReceive('getRecords')
-            ->once()
-            ->with($domain->domain, 'CAA')
-            ->andReturn([['type' => 'CAA']]);
-        $this->instance(Dns::class, $dnsClient);
-
-        $result = app(DomainDnsAutoFixService::class)->applyFix($domain, 'caa');
-
-        $this->assertFalse($result['ok']);
-        $this->assertSame(
-            'CAA records already exist (verified via API and DNS lookup). Automatic fix skipped to avoid breaking existing authorization.',
-            $result['message']
-        );
-    }
-
-    public function test_apply_fix_spf_returns_synergy_error_when_update_fails(): void
-    {
-        $domain = Domain::factory()->create([
-            'domain' => 'example.com.au',
-        ]);
-
-        $credential = SynergyCredential::factory()->create([
-            'is_active' => true,
-        ]);
-
-        $synergyAlias = Mockery::mock('alias:App\Services\SynergyWholesaleClient');
-        $synergyAlias->shouldReceive('isAustralianTld')
-            ->with($domain->domain)
-            ->andReturnTrue();
-
-        $synergyClient = Mockery::mock(SynergyDnsFixClient::class);
-        $synergyAlias->shouldReceive('fromEncryptedCredentials')
-            ->with($credential->reseller_id, $credential->api_key_encrypted, $credential->api_url)
-            ->andReturn($synergyClient);
-
-        $synergyClient->shouldReceive('getDnsRecords')
-            ->once()
-            ->andReturn([
-                [
-                    'host' => '@',
-                    'type' => 'TXT',
-                    'value' => 'v=spf1 old',
-                    'ttl' => 300,
-                    'id' => 'RID-SPF',
-                ],
-            ]);
-
-        $synergyClient->shouldReceive('updateDnsRecord')
-            ->once()
-            ->with($domain->domain, 'RID-SPF', '@', 'TXT', 'v=spf1 a mx ~all', 300)
-            ->andReturn([
-                'status' => 'ERR',
-                'error_message' => 'Synergy update failed.',
-            ]);
-
-        $result = app(DomainDnsAutoFixService::class)->applyFix($domain, 'spf');
-
-        $this->assertFalse($result['ok']);
-        $this->assertSame('Synergy update failed.', $result['message']);
-    }
-
-    public function test_apply_fix_dmarc_returns_synergy_error_when_create_fails(): void
-    {
-        $domain = Domain::factory()->create([
-            'domain' => 'example.com.au',
-        ]);
-
-        $credential = SynergyCredential::factory()->create([
-            'is_active' => true,
-        ]);
-
-        $synergyAlias = Mockery::mock('alias:App\Services\SynergyWholesaleClient');
-        $synergyAlias->shouldReceive('isAustralianTld')
-            ->with($domain->domain)
-            ->andReturnTrue();
-
-        $synergyClient = Mockery::mock(SynergyDnsFixClient::class);
-        $synergyAlias->shouldReceive('fromEncryptedCredentials')
-            ->with($credential->reseller_id, $credential->api_key_encrypted, $credential->api_url)
-            ->andReturn($synergyClient);
-
-        $synergyClient->shouldReceive('getDnsRecords')
-            ->once()
-            ->andReturn([
-                [
-                    'host' => '@',
-                    'type' => 'TXT',
-                    'value' => 'v=spf1 old',
-                    'ttl' => 300,
-                ],
-            ]);
-
-        $synergyClient->shouldReceive('addDnsRecord')
-            ->once()
-            ->with($domain->domain, '_dmarc', 'TXT', 'v=DMARC1; p=none;', 300)
-            ->andReturn([
-                'status' => 'ERR',
-                'error_message' => 'Synergy create failed.',
-            ]);
-
-        $result = app(DomainDnsAutoFixService::class)->applyFix($domain, 'dmarc');
-
-        $this->assertFalse($result['ok']);
-        $this->assertSame('Synergy create failed.', $result['message']);
-    }
-
-    public function test_apply_fix_caa_returns_lookup_error_when_dns_query_throws(): void
-    {
-        $domain = Domain::factory()->create([
-            'domain' => 'example.com.au',
-        ]);
-
-        $credential = SynergyCredential::factory()->create([
-            'is_active' => true,
-        ]);
-
-        $synergyAlias = Mockery::mock('alias:App\Services\SynergyWholesaleClient');
-        $synergyAlias->shouldReceive('isAustralianTld')
-            ->with($domain->domain)
-            ->andReturnTrue();
-
-        $synergyClient = Mockery::mock(SynergyDnsFixClient::class);
-        $synergyAlias->shouldReceive('fromEncryptedCredentials')
-            ->with($credential->reseller_id, $credential->api_key_encrypted, $credential->api_url)
-            ->andReturn($synergyClient);
-
-        $synergyClient->shouldReceive('getDnsRecords')
-            ->once()
-            ->andReturn([
-                [
-                    'host' => '@',
-                    'type' => 'A',
-                    'value' => '1.2.3.4',
-                    'ttl' => 300,
-                ],
-            ]);
-
-        $synergyClient->shouldNotReceive('addDnsRecord');
-
-        $dnsClient = Mockery::mock(Dns::class);
-        $dnsClient->shouldReceive('getRecords')
-            ->once()
-            ->with($domain->domain, 'CAA')
-            ->andThrow(new \RuntimeException('DNS timeout'));
-        $this->instance(Dns::class, $dnsClient);
-
-        $result = app(DomainDnsAutoFixService::class)->applyFix($domain, 'caa');
-
-        $this->assertFalse($result['ok']);
-        $this->assertSame(
-            'Could not verify CAA records via DNS lookup. Skipping automatic creation to avoid conflicts.',
-            $result['message']
-        );
     }
 }
