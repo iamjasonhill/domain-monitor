@@ -244,6 +244,58 @@ return [
                     ],
                 ],
             ],
+            'allianceremovals.com.au' => [
+                'slug' => 'allianceremovals-com-au',
+                'name' => 'allianceremovals.com.au',
+                'property_type' => 'website',
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '24',
+                        'external_name' => 'Alliance Removals',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
+            ],
+            'movemycar.com.au' => [
+                'slug' => 'movemycar-com-au',
+                'name' => 'movemycar.com.au',
+                'property_type' => 'website',
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '25',
+                        'external_name' => 'Move My Car',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
+            ],
+            'supercheapcartransport.com.au' => [
+                'slug' => 'supercheapcartransport-com-au',
+                'name' => 'supercheapcartransport.com.au',
+                'property_type' => 'website',
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '26',
+                        'external_name' => 'Super Cheap Car Transport',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
+            ],
+            'cartransportaus.com.au' => [
+                'slug' => 'cartransportaus-com-au',
+                'name' => 'cartransportaus.com.au',
+                'property_type' => 'website',
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '27',
+                        'external_name' => 'Car Transport Aus',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
+            ],
             'movingcars.com.au' => [
                 'slug' => 'movingcars-com-au',
                 'name' => 'movingcars.com.au',
