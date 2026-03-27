@@ -65,6 +65,17 @@ use Illuminate\Support\Str;
  * @property string|null $ip_city
  * @property bool|null $ip_hosting_flag
  * @property array<int, string>|null $dkim_selectors
+ * @property string|null $latest_uptime_status
+ * @property string|null $latest_http_status
+ * @property string|null $latest_ssl_status
+ * @property string|null $latest_dns_status
+ * @property string|null $latest_email_security_status
+ * @property string|null $latest_seo_status
+ * @property string|null $latest_security_headers_status
+ * @property string|null $latest_reputation_status
+ * @property string|null $latest_broken_links_status
+ * @property int|null $open_critical_alerts_count
+ * @property int|null $open_warning_alerts_count
  *
  * @method static \Database\Factories\DomainFactory factory()
  */

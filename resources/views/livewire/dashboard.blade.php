@@ -1,6 +1,6 @@
 <div>
     <!-- Stats Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6 mb-8">
         <!-- Total Domains -->
         <a href="{{ route('domains.index') }}" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
             <div class="p-6">
@@ -95,6 +95,159 @@
                 </div>
             </div>
         </a>
+
+        <!-- Must Fix -->
+        <a href="{{ route('dashboard') }}#must-fix" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+            <div class="p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-red-700 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3l-8.47-14.14a2 2 0 00-3.42 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Must Fix</dt>
+                            <dd class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats['must_fix'] }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </a>
+
+        <!-- Should Fix -->
+        <a href="{{ route('dashboard') }}#should-fix" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+            <div class="p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-amber-500 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Should Fix</dt>
+                            <dd class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats['should_fix'] }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Priority Queue -->
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
+        <div id="must-fix" class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Must Fix</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Hard failures, critical alerts, or compliance issues that should be handled first.</p>
+                    </div>
+                    <a href="{{ route('alerts.index') }}" wire:navigate class="text-sm text-blue-600 dark:text-blue-400 hover:underline">View alerts</a>
+                </div>
+
+                @if($mustFixDomains->isNotEmpty())
+                    <div class="space-y-4">
+                        @foreach($mustFixDomains as $item)
+                            <div class="border border-red-200 dark:border-red-900/60 rounded-lg p-4 bg-red-50/50 dark:bg-red-950/20">
+                                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                    <div>
+                                        <a href="{{ route('domains.show', $item['id']) }}" wire:navigate class="text-base font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400">
+                                            {{ $item['domain'] }}
+                                        </a>
+                                        @if($item['hosting_provider'])
+                                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $item['hosting_provider'] }}</p>
+                                        @endif
+                                    </div>
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                        {{ $item['primary_reason_count'] }} issue{{ $item['primary_reason_count'] === 1 ? '' : 's' }}
+                                    </span>
+                                </div>
+
+                                <ul class="mt-4 space-y-2">
+                                    @foreach($item['primary_reasons'] as $reason)
+                                        <li class="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-2">
+                                            <span class="mt-1 h-2 w-2 rounded-full bg-red-500 flex-shrink-0"></span>
+                                            <span>{{ $reason }}</span>
+                                        </li>
+                                    @endforeach
+                                </ul>
+
+                                @if(!empty($item['secondary_reasons']))
+                                    <div class="mt-4 pt-4 border-t border-red-200 dark:border-red-900/60">
+                                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Also Review</p>
+                                        <div class="mt-2 flex flex-wrap gap-2">
+                                            @foreach($item['secondary_reasons'] as $reason)
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+                                                    {{ $reason }}
+                                                </span>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                                <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">Updated {{ $item['updated_at_human'] ?? 'recently' }}</p>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="rounded-lg border border-green-200 dark:border-green-900/60 bg-green-50 dark:bg-green-950/20 p-4">
+                        <p class="text-sm text-green-800 dark:text-green-200">No urgent domain issues are currently flagged.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <div id="should-fix" class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Should Fix</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Warnings and degradations that deserve attention, but are not the most urgent blockers.</p>
+                    </div>
+                    <a href="{{ route('health-checks.index') }}" wire:navigate class="text-sm text-blue-600 dark:text-blue-400 hover:underline">View health checks</a>
+                </div>
+
+                @if($shouldFixDomains->isNotEmpty())
+                    <div class="space-y-4">
+                        @foreach($shouldFixDomains as $item)
+                            <div class="border border-amber-200 dark:border-amber-900/60 rounded-lg p-4 bg-amber-50/50 dark:bg-amber-950/20">
+                                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                    <div>
+                                        <a href="{{ route('domains.show', $item['id']) }}" wire:navigate class="text-base font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400">
+                                            {{ $item['domain'] }}
+                                        </a>
+                                        @if($item['hosting_provider'])
+                                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $item['hosting_provider'] }}</p>
+                                        @endif
+                                    </div>
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                                        {{ $item['primary_reason_count'] }} issue{{ $item['primary_reason_count'] === 1 ? '' : 's' }}
+                                    </span>
+                                </div>
+
+                                <ul class="mt-4 space-y-2">
+                                    @foreach($item['primary_reasons'] as $reason)
+                                        <li class="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-2">
+                                            <span class="mt-1 h-2 w-2 rounded-full bg-amber-500 flex-shrink-0"></span>
+                                            <span>{{ $reason }}</span>
+                                        </li>
+                                    @endforeach
+                                </ul>
+
+                                <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">Updated {{ $item['updated_at_human'] ?? 'recently' }}</p>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="rounded-lg border border-green-200 dark:border-green-900/60 bg-green-50 dark:bg-green-950/20 p-4">
+                        <p class="text-sm text-green-800 dark:text-green-200">No non-urgent domain issues are currently flagged.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
     </div>
 
     <!-- Quick Actions -->
