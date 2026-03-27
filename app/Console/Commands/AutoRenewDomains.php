@@ -24,7 +24,7 @@ class AutoRenewDomains extends Command
      *
      * @var string
      */
-    protected $description = 'Automatically renew domains with auto_renew=true that are expiring in 30 days';
+    protected $description = 'Automatically renew domains with auto_renew=true that are expiring within 30 days';
 
     /**
      * Execute the console command.
@@ -80,14 +80,14 @@ class AutoRenewDomains extends Command
                 return Command::FAILURE;
             }
         } else {
-            // Find domains expiring in 30 days (±1 day window)
+            // Find domains expiring within the next 30 days.
+            // This also catches domains that slipped under the threshold
+            // before domain-monitor was brought online.
             $domains = Domain::where('is_active', true)
                 ->where('auto_renew', true)
                 ->whereNotNull('expires_at')
-                ->whereBetween('expires_at', [
-                    $targetDate->copy()->subDay()->startOfDay(),
-                    $targetDate->copy()->addDay()->endOfDay(),
-                ])
+                ->where('expires_at', '>', $now)
+                ->where('expires_at', '<=', $targetDate->copy()->addDay()->endOfDay())
                 ->get()
                 ->filter(function ($domain) {
                     // Only process Australian TLDs

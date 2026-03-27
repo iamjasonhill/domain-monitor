@@ -138,7 +138,7 @@ Schedule::command('domains:queue-sync-jobs --type=contacts')
     ->dailyAt('20:15')
     ->timezone('UTC');
 
-// Auto-renew domains - run daily to renew domains with auto_renew=true expiring in 30 days
+// Auto-renew domains - run daily to renew domains with auto_renew=true expiring within 30 days
 Schedule::command('domains:auto-renew')
     ->daily()
     ->at('08:20')
