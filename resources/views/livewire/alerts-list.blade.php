@@ -117,6 +117,19 @@
                                             @if(isset($payload['expires_at']))
                                                 <div><strong>Expires:</strong> {{ \Carbon\Carbon::parse($payload['expires_at'])->format('Y-m-d') }}</div>
                                             @endif
+                                            @if(in_array($alert->alert_type, ['domain_expiring', 'renewal_required'], true) && array_key_exists('auto_renew', $payload))
+                                                <div class="mt-1">
+                                                    <strong>Auto-renew:</strong>
+                                                    <span class="@if($payload['auto_renew']) text-emerald-600 dark:text-emerald-400 @else text-amber-600 dark:text-amber-400 font-semibold @endif">
+                                                        {{ $payload['auto_renew'] ? 'Enabled' : 'Disabled' }}
+                                                    </span>
+                                                </div>
+                                            @endif
+                                            @if($alert->alert_type === 'domain_expiring' && array_key_exists('auto_renew', $payload) && ! $payload['auto_renew'])
+                                                <div class="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                                                    Not set to auto-renew.
+                                                </div>
+                                            @endif
                                         @else
                                             <span class="text-gray-500 dark:text-gray-400">—</span>
                                         @endif
