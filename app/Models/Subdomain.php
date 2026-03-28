@@ -80,4 +80,70 @@ class Subdomain extends Model
     {
         return $this->belongsTo(Domain::class);
     }
+
+    /**
+     * Classify the subdomain so the UI can distinguish real web hosts from
+     * mail/auth/service records that are not expected to resolve to a website IP.
+     */
+    public function category(): string
+    {
+        $subdomain = strtolower($this->subdomain);
+
+        if ($subdomain === '' || $subdomain === '@') {
+            return 'unknown';
+        }
+
+        if (str_contains($subdomain, '._domainkey')
+            || preg_match('/^em\d+$/', $subdomain) === 1
+            || preg_match('/^sig\d+(\._domainkey)?$/', $subdomain) === 1
+            || preg_match('/^strong\d+(\._domainkey)?$/', $subdomain) === 1
+            || preg_match('/^enchant\d+(\._domainkey)?$/', $subdomain) === 1
+            || preg_match('/^pdk\d+(\._domainkey(\.email)?)?$/', $subdomain) === 1) {
+            return 'email_auth';
+        }
+
+        if (str_starts_with($subdomain, '_')) {
+            return 'service';
+        }
+
+        return 'web';
+    }
+
+    public function categoryLabel(): string
+    {
+        return match ($this->category()) {
+            'email_auth' => 'Email/Auth',
+            'service' => 'Service',
+            'web' => 'Web',
+            default => 'Unknown',
+        };
+    }
+
+    public function expectsIpResolution(): bool
+    {
+        return $this->category() === 'web';
+    }
+
+    public function resolutionState(): string
+    {
+        if ($this->ip_checked_at === null) {
+            return 'unchecked';
+        }
+
+        if ($this->ip_address) {
+            return 'resolves';
+        }
+
+        return $this->expectsIpResolution() ? 'unresolved' : 'not_applicable';
+    }
+
+    public function resolutionLabel(): string
+    {
+        return match ($this->resolutionState()) {
+            'resolves' => 'Resolves',
+            'unresolved' => 'Does Not Resolve',
+            'not_applicable' => 'No IP Expected',
+            default => 'Unchecked',
+        };
+    }
 }
