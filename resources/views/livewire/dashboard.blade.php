@@ -1,6 +1,6 @@
 <div>
     <!-- Stats Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <!-- Total Domains -->
         <a href="{{ route('domains.index') }}" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
             <div class="p-6">
@@ -10,9 +10,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path>
                         </svg>
                     </div>
-                    <div class="ml-5 w-0 flex-1">
+                    <div class="ml-5 min-w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Domains</dt>
+                            <dt class="text-sm font-medium leading-snug text-gray-500 dark:text-gray-400">Total Domains</dt>
                             <dd class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats['total_domains'] }}</dd>
                         </dl>
                     </div>
@@ -29,9 +29,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                     </div>
-                    <div class="ml-5 w-0 flex-1">
+                    <div class="ml-5 min-w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Active Domains</dt>
+                            <dt class="text-sm font-medium leading-snug text-gray-500 dark:text-gray-400">Active Domains</dt>
                             <dd class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats['active_domains'] }}</dd>
                         </dl>
                     </div>
@@ -48,9 +48,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                     </div>
-                    <div class="ml-5 w-0 flex-1">
+                    <div class="ml-5 min-w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Expiring Soon (30 days)</dt>
+                            <dt class="text-sm font-medium leading-snug text-gray-500 dark:text-gray-400">Expiring Soon (30 days)</dt>
                             <dd class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats['expiring_soon'] }}</dd>
                         </dl>
                     </div>
@@ -67,9 +67,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                     </div>
-                    <div class="ml-5 w-0 flex-1">
+                    <div class="ml-5 min-w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Recent Failures ({{ $recentFailuresHours }} hours)</dt>
+                            <dt class="text-sm font-medium leading-snug text-gray-500 dark:text-gray-400">Recent Failures ({{ $recentFailuresHours }} hours)</dt>
                             <dd class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats['recent_failures'] }}</dd>
                         </dl>
                     </div>
@@ -86,9 +86,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                         </svg>
                     </div>
-                    <div class="ml-5 w-0 flex-1">
+                    <div class="ml-5 min-w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Failed Eligibility</dt>
+                            <dt class="text-sm font-medium leading-snug text-gray-500 dark:text-gray-400">Failed Eligibility</dt>
                             <dd class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats['failed_eligibility'] }}</dd>
                         </dl>
                     </div>
@@ -106,9 +106,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01"></path>
                         </svg>
                     </div>
-                    <div class="ml-5 w-0 flex-1">
+                    <div class="ml-5 min-w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Must Fix</dt>
+                            <dt class="text-sm font-medium leading-snug text-gray-500 dark:text-gray-400">Must Fix</dt>
                             <dd class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats['must_fix'] }}</dd>
                         </dl>
                     </div>
@@ -125,9 +125,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                     </div>
-                    <div class="ml-5 w-0 flex-1">
+                    <div class="ml-5 min-w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Should Fix</dt>
+                            <dt class="text-sm font-medium leading-snug text-gray-500 dark:text-gray-400">Should Fix</dt>
                             <dd class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats['should_fix'] }}</dd>
                         </dl>
                     </div>
@@ -144,9 +144,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"></path>
                         </svg>
                     </div>
-                    <div class="ml-5 w-0 flex-1">
+                    <div class="ml-5 min-w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Unresolved Web Subdomains</dt>
+                            <dt class="text-sm font-medium leading-snug text-gray-500 dark:text-gray-400">Unresolved Web Subdomains</dt>
                             <dd class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats['unresolved_web_subdomains'] }}</dd>
                         </dl>
                     </div>
