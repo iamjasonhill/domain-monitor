@@ -1,6 +1,6 @@
 <div>
     <!-- Stats Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-9 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-6 mb-8">
         <!-- Total Domains -->
         <a href="{{ route('domains.index') }}" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
             <div class="p-6">
@@ -154,24 +154,6 @@
             </div>
         </a>
 
-        <!-- Non-Web Auth / Service Hosts -->
-        <a href="{{ route('dashboard') }}#subdomain-cleanup" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
-            <div class="p-6">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0 bg-violet-500 rounded-md p-3">
-                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0v4m-9 0h10a1 1 0 011 1v7a1 1 0 01-1 1H7a1 1 0 01-1-1v-7a1 1 0 011-1z"></path>
-                        </svg>
-                    </div>
-                    <div class="ml-5 w-0 flex-1">
-                        <dl>
-                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Non-Web Auth/Service Hosts</dt>
-                            <dd class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats['non_web_subdomains'] }}</dd>
-                        </dl>
-                    </div>
-                </div>
-            </div>
-        </a>
     </div>
 
     <!-- Priority Queue -->
@@ -295,7 +277,7 @@
     </div>
 
     <!-- Subdomain Cleanup -->
-    <div id="subdomain-cleanup" class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
+    <div id="subdomain-cleanup" class="mb-8">
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
             <div class="p-6">
                 <div class="flex items-center justify-between mb-4">
@@ -328,43 +310,6 @@
                 @else
                     <div class="rounded-lg border border-green-200 dark:border-green-900/60 bg-green-50 dark:bg-green-950/20 p-4">
                         <p class="text-sm text-green-800 dark:text-green-200">No unresolved web subdomains are currently tracked.</p>
-                    </div>
-                @endif
-            </div>
-        </div>
-
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-            <div class="p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Non-Web Auth / Service Hosts</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">These are usually DKIM, provider, or auth-related hosts that do not need a website IP.</p>
-                    </div>
-                </div>
-
-                @if($nonWebSubdomainDomains->isNotEmpty())
-                    <div class="space-y-4">
-                        @foreach($nonWebSubdomainDomains as $item)
-                            <div class="border border-violet-200 dark:border-violet-900/60 rounded-lg p-4 bg-violet-50/50 dark:bg-violet-950/20">
-                                <div class="flex items-start justify-between gap-3">
-                                    <a href="{{ route('domains.show', $item['domain_id']) }}" wire:navigate class="text-base font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400">
-                                        {{ $item['domain'] }}
-                                    </a>
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200">
-                                        {{ $item['count'] }} host{{ $item['count'] === 1 ? '' : 's' }}
-                                    </span>
-                                </div>
-                                <ul class="mt-3 space-y-1">
-                                    @foreach($item['hosts'] as $host)
-                                        <li class="text-sm text-gray-700 dark:text-gray-300 font-mono">{{ $host }}</li>
-                                    @endforeach
-                                </ul>
-                            </div>
-                        @endforeach
-                    </div>
-                @else
-                    <div class="rounded-lg border border-green-200 dark:border-green-900/60 bg-green-50 dark:bg-green-950/20 p-4">
-                        <p class="text-sm text-green-800 dark:text-green-200">No non-web auth or service hosts are currently tracked.</p>
                     </div>
                 @endif
             </div>

@@ -149,7 +149,7 @@ class DashboardTest extends TestCase
             });
     }
 
-    public function test_dashboard_separates_unresolved_web_subdomains_from_non_web_hosts(): void
+    public function test_dashboard_counts_unresolved_web_subdomains_only(): void
     {
         $domain = Domain::factory()->create([
             'domain' => 'example.com',
@@ -176,8 +176,7 @@ class DashboardTest extends TestCase
 
         Livewire::test(Dashboard::class)
             ->assertViewHas('stats', function (array $stats): bool {
-                return $stats['unresolved_web_subdomains'] === 1
-                    && $stats['non_web_subdomains'] === 1;
+                return $stats['unresolved_web_subdomains'] === 1;
             })
             ->assertViewHas('unresolvedWebSubdomainDomains', function (Collection $items): bool {
                 $domain = $items->first();
@@ -186,14 +185,6 @@ class DashboardTest extends TestCase
                     && $domain['domain'] === 'example.com'
                     && in_array('quotes.example.com', $domain['hosts'], true)
                     && ! in_array('s1._domainkey.example.com', $domain['hosts'], true);
-            })
-            ->assertViewHas('nonWebSubdomainDomains', function (Collection $items): bool {
-                $domain = $items->first();
-
-                return is_array($domain)
-                    && $domain['domain'] === 'example.com'
-                    && in_array('s1._domainkey.example.com', $domain['hosts'], true)
-                    && ! in_array('quotes.example.com', $domain['hosts'], true);
             });
     }
 }

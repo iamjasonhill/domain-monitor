@@ -81,32 +81,13 @@ class Dashboard extends Component
             ->sortByDesc('count')
             ->values();
 
-        $nonWebSubdomains = $subdomains
-            ->filter(fn (Subdomain $subdomain): bool => $subdomain->resolutionState() === 'not_applicable')
-            ->groupBy('domain_id')
-            ->map(function (Collection $items): array {
-                /** @var Subdomain|null $first */
-                $first = $items->first();
-
-                return [
-                    'domain_id' => $first?->domain_id,
-                    'domain' => $first?->domain->domain ?? 'Unknown domain',
-                    'count' => $items->count(),
-                    'hosts' => $items->pluck('full_domain')->take(5)->values()->all(),
-                ];
-            })
-            ->sortByDesc('count')
-            ->values();
-
         $stats['unresolved_web_subdomains'] = $unresolvedWebSubdomains->sum('count');
-        $stats['non_web_subdomains'] = $nonWebSubdomains->sum('count');
 
         return view('livewire.dashboard', [
             'stats' => $stats,
             'mustFixDomains' => new Collection($mustFixDomains),
             'shouldFixDomains' => new Collection($shouldFixDomains),
             'unresolvedWebSubdomainDomains' => $unresolvedWebSubdomains->take(8),
-            'nonWebSubdomainDomains' => $nonWebSubdomains->take(8),
             'recentFailuresHours' => $recentFailuresHours,
         ]);
     }
