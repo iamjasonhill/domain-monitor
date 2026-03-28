@@ -245,7 +245,13 @@
                         <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Should Fix</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Warnings and degradations that deserve attention, but are not the most urgent blockers.</p>
                     </div>
-                    <a href="{{ route('health-checks.index') }}" wire:navigate class="text-sm text-blue-600 dark:text-blue-400 hover:underline">View health checks</a>
+                    <div class="flex items-center gap-3">
+                        <button wire:click="refreshShouldFixQueue" wire:loading.attr="disabled" wire:target="refreshShouldFixQueue" class="inline-flex items-center px-3 py-1.5 bg-amber-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-amber-700 disabled:opacity-50">
+                            <span wire:loading.remove wire:target="refreshShouldFixQueue">Refresh Current Issues</span>
+                            <span wire:loading wire:target="refreshShouldFixQueue">Refreshing...</span>
+                        </button>
+                        <a href="{{ route('health-checks.index') }}" wire:navigate class="text-sm text-blue-600 dark:text-blue-400 hover:underline">View health checks</a>
+                    </div>
                 </div>
 
                 @if($shouldFixDomains->isNotEmpty())

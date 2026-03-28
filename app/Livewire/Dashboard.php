@@ -8,10 +8,28 @@ use App\Models\Subdomain;
 use App\Services\DashboardIssueQueueService;
 use App\Services\DomainMonitorSettings;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Artisan;
 use Livewire\Component;
 
 class Dashboard extends Component
 {
+    public function refreshShouldFixQueue(): void
+    {
+        try {
+            $exitCode = Artisan::call('domains:refresh-should-fix');
+
+            if ($exitCode !== 0) {
+                session()->flash('error', 'Should-fix refresh failed. Please check logs.');
+
+                return;
+            }
+
+            session()->flash('message', trim(Artisan::output()) ?: 'Should-fix issues refreshed successfully.');
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Should-fix refresh failed: '.$e->getMessage());
+        }
+    }
+
     public function render(): \Illuminate\Contracts\View\View
     {
         $recentFailuresHours = app(DomainMonitorSettings::class)->recentFailuresHours();

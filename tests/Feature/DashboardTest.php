@@ -70,6 +70,7 @@ class DashboardTest extends TestCase
             ->assertOk()
             ->assertSee('Must Fix')
             ->assertSee('Should Fix')
+            ->assertSee('Refresh Current Issues')
             ->assertSee('must-fix.example.com')
             ->assertSee('HTTP check is failing')
             ->assertSee('Eligibility or compliance has failed')
