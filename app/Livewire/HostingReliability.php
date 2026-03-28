@@ -200,7 +200,7 @@ class HostingReliability extends Component
 
     private function isNonLiveHostingDomain(Domain $domain): bool
     {
-        return $domain->shouldSkipMonitoringCheck('uptime');
+        return $domain->isParkedForHosting() || $domain->isEmailOnly();
     }
 
     public function selectHost(?string $host): void

@@ -159,6 +159,31 @@ class HostingReliabilityTest extends TestCase
             ->assertSee('1');
     }
 
+    public function test_it_excludes_dns_config_parked_domains_from_selected_host_details(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        Domain::factory()->create([
+            'domain' => 'rollover.com.au',
+            'hosting_provider' => 'Other',
+            'dns_config_name' => 'Parked',
+            'platform' => 'Other',
+        ]);
+
+        Domain::factory()->create([
+            'domain' => 'live-other.example.com',
+            'hosting_provider' => 'Other',
+            'platform' => 'Astro',
+        ]);
+
+        Livewire::test(\App\Livewire\HostingReliability::class)
+            ->call('selectHost', 'Other')
+            ->assertSet('selectedHost', 'Other')
+            ->assertSee('live-other.example.com')
+            ->assertDontSee('rollover.com.au');
+    }
+
     public function test_it_treats_email_only_domains_as_non_live_for_host_rollups(): void
     {
         $user = User::factory()->create();
