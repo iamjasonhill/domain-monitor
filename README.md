@@ -116,6 +116,7 @@ The detailed project documentation has been moved to the `docs/` folder:
 ### General
 - [Project Overview (Completed Steps)](docs/PROJECT-PLAN.md)
 - [Project Setup Guide](docs/PROJECT-SETUP-GUIDE.md)
+- [System Boundaries](docs/BOUNDARIES.md)
 
 ### Deployment & Ops
 - [Deployment Guide (Laravel Forge)](docs/DEPLOYMENT.md)
