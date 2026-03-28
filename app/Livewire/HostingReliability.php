@@ -108,6 +108,7 @@ class HostingReliability extends Component
             ->orderByRaw("CASE WHEN hosting_provider IS NULL OR hosting_provider = '' THEN 0 ELSE 1 END")
             ->orderBy('domain')
             ->get()
+            ->reject(fn (Domain $domain) => $this->isNonLiveHostingDomain($domain))
             ->map(function (Domain $domain): array {
                 $linkedProperties = $domain->webProperties
                     ->map(fn ($property) => [
@@ -139,25 +140,19 @@ class HostingReliability extends Component
     #[Computed]
     public function reviewStats(): array
     {
-        $baseQuery = Domain::query()->where('is_active', true);
+        $domains = Domain::query()
+            ->where('is_active', true)
+            ->with('platform')
+            ->get();
+
+        $liveDomains = $domains->reject(fn (Domain $domain) => $this->isNonLiveHostingDomain($domain));
 
         return [
-            'missing' => (clone $baseQuery)->where(function ($builder) {
-                $builder->whereNull('hosting_provider')
-                    ->orWhere('hosting_provider', '');
-            })->count(),
-            'pending' => (clone $baseQuery)->whereNotNull('hosting_provider')
-                ->where('hosting_provider', '!=', '')
-                ->where(function ($builder) {
-                    $builder->whereNull('hosting_review_status')
-                        ->orWhere('hosting_review_status', 'pending');
-                })->count(),
-            'reviewed' => (clone $baseQuery)->whereIn('hosting_review_status', ['confirmed', 'manual'])->count(),
-            'parked' => (clone $baseQuery)->where(function ($builder) {
-                $builder->where('dns_config_name', 'Parked')
-                    ->orWhere('platform', 'Parked')
-                    ->orWhere('parked_override', true);
-            })->count(),
+            'missing' => $liveDomains->filter(fn (Domain $domain) => blank($domain->hosting_provider))->count(),
+            'pending' => $liveDomains->filter(fn (Domain $domain) => filled($domain->hosting_provider)
+                && in_array($domain->hosting_review_status, [null, 'pending'], true))->count(),
+            'reviewed' => $liveDomains->filter(fn (Domain $domain) => in_array($domain->hosting_review_status, ['confirmed', 'manual'], true))->count(),
+            'parked' => $domains->filter(fn (Domain $domain) => $this->isNonLiveHostingDomain($domain))->count(),
         ];
     }
 

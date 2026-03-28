@@ -214,4 +214,34 @@ class HostingReliabilityTest extends TestCase
             ->assertSee('live-other.example.com')
             ->assertDontSee('jasonhill.com.au');
     }
+
+    public function test_it_excludes_email_only_domains_from_hosting_review_queue(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        Domain::factory()->create([
+            'domain' => 'jasonhill.com.au',
+            'hosting_provider' => 'Other',
+            'hosting_review_status' => 'pending',
+            'hosting_detection_confidence' => 'low',
+            'platform' => 'Email Only',
+        ]);
+
+        Domain::factory()->create([
+            'domain' => 'review-me.com',
+            'hosting_provider' => 'Other',
+            'hosting_review_status' => 'pending',
+            'hosting_detection_confidence' => 'low',
+            'platform' => 'Astro',
+        ]);
+
+        $component = Livewire::test(\App\Livewire\HostingReliability::class)
+            ->assertSee('review-me.com');
+
+        $reviewQueue = $component->instance()->reviewQueue;
+
+        $this->assertTrue($reviewQueue->contains(fn (array $item): bool => $item['domain'] === 'review-me.com'));
+        $this->assertFalse($reviewQueue->contains(fn (array $item): bool => $item['domain'] === 'jasonhill.com.au'));
+    }
 }
