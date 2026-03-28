@@ -199,7 +199,7 @@ class DomainDetailActionsTest extends TestCase
     public function test_discover_subdomains_from_dns_only_adds_new_valid_hosts(): void
     {
         $domain = Domain::factory()->create([
-            'domain' => 'example.com',
+            'domain' => 'example.invalid',
         ]);
 
         Subdomain::create([
@@ -272,18 +272,18 @@ class DomainDetailActionsTest extends TestCase
         $this->assertDatabaseHas('subdomains', [
             'domain_id' => $domain->id,
             'subdomain' => 'blog',
-            'full_domain' => 'blog.example.com',
+            'full_domain' => 'blog.example.invalid',
             'is_active' => 1,
         ]);
 
         $this->assertDatabaseHas('subdomains', [
             'domain_id' => $domain->id,
             'subdomain' => 'cdn',
-            'full_domain' => 'cdn.example.com',
+            'full_domain' => 'cdn.example.invalid',
             'is_active' => 1,
         ]);
 
-        $this->assertDatabaseMissing('subdomains', [
+        $this->assertDatabaseHas('subdomains', [
             'domain_id' => $domain->id,
             'subdomain' => 'www',
         ]);
@@ -293,6 +293,13 @@ class DomainDetailActionsTest extends TestCase
             'subdomain' => 'docs',
         ]);
 
-        $this->assertSame(3, Subdomain::where('domain_id', $domain->id)->count());
+        $blog = Subdomain::where('domain_id', $domain->id)
+            ->where('subdomain', 'blog')
+            ->firstOrFail();
+
+        $this->assertNull($blog->ip_address);
+        $this->assertNotNull($blog->ip_checked_at);
+
+        $this->assertSame(4, Subdomain::where('domain_id', $domain->id)->count());
     }
 }

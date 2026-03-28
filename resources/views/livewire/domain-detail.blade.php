@@ -254,6 +254,7 @@
                             <thead class="bg-gray-50 dark:bg-gray-900">
                                 <tr>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Subdomain</th>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Resolution</th>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">IP Address</th>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Hosting Provider</th>
                                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Organization</th>
@@ -266,6 +267,21 @@
                                     <tr>
                                         <td class="px-3 py-2 text-xs text-gray-900 dark:text-gray-100 font-mono">
                                             {{ $subdomain->full_domain }}
+                                        </td>
+                                        <td class="px-3 py-2 text-xs">
+                                            @if($subdomain->ip_checked_at === null)
+                                                <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                                                    Unchecked
+                                                </span>
+                                            @elseif($subdomain->ip_address)
+                                                <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/40 dark:text-green-300">
+                                                    Resolves
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                                                    Does Not Resolve
+                                                </span>
+                                            @endif
                                         </td>
                                         <td class="px-3 py-2 text-xs text-gray-900 dark:text-gray-100 font-mono">
                                             {{ $subdomain->ip_address ?? 'N/A' }}
@@ -318,7 +334,7 @@
                         </table>
                     </div>
                     @else
-                        <p class="text-gray-500 dark:text-gray-400">No subdomains added yet. Click "Add Subdomain" to add one.</p>
+                        <p class="text-gray-500 dark:text-gray-400">No subdomains tracked yet. Use "Discover from DNS" to build the inventory from the live zone, or add one manually.</p>
                     @endif
                 @endif
             </div>

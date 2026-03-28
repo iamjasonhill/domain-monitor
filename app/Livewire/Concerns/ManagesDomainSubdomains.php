@@ -118,55 +118,16 @@ trait ManagesDomainSubdomains
         }
 
         try {
-            $dnsRecords = $this->domain->dnsRecords;
+            $result = app(DomainSubdomainService::class)->syncFromDnsRecords($this->domain);
 
-            if ($dnsRecords->isEmpty()) {
-                session()->flash('error', 'No DNS records found. Please sync DNS records first.');
-
-                return;
-            }
-
-            $discoveredSubdomains = [];
-            $existingSubdomains = $this->domain->subdomains->pluck('subdomain')->toArray();
-
-            foreach ($dnsRecords as $record) {
-                if (! in_array($record->type, ['A', 'AAAA', 'CNAME'])) {
-                    continue;
-                }
-
-                $host = strtolower($record->host);
-
-                if (in_array($host, ['@', 'www', 'mail', 'webmail', 'ftp', 'cpanel', 'whm', 'localhost', '*'])) {
-                    continue;
-                }
-
-                if (str_starts_with($host, '*')) {
-                    continue;
-                }
-
-                if (! in_array($host, $discoveredSubdomains) && ! in_array($host, $existingSubdomains)) {
-                    $discoveredSubdomains[] = $host;
-                }
-            }
-
-            if (empty($discoveredSubdomains)) {
-                session()->flash('info', 'No new subdomains found in DNS records.');
+            if (! $result['ok']) {
+                session()->flash('error', $result['error'] ?? 'Failed to discover subdomains from DNS.');
 
                 return;
-            }
-
-            $count = 0;
-            foreach ($discoveredSubdomains as $subdomainName) {
-                $this->domain->subdomains()->create([
-                    'subdomain' => $subdomainName,
-                    'full_domain' => "$subdomainName.{$this->domain->domain}",
-                    'is_active' => true,
-                ]);
-                $count++;
             }
 
             $this->loadDomain();
-            session()->flash('message', "Discovered {$count} new subdomains from DNS records.");
+            session()->flash('message', $result['message'] ?? 'Subdomains synced from DNS successfully.');
         } catch (\Exception $e) {
             session()->flash('error', 'Error discovering subdomains: '.$e->getMessage());
         }

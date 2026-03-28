@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Domain;
-use App\Models\Subdomain;
+use App\Services\DomainSubdomainService;
 use App\Services\IpApiService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -29,7 +29,7 @@ class UpdateSubdomainsIpJob implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(IpApiService $ipApiService): void
+    public function handle(IpApiService $ipApiService, DomainSubdomainService $subdomainService): void
     {
         $domain = Domain::find($this->domainId);
 
@@ -55,13 +55,8 @@ class UpdateSubdomainsIpJob implements ShouldQueue
 
         foreach ($subdomains as $subdomain) {
             try {
-                // Get IP address first (from existing or resolve)
-                $ipAddress = $subdomain->ip_address;
-
-                if (! $ipAddress) {
-                    $ipAddresses = $this->getIpAddresses($subdomain->full_domain);
-                    $ipAddress = $ipAddresses[0] ?? null;
-                }
+                $resolution = $subdomainService->refreshDnsResolution($subdomain);
+                $ipAddress = $resolution['primary_ip'];
 
                 if (! $ipAddress) {
                     continue;
@@ -111,37 +106,5 @@ class UpdateSubdomainsIpJob implements ShouldQueue
             'updated' => $updated,
             'total' => $subdomains->count(),
         ]);
-    }
-
-    /**
-     * Get IP addresses for domain/subdomain
-     *
-     * @return array<int, string>
-     */
-    private function getIpAddresses(string $domain): array
-    {
-        $ipAddresses = [];
-
-        try {
-            $aRecords = @dns_get_record($domain, DNS_A);
-            if ($aRecords) {
-                foreach ($aRecords as $record) {
-                    if (isset($record['ip']) && filter_var($record['ip'], FILTER_VALIDATE_IP)) {
-                        $ipAddresses[] = $record['ip'];
-                    }
-                }
-            }
-
-            $ip = @gethostbyname($domain);
-            if ($ip && $ip !== $domain && filter_var($ip, FILTER_VALIDATE_IP)) {
-                if (! in_array($ip, $ipAddresses)) {
-                    $ipAddresses[] = $ip;
-                }
-            }
-        } catch (\Exception $e) {
-            // Silently fail
-        }
-
-        return array_unique($ipAddresses);
     }
 }

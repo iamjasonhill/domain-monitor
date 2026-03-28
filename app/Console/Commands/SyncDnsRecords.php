@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\DnsRecord;
 use App\Models\Domain;
 use App\Models\SynergyCredential;
+use App\Services\DomainSubdomainService;
 use App\Services\SynergyWholesaleClient;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -149,9 +150,14 @@ class SyncDnsRecords extends Command
                 $inserted++;
             }
 
+            $subdomainSync = app(DomainSubdomainService::class)->syncFromDnsRecords($domain);
+
             if ($verbose) {
                 $this->line("  ✅ Synced {$inserted} DNS record(s)");
                 $this->line('     Types: '.implode(', ', array_unique(array_column($dnsRecords, 'type'))));
+                if ($subdomainSync['ok']) {
+                    $this->line('     '.($subdomainSync['message'] ?? 'Subdomain inventory refreshed.'));
+                }
             }
 
             return Command::SUCCESS;
