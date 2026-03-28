@@ -151,8 +151,8 @@ class RunHealthChecks extends Command
             } elseif ($type === 'ssl') {
                 $sslResult = $sslCheck->check($domain->domain);
                 $status = $sslResult['is_valid'] ? 'ok' : 'fail';
-                // Warn if certificate expires within 30 days
-                if ($sslResult['is_valid'] && $sslResult['days_until_expiry'] !== null && $sslResult['days_until_expiry'] <= 30) {
+                // Warn if certificate expires within 7 days
+                if ($sslResult['is_valid'] && $sslResult['days_until_expiry'] !== null && $sslResult['days_until_expiry'] <= 7) {
                     $status = 'warn';
                 }
                 $errorMessage = $sslResult['error_message'];
