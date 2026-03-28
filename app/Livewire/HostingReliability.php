@@ -24,7 +24,7 @@ class HostingReliability extends Component
             ->where('hosting_provider', '!=', '')
             ->with('platform')
             ->get()
-            ->reject(fn (Domain $domain) => $domain->isParkedForHosting())
+            ->reject(fn (Domain $domain) => $this->isNonLiveHostingDomain($domain))
             ->groupBy('hosting_provider')
             ->map(function ($domains, $host) {
                 $domainIds = $domains->pluck('id');
@@ -61,7 +61,7 @@ class HostingReliability extends Component
             ->where('hosting_provider', '!=', '')
             ->with('platform')
             ->get()
-            ->filter(fn (Domain $domain) => $domain->isParkedForHosting())
+            ->filter(fn (Domain $domain) => $this->isNonLiveHostingDomain($domain))
             ->groupBy('hosting_provider')
             ->map(function ($domains, $provider) {
                 return [
@@ -170,10 +170,12 @@ class HostingReliability extends Component
         }
 
         return Domain::where('hosting_provider', $this->selectedHost)
+            ->with('platform')
             ->with(['uptimeIncidents' => function ($query) {
                 $query->latest('started_at')->limit(20);
             }])
             ->get()
+            ->reject(fn (Domain $domain) => $this->isNonLiveHostingDomain($domain))
             ->map(function ($domain) {
                 $totalDowntime = $domain->uptimeIncidents->sum(function ($incident) {
                     if (! $incident->ended_at) {
@@ -194,6 +196,11 @@ class HostingReliability extends Component
                 ];
             })
             ->sortByDesc('total_downtime');
+    }
+
+    private function isNonLiveHostingDomain(Domain $domain): bool
+    {
+        return $domain->shouldSkipMonitoringCheck('uptime');
     }
 
     public function selectHost(?string $host): void

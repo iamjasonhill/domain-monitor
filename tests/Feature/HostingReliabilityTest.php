@@ -158,4 +158,35 @@ class HostingReliabilityTest extends TestCase
             ->assertSee('Parked Domains')
             ->assertSee('1');
     }
+
+    public function test_it_treats_email_only_domains_as_non_live_for_host_rollups(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        Domain::factory()->create([
+            'domain' => 'jasonhill.com.au',
+            'hosting_provider' => 'Other',
+            'platform' => 'Email Only',
+        ]);
+
+        Domain::factory()->create([
+            'domain' => 'live-other.example.com',
+            'hosting_provider' => 'Other',
+            'platform' => 'Astro',
+        ]);
+
+        $component = Livewire::test(\App\Livewire\HostingReliability::class)
+            ->assertSee('Parking / Non-live Providers')
+            ->assertSee('jasonhill.com.au')
+            ->assertSee('Other')
+            ->assertSee('Live Hosting Providers')
+            ->assertDontSee('No live hosting providers found yet. Use the review queue above to detect and confirm them.');
+
+        $component
+            ->call('selectHost', 'Other')
+            ->assertSet('selectedHost', 'Other')
+            ->assertSee('live-other.example.com')
+            ->assertDontSee('jasonhill.com.au');
+    }
 }
