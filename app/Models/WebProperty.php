@@ -392,7 +392,7 @@ class WebProperty extends Model
             return ['eligible' => false, 'reason' => 'primary domain is inactive'];
         }
 
-        if ($domain->isParked()) {
+        if ($domain->isParkedForHosting()) {
             return ['eligible' => false, 'reason' => 'primary domain is parked'];
         }
 

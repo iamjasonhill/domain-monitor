@@ -140,6 +140,26 @@ class MatomoCoverageQueueTest extends TestCase
             'is_canonical' => true,
         ]);
 
+        $dnsParkedDomain = Domain::factory()->create([
+            'domain' => 'dns-parked.example.au',
+            'is_active' => true,
+            'platform' => 'Astro',
+            'dns_config_name' => 'Parked',
+        ]);
+        $dnsParkedProperty = WebProperty::factory()->create([
+            'slug' => 'dns-parked-example',
+            'name' => 'DNS Parked Example',
+            'status' => 'active',
+            'property_type' => 'marketing_site',
+            'primary_domain_id' => $dnsParkedDomain->id,
+        ]);
+        WebPropertyDomain::create([
+            'web_property_id' => $dnsParkedProperty->id,
+            'domain_id' => $dnsParkedDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
         AnalyticsSourceObservation::create([
             'provider' => 'matomo',
             'external_id' => '9',
@@ -167,5 +187,7 @@ class MatomoCoverageQueueTest extends TestCase
         $response->assertSee('Needs Mapping');
         $response->assertSee('Suggested: Needs Binding');
         $response->assertSee('Parked Example');
+        $response->assertSee('DNS Parked Example');
+        $response->assertSee('primary domain is parked');
     }
 }
