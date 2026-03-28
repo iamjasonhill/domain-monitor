@@ -270,7 +270,9 @@
                                             {{ $subdomain->full_domain }}
                                         </td>
                                         <td class="px-3 py-2 text-xs">
-                                            @php($category = $subdomain->category())
+                                            @php
+                                                $category = $subdomain->category();
+                                            @endphp
                                             <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
                                                 @if($category === 'web')
                                                     bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300

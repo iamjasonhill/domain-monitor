@@ -6,6 +6,7 @@ use App\Livewire\Dashboard;
 use App\Models\Domain;
 use App\Models\DomainAlert;
 use App\Models\DomainCheck;
+use App\Models\Subdomain;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
@@ -144,6 +145,54 @@ class DashboardTest extends TestCase
                     && in_array('Email security needs review', $emailOnly['primary_reasons'], true)
                     && ! in_array('HTTP check is failing', $emailOnly['primary_reasons'], true)
                     && ! in_array('SSL is failing', $emailOnly['primary_reasons'], true);
+            });
+    }
+
+    public function test_dashboard_separates_unresolved_web_subdomains_from_non_web_hosts(): void
+    {
+        $domain = Domain::factory()->create([
+            'domain' => 'example.com',
+            'is_active' => true,
+        ]);
+
+        Subdomain::create([
+            'domain_id' => $domain->id,
+            'subdomain' => 'quotes',
+            'full_domain' => 'quotes.example.com',
+            'ip_checked_at' => now(),
+            'ip_address' => null,
+            'is_active' => true,
+        ]);
+
+        Subdomain::create([
+            'domain_id' => $domain->id,
+            'subdomain' => 's1._domainkey',
+            'full_domain' => 's1._domainkey.example.com',
+            'ip_checked_at' => now(),
+            'ip_address' => null,
+            'is_active' => true,
+        ]);
+
+        Livewire::test(Dashboard::class)
+            ->assertViewHas('stats', function (array $stats): bool {
+                return $stats['unresolved_web_subdomains'] === 1
+                    && $stats['non_web_subdomains'] === 1;
+            })
+            ->assertViewHas('unresolvedWebSubdomainDomains', function (Collection $items): bool {
+                $domain = $items->first();
+
+                return is_array($domain)
+                    && $domain['domain'] === 'example.com'
+                    && in_array('quotes.example.com', $domain['hosts'], true)
+                    && ! in_array('s1._domainkey.example.com', $domain['hosts'], true);
+            })
+            ->assertViewHas('nonWebSubdomainDomains', function (Collection $items): bool {
+                $domain = $items->first();
+
+                return is_array($domain)
+                    && $domain['domain'] === 'example.com'
+                    && in_array('s1._domainkey.example.com', $domain['hosts'], true)
+                    && ! in_array('quotes.example.com', $domain['hosts'], true);
             });
     }
 }

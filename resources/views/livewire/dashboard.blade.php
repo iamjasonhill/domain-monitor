@@ -1,6 +1,6 @@
 <div>
     <!-- Stats Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-9 gap-6 mb-8">
         <!-- Total Domains -->
         <a href="{{ route('domains.index') }}" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
             <div class="p-6">
@@ -134,6 +134,44 @@
                 </div>
             </div>
         </a>
+
+        <!-- Unresolved Web Subdomains -->
+        <a href="{{ route('dashboard') }}#subdomain-cleanup" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+            <div class="p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-rose-500 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Unresolved Web Subdomains</dt>
+                            <dd class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats['unresolved_web_subdomains'] }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </a>
+
+        <!-- Non-Web Auth / Service Hosts -->
+        <a href="{{ route('dashboard') }}#subdomain-cleanup" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+            <div class="p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-violet-500 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0v4m-9 0h10a1 1 0 011 1v7a1 1 0 01-1 1H7a1 1 0 01-1-1v-7a1 1 0 011-1z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Non-Web Auth/Service Hosts</dt>
+                            <dd class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats['non_web_subdomains'] }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </a>
     </div>
 
     <!-- Priority Queue -->
@@ -250,122 +288,81 @@
         </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="mb-8">
+    <!-- Subdomain Cleanup -->
+    <div id="subdomain-cleanup" class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
             <div class="p-6">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Quick Actions</h3>
-                <div class="flex flex-wrap gap-4">
-                    <a href="{{ route('domains.index') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                        View All Domains
-                    </a>
-                    <a href="{{ route('domains.create') }}" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:bg-green-700 active:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                        Add New Domain
-                    </a>
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Unresolved Web Subdomains</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">These are the cleanup candidates worth reviewing for stale web DNS.</p>
+                    </div>
                 </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Recent Domains -->
-    <div class="mb-8">
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-            <div class="p-6">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Recent Domains</h3>
-                @if($recentDomains->count() > 0)
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead class="bg-gray-50 dark:bg-gray-900">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Domain</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Expires</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Updated</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                @foreach($recentDomains as $domain)
-                                    <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <a href="{{ route('domains.show', $domain->id) }}" class="text-blue-600 dark:text-blue-400 hover:underline">
-                                                {{ $domain->domain }}
-                                            </a>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            @if($domain->is_active)
-                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Active</span>
-                                            @else
-                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">Inactive</span>
-                                            @endif
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                            @if($domain->expires_at)
-                                                {{ $domain->expires_at->format('Y-m-d') }}
-                                            @else
-                                                <span class="text-gray-400">N/A</span>
-                                            @endif
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                            {{ $domain->updated_at->diffForHumans() }}
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                @if($unresolvedWebSubdomainDomains->isNotEmpty())
+                    <div class="space-y-4">
+                        @foreach($unresolvedWebSubdomainDomains as $item)
+                            <div class="border border-rose-200 dark:border-rose-900/60 rounded-lg p-4 bg-rose-50/50 dark:bg-rose-950/20">
+                                <div class="flex items-start justify-between gap-3">
+                                    <a href="{{ route('domains.show', $item['domain_id']) }}" wire:navigate class="text-base font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400">
+                                        {{ $item['domain'] }}
+                                    </a>
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200">
+                                        {{ $item['count'] }} host{{ $item['count'] === 1 ? '' : 's' }}
+                                    </span>
+                                </div>
+                                <ul class="mt-3 space-y-1">
+                                    @foreach($item['hosts'] as $host)
+                                        <li class="text-sm text-gray-700 dark:text-gray-300 font-mono">{{ $host }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endforeach
                     </div>
                 @else
-                    <p class="text-gray-500 dark:text-gray-400">No domains yet. <a href="{{ route('domains.create') }}" class="text-blue-600 dark:text-blue-400 hover:underline">Add your first domain</a></p>
+                    <div class="rounded-lg border border-green-200 dark:border-green-900/60 bg-green-50 dark:bg-green-950/20 p-4">
+                        <p class="text-sm text-green-800 dark:text-green-200">No unresolved web subdomains are currently tracked.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Non-Web Auth / Service Hosts</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">These are usually DKIM, provider, or auth-related hosts that do not need a website IP.</p>
+                    </div>
+                </div>
+
+                @if($nonWebSubdomainDomains->isNotEmpty())
+                    <div class="space-y-4">
+                        @foreach($nonWebSubdomainDomains as $item)
+                            <div class="border border-violet-200 dark:border-violet-900/60 rounded-lg p-4 bg-violet-50/50 dark:bg-violet-950/20">
+                                <div class="flex items-start justify-between gap-3">
+                                    <a href="{{ route('domains.show', $item['domain_id']) }}" wire:navigate class="text-base font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400">
+                                        {{ $item['domain'] }}
+                                    </a>
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200">
+                                        {{ $item['count'] }} host{{ $item['count'] === 1 ? '' : 's' }}
+                                    </span>
+                                </div>
+                                <ul class="mt-3 space-y-1">
+                                    @foreach($item['hosts'] as $host)
+                                        <li class="text-sm text-gray-700 dark:text-gray-300 font-mono">{{ $host }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="rounded-lg border border-green-200 dark:border-green-900/60 bg-green-50 dark:bg-green-950/20 p-4">
+                        <p class="text-sm text-green-800 dark:text-green-200">No non-web auth or service hosts are currently tracked.</p>
+                    </div>
                 @endif
             </div>
         </div>
     </div>
 
-    <!-- Recent Health Checks -->
-    <div>
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-            <div class="p-6">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Recent Health Checks</h3>
-                @if($recentChecks->count() > 0)
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead class="bg-gray-50 dark:bg-gray-900">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Domain</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Time</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                @foreach($recentChecks as $check)
-                                    <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                                            {{ $check->domain->domain }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                            <span class="uppercase">{{ $check->check_type }}</span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            @if($check->status === 'ok')
-                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">OK</span>
-                                            @elseif($check->status === 'warn')
-                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Warn</span>
-                                            @else
-                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Fail</span>
-                                            @endif
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                            {{ $check->created_at->diffForHumans() }}
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @else
-                    <p class="text-gray-500 dark:text-gray-400">No health checks yet.</p>
-                @endif
-            </div>
-        </div>
-    </div>
 </div>
