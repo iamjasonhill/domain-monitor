@@ -371,7 +371,7 @@ class Domain extends Model
      */
     public function latestSearchConsoleCoverageStatus(): HasOne
     {
-        return $this->hasOne(SearchConsoleCoverageStatus::class)->latestOfMany('checked_at');
+        return $this->hasOne(SearchConsoleCoverageStatus::class)->orderByDesc('checked_at');
     }
 
     /**
