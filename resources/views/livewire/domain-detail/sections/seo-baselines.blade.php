@@ -2,6 +2,10 @@
     $latestSeoBaseline = $domain->seoBaselines->first();
     $seoBaselines = $domain->seoBaselines;
     $searchConsoleCoverage = $domain->latestSearchConsoleCoverageStatus;
+    $matomoSiteId = $latestSeoBaseline?->matomo_site_id ?: $searchConsoleCoverage?->matomo_site_id;
+    $matomoDashboardUrl = $matomoSiteId
+        ? rtrim((string) config('services.matomo.base_url', 'https://stats.redirection.com.au'), '/').'/index.php?module=SearchConsoleIntegration&action=dashboard&idSite='.$matomoSiteId
+        : null;
 @endphp
 
 <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
@@ -27,6 +31,11 @@
                     <span wire:loading.remove wire:target="syncSeoBaseline">Sync From Matomo</span>
                     <span wire:loading wire:target="syncSeoBaseline">Syncing...</span>
                 </button>
+                @if($matomoDashboardUrl)
+                    <a href="{{ $matomoDashboardUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center rounded-md bg-sky-600 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-sky-700">
+                        Open In Matomo
+                    </a>
+                @endif
             </div>
         </div>
 
