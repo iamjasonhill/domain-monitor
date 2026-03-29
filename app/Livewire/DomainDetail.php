@@ -112,6 +112,11 @@ class DomainDetail extends Component
             'complianceChecks' => function ($query) {
                 $query->orderByDesc('checked_at')->limit(10);
             },
+            'seoBaselines' => function ($query) {
+                $query->with(['webProperty', 'propertyAnalyticsSource'])
+                    ->orderByDesc('captured_at')
+                    ->limit(10);
+            },
         ])->findOrFail($this->domainId);
 
         // Sync simple platform field with relationship if relationship exists but field is empty

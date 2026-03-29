@@ -11,6 +11,7 @@
         @include('livewire.domain-detail.sections.overview-panels')
         @include('livewire.domain-detail.sections.australian-domain-info')
         @include('livewire.domain-detail.sections.contact-information')
+        @include('livewire.domain-detail.sections.seo-baselines')
 
         <!-- Active Alerts -->
         @php

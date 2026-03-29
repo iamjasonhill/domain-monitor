@@ -343,6 +343,22 @@ class Domain extends Model
     }
 
     /**
+     * @return HasMany<DomainSeoBaseline, $this>
+     */
+    public function seoBaselines(): HasMany
+    {
+        return $this->hasMany(DomainSeoBaseline::class)->orderByDesc('captured_at');
+    }
+
+    /**
+     * @return HasOne<DomainSeoBaseline, $this>
+     */
+    public function latestSeoBaseline(): HasOne
+    {
+        return $this->hasOne(DomainSeoBaseline::class)->latestOfMany('captured_at');
+    }
+
+    /**
      * @return HasMany<WebPropertyDomain, $this>
      */
     public function webPropertyLinks(): HasMany
