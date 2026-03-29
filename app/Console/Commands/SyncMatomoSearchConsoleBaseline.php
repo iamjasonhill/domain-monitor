@@ -71,7 +71,8 @@ class SyncMatomoSearchConsoleBaseline extends Command
         /** @var \Illuminate\Http\Client\Response $response */
         $response = Http::acceptJson()
             ->timeout(60)
-            ->get($baseUrl.'/index.php', [
+            ->asForm()
+            ->post($baseUrl.'/index.php', [
                 'module' => 'API',
                 'method' => 'SearchConsoleIntegration.exportBaseline',
                 'format' => 'JSON',
