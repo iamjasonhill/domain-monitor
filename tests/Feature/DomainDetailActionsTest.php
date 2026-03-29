@@ -323,4 +323,24 @@ class DomainDetailActionsTest extends TestCase
             ->call('syncSeoBaseline')
             ->assertHasNoErrors();
     }
+
+    public function test_syncing_search_console_coverage_runs_the_manual_sync_command(): void
+    {
+        $domain = Domain::factory()->create([
+            'domain' => 'removalsinterstate.com.au',
+        ]);
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('analytics:sync-search-console-coverage', ['--domain' => 'removalsinterstate.com.au'])
+            ->andReturn(0);
+
+        Artisan::shouldReceive('output')
+            ->once()
+            ->andReturn('Synced 1 Search Console coverage record(s).');
+
+        Livewire::test(DomainDetail::class, ['domainId' => $domain->id])
+            ->call('syncSearchConsoleCoverage')
+            ->assertHasNoErrors();
+    }
 }

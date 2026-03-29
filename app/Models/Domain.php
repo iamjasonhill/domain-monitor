@@ -359,6 +359,22 @@ class Domain extends Model
     }
 
     /**
+     * @return HasMany<SearchConsoleCoverageStatus, $this>
+     */
+    public function searchConsoleCoverageStatuses(): HasMany
+    {
+        return $this->hasMany(SearchConsoleCoverageStatus::class)->orderByDesc('checked_at');
+    }
+
+    /**
+     * @return HasOne<SearchConsoleCoverageStatus, $this>
+     */
+    public function latestSearchConsoleCoverageStatus(): HasOne
+    {
+        return $this->hasOne(SearchConsoleCoverageStatus::class)->latestOfMany('checked_at');
+    }
+
+    /**
      * @return HasMany<WebPropertyDomain, $this>
      */
     public function webPropertyLinks(): HasMany

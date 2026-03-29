@@ -1,6 +1,7 @@
 @php
     $latestSeoBaseline = $domain->seoBaselines->first();
     $seoBaselines = $domain->seoBaselines;
+    $searchConsoleCoverage = $domain->latestSearchConsoleCoverageStatus;
 @endphp
 
 <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
@@ -18,11 +19,48 @@
                         Latest {{ $latestSeoBaseline->baselineTypeLabel() }}
                     </span>
                 @endif
+                <button wire:click="syncSearchConsoleCoverage" wire:loading.attr="disabled" class="inline-flex items-center rounded-md bg-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-gray-800 disabled:opacity-50">
+                    <span wire:loading.remove wire:target="syncSearchConsoleCoverage">Sync SC Status</span>
+                    <span wire:loading wire:target="syncSearchConsoleCoverage">Syncing...</span>
+                </button>
                 <button wire:click="syncSeoBaseline" wire:loading.attr="disabled" class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-indigo-700 disabled:opacity-50">
                     <span wire:loading.remove wire:target="syncSeoBaseline">Sync From Matomo</span>
                     <span wire:loading wire:target="syncSeoBaseline">Syncing...</span>
                 </button>
             </div>
+        </div>
+
+        <div class="mb-6 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+            <h4 class="text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Search Console Connection</h4>
+            @if($searchConsoleCoverage)
+                <dl class="mt-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-2 xl:grid-cols-4">
+                    <div class="rounded-lg bg-gray-50 p-3 dark:bg-gray-700/40">
+                        <dt class="text-gray-500 dark:text-gray-400">Status</dt>
+                        <dd class="mt-1 font-semibold text-gray-900 dark:text-gray-100">{{ $searchConsoleCoverage->mappingStateLabel() }}</dd>
+                    </div>
+                    <div class="rounded-lg bg-gray-50 p-3 dark:bg-gray-700/40">
+                        <dt class="text-gray-500 dark:text-gray-400">Property Type</dt>
+                        <dd class="mt-1 font-semibold text-gray-900 dark:text-gray-100">{{ $searchConsoleCoverage->property_type ?: '—' }}</dd>
+                    </div>
+                    <div class="rounded-lg bg-gray-50 p-3 dark:bg-gray-700/40">
+                        <dt class="text-gray-500 dark:text-gray-400">Last Import</dt>
+                        <dd class="mt-1 font-semibold text-gray-900 dark:text-gray-100">{{ $searchConsoleCoverage->latest_metric_date?->format('Y-m-d') ?: 'Never' }}</dd>
+                    </div>
+                    <div class="rounded-lg bg-gray-50 p-3 dark:bg-gray-700/40">
+                        <dt class="text-gray-500 dark:text-gray-400">Freshness</dt>
+                        <dd class="mt-1 font-semibold text-gray-900 dark:text-gray-100">{{ $searchConsoleCoverage->freshnessLabel() }}</dd>
+                    </div>
+                </dl>
+                @if($searchConsoleCoverage->property_uri)
+                    <div class="mt-3 text-sm text-gray-600 dark:text-gray-300 break-all">
+                        {{ $searchConsoleCoverage->property_uri }}
+                    </div>
+                @endif
+            @else
+                <div class="mt-3 text-sm text-gray-600 dark:text-gray-300">
+                    No Search Console coverage status has been synced for this domain yet.
+                </div>
+            @endif
         </div>
 
         @if($latestSeoBaseline)

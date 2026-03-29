@@ -66,4 +66,12 @@ class PropertyAnalyticsSource extends Model
     {
         return $this->hasOne(AnalyticsInstallAudit::class);
     }
+
+    /**
+     * @return HasOne<SearchConsoleCoverageStatus, $this>
+     */
+    public function latestSearchConsoleCoverage(): HasOne
+    {
+        return $this->hasOne(SearchConsoleCoverageStatus::class)->latestOfMany('checked_at');
+    }
 }

@@ -117,6 +117,7 @@ class DomainDetail extends Component
                     ->orderByDesc('captured_at')
                     ->limit(10);
             },
+            'latestSearchConsoleCoverageStatus',
         ])->findOrFail($this->domainId);
 
         // Sync simple platform field with relationship if relationship exists but field is empty
@@ -224,6 +225,34 @@ class DomainDetail extends Component
             session()->flash('message', $output !== '' ? $output : 'SEO baseline synced successfully.');
         } catch (\Exception $e) {
             session()->flash('error', 'SEO baseline sync failed: '.$e->getMessage());
+        }
+    }
+
+    public function syncSearchConsoleCoverage(): void
+    {
+        if (! $this->domain) {
+            session()->flash('error', 'Domain not found.');
+
+            return;
+        }
+
+        try {
+            $exitCode = Artisan::call('analytics:sync-search-console-coverage', [
+                '--domain' => $this->domain->domain,
+            ]);
+
+            $output = trim(Artisan::output());
+
+            if ($exitCode !== 0) {
+                session()->flash('error', $output !== '' ? $output : 'Search Console coverage sync failed.');
+
+                return;
+            }
+
+            $this->loadDomain();
+            session()->flash('message', $output !== '' ? $output : 'Search Console coverage synced successfully.');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Search Console coverage sync failed: '.$e->getMessage());
         }
     }
 
