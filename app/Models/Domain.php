@@ -355,7 +355,7 @@ class Domain extends Model
      */
     public function latestSeoBaseline(): HasOne
     {
-        return $this->hasOne(DomainSeoBaseline::class)->latestOfMany('captured_at');
+        return $this->hasOne(DomainSeoBaseline::class)->orderByDesc('captured_at');
     }
 
     /**
