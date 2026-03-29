@@ -258,6 +258,19 @@ return [
                     ],
                 ],
             ],
+            'removalsinterstate.com.au' => [
+                'slug' => 'removalsinterstate-com-au',
+                'name' => 'removalsinterstate.com.au',
+                'property_type' => 'website',
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '29',
+                        'external_name' => 'Removals Interstate',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                    ],
+                ],
+            ],
             'allianceremovals.com.au' => [
                 'slug' => 'allianceremovals-com-au',
                 'name' => 'allianceremovals.com.au',
