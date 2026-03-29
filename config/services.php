@@ -51,6 +51,11 @@ return [
         'safe_browsing_key' => env('GOOGLE_SAFE_BROWSING_KEY'),
     ],
 
+    'matomo' => [
+        'base_url' => env('MATOMO_BASE_URL', 'https://stats.redirection.com.au'),
+        'token_auth' => env('MATOMO_TOKEN_AUTH'),
+    ],
+
     'domain_monitor' => [
         'brain_api_key' => env('BRAIN_API_KEY'),
         'ops_api_key' => env('OPS_API_KEY'),

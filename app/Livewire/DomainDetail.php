@@ -199,6 +199,34 @@ class DomainDetail extends Component
         }
     }
 
+    public function syncSeoBaseline(): void
+    {
+        if (! $this->domain) {
+            session()->flash('error', 'Domain not found.');
+
+            return;
+        }
+
+        try {
+            $exitCode = Artisan::call('analytics:sync-search-console-baseline', [
+                '--domain' => $this->domain->domain,
+            ]);
+
+            $output = trim(Artisan::output());
+
+            if ($exitCode !== 0) {
+                session()->flash('error', $output !== '' ? $output : 'SEO baseline sync failed.');
+
+                return;
+            }
+
+            $this->loadDomain();
+            session()->flash('message', $output !== '' ? $output : 'SEO baseline synced successfully.');
+        } catch (\Exception $e) {
+            session()->flash('error', 'SEO baseline sync failed: '.$e->getMessage());
+        }
+    }
+
     public function toggleParkedOverride(): void
     {
         if (! $this->domain) {

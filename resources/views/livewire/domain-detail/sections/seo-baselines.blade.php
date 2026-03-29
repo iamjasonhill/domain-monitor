@@ -12,11 +12,17 @@
                     Milestone snapshots for search visibility and indexation. Capture these before rebuilds, cutovers, and major cleanup work.
                 </p>
             </div>
-            @if($latestSeoBaseline)
-                <span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                    Latest {{ $latestSeoBaseline->baselineTypeLabel() }}
-                </span>
-            @endif
+            <div class="flex items-center gap-2">
+                @if($latestSeoBaseline)
+                    <span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                        Latest {{ $latestSeoBaseline->baselineTypeLabel() }}
+                    </span>
+                @endif
+                <button wire:click="syncSeoBaseline" wire:loading.attr="disabled" class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-indigo-700 disabled:opacity-50">
+                    <span wire:loading.remove wire:target="syncSeoBaseline">Sync From Matomo</span>
+                    <span wire:loading wire:target="syncSeoBaseline">Syncing...</span>
+                </button>
+            </div>
         </div>
 
         @if($latestSeoBaseline)

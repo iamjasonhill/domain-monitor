@@ -8,6 +8,7 @@ use App\Models\Domain;
 use App\Models\Subdomain;
 use App\Models\SynergyCredential;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Livewire\Livewire;
 use Mockery;
 use Tests\TestCase;
@@ -301,5 +302,25 @@ class DomainDetailActionsTest extends TestCase
         $this->assertNotNull($blog->ip_checked_at);
 
         $this->assertSame(4, Subdomain::where('domain_id', $domain->id)->count());
+    }
+
+    public function test_syncing_seo_baseline_runs_the_manual_sync_command(): void
+    {
+        $domain = Domain::factory()->create([
+            'domain' => 'removalsinterstate.com.au',
+        ]);
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('analytics:sync-search-console-baseline', ['--domain' => 'removalsinterstate.com.au'])
+            ->andReturn(0);
+
+        Artisan::shouldReceive('output')
+            ->once()
+            ->andReturn('Synced Search Console baseline for removalsinterstate.com.au (2025-12-29 to 2026-03-28).');
+
+        Livewire::test(DomainDetail::class, ['domainId' => $domain->id])
+            ->call('syncSeoBaseline')
+            ->assertHasNoErrors();
     }
 }
