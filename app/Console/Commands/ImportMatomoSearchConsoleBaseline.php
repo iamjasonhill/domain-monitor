@@ -8,6 +8,7 @@ use App\Models\PropertyAnalyticsSource;
 use App\Models\WebProperty;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 class ImportMatomoSearchConsoleBaseline extends Command
 {
@@ -136,23 +137,35 @@ class ImportMatomoSearchConsoleBaseline extends Command
     private function resolveDomain(?string $domainName, ?string $matomoSiteId): ?Domain
     {
         if ($domainName) {
-            return Domain::query()
+            $matched = Domain::query()
                 ->where('domain', $domainName)
                 ->first();
+
+            if ($matched instanceof Domain) {
+                return $matched;
+            }
         }
 
         if (! $matomoSiteId) {
-            return null;
+            return $this->bootstrapConfiguredDomain($domainName, null);
         }
 
-        $source = PropertyAnalyticsSource::query()
-            ->where('provider', 'matomo')
-            ->where('external_id', $matomoSiteId)
-            ->with('webProperty.domains')
-            ->first();
+        if (Schema::hasTable('property_analytics_sources')) {
+            $source = PropertyAnalyticsSource::query()
+                ->where('provider', 'matomo')
+                ->where('external_id', $matomoSiteId)
+                ->with('webProperty.domains')
+                ->first();
 
-        return $source?->webProperty?->primaryDomainModel()
-            ?? $source?->webProperty?->domains->first();
+            $matched = $source?->webProperty?->primaryDomainModel()
+                ?? $source?->webProperty?->domains->first();
+
+            if ($matched instanceof Domain) {
+                return $matched;
+            }
+        }
+
+        return $this->bootstrapConfiguredDomain($domainName, $matomoSiteId);
     }
 
     /**
@@ -160,6 +173,10 @@ class ImportMatomoSearchConsoleBaseline extends Command
      */
     private function resolvePropertyContext(Domain $domain, ?string $matomoSiteId): array
     {
+        if (! Schema::hasTable('web_properties') || ! Schema::hasTable('web_property_domains') || ! Schema::hasTable('property_analytics_sources')) {
+            return [null, null];
+        }
+
         /** @var \Illuminate\Database\Eloquent\Collection<int, WebProperty> $properties */
         $properties = $domain->webProperties()->with('analyticsSources')->get();
 
@@ -219,5 +236,48 @@ class ImportMatomoSearchConsoleBaseline extends Command
         }
 
         return now();
+    }
+
+    private function bootstrapConfiguredDomain(?string $domainName, ?string $matomoSiteId): ?Domain
+    {
+        $configuredDomains = (array) config('domain_monitor.web_property_bootstrap.overrides', []);
+
+        if ($domainName && array_key_exists($domainName, $configuredDomains)) {
+            return Domain::query()->firstOrCreate(
+                ['domain' => $domainName],
+                [
+                    'check_frequency_minutes' => 60,
+                    'is_active' => true,
+                ]
+            );
+        }
+
+        if (! $matomoSiteId) {
+            return null;
+        }
+
+        foreach ($configuredDomains as $configuredDomain => $override) {
+            $sources = $override['analytics_sources'] ?? [];
+
+            foreach ($sources as $source) {
+                if (($source['provider'] ?? null) !== 'matomo') {
+                    continue;
+                }
+
+                if ((string) ($source['external_id'] ?? '') !== $matomoSiteId) {
+                    continue;
+                }
+
+                return Domain::query()->firstOrCreate(
+                    ['domain' => $configuredDomain],
+                    [
+                        'check_frequency_minutes' => 60,
+                        'is_active' => true,
+                    ]
+                );
+            }
+        }
+
+        return null;
     }
 }

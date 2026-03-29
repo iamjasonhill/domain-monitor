@@ -57,8 +57,14 @@ return new class extends Migration
                 $table->timestamps();
 
                 $table->foreign('domain_id')->references('id')->on('domains')->cascadeOnDelete();
-                $table->foreign('web_property_id')->references('id')->on('web_properties')->nullOnDelete();
-                $table->foreign('property_analytics_source_id')->references('id')->on('property_analytics_sources')->nullOnDelete();
+
+                if (Schema::hasTable('web_properties')) {
+                    $table->foreign('web_property_id')->references('id')->on('web_properties')->nullOnDelete();
+                }
+
+                if (Schema::hasTable('property_analytics_sources')) {
+                    $table->foreign('property_analytics_source_id')->references('id')->on('property_analytics_sources')->nullOnDelete();
+                }
 
                 $table->index(['domain_id', 'captured_at']);
                 $table->index(['domain_id', 'baseline_type']);

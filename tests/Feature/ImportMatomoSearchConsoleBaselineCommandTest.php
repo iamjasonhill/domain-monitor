@@ -112,4 +112,59 @@ class ImportMatomoSearchConsoleBaselineCommandTest extends TestCase
 
         @unlink($path);
     }
+
+    public function test_it_bootstraps_a_configured_domain_when_the_domain_row_is_missing(): void
+    {
+        config()->set('domain_monitor.web_property_bootstrap.overrides', [
+            'removalsinterstate.com.au' => [
+                'slug' => 'removalsinterstate-com-au',
+                'name' => 'removalsinterstate.com.au',
+                'property_type' => 'website',
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '29',
+                        'external_name' => 'Removals Interstate',
+                    ],
+                ],
+            ],
+        ]);
+
+        $path = tempnam(sys_get_temp_dir(), 'sc-baseline-bootstrap-');
+
+        file_put_contents($path, json_encode([
+            'source_system' => 'matamo_search_console',
+            'contract_version' => 1,
+            'generated_at' => '2026-03-29T03:45:00Z',
+            'baselines' => [
+                [
+                    'domain' => 'removalsinterstate.com.au',
+                    'baseline_type' => 'pre_rebuild',
+                    'captured_at' => '2026-03-29T03:46:00Z',
+                    'source_provider' => 'matomo',
+                    'matomo_site_id' => '29',
+                    'search_console_property_uri' => 'https://removalsinterstate.com.au/',
+                    'search_type' => 'web',
+                    'clicks' => 6,
+                    'impressions' => 5370,
+                    'ctr' => 0.001117,
+                    'average_position' => 52.378585,
+                ],
+            ],
+        ], JSON_PRETTY_PRINT));
+
+        $exitCode = Artisan::call('analytics:import-search-console-baseline', ['path' => $path]);
+
+        $this->assertSame(0, $exitCode);
+
+        $domain = Domain::query()->where('domain', 'removalsinterstate.com.au')->first();
+        $baseline = DomainSeoBaseline::query()->first();
+
+        $this->assertNotNull($domain);
+        $this->assertNotNull($baseline);
+        $this->assertSame($domain->id, $baseline->domain_id);
+        $this->assertSame('29', $baseline->matomo_site_id);
+
+        @unlink($path);
+    }
 }
