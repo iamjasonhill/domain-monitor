@@ -600,5 +600,31 @@ return [
                 'description' => 'This managed domain should be fully covered, but one or more coverage controls still need attention.',
             ],
         ],
+        'automation_tags' => [
+            'required' => [
+                'name' => 'automation.required',
+                'priority' => 70,
+                'color' => '#7c3aed',
+                'description' => 'This managed domain should participate in the full automation checklist.',
+            ],
+            'complete' => [
+                'name' => 'automation.complete',
+                'priority' => 60,
+                'color' => '#16a34a',
+                'description' => 'This managed domain has automation coverage in place, including manual CSV evidence where required.',
+            ],
+            'gap' => [
+                'name' => 'automation.gap',
+                'priority' => 65,
+                'color' => '#dc2626',
+                'description' => 'This managed domain still has one or more automation checklist gaps.',
+            ],
+            'manual_csv_pending' => [
+                'name' => 'automation.manual_csv_pending',
+                'priority' => 68,
+                'color' => '#ca8a04',
+                'description' => 'Automation is in place, but manual Search Console CSV evidence is still pending for this domain.',
+            ],
+        ],
     ],
 ];

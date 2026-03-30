@@ -24,7 +24,7 @@ class SyncCoverageTags extends Command
      *
      * @var string
      */
-    protected $description = 'Sync fleet coverage tags onto primary domains using repository, Matomo, and Search Console coverage state';
+    protected $description = 'Sync fleet coverage and automation checklist tags onto primary domains';
 
     /**
      * Execute the console command.
@@ -35,6 +35,9 @@ class SyncCoverageTags extends Command
         $managedTagDefinitions = collect((array) ($tagConfig['tags'] ?? []))
             ->map(fn ($tag): ?array => $this->normalizeTagDefinition($tag))
             ->filter();
+        $managedAutomationDefinitions = collect((array) ($tagConfig['automation_tags'] ?? []))
+            ->map(fn ($tag): ?array => $this->normalizeTagDefinition($tag))
+            ->filter();
 
         $manualExclusionTag = (array) ($tagConfig['manual_exclusion_tag'] ?? []);
         $manualExclusionDefinition = $this->normalizeTagDefinition($manualExclusionTag) !== null
@@ -43,7 +46,10 @@ class SyncCoverageTags extends Command
             ])
             : collect();
 
-        $tagDefinitions = $managedTagDefinitions->merge($manualExclusionDefinition);
+        $tagDefinitions = $managedTagDefinitions
+            ->values()
+            ->concat($managedAutomationDefinitions->values())
+            ->concat($manualExclusionDefinition->values());
 
         if ($managedTagDefinitions->isEmpty()) {
             $this->warn('No coverage tags are configured.');
@@ -87,12 +93,18 @@ class SyncCoverageTags extends Command
         $tagDefinitionsArray = $tagDefinitions->all();
         $tagIds = $this->ensureTags($tagDefinitionsArray, $dryRun);
         $coverageTagNames = $managedTagDefinitions->pluck('name')->values();
+        $automationTagNames = $managedAutomationDefinitions->pluck('name')->values();
+        $managedTagNames = $coverageTagNames->merge($automationTagNames)->unique()->values();
 
         $rows = [];
         $requiredCount = 0;
         $completeCount = 0;
         $gapCount = 0;
         $excludedCount = 0;
+        $automationRequiredCount = 0;
+        $automationCompleteCount = 0;
+        $automationGapCount = 0;
+        $manualCsvPendingCount = 0;
         $domainsChanged = 0;
 
         foreach ($properties as $property) {
@@ -102,14 +114,25 @@ class SyncCoverageTags extends Command
             }
 
             $summary = $property->fullCoverageSummary();
+            $automationSummary = $property->automationCoverageSummary();
             $desiredTagNames = $this->desiredTagNames($summary, $managedTagDefinitions->all());
-            $currentCoverageTagNames = $domain->tags
+            $desiredAutomationTagNames = $this->desiredAutomationTagNames($automationSummary, $managedAutomationDefinitions->all());
+            $desiredManagedTagNames = $desiredTagNames->merge($desiredAutomationTagNames)->unique()->values();
+            $currentManagedTagNames = $domain->tags
                 ->pluck('name')
-                ->intersect($coverageTagNames)
+                ->intersect($managedTagNames)
                 ->values();
-
-            $attachNames = $desiredTagNames->diff($currentCoverageTagNames)->values();
-            $detachNames = $currentCoverageTagNames->diff($desiredTagNames)->values();
+            $attachNames = $desiredManagedTagNames->diff($currentManagedTagNames)->values();
+            $detachNames = $currentManagedTagNames->diff($desiredManagedTagNames)->values();
+            $desiredTagIds = $desiredManagedTagNames
+                ->map(fn (string $name): string => $tagIds[$name])
+                ->values();
+            $retainedTagIds = $domain->tags
+                ->reject(fn (DomainTag $tag): bool => $managedTagNames->contains($tag->name))
+                ->pluck('id')
+                ->values();
+            $finalTagIds = $retainedTagIds->merge($desiredTagIds)->unique()->values();
+            $currentTagIds = $domain->tags->pluck('id')->values();
 
             if ($summary['required']) {
                 $requiredCount++;
@@ -123,7 +146,20 @@ class SyncCoverageTags extends Command
                 $excludedCount++;
             }
 
-            if ($attachNames->isNotEmpty() || $detachNames->isNotEmpty()) {
+            if ($automationSummary['required']) {
+                $automationRequiredCount++;
+            }
+
+            if ($automationSummary['status'] === 'complete') {
+                $automationCompleteCount++;
+            } elseif ($automationSummary['status'] === 'manual_csv_pending') {
+                $automationGapCount++;
+                $manualCsvPendingCount++;
+            } elseif ($automationSummary['status'] !== 'excluded') {
+                $automationGapCount++;
+            }
+
+            if ($currentTagIds->sort()->values()->all() !== $finalTagIds->sort()->values()->all()) {
                 $domainsChanged++;
             }
 
@@ -131,8 +167,11 @@ class SyncCoverageTags extends Command
                 $domain->domain,
                 $property->slug,
                 $summary['label'],
+                $automationSummary['label'],
                 $desiredTagNames->implode(', '),
+                $desiredAutomationTagNames->implode(', '),
                 $summary['reason'] ?? '-',
+                $automationSummary['reason'] ?? '-',
             ];
 
             if ($dryRun) {
@@ -155,25 +194,11 @@ class SyncCoverageTags extends Command
                 continue;
             }
 
-            if ($attachNames->isNotEmpty()) {
-                $domain->tags()->syncWithoutDetaching(
-                    $attachNames
-                        ->map(fn (string $name): string => $tagIds[$name])
-                        ->all()
-                );
-            }
-
-            if ($detachNames->isNotEmpty()) {
-                $domain->tags()->detach(
-                    $detachNames
-                        ->map(fn (string $name): string => $tagIds[$name])
-                        ->all()
-                );
-            }
+            $domain->tags()->sync($finalTagIds->all());
         }
 
         $this->table(
-            ['Domain', 'Property', 'Coverage', 'Desired tags', 'Reason'],
+            ['Domain', 'Property', 'Coverage', 'Automation', 'Coverage tags', 'Automation tags', 'Coverage reason', 'Automation reason'],
             $rows
         );
 
@@ -185,6 +210,10 @@ class SyncCoverageTags extends Command
                 ['coverage_complete', (string) $completeCount],
                 ['coverage_gaps', (string) $gapCount],
                 ['coverage_excluded', (string) $excludedCount],
+                ['automation_required', (string) $automationRequiredCount],
+                ['automation_complete', (string) $automationCompleteCount],
+                ['automation_gaps', (string) $automationGapCount],
+                ['manual_csv_pending', (string) $manualCsvPendingCount],
                 ['domains_changed', (string) $domainsChanged],
                 ['dry_run', $dryRun ? 'true' : 'false'],
             ]
@@ -257,6 +286,52 @@ class SyncCoverageTags extends Command
             $tagNames[] = $map['complete'];
         } else {
             $tagNames[] = $map['gap'];
+        }
+
+        /** @var array<int, string> $filteredTagNames */
+        $filteredTagNames = array_values(array_filter(
+            $tagNames,
+            fn (string $name): bool => $name !== ''
+        ));
+
+        return collect($filteredTagNames);
+    }
+
+    /**
+     * @param  array{
+     *   required: bool,
+     *   status: string
+     * }  $summary
+     * @param  array<int|string, array{name: string, priority: int, color: string|null, description: string|null}>  $tagDefinitions
+     * @return Collection<int, string>
+     */
+    private function desiredAutomationTagNames(array $summary, array $tagDefinitions): Collection
+    {
+        $requiredTag = $tagDefinitions['required'] ?? null;
+        $completeTag = $tagDefinitions['complete'] ?? null;
+        $gapTag = $tagDefinitions['gap'] ?? null;
+        $manualCsvPendingTag = $tagDefinitions['manual_csv_pending'] ?? null;
+        $map = [
+            'required' => is_array($requiredTag) ? $requiredTag['name'] : '',
+            'complete' => is_array($completeTag) ? $completeTag['name'] : '',
+            'gap' => is_array($gapTag) ? $gapTag['name'] : '',
+            'manual_csv_pending' => is_array($manualCsvPendingTag) ? $manualCsvPendingTag['name'] : '',
+        ];
+
+        if (! $summary['required']) {
+            return collect();
+        }
+
+        $tagNames = [$map['required']];
+
+        if ($summary['status'] === 'complete') {
+            $tagNames[] = $map['complete'];
+        } else {
+            $tagNames[] = $map['gap'];
+        }
+
+        if ($summary['status'] === 'manual_csv_pending') {
+            $tagNames[] = $map['manual_csv_pending'];
         }
 
         /** @var array<int, string> $filteredTagNames */

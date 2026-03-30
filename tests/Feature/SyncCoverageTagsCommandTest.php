@@ -12,6 +12,7 @@ use App\Models\SearchConsoleCoverageStatus;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
 class SyncCoverageTagsCommandTest extends TestCase
@@ -89,7 +90,7 @@ class SyncCoverageTagsCommandTest extends TestCase
             'matomo_site_id' => '101',
             'search_console_property_uri' => 'sc-domain:complete.example.au',
             'search_type' => 'web',
-            'import_method' => 'manual',
+            'import_method' => 'matomo_plus_manual_csv',
             'clicks' => 10,
             'impressions' => 100,
             'ctr' => 0.1,
@@ -116,6 +117,28 @@ class SyncCoverageTagsCommandTest extends TestCase
             'is_canonical' => true,
         ]);
 
+        $csvPendingDomain = Domain::factory()->create([
+            'domain' => 'csv-pending.example.au',
+            'is_active' => true,
+            'dns_config_name' => 'DNS Hosting',
+            'platform' => 'Astro',
+        ]);
+        $csvPendingProperty = WebProperty::factory()->create([
+            'slug' => 'csv-pending-site',
+            'name' => 'CSV Pending Site',
+            'status' => 'active',
+            'property_type' => 'website',
+            'primary_domain_id' => $csvPendingDomain->id,
+        ]);
+        WebPropertyDomain::create([
+            'web_property_id' => $csvPendingProperty->id,
+            'domain_id' => $csvPendingDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+        $csvPendingSource = $this->attachRepositoryAndCoverage($csvPendingProperty, '102');
+        $this->attachBaselineForSource($csvPendingProperty, $csvPendingSource, 'matomo_api');
+
         $excludedDomain = Domain::factory()->create([
             'domain' => 'parked.example.au',
             'is_active' => true,
@@ -141,6 +164,11 @@ class SyncCoverageTagsCommandTest extends TestCase
             'priority' => 85,
             'color' => '#dc2626',
         ]);
+        $wrongAutomationTag = DomainTag::create([
+            'name' => 'automation.gap',
+            'priority' => 65,
+            'color' => '#dc2626',
+        ]);
         $requiredTag = DomainTag::create([
             'name' => 'coverage.required',
             'priority' => 90,
@@ -151,20 +179,28 @@ class SyncCoverageTagsCommandTest extends TestCase
             'priority' => 95,
             'color' => '#6b7280',
         ]);
-        $excludedDomain->tags()->sync([$requiredTag->id, $wrongGapTag->id, $manualExclusionTag->id]);
-        $completeDomain->tags()->sync([$requiredTag->id, $wrongGapTag->id]);
+        $excludedDomain->tags()->sync([$requiredTag->id, $wrongGapTag->id, $wrongAutomationTag->id, $manualExclusionTag->id]);
+        $completeDomain->tags()->sync([$requiredTag->id, $wrongGapTag->id, $wrongAutomationTag->id]);
 
-        $this->artisan('coverage:sync-tags')
-            ->assertSuccessful();
+        $this->assertSame('complete', $completeProperty->fresh()->fullCoverageSummary()['status']);
+        $this->assertSame('complete', $completeProperty->fresh()->automationCoverageSummary()['status']);
+        $this->assertSame('manual_csv_pending', $csvPendingProperty->fresh()->automationCoverageSummary()['status']);
+
+        $this->assertSame(0, Artisan::call('coverage:sync-tags'));
 
         $this->assertSame(
-            ['coverage.complete', 'coverage.required'],
+            ['automation.complete', 'automation.required', 'coverage.complete', 'coverage.required'],
             $completeDomain->fresh()->tags()->orderBy('name')->pluck('name')->all()
         );
 
         $this->assertSame(
-            ['coverage.gap', 'coverage.required'],
+            ['automation.gap', 'automation.required', 'coverage.gap', 'coverage.required'],
             $gapDomain->fresh()->tags()->orderBy('name')->pluck('name')->all()
+        );
+
+        $this->assertSame(
+            ['automation.gap', 'automation.manual_csv_pending', 'automation.required', 'coverage.complete', 'coverage.required'],
+            $csvPendingDomain->fresh()->tags()->orderBy('name')->pluck('name')->all()
         );
 
         $this->assertSame(['coverage.excluded'], $excludedDomain->fresh()->tags()->pluck('name')->all());
@@ -193,8 +229,7 @@ class SyncCoverageTagsCommandTest extends TestCase
             'is_canonical' => true,
         ]);
 
-        $this->artisan('coverage:sync-tags', ['--dry-run' => true])
-            ->assertSuccessful();
+        $this->assertSame(0, Artisan::call('coverage:sync-tags', ['--dry-run' => true]));
 
         $this->assertDatabaseCount('domain_tags', 0);
         $this->assertSame([], $domain->fresh()->tags()->pluck('name')->all());
@@ -225,12 +260,12 @@ class SyncCoverageTagsCommandTest extends TestCase
             'is_canonical' => true,
         ]);
 
-        $this->artisan('coverage:sync-tags', [
+        $this->assertSame(0, Artisan::call('coverage:sync-tags', [
             '--domain' => ['target.example.au'],
-        ])->assertSuccessful();
+        ]));
 
         $this->assertSame(
-            ['coverage.complete', 'coverage.required'],
+            ['automation.complete', 'automation.required', 'coverage.complete', 'coverage.required'],
             $targetDomain->fresh()->tags()->orderBy('name')->pluck('name')->all()
         );
         $this->assertSame([], $untouchedDomain->fresh()->tags()->pluck('name')->all());
@@ -260,9 +295,9 @@ class SyncCoverageTagsCommandTest extends TestCase
             'is_canonical' => true,
         ]);
 
-        $this->artisan('coverage:sync-tags', [
+        $this->assertSame(0, Artisan::call('coverage:sync-tags', [
             '--domain' => ['missing.example.au'],
-        ])->assertSuccessful();
+        ]));
 
         $this->assertDatabaseCount('domain_tags', 0);
         $this->assertSame([], $domain->fresh()->tags()->pluck('name')->all());
@@ -307,12 +342,12 @@ class SyncCoverageTagsCommandTest extends TestCase
             'is_canonical' => true,
         ]);
         $canonicalSource = $this->attachRepositoryAndCoverage($canonicalCompleteProperty, '301');
-        $this->attachBaselineForSource($canonicalCompleteProperty, $canonicalSource, 'manual');
+        $this->attachBaselineForSource($canonicalCompleteProperty, $canonicalSource, 'matomo_plus_manual_csv');
 
-        $this->artisan('coverage:sync-tags')->assertSuccessful();
+        $this->assertSame(0, Artisan::call('coverage:sync-tags'));
 
         $this->assertSame(
-            ['coverage.complete', 'coverage.required'],
+            ['automation.complete', 'automation.required', 'coverage.complete', 'coverage.required'],
             $domain->fresh()->tags()->orderBy('name')->pluck('name')->all()
         );
     }
@@ -346,6 +381,32 @@ class SyncCoverageTagsCommandTest extends TestCase
                     'description' => 'Gap',
                 ],
             ],
+            'automation_tags' => [
+                'required' => [
+                    'name' => 'automation.required',
+                    'priority' => 70,
+                    'color' => '#7c3aed',
+                    'description' => 'Automation required',
+                ],
+                'complete' => [
+                    'name' => 'automation.complete',
+                    'priority' => 60,
+                    'color' => '#16a34a',
+                    'description' => 'Automation complete',
+                ],
+                'gap' => [
+                    'name' => 'automation.gap',
+                    'priority' => 65,
+                    'color' => '#dc2626',
+                    'description' => 'Automation gap',
+                ],
+                'manual_csv_pending' => [
+                    'name' => 'automation.manual_csv_pending',
+                    'priority' => 68,
+                    'color' => '#ca8a04',
+                    'description' => 'Manual CSV pending',
+                ],
+            ],
         ]);
     }
 
@@ -372,7 +433,7 @@ class SyncCoverageTagsCommandTest extends TestCase
         ]);
 
         $source = $this->attachRepositoryAndCoverage($property, $matomoId);
-        $this->attachBaselineForSource($property, $source, 'manual');
+        $this->attachBaselineForSource($property, $source, 'matomo_plus_manual_csv');
 
         return $domain;
     }
