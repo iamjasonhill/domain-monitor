@@ -31,7 +31,7 @@ Known website repos in [`/Users/jasonhill/Projects/websites`](/Users/jasonhill/P
 - `moving-again-astro`
 - `moving-insurance-astro`
 
-Known Matomo site IDs from [`/Users/jasonhill/Projects/2026 Projects/Matamo /README.md`](/Users/jasonhill/Projects/2026%20Projects/Matamo%20/README.md):
+Known Matomo site IDs from [`/Users/jasonhill/Projects/2026 Projects/Matamo/README.md`](/Users/jasonhill/Projects/2026%20Projects/Matamo/README.md):
 
 - `5` Moveroo
 - `6` Moveroo website

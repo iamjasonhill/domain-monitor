@@ -26,7 +26,7 @@ class ImportMatomoInstallAuditCommandTest extends TestCase
             'provider' => 'matomo',
             'external_id' => '8',
             'external_name' => 'Old Name',
-            'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+            'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo',
             'is_primary' => true,
             'status' => 'active',
         ]);
