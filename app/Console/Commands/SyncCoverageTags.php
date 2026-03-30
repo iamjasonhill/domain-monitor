@@ -63,7 +63,7 @@ class SyncCoverageTags extends Command
             ->map(fn (string $domain) => mb_strtolower(trim($domain)))
             ->values();
 
-        $properties = WebProperty::query()
+        $propertyGroups = WebProperty::query()
             ->when(
                 $targetDomains->isNotEmpty(),
                 fn ($query) => $query->whereHas('primaryDomain', fn ($domainQuery) => $domainQuery->whereIn('domain', $targetDomains->all()))
@@ -80,11 +80,11 @@ class SyncCoverageTags extends Command
             ->orderBy('name')
             ->get()
             ->groupBy(fn (WebProperty $property): string => (string) ($property->primary_domain_id ?? $property->id))
-            ->map(fn (Collection $group): ?WebProperty => $this->authoritativePropertyForPrimaryDomain($group))
+            ->map(fn (Collection $group): ?Collection => $group->isEmpty() ? null : $group)
             ->filter()
             ->values();
 
-        if ($properties->isEmpty()) {
+        if ($propertyGroups->isEmpty()) {
             $this->warn('No matching web properties found.');
 
             return self::SUCCESS;
@@ -107,32 +107,34 @@ class SyncCoverageTags extends Command
         $manualCsvPendingCount = 0;
         $domainsChanged = 0;
 
-        foreach ($properties as $property) {
+        foreach ($propertyGroups as $group) {
+            /** @var Collection<int, WebProperty> $group */
+            $property = $this->authoritativePropertyForPrimaryDomain($group);
+            if (! $property instanceof WebProperty) {
+                continue;
+            }
+
             $domain = $property->primaryDomainModel();
             if (! $domain instanceof Domain) {
                 continue;
             }
 
             $summary = $property->fullCoverageSummary();
-            $automationSummary = $property->automationCoverageSummary();
+            $automationSummary = $this->automationSummaryForPrimaryDomainGroup($group, $property);
             $desiredTagNames = $this->desiredTagNames($summary, $managedTagDefinitions->all());
-            $desiredAutomationTagNames = $this->desiredAutomationTagNames($automationSummary, $managedAutomationDefinitions->all());
+            $desiredAutomationTagNames = $this->desiredAutomationTagNames(
+                $automationSummary,
+                $managedAutomationDefinitions->all(),
+                $automationSummary['manual_csv_pending']
+            );
             $desiredManagedTagNames = $desiredTagNames->merge($desiredAutomationTagNames)->unique()->values();
-            $currentManagedTagNames = $domain->tags
+            $currentDomainTags = $domain->tags()->get();
+            $currentManagedTagNames = $currentDomainTags
                 ->pluck('name')
                 ->intersect($managedTagNames)
                 ->values();
             $attachNames = $desiredManagedTagNames->diff($currentManagedTagNames)->values();
             $detachNames = $currentManagedTagNames->diff($desiredManagedTagNames)->values();
-            $desiredTagIds = $desiredManagedTagNames
-                ->map(fn (string $name): string => $tagIds[$name])
-                ->values();
-            $retainedTagIds = $domain->tags
-                ->reject(fn (DomainTag $tag): bool => $managedTagNames->contains($tag->name))
-                ->pluck('id')
-                ->values();
-            $finalTagIds = $retainedTagIds->merge($desiredTagIds)->unique()->values();
-            $currentTagIds = $domain->tags->pluck('id')->values();
 
             if ($summary['required']) {
                 $requiredCount++;
@@ -159,7 +161,7 @@ class SyncCoverageTags extends Command
                 $automationGapCount++;
             }
 
-            if ($currentTagIds->sort()->values()->all() !== $finalTagIds->sort()->values()->all()) {
+            if ($attachNames->isNotEmpty() || $detachNames->isNotEmpty()) {
                 $domainsChanged++;
             }
 
@@ -194,7 +196,25 @@ class SyncCoverageTags extends Command
                 continue;
             }
 
-            $domain->tags()->sync($finalTagIds->all());
+            if ($attachNames->isEmpty() && $detachNames->isEmpty()) {
+                continue;
+            }
+
+            if ($attachNames->isNotEmpty()) {
+                $domain->tags()->syncWithoutDetaching(
+                    $attachNames
+                        ->map(fn (string $name): string => $tagIds[$name])
+                        ->all()
+                );
+            }
+
+            if ($detachNames->isNotEmpty()) {
+                $domain->tags()->detach(
+                    $detachNames
+                        ->map(fn (string $name): string => $tagIds[$name])
+                        ->all()
+                );
+            }
         }
 
         $this->table(
@@ -205,7 +225,7 @@ class SyncCoverageTags extends Command
         $this->table(
             ['Metric', 'Value'],
             [
-                ['properties_considered', (string) $properties->count()],
+                ['properties_considered', (string) $propertyGroups->count()],
                 ['coverage_required', (string) $requiredCount],
                 ['coverage_complete', (string) $completeCount],
                 ['coverage_gaps', (string) $gapCount],
@@ -260,7 +280,8 @@ class SyncCoverageTags extends Command
     /**
      * @param  array{
      *   required: bool,
-     *   status: string
+     *   status: string,
+     *   manual_csv_pending?: bool
      * }  $summary
      * @param  array<int|string, array{name: string, priority: int, color: string|null, description: string|null}>  $tagDefinitions
      * @return Collection<int, string>
@@ -305,7 +326,7 @@ class SyncCoverageTags extends Command
      * @param  array<int|string, array{name: string, priority: int, color: string|null, description: string|null}>  $tagDefinitions
      * @return Collection<int, string>
      */
-    private function desiredAutomationTagNames(array $summary, array $tagDefinitions): Collection
+    private function desiredAutomationTagNames(array $summary, array $tagDefinitions, bool $manualCsvPending = false): Collection
     {
         $requiredTag = $tagDefinitions['required'] ?? null;
         $completeTag = $tagDefinitions['complete'] ?? null;
@@ -330,7 +351,7 @@ class SyncCoverageTags extends Command
             $tagNames[] = $map['gap'];
         }
 
-        if ($summary['status'] === 'manual_csv_pending') {
+        if ($manualCsvPending || $summary['status'] === 'manual_csv_pending') {
             $tagNames[] = $map['manual_csv_pending'];
         }
 
@@ -341,6 +362,91 @@ class SyncCoverageTags extends Command
         ));
 
         return collect($filteredTagNames);
+    }
+
+    /**
+     * @param  Collection<int, WebProperty>  $properties
+     * @return array{
+     *   required: bool,
+     *   status: string,
+     *   label: string,
+     *   reason: string|null,
+     *   reasons: array<int, string>,
+     *   checks: array<string, mixed>,
+     *   manual_csv_pending: bool
+     * }
+     */
+    private function automationSummaryForPrimaryDomainGroup(Collection $properties, WebProperty $authoritativeProperty): array
+    {
+        $summaries = $properties
+            ->map(fn (WebProperty $property): array => $property->automationCoverageSummary())
+            ->values();
+
+        $requiredSummaries = $summaries
+            ->filter(fn (array $summary): bool => $summary['required'])
+            ->values();
+
+        if ($requiredSummaries->isEmpty()) {
+            $summary = $authoritativeProperty->automationCoverageSummary();
+            $summary['manual_csv_pending'] = false;
+
+            return $summary;
+        }
+
+        $manualCsvPending = $requiredSummaries->contains(
+            fn (array $summary): bool => $summary['status'] === 'manual_csv_pending'
+        );
+
+        $blockingStatuses = [
+            'needs_controller',
+            'needs_matomo_binding',
+            'needs_search_console_mapping',
+            'needs_onboarding',
+            'import_stale',
+            'needs_baseline_sync',
+        ];
+
+        $blockingSummary = $requiredSummaries->first(
+            fn (array $summary): bool => in_array($summary['status'], $blockingStatuses, true)
+        );
+
+        if (is_array($blockingSummary)) {
+            return [
+                'required' => true,
+                'status' => 'gap',
+                'label' => $blockingSummary['label'],
+                'reason' => $blockingSummary['reason'] ?? null,
+                'reasons' => $requiredSummaries->pluck('reason')->filter()->values()->all(),
+                'checks' => ['group' => $requiredSummaries->all()],
+                'manual_csv_pending' => $manualCsvPending,
+            ];
+        }
+
+        if ($manualCsvPending) {
+            $pendingSummary = $requiredSummaries->first(
+                fn (array $summary): bool => $summary['status'] === 'manual_csv_pending'
+            );
+
+            return [
+                'required' => true,
+                'status' => 'manual_csv_pending',
+                'label' => $pendingSummary['label'] ?? 'Manual CSV Pending',
+                'reason' => $pendingSummary['reason'] ?? null,
+                'reasons' => $requiredSummaries->pluck('reason')->filter()->values()->all(),
+                'checks' => ['group' => $requiredSummaries->all()],
+                'manual_csv_pending' => true,
+            ];
+        }
+
+        return [
+            'required' => true,
+            'status' => 'complete',
+            'label' => 'Complete',
+            'reason' => 'All grouped properties on this primary domain are automation-complete',
+            'reasons' => [],
+            'checks' => ['group' => $requiredSummaries->all()],
+            'manual_csv_pending' => false,
+        ];
     }
 
     /**

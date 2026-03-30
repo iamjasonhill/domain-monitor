@@ -347,7 +347,78 @@ class SyncCoverageTagsCommandTest extends TestCase
         $this->assertSame(0, Artisan::call('coverage:sync-tags'));
 
         $this->assertSame(
-            ['automation.complete', 'automation.required', 'coverage.complete', 'coverage.required'],
+            ['automation.gap', 'automation.required', 'coverage.complete', 'coverage.required'],
+            $domain->fresh()->tags()->orderBy('name')->pluck('name')->all()
+        );
+    }
+
+    public function test_shared_primary_domain_surfaces_non_authoritative_manual_csv_backlog_in_automation_tags(): void
+    {
+        $this->setCoverageTagConfig();
+
+        $domain = Domain::factory()->create([
+            'domain' => 'shared-automation.example.au',
+            'is_active' => true,
+            'dns_config_name' => 'DNS Hosting',
+            'platform' => 'WordPress',
+        ]);
+
+        $canonicalCompleteProperty = WebProperty::factory()->create([
+            'slug' => 'canonical-complete-site',
+            'name' => 'Canonical Complete Site',
+            'status' => 'active',
+            'property_type' => 'website',
+            'primary_domain_id' => $domain->id,
+        ]);
+        WebPropertyDomain::create([
+            'web_property_id' => $canonicalCompleteProperty->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+        $canonicalSource = $this->attachRepositoryAndCoverage($canonicalCompleteProperty, '401');
+        $this->attachBaselineForSource($canonicalCompleteProperty, $canonicalSource, 'matomo_plus_manual_csv');
+
+        $nonCanonicalCsvPendingProperty = WebProperty::factory()->create([
+            'slug' => 'noncanonical-csv-site',
+            'name' => 'Noncanonical CSV Site',
+            'status' => 'active',
+            'property_type' => 'website',
+            'primary_domain_id' => $domain->id,
+        ]);
+        WebPropertyDomain::create([
+            'web_property_id' => $nonCanonicalCsvPendingProperty->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => false,
+        ]);
+        $nonCanonicalSource = $this->attachRepositoryAndCoverage($nonCanonicalCsvPendingProperty, '402');
+        $this->attachBaselineForSource($nonCanonicalCsvPendingProperty, $nonCanonicalSource, 'matomo_api');
+
+        $this->assertSame(0, Artisan::call('coverage:sync-tags'));
+
+        $this->assertSame(
+            ['automation.gap', 'automation.manual_csv_pending', 'automation.required', 'coverage.complete', 'coverage.required'],
+            $domain->fresh()->tags()->orderBy('name')->pluck('name')->all()
+        );
+    }
+
+    public function test_it_preserves_unrelated_non_managed_domain_tags(): void
+    {
+        $this->setCoverageTagConfig();
+
+        $domain = $this->createCompleteCoverageProperty('preserve-tags.example.au', 'Preserve Tags Site', '501');
+        $customTag = DomainTag::create([
+            'name' => 'ops.watchlist',
+            'priority' => 40,
+            'color' => '#0f766e',
+        ]);
+        $domain->tags()->sync([$customTag->id]);
+
+        $this->assertSame(0, Artisan::call('coverage:sync-tags'));
+
+        $this->assertSame(
+            ['automation.complete', 'automation.required', 'coverage.complete', 'coverage.required', 'ops.watchlist'],
             $domain->fresh()->tags()->orderBy('name')->pluck('name')->all()
         );
     }
