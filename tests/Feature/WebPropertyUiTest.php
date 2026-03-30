@@ -101,7 +101,7 @@ class WebPropertyUiTest extends TestCase
             'provider' => 'matomo',
             'external_id' => '7',
             'external_name' => 'Car transport by Moving Again',
-            'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+            'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo',
             'is_primary' => true,
             'status' => 'active',
         ]);

@@ -46,7 +46,7 @@ class BootstrapWebPropertiesCommandTest extends TestCase
                             'provider' => 'matomo',
                             'external_id' => '6',
                             'external_name' => 'Moveroo website',
-                            'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
+                            'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo',
                         ],
                     ],
                 ],
