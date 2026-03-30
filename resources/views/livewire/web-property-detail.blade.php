@@ -6,6 +6,34 @@
             $repositories = $property->repositories;
             $analyticsSources = $property->analyticsSources;
             $tags = collect($property->tagSummaries());
+            $automationCoverage = $property->automationCoverageSummary();
+            $automationChecks = [
+                [
+                    'title' => 'Controller',
+                    'summary' => $automationCoverage['checks']['repository'],
+                    'queue' => route('automation-coverage.index'),
+                ],
+                [
+                    'title' => 'Matomo',
+                    'summary' => $automationCoverage['checks']['matomo'],
+                    'queue' => route('matomo-coverage.index'),
+                ],
+                [
+                    'title' => 'Search Console',
+                    'summary' => $automationCoverage['checks']['search_console'],
+                    'queue' => route('search-console-coverage.index'),
+                ],
+                [
+                    'title' => 'Baseline Sync',
+                    'summary' => $automationCoverage['checks']['baseline_sync'],
+                    'queue' => route('automation-coverage.index'),
+                ],
+                [
+                    'title' => 'Manual CSV',
+                    'summary' => $automationCoverage['checks']['manual_csv'],
+                    'queue' => route('manual-csv-backlog.index'),
+                ],
+            ];
         @endphp
 
         <div class="mb-6">
@@ -125,6 +153,56 @@
                             @endforeach
                         @endif
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
+            <div class="p-6">
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                    <div>
+                        <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Automation Checklist</h4>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            This shows what is automated for this property already and what still needs operator attention.
+                        </p>
+                    </div>
+                    <span @class([
+                        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+                        'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' => $automationCoverage['status'] === 'complete',
+                        'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' => in_array($automationCoverage['status'], ['manual_csv_pending', 'needs_baseline_sync', 'import_stale', 'needs_onboarding'], true),
+                        'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300' => in_array($automationCoverage['status'], ['needs_controller', 'needs_matomo_binding', 'needs_search_console_mapping'], true),
+                        'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' => ! in_array($automationCoverage['status'], ['complete', 'manual_csv_pending', 'needs_baseline_sync', 'import_stale', 'needs_onboarding', 'needs_controller', 'needs_matomo_binding', 'needs_search_console_mapping'], true),
+                    ])>
+                        {{ $automationCoverage['label'] }}
+                    </span>
+                </div>
+
+                <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    @foreach($automationChecks as $check)
+                        @php
+                            $summary = $check['summary'];
+                        @endphp
+                        <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ $check['title'] }}</div>
+                                <span @class([
+                                    'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                                    'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' => $summary['status'] === 'covered',
+                                    'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' => in_array($summary['status'], ['pending', 'needs_sync', 'stale', 'needs_import', 'stale_import', 'bound_unverified', 'blocked'], true),
+                                    'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300' => in_array($summary['status'], ['needs_repository', 'needs_binding', 'bound_attention', 'needs_matomo', 'needs_property', 'url_prefix_only'], true),
+                                    'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' => ! in_array($summary['status'], ['covered', 'pending', 'needs_sync', 'stale', 'needs_import', 'stale_import', 'bound_unverified', 'blocked', 'needs_repository', 'needs_binding', 'bound_attention', 'needs_matomo', 'needs_property', 'url_prefix_only'], true),
+                                ])>
+                                    {{ $summary['label'] }}
+                                </span>
+                            </div>
+                            @if(! empty($summary['reason']))
+                                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">{{ $summary['reason'] }}</p>
+                            @endif
+                            <a href="{{ $check['queue'] }}" wire:navigate class="mt-3 inline-flex items-center text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                                Open related queue
+                            </a>
+                        </div>
+                    @endforeach
                 </div>
             </div>
         </div>

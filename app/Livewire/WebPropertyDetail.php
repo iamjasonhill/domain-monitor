@@ -24,6 +24,7 @@ class WebPropertyDetail extends Component
                 'repositories',
                 'analyticsSources',
                 'analyticsSources.latestInstallAudit',
+                'analyticsSources.latestSearchConsoleCoverage',
                 'propertyDomains.domain' => function ($query): void {
                     $query->withLatestCheckStatuses()
                         ->with([
