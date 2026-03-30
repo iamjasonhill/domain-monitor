@@ -189,8 +189,8 @@
                                     'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
                                     'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' => $summary['status'] === 'covered',
                                     'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' => in_array($summary['status'], ['pending', 'needs_sync', 'stale', 'needs_import', 'stale_import', 'bound_unverified', 'blocked'], true),
-                                    'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300' => in_array($summary['status'], ['needs_controller', 'needs_binding', 'bound_attention', 'needs_matomo', 'needs_property', 'url_prefix_only'], true),
-                                    'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' => ! in_array($summary['status'], ['covered', 'pending', 'needs_sync', 'stale', 'needs_import', 'stale_import', 'bound_unverified', 'blocked', 'needs_controller', 'needs_binding', 'bound_attention', 'needs_matomo', 'needs_property', 'url_prefix_only'], true),
+                                    'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300' => in_array($summary['status'], ['needs_repository', 'needs_binding', 'bound_attention', 'needs_matomo', 'needs_property', 'url_prefix_only'], true),
+                                    'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' => ! in_array($summary['status'], ['covered', 'pending', 'needs_sync', 'stale', 'needs_import', 'stale_import', 'bound_unverified', 'blocked', 'needs_repository', 'needs_binding', 'bound_attention', 'needs_matomo', 'needs_property', 'url_prefix_only'], true),
                                 ])>
                                     {{ $summary['label'] }}
                                 </span>
