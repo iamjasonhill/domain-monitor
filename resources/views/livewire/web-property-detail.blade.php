@@ -6,6 +6,86 @@
             $repositories = $property->repositories;
             $analyticsSources = $property->analyticsSources;
             $tags = collect($property->tagSummaries());
+            $repositoryCoverage = $property->repositoryCoverageSummary();
+            $matomoCoverage = $property->matomoCoverageSummary();
+            $searchConsoleCoverage = $property->searchConsoleCoverageSummary();
+            $automationCoverage = $property->automationCoverageSummary();
+            $latestPropertyBaseline = $property->relationLoaded('latestSeoBaseline')
+                ? $property->latestSeoBaseline
+                : $property->latestSeoBaseline()->first();
+            $baselineCoverage = match (true) {
+                $searchConsoleCoverage['status'] !== 'covered' => [
+                    'status' => 'blocked',
+                    'label' => 'Blocked',
+                    'reason' => $searchConsoleCoverage['reason'],
+                    'queue' => route('automation-coverage.index'),
+                ],
+                ! $latestPropertyBaseline instanceof \App\Models\DomainSeoBaseline => [
+                    'status' => 'needs_sync',
+                    'label' => 'Needs baseline sync',
+                    'reason' => 'Search Console data is ready, but no property baseline has been synced yet',
+                    'queue' => route('automation-coverage.index'),
+                ],
+                $latestPropertyBaseline->captured_at->lt(now()->subDays(30)) => [
+                    'status' => 'stale',
+                    'label' => 'Baseline stale',
+                    'reason' => 'The latest property baseline is older than 30 days',
+                    'queue' => route('automation-coverage.index'),
+                ],
+                default => [
+                    'status' => 'covered',
+                    'label' => 'Covered',
+                    'reason' => sprintf('Latest property baseline captured %s', $latestPropertyBaseline->captured_at->toDateString()),
+                    'queue' => route('automation-coverage.index'),
+                ],
+            };
+            $manualCsvCoverage = match (true) {
+                $baselineCoverage['status'] !== 'covered' => [
+                    'status' => 'blocked',
+                    'label' => 'Blocked',
+                    'reason' => $baselineCoverage['reason'],
+                    'queue' => route('manual-csv-backlog.index'),
+                ],
+                $latestPropertyBaseline instanceof \App\Models\DomainSeoBaseline && $latestPropertyBaseline->import_method === 'matomo_plus_manual_csv' => [
+                    'status' => 'covered',
+                    'label' => 'Covered',
+                    'reason' => 'Manual Search Console CSV evidence has been imported for this property',
+                    'queue' => route('manual-csv-backlog.index'),
+                ],
+                default => [
+                    'status' => 'pending',
+                    'label' => 'Manual CSV pending',
+                    'reason' => 'Automation is in place, but this property still needs manual Search Console CSV evidence',
+                    'queue' => route('manual-csv-backlog.index'),
+                ],
+            };
+            $automationChecks = [
+                [
+                    'title' => 'Controller',
+                    'summary' => $repositoryCoverage,
+                    'queue' => route('automation-coverage.index'),
+                ],
+                [
+                    'title' => 'Matomo',
+                    'summary' => $matomoCoverage,
+                    'queue' => route('matomo-coverage.index'),
+                ],
+                [
+                    'title' => 'Search Console',
+                    'summary' => $searchConsoleCoverage,
+                    'queue' => route('search-console-coverage.index'),
+                ],
+                [
+                    'title' => 'Baseline Sync',
+                    'summary' => $baselineCoverage,
+                    'queue' => route('automation-coverage.index'),
+                ],
+                [
+                    'title' => 'Manual CSV',
+                    'summary' => $manualCsvCoverage,
+                    'queue' => route('manual-csv-backlog.index'),
+                ],
+            ];
         @endphp
 
         <div class="mb-6">
@@ -125,6 +205,56 @@
                             @endforeach
                         @endif
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
+            <div class="p-6">
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                    <div>
+                        <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Automation Checklist</h4>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            This shows what is automated for this property already and what still needs operator attention.
+                        </p>
+                    </div>
+                    <span @class([
+                        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+                        'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' => $automationCoverage['status'] === 'complete',
+                        'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' => in_array($automationCoverage['status'], ['manual_csv_pending', 'needs_baseline_sync', 'import_stale', 'needs_onboarding'], true),
+                        'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300' => in_array($automationCoverage['status'], ['needs_controller', 'needs_matomo_binding', 'needs_search_console_mapping'], true),
+                        'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' => ! in_array($automationCoverage['status'], ['complete', 'manual_csv_pending', 'needs_baseline_sync', 'import_stale', 'needs_onboarding', 'needs_controller', 'needs_matomo_binding', 'needs_search_console_mapping'], true),
+                    ])>
+                        {{ $automationCoverage['label'] }}
+                    </span>
+                </div>
+
+                <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    @foreach($automationChecks as $check)
+                        @php
+                            $summary = $check['summary'];
+                        @endphp
+                        <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ $check['title'] }}</div>
+                                <span @class([
+                                    'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                                    'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' => $summary['status'] === 'covered',
+                                    'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' => in_array($summary['status'], ['pending', 'needs_sync', 'stale', 'needs_import', 'stale_import', 'bound_unverified', 'blocked'], true),
+                                    'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300' => in_array($summary['status'], ['needs_controller', 'needs_binding', 'bound_attention', 'needs_matomo', 'needs_property', 'url_prefix_only'], true),
+                                    'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' => ! in_array($summary['status'], ['covered', 'pending', 'needs_sync', 'stale', 'needs_import', 'stale_import', 'bound_unverified', 'blocked', 'needs_controller', 'needs_binding', 'bound_attention', 'needs_matomo', 'needs_property', 'url_prefix_only'], true),
+                                ])>
+                                    {{ $summary['label'] }}
+                                </span>
+                            </div>
+                            @if(! empty($summary['reason']))
+                                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">{{ $summary['reason'] }}</p>
+                            @endif
+                            <a href="{{ $check['queue'] }}" wire:navigate class="mt-3 inline-flex items-center text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                                Open related queue
+                            </a>
+                        </div>
+                    @endforeach
                 </div>
             </div>
         </div>

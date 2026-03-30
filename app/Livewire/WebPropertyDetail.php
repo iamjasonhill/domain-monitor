@@ -21,9 +21,11 @@ class WebPropertyDetail extends Component
         $this->property = WebProperty::query()
             ->with([
                 'primaryDomain',
+                'latestSeoBaseline',
                 'repositories',
                 'analyticsSources',
                 'analyticsSources.latestInstallAudit',
+                'analyticsSources.latestSearchConsoleCoverage',
                 'propertyDomains.domain' => function ($query): void {
                     $query->withLatestCheckStatuses()
                         ->with([
