@@ -351,8 +351,6 @@ class WebProperty extends Model
             'domains' => $this->domainSummaries(),
             'repositories' => $this->repositorySummaries(),
             'analytics_sources' => $this->analyticsSourceSummaries(),
-            'coverage_summary' => $this->fullCoverageSummary(),
-            'automation_summary' => $this->automationCoverageSummary(),
             'health_summary' => $this->healthSummary(),
             'deployment_summary' => $this->deploymentSummary(),
             'tags' => $this->tagSummaries(),
@@ -461,7 +459,32 @@ class WebProperty extends Model
      */
     public function matomoEligibility(): array
     {
-        return $this->coverageEligibility();
+        if ($this->status !== 'active') {
+            return ['eligible' => false, 'reason' => 'property is not active'];
+        }
+
+        if ($this->property_type === 'domain_asset') {
+            return ['eligible' => false, 'reason' => 'property is a domain asset'];
+        }
+
+        $domain = $this->primaryDomainModel();
+        if (! $domain instanceof Domain) {
+            return ['eligible' => false, 'reason' => 'no primary domain linked'];
+        }
+
+        if (! $domain->is_active) {
+            return ['eligible' => false, 'reason' => 'primary domain is inactive'];
+        }
+
+        if ($domain->isParkedForHosting()) {
+            return ['eligible' => false, 'reason' => 'primary domain is parked'];
+        }
+
+        if ($domain->isEmailOnly()) {
+            return ['eligible' => false, 'reason' => 'primary domain is email-only'];
+        }
+
+        return ['eligible' => true, 'reason' => null];
     }
 
     /**

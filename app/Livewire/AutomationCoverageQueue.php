@@ -12,6 +12,7 @@ class AutomationCoverageQueue extends Component
         $properties = WebProperty::query()
             ->with([
                 'primaryDomain',
+                'primaryDomain.tags',
                 'primaryDomain.latestSeoBaseline',
                 'repositories',
                 'analyticsSources',
