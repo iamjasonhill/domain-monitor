@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Domain;
 use App\Models\DomainCheck;
+use App\Models\PropertyRepository;
+use App\Models\WebProperty;
+use App\Models\WebPropertyDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -20,6 +23,30 @@ class DashboardPriorityQueueApiTest extends TestCase
             'is_active' => true,
             'platform' => 'WordPress',
             'hosting_provider' => 'DreamIT Host',
+        ]);
+
+        $mustFixProperty = WebProperty::factory()->create([
+            'slug' => 'must-fix-site',
+            'name' => 'Must Fix Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $mustFixDomain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $mustFixProperty->id,
+            'domain_id' => $mustFixDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $mustFixProperty->id,
+            'repo_name' => 'must-fix-site',
+            'repo_provider' => 'local_only',
+            'local_path' => '/Users/jasonhill/Projects/websites/must-fix-site',
+            'framework' => 'WordPress',
+            'is_primary' => true,
         ]);
 
         DomainCheck::factory()->create([
@@ -41,10 +68,56 @@ class DashboardPriorityQueueApiTest extends TestCase
             'hosting_provider' => 'Vercel',
         ]);
 
+        $shouldFixProperty = WebProperty::factory()->create([
+            'slug' => 'should-fix-site',
+            'name' => 'Should Fix Site',
+            'property_type' => 'marketing_site',
+            'status' => 'active',
+            'primary_domain_id' => $shouldFixDomain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $shouldFixProperty->id,
+            'domain_id' => $shouldFixDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $shouldFixProperty->id,
+            'repo_name' => 'should-fix-site-astro',
+            'repo_provider' => 'local_only',
+            'local_path' => '/Users/jasonhill/Projects/websites/should-fix-site-astro',
+            'framework' => 'Astro',
+            'is_primary' => true,
+        ]);
+
         DomainCheck::factory()->create([
             'domain_id' => $shouldFixDomain->id,
             'check_type' => 'security_headers',
             'status' => 'warn',
+        ]);
+
+        $coverageGapDomain = Domain::factory()->create([
+            'domain' => 'coverage-gap.example.com',
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'Synergy Wholesale PTY',
+        ]);
+
+        $coverageGapProperty = WebProperty::factory()->create([
+            'slug' => 'coverage-gap-site',
+            'name' => 'Coverage Gap Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $coverageGapDomain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $coverageGapProperty->id,
+            'domain_id' => $coverageGapDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
         ]);
 
         $parkedDomain = Domain::factory()->create([
@@ -86,9 +159,16 @@ class DashboardPriorityQueueApiTest extends TestCase
             ->assertJsonPath('source_system', 'domain-monitor-priority-queue')
             ->assertJsonPath('contract_version', 1)
             ->assertJsonPath('stats.must_fix', 1)
-            ->assertJsonPath('stats.should_fix', 2)
+            ->assertJsonPath('stats.should_fix', 3)
+            ->assertJsonPath('derived.standard_gap_candidates', 1)
+            ->assertJsonPath('derived.coverage_gap_candidates', 1)
             ->assertJsonPath('must_fix.0.domain', 'must-fix.example.com')
-            ->assertJsonPath('must_fix.0.hosting_provider', 'DreamIT Host');
+            ->assertJsonPath('must_fix.0.hosting_provider', 'DreamIT Host')
+            ->assertJsonPath('must_fix.0.issue_family', 'health.http')
+            ->assertJsonPath('must_fix.0.control_id', 'transport.http_health')
+            ->assertJsonPath('must_fix.0.platform_profile', 'wordpress_legacy_unmanaged')
+            ->assertJsonPath('must_fix.0.rollout_scope', 'domain_only')
+            ->assertJsonPath('must_fix.0.is_standard_gap', false);
 
         $mustFixDomains = collect($response->json('must_fix'));
         $shouldFixDomains = collect($response->json('should_fix'));
@@ -97,11 +177,36 @@ class DashboardPriorityQueueApiTest extends TestCase
         $this->assertFalse($mustFixDomains->contains(fn (array $item): bool => $item['domain'] === 'mail-only.example.com'));
         $this->assertTrue($shouldFixDomains->contains(fn (array $item): bool => $item['domain'] === 'mail-only.example.com'));
         $this->assertTrue($shouldFixDomains->contains(fn (array $item): bool => $item['domain'] === 'should-fix.example.com'));
+        $this->assertTrue($shouldFixDomains->contains(fn (array $item): bool => $item['domain'] === 'coverage-gap.example.com'));
 
         $emailOnly = $shouldFixDomains->firstWhere('domain', 'mail-only.example.com');
 
         $this->assertIsArray($emailOnly);
         $this->assertTrue($emailOnly['is_email_only']);
         $this->assertSame(['Email security needs review'], $emailOnly['primary_reasons']);
+
+        $astroShouldFix = $shouldFixDomains->firstWhere('domain', 'should-fix.example.com');
+
+        $this->assertIsArray($astroShouldFix);
+        $this->assertSame('security.headers_baseline', $astroShouldFix['issue_family']);
+        $this->assertSame('security.headers_baseline', $astroShouldFix['control_id']);
+        $this->assertSame('astro_marketing_managed', $astroShouldFix['platform_profile']);
+        $this->assertSame('vercel_astro', $astroShouldFix['host_profile']);
+        $this->assertSame('astro_core', $astroShouldFix['control_profile']);
+        $this->assertSame('shared_astro_repo_conventions_and_host_config', $astroShouldFix['baseline_surface']);
+        $this->assertSame('fleet', $astroShouldFix['rollout_scope']);
+        $this->assertTrue($astroShouldFix['is_standard_gap']);
+
+        $coverageGap = $shouldFixDomains->firstWhere('domain', 'coverage-gap.example.com');
+
+        $this->assertIsArray($coverageGap);
+        $this->assertSame('control.coverage_required', $coverageGap['issue_family']);
+        $this->assertSame('control.website_fleet_coverage', $coverageGap['control_id']);
+        $this->assertTrue($coverageGap['coverage_required']);
+        $this->assertSame('missing_repository', $coverageGap['coverage_status']);
+        $this->assertTrue($coverageGap['coverage_gap']);
+        $this->assertSame(['Fleet controller access is missing'], $coverageGap['primary_reasons']);
+        $this->assertSame('domain_only', $coverageGap['rollout_scope']);
+        $this->assertFalse($coverageGap['is_standard_gap']);
     }
 }
