@@ -118,6 +118,11 @@ return [
                 'slug' => 'discountbackloading-com-au',
                 'name' => 'discountbackloading.com.au',
                 'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => '_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'framework' => 'WordPress',
+                ],
                 'analytics_sources' => [
                     [
                         'provider' => 'matomo',
@@ -131,6 +136,11 @@ return [
                 'slug' => 'backloading-au-com-au',
                 'name' => 'backloading-au.com.au',
                 'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => '_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'framework' => 'WordPress',
+                ],
                 'analytics_sources' => [
                     [
                         'provider' => 'matomo',
@@ -144,6 +154,11 @@ return [
                 'slug' => 'backloadingremovals-com-au',
                 'name' => 'backloadingremovals.com.au',
                 'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => '_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'framework' => 'WordPress',
+                ],
                 'analytics_sources' => [
                     [
                         'provider' => 'matomo',
@@ -157,6 +172,11 @@ return [
                 'slug' => 'interstatecarcarriers-com-au',
                 'name' => 'interstatecarcarriers.com.au',
                 'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => '_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'framework' => 'WordPress',
+                ],
                 'analytics_sources' => [
                     [
                         'provider' => 'matomo',
@@ -170,6 +190,11 @@ return [
                 'slug' => 'mover-com-au',
                 'name' => 'mover.com.au',
                 'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => '_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'framework' => 'WordPress',
+                ],
                 'analytics_sources' => [
                     [
                         'provider' => 'matomo',
@@ -183,6 +208,11 @@ return [
                 'slug' => 'perthinterstateremovalists-com-au',
                 'name' => 'perthinterstateremovalists.com.au',
                 'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => '_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'framework' => 'WordPress',
+                ],
                 'analytics_sources' => [
                     [
                         'provider' => 'matomo',
@@ -196,6 +226,11 @@ return [
                 'slug' => 'interstate-car-transport-com-au',
                 'name' => 'interstate-car-transport.com.au',
                 'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => '_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'framework' => 'WordPress',
+                ],
                 'analytics_sources' => [
                     [
                         'provider' => 'matomo',
@@ -209,6 +244,11 @@ return [
                 'slug' => 'wemove-com-au',
                 'name' => 'wemove.com.au',
                 'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => '_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'framework' => 'WordPress',
+                ],
                 'analytics_sources' => [
                     [
                         'provider' => 'matomo',
@@ -222,6 +262,11 @@ return [
                 'slug' => 'backloading-services-com-au',
                 'name' => 'backloading-services.com.au',
                 'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => '_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'framework' => 'WordPress',
+                ],
                 'analytics_sources' => [
                     [
                         'provider' => 'matomo',
@@ -249,6 +294,11 @@ return [
                 'slug' => 'interstate-removals-com-au',
                 'name' => 'interstate-removals.com.au',
                 'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => '_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'framework' => 'WordPress',
+                ],
                 'analytics_sources' => [
                     [
                         'provider' => 'matomo',
@@ -258,10 +308,25 @@ return [
                     ],
                 ],
             ],
+            'beauy.com.au' => [
+                'slug' => 'beauy-com-au',
+                'name' => 'beauy.com.au',
+                'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => '_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'framework' => 'WordPress',
+                ],
+            ],
             'removalsinterstate.com.au' => [
                 'slug' => 'removalsinterstate-com-au',
                 'name' => 'removalsinterstate.com.au',
                 'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => '_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'framework' => 'WordPress',
+                ],
                 'analytics_sources' => [
                     [
                         'provider' => 'matomo',
@@ -275,6 +340,11 @@ return [
                 'slug' => 'allianceremovals-com-au',
                 'name' => 'allianceremovals.com.au',
                 'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => '_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'framework' => 'WordPress',
+                ],
                 'analytics_sources' => [
                     [
                         'provider' => 'matomo',
@@ -288,6 +358,11 @@ return [
                 'slug' => 'movemycar-com-au',
                 'name' => 'movemycar.com.au',
                 'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => '_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'framework' => 'WordPress',
+                ],
                 'analytics_sources' => [
                     [
                         'provider' => 'matomo',
@@ -301,6 +376,11 @@ return [
                 'slug' => 'supercheapcartransport-com-au',
                 'name' => 'supercheapcartransport.com.au',
                 'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => '_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'framework' => 'WordPress',
+                ],
                 'analytics_sources' => [
                     [
                         'provider' => 'matomo',
@@ -314,6 +394,11 @@ return [
                 'slug' => 'cartransportaus-com-au',
                 'name' => 'cartransportaus.com.au',
                 'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => '_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'framework' => 'WordPress',
+                ],
                 'analytics_sources' => [
                     [
                         'provider' => 'matomo',
@@ -400,6 +485,11 @@ return [
                 'slug' => 'transportnondrivablecars-com-au',
                 'name' => 'transportnondrivablecars.com.au',
                 'property_type' => 'website',
+                'repository' => [
+                    'repo_name' => 'transportnondrivablecars-com-au-php',
+                    'local_path' => '/Users/jasonhill/Projects/websites/transportnondrivablecars-com-au-php',
+                    'framework' => 'Custom PHP',
+                ],
                 'analytics_sources' => [
                     [
                         'provider' => 'matomo',
@@ -408,6 +498,106 @@ return [
                         'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo ',
                     ],
                 ],
+            ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Priority Queue Standards
+    |--------------------------------------------------------------------------
+    |
+    | The dashboard queue should start to describe recurring issue families
+    | and which managed platform baselines they belong to. Keep this narrow
+    | and operationally useful: enough to identify fleet-standard gaps without
+    | pretending every incident is fully auto-classified.
+    |
+    */
+    'priority_queue_standards' => [
+        'platform_profiles' => [
+            'wordpress_house_managed' => [
+                'baseline_surface' => 'shared_wordpress_house_and_live_host_config',
+            ],
+            'astro_marketing_managed' => [
+                'baseline_surface' => 'shared_astro_repo_conventions_and_host_config',
+            ],
+        ],
+        'controls' => [
+            'transport.uptime_health' => [
+                'issue_families' => ['health.uptime'],
+            ],
+            'transport.http_health' => [
+                'issue_families' => ['health.http'],
+            ],
+            'transport.tls' => [
+                'issue_families' => ['transport.tls'],
+            ],
+            'dns.health' => [
+                'issue_families' => ['dns.health'],
+            ],
+            'email.security_baseline' => [
+                'issue_families' => ['email.security_baseline'],
+            ],
+            'security.headers_baseline' => [
+                'issue_families' => ['security.headers_baseline'],
+            ],
+            'seo.fundamentals' => [
+                'issue_families' => ['seo.fundamentals'],
+            ],
+            'seo.broken_links' => [
+                'issue_families' => ['seo.broken_links'],
+            ],
+            'reputation.health' => [
+                'issue_families' => ['reputation.health'],
+            ],
+            'domain.eligibility' => [
+                'issue_families' => ['domain.eligibility'],
+            ],
+            'domain.expiry' => [
+                'issue_families' => ['domain.expiry'],
+            ],
+            'control.website_fleet_coverage' => [
+                'issue_families' => ['control.coverage_required'],
+                'rollout_scope' => 'domain_only',
+            ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Coverage Tags
+    |--------------------------------------------------------------------------
+    |
+    | These tags mark which primary domains belong to the fully managed
+    | website fleet, and whether repo/controller, Matomo, and Search Console
+    | coverage are complete or still have gaps.
+    |
+    */
+    'coverage_tags' => [
+        'manual_exclusion_tag' => [
+            'name' => 'coverage.excluded',
+            'priority' => 95,
+            'color' => '#6b7280',
+            'description' => 'This domain is intentionally excluded from the managed fleet coverage baseline.',
+        ],
+        'tags' => [
+            'required' => [
+                'name' => 'coverage.required',
+                'priority' => 90,
+                'color' => '#2563eb',
+                'description' => 'This domain is in the managed website fleet and should have repository, Matomo, and Search Console coverage.',
+            ],
+            'complete' => [
+                'name' => 'coverage.complete',
+                'priority' => 80,
+                'color' => '#16a34a',
+                'description' => 'This managed domain currently has repository, Matomo, and Search Console coverage in place.',
+            ],
+            'gap' => [
+                'name' => 'coverage.gap',
+                'priority' => 85,
+                'color' => '#dc2626',
+                'description' => 'This managed domain should be fully covered, but one or more coverage controls still need attention.',
             ],
         ],
     ],

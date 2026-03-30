@@ -51,12 +51,12 @@ jobs:
         run: |
           chmod +x ./scripts/check-production-env.sh
 
-          if APP_ENV=production HORIZON_ALLOWED_EMAILS= ./scripts/check-production-env.sh; then
+          if APP_ENV=production APP_URL=https://example.com QUEUE_CONNECTION=redis HORIZON_ALLOWED_EMAILS= ./scripts/check-production-env.sh; then
             echo "::error::Expected production guard to fail when HORIZON_ALLOWED_EMAILS is empty."
             exit 1
           fi
 
-          APP_ENV=production HORIZON_ALLOWED_EMAILS=ops@example.com ./scripts/check-production-env.sh
+          APP_ENV=production APP_URL=https://example.com QUEUE_CONNECTION=redis HORIZON_ALLOWED_EMAILS=ops@example.com ./scripts/check-production-env.sh
 
       - name: Pint (style)
         if: ${{ matrix.run-quality }}

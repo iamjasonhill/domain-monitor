@@ -31,7 +31,11 @@ class RefreshShouldFixQueue extends Command
     {
         $domains = Domain::query()
             ->where('is_active', true)
-            ->with(['platform', 'webProperties:id,slug,name'])
+            ->with([
+                'platform',
+                'webProperties:id,slug,name,property_type,status',
+                'webProperties.repositories:id,web_property_id,repo_name,local_path,is_primary',
+            ])
             ->withLatestCheckStatuses()
             ->withCount([
                 'alerts as open_critical_alerts_count' => fn ($query) => $query
