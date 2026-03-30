@@ -317,6 +317,14 @@ return [
                     'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
                     'framework' => 'WordPress',
                 ],
+                'analytics_sources' => [
+                    [
+                        'provider' => 'matomo',
+                        'external_id' => '30',
+                        'external_name' => 'beauy.com.au',
+                        'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo',
+                    ],
+                ],
             ],
             'removalsinterstate.com.au' => [
                 'slug' => 'removalsinterstate-com-au',
