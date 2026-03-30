@@ -220,6 +220,10 @@ class DashboardTest extends TestCase
         $this->attachInstallAudit($completeProperty, $completeSource);
         $this->attachCoverage($completeProperty, $completeSource, 'domain_property', now()->subDay()->toDateString());
         $this->attachBaseline($completeProperty, $completeSource, 'matomo_plus_manual_csv');
+        $completeProperty->primaryDomainModel()?->tags()->syncWithoutDetaching([$manualCsvTag->id]);
+
+        $this->assertSame('manual_csv_pending', $pendingProperty->fresh()->automationCoverageSummary()['status']);
+        $this->assertSame('complete', $completeProperty->fresh()->automationCoverageSummary()['status']);
 
         $response = $this->actingAs($user)->get('/dashboard');
 
@@ -328,14 +332,14 @@ class DashboardTest extends TestCase
         ]);
     }
 
-    private function attachBaseline(WebProperty $property, PropertyAnalyticsSource $source, string $importMethod): void
+    private function attachBaseline(WebProperty $property, PropertyAnalyticsSource $source, string $importMethod, ?\Illuminate\Support\Carbon $capturedAt = null): void
     {
         DomainSeoBaseline::create([
             'domain_id' => $property->primary_domain_id,
             'web_property_id' => $property->id,
             'property_analytics_source_id' => $source->id,
             'baseline_type' => 'search_console',
-            'captured_at' => now(),
+            'captured_at' => $capturedAt ?? now(),
             'source_provider' => 'search_console',
             'matomo_site_id' => $source->external_id,
             'search_console_property_uri' => 'sc-domain:'.$property->primaryDomainName(),

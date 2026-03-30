@@ -60,9 +60,9 @@ class Dashboard extends Component
         $stats['must_fix'] = (int) data_get($queueSnapshot, 'stats.must_fix', 0);
         $stats['should_fix'] = (int) data_get($queueSnapshot, 'stats.should_fix', 0);
 
-        $manualCsvBacklog = app(ManualCsvBacklogService::class);
-        $manualCsvPendingItems = collect($manualCsvBacklog->pendingItems());
-        $manualCsvPendingStats = $manualCsvBacklog->stats();
+        $manualCsvBacklog = app(ManualCsvBacklogService::class)->snapshot();
+        $manualCsvPendingItems = $manualCsvBacklog['items'];
+        $manualCsvPendingStats = $manualCsvBacklog['stats'];
         $stats['manual_csv_pending'] = $manualCsvPendingStats['pending_properties'];
 
         $subdomains = Subdomain::with('domain')

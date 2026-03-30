@@ -10,11 +10,11 @@ class ManualCsvBacklogQueue extends Component
     public function render(): \Illuminate\View\View
     {
         $service = app(ManualCsvBacklogService::class);
-        $pendingItems = collect($service->pendingItems());
+        $snapshot = $service->snapshot();
 
         return view('livewire.manual-csv-backlog-queue', [
-            'pendingItems' => $pendingItems,
-            'stats' => $service->stats(),
+            'pendingItems' => $snapshot['items'],
+            'stats' => $snapshot['stats'],
         ]);
     }
 }
