@@ -45,13 +45,14 @@ class ManualCsvBacklogQueueTest extends TestCase
         $this->attachInstallAudit($completeProperty, $completeSource);
         $this->attachCoverage($completeProperty, $completeSource, 'domain_property', now()->subDay()->toDateString());
         $this->attachBaseline($completeProperty, $completeSource, 'matomo_plus_manual_csv');
+        $completeProperty->primaryDomainModel()?->tags()->syncWithoutDetaching([$manualCsvTag->id]);
 
         $sharedComplete = $this->makeProperty('shared.example.au', 'Shared Complete');
         $this->attachRepository($sharedComplete);
         $sharedCompleteSource = $this->attachMatomo($sharedComplete, '703');
         $this->attachInstallAudit($sharedComplete, $sharedCompleteSource);
         $this->attachCoverage($sharedComplete, $sharedCompleteSource, 'domain_property', now()->subDay()->toDateString());
-        $this->attachBaseline($sharedComplete, $sharedCompleteSource, 'matomo_plus_manual_csv');
+        $this->attachBaseline($sharedComplete, $sharedCompleteSource, 'matomo_plus_manual_csv', now()->subMinute());
 
         $sharedPending = WebProperty::factory()->create([
             'slug' => 'shared-pending-site',
@@ -70,29 +71,56 @@ class ManualCsvBacklogQueueTest extends TestCase
         $sharedPendingSource = $this->attachMatomo($sharedPending, '704');
         $this->attachInstallAudit($sharedPending, $sharedPendingSource);
         $this->attachCoverage($sharedPending, $sharedPendingSource, 'domain_property', now()->subDay()->toDateString());
-        $this->attachBaseline($sharedPending, $sharedPendingSource, 'matomo_api');
+        $this->attachBaseline($sharedPending, $sharedPendingSource, 'matomo_api', now());
         $sharedPending->primaryDomainModel()?->tags()->syncWithoutDetaching([$manualCsvTag->id]);
+
+        $properties = collect([
+            $pendingProperty->fresh(),
+            $completeProperty->fresh(),
+            $sharedComplete->fresh(),
+            $sharedPending->fresh(),
+        ])
+            ->filter(fn (?WebProperty $property): bool => $property instanceof WebProperty)
+            ->values();
+
+        $expectedNames = $properties
+            ->filter(fn (WebProperty $property): bool => $property->automationCoverageSummary()['status'] === 'manual_csv_pending')
+            ->map(fn (WebProperty $property): string => $property->name)
+            ->sort()
+            ->values()
+            ->all();
+
+        $expectedPendingDomains = $properties
+            ->filter(fn (WebProperty $property): bool => $property->automationCoverageSummary()['status'] === 'manual_csv_pending')
+            ->map(fn (WebProperty $property): ?string => $property->primaryDomainName())
+            ->filter()
+            ->unique()
+            ->count();
 
         $response = $this->actingAs($user)->get('/manual-csv-backlog');
 
         $response->assertOk();
         $response->assertSee('Manual Search Console CSV Backlog');
-        $response->assertSee('CSV Pending Site');
-        $response->assertSee('Shared Pending');
-        $response->assertDontSee('Complete Site');
-        $response->assertDontSee('Shared Complete');
+
+        foreach ($expectedNames as $name) {
+            $response->assertSee($name);
+        }
+
+        foreach ($properties->map(fn (WebProperty $property): string => $property->name)->diff($expectedNames) as $name) {
+            $response->assertDontSee($name);
+        }
 
         Livewire::test(ManualCsvBacklogQueue::class)
-            ->assertViewHas('stats', function (array $stats): bool {
-                return $stats['pending_properties'] === 2
-                    && $stats['pending_domains'] === 2;
+            ->assertViewHas('stats', function (array $stats) use ($expectedNames, $expectedPendingDomains): bool {
+                return $stats['pending_properties'] === count($expectedNames)
+                    && $stats['pending_domains'] === $expectedPendingDomains;
             })
-            ->assertViewHas('pendingItems', function (Collection $items): bool {
+            ->assertViewHas('pendingItems', function (Collection $items) use ($expectedNames): bool {
                 $names = $items->map(fn (array $item): string => $item['property']->name)->all();
 
                 sort($names);
 
-                return $names === ['CSV Pending Site', 'Shared Pending'];
+                return $names === $expectedNames;
             });
     }
 
@@ -181,14 +209,14 @@ class ManualCsvBacklogQueueTest extends TestCase
         ]);
     }
 
-    private function attachBaseline(WebProperty $property, PropertyAnalyticsSource $source, string $importMethod): void
+    private function attachBaseline(WebProperty $property, PropertyAnalyticsSource $source, string $importMethod, ?\Illuminate\Support\Carbon $capturedAt = null): void
     {
         DomainSeoBaseline::create([
             'domain_id' => $property->primary_domain_id,
             'web_property_id' => $property->id,
             'property_analytics_source_id' => $source->id,
             'baseline_type' => 'search_console',
-            'captured_at' => now(),
+            'captured_at' => $capturedAt ?? now(),
             'source_provider' => 'search_console',
             'matomo_site_id' => $source->external_id,
             'search_console_property_uri' => 'sc-domain:'.$property->primaryDomainName(),

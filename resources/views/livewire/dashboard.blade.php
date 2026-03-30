@@ -1,4 +1,4 @@
-<div>
+<div wire:poll.120s.keep-alive>
     <!-- Stats Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <!-- Total Domains -->
@@ -129,6 +129,25 @@
                         <dl>
                             <dt class="text-sm font-medium leading-snug text-gray-500 dark:text-gray-400">Should Fix</dt>
                             <dd class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats['should_fix'] }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </a>
+
+        <!-- Manual CSV Backlog -->
+        <a href="{{ route('dashboard') }}#manual-csv-backlog" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+            <div class="p-6">
+                <div class="flex items-center">
+                    <div class="shrink-0 bg-yellow-600 rounded-md p-3">
+                        <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-5 min-w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium leading-snug text-gray-500 dark:text-gray-400">Manual CSV Backlog</dt>
+                            <dd class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats['manual_csv_pending'] }}</dd>
                         </dl>
                     </div>
                 </div>
@@ -270,6 +289,69 @@
                 @else
                     <div class="rounded-lg border border-green-200 dark:border-green-900/60 bg-green-50 dark:bg-green-950/20 p-4">
                         <p class="text-sm text-green-800 dark:text-green-200">No non-urgent domain issues are currently flagged.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    <!-- Manual CSV Backlog -->
+    <div id="manual-csv-backlog" class="mb-8">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
+            <div class="p-6">
+                <div class="flex items-center justify-between gap-4 mb-4">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Manual Search Console CSV Backlog</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Automation is done for these properties, but manual Search Console CSV evidence still needs to be uploaded.</p>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <div class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $manualCsvPendingStats['pending_properties'] }}</div>
+                        <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Pending Properties</div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between gap-4 mb-4">
+                    <div class="text-sm text-gray-500 dark:text-gray-400">
+                        {{ $manualCsvPendingStats['pending_domains'] }} domain{{ $manualCsvPendingStats['pending_domains'] === 1 ? '' : 's' }} currently need manual evidence.
+                    </div>
+                    <a href="{{ route('manual-csv-backlog.index') }}" wire:navigate class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                        Open full backlog
+                    </a>
+                </div>
+
+                @if($manualCsvPendingItems->isNotEmpty())
+                    <div class="space-y-3">
+                        @foreach($manualCsvPendingItems as $item)
+                            <div class="rounded-lg border border-yellow-200 dark:border-yellow-800 bg-yellow-50/60 dark:bg-yellow-900/10 text-yellow-800 dark:text-yellow-200 p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ $item['property']->name }}</div>
+                                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                            {{ $item['primary_domain'] ?? 'No primary domain' }}
+                                            @if($item['matomo_source'])
+                                                · Matomo {{ $item['matomo_source']->external_id }}
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <a href="{{ route('web-properties.show', $item['property']->slug) }}" wire:navigate class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                                        Open property
+                                    </a>
+                                </div>
+
+                                <div class="mt-2 text-sm">{{ $item['automation']['reason'] }}</div>
+
+                                @if($item['latest_baseline'])
+                                    <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                        Latest baseline {{ $item['latest_baseline']->captured_at->format('Y-m-d') }}
+                                        · {{ $item['latest_baseline']->importMethodLabel() }}
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="rounded-lg border border-green-200 dark:border-green-900/60 bg-green-50 dark:bg-green-950/20 p-4">
+                        <p class="text-sm text-green-800 dark:text-green-200">No properties are currently waiting on manual Search Console CSV evidence.</p>
                     </div>
                 @endif
             </div>
