@@ -54,7 +54,7 @@ class RefreshAutomationCoverageCommandTest extends TestCase
 
         Artisan::shouldReceive('call')
             ->once()
-            ->with('domains:refresh-should-fix')
+            ->with('domains:refresh-should-fix', [])
             ->andReturn(0);
 
         $command = app(RefreshAutomationCoverage::class);
@@ -105,6 +105,151 @@ class RefreshAutomationCoverageCommandTest extends TestCase
             '--skip-tags' => true,
             '--skip-should-fix' => true,
         ]), new BufferedOutput));
+    }
+
+    public function test_it_scopes_all_downstream_steps_when_a_domain_is_provided(): void
+    {
+        $needsBaseline = $this->makeProperty('scoped-default.example.au', 'Scoped Default');
+        $this->attachRepository($needsBaseline);
+        $needsBaselineSource = $this->attachMatomo($needsBaseline, '39');
+        $this->attachInstallAudit($needsBaseline, $needsBaselineSource);
+        $this->attachCoverage($needsBaseline, $needsBaselineSource, now()->subDay()->toDateString());
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('analytics:sync-search-console-coverage', ['--domain' => 'scoped-default.example.au'])
+            ->andReturn(0);
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('analytics:sync-search-console-baseline', ['--domain' => 'scoped-default.example.au'])
+            ->andReturn(0);
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('coverage:sync-tags', ['--domain' => 'scoped-default.example.au'])
+            ->andReturn(0);
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('domains:refresh-should-fix', ['--domain' => 'scoped-default.example.au'])
+            ->andReturn(0);
+
+        $command = app(RefreshAutomationCoverage::class);
+        $command->setOutput(new OutputStyle(new ArrayInput([]), new BufferedOutput));
+        $command->setLaravel($this->app);
+
+        $this->assertSame(0, $command->run(new ArrayInput([
+            '--domain' => 'scoped-default.example.au',
+        ]), new BufferedOutput));
+    }
+
+    public function test_it_fails_fast_when_coverage_refresh_fails(): void
+    {
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('analytics:sync-search-console-coverage', [])
+            ->andReturn(1);
+
+        Artisan::shouldReceive('call')
+            ->never()
+            ->with('analytics:sync-search-console-baseline', \Mockery::any());
+
+        Artisan::shouldReceive('call')
+            ->never()
+            ->with('coverage:sync-tags', \Mockery::any());
+
+        Artisan::shouldReceive('call')
+            ->never()
+            ->with('domains:refresh-should-fix', \Mockery::any());
+
+        $command = app(RefreshAutomationCoverage::class);
+        $command->setOutput(new OutputStyle(new ArrayInput([]), new BufferedOutput));
+        $command->setLaravel($this->app);
+
+        $this->assertSame(1, $command->run(new ArrayInput([]), new BufferedOutput));
+    }
+
+    public function test_it_returns_failure_when_any_baseline_sync_fails(): void
+    {
+        $needsBaseline = $this->makeProperty('baseline-fail.example.au', 'Baseline Failure');
+        $this->attachRepository($needsBaseline);
+        $needsBaselineSource = $this->attachMatomo($needsBaseline, '40');
+        $this->attachInstallAudit($needsBaseline, $needsBaselineSource);
+        $this->attachCoverage($needsBaseline, $needsBaselineSource, now()->subDay()->toDateString());
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('analytics:sync-search-console-coverage', [])
+            ->andReturn(0);
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('analytics:sync-search-console-baseline', ['--domain' => 'baseline-fail.example.au'])
+            ->andReturn(1);
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('coverage:sync-tags', [])
+            ->andReturn(0);
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('domains:refresh-should-fix', [])
+            ->andReturn(0);
+
+        $command = app(RefreshAutomationCoverage::class);
+        $command->setOutput(new OutputStyle(new ArrayInput([]), new BufferedOutput));
+        $command->setLaravel($this->app);
+
+        $this->assertSame(1, $command->run(new ArrayInput([]), new BufferedOutput));
+    }
+
+    public function test_it_fails_when_tag_sync_fails(): void
+    {
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('analytics:sync-search-console-coverage', [])
+            ->andReturn(0);
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('coverage:sync-tags', [])
+            ->andReturn(1);
+
+        Artisan::shouldReceive('call')
+            ->never()
+            ->with('domains:refresh-should-fix', \Mockery::any());
+
+        $command = app(RefreshAutomationCoverage::class);
+        $command->setOutput(new OutputStyle(new ArrayInput([]), new BufferedOutput));
+        $command->setLaravel($this->app);
+
+        $this->assertSame(1, $command->run(new ArrayInput([]), new BufferedOutput));
+    }
+
+    public function test_it_fails_when_should_fix_refresh_fails(): void
+    {
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('analytics:sync-search-console-coverage', [])
+            ->andReturn(0);
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('coverage:sync-tags', [])
+            ->andReturn(0);
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('domains:refresh-should-fix', [])
+            ->andReturn(1);
+
+        $command = app(RefreshAutomationCoverage::class);
+        $command->setOutput(new OutputStyle(new ArrayInput([]), new BufferedOutput));
+        $command->setLaravel($this->app);
+
+        $this->assertSame(1, $command->run(new ArrayInput([]), new BufferedOutput));
     }
 
     private function makeProperty(string $domainName, string $name): WebProperty

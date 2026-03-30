@@ -76,7 +76,10 @@ class RefreshAutomationCoverage extends Command
         if (! $this->option('skip-should-fix')) {
             $this->info('Refreshing should-fix queue...');
 
-            $queueExitCode = Artisan::call('domains:refresh-should-fix');
+            $queueExitCode = Artisan::call(
+                'domains:refresh-should-fix',
+                $domainFilter ? ['--domain' => $domainFilter] : []
+            );
 
             if ($queueExitCode !== 0) {
                 $this->error('Should-fix queue refresh failed.');
