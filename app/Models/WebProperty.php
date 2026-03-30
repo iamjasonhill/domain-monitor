@@ -573,25 +573,12 @@ class WebProperty extends Model
             ];
         }
 
-        $primaryDomain = $this->primaryDomainModel();
-        $latestBaseline = $primaryDomain && $primaryDomain->relationLoaded('latestSeoBaseline')
-            ? $primaryDomain->latestSeoBaseline
-            : $primaryDomain?->latestSeoBaseline()->first();
-
-        if (! $latestBaseline instanceof DomainSeoBaseline) {
-            return [
-                'status' => 'needs_baseline',
-                'label' => 'Needs baseline',
-                'reason' => 'Search Console is mapped but no SEO baseline has been imported yet',
-            ];
-        }
-
         return [
             'status' => 'covered',
             'label' => 'Covered',
             'reason' => sprintf(
                 'domain property is mapped and fresh for %s',
-                $coverage->property_uri ?? $primaryDomain->domain ?? $this->slug
+                $coverage->property_uri ?? $this->primaryDomainName() ?? $this->slug
             ),
         ];
     }
