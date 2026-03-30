@@ -351,10 +351,96 @@ class WebProperty extends Model
             'domains' => $this->domainSummaries(),
             'repositories' => $this->repositorySummaries(),
             'analytics_sources' => $this->analyticsSourceSummaries(),
+            'coverage_summary' => $this->fullCoverageSummary(),
+            'automation_summary' => $this->automationCoverageSummary(),
             'health_summary' => $this->healthSummary(),
             'deployment_summary' => $this->deploymentSummary(),
             'tags' => $this->tagSummaries(),
             'updated_at' => $this->updated_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * @return array{eligible: bool, reason: string|null}
+     */
+    public function coverageEligibility(): array
+    {
+        if ($this->status !== 'active') {
+            return ['eligible' => false, 'reason' => 'property is not active'];
+        }
+
+        if ($this->property_type === 'domain_asset') {
+            return ['eligible' => false, 'reason' => 'property is a domain asset'];
+        }
+
+        $domain = $this->primaryDomainModel();
+        if (! $domain instanceof Domain) {
+            return ['eligible' => false, 'reason' => 'no primary domain linked'];
+        }
+
+        $manualExclusionTagName = (string) config('domain_monitor.coverage_tags.manual_exclusion_tag.name', '');
+        if ($manualExclusionTagName !== '') {
+            $domainTags = $domain->relationLoaded('tags')
+                ? $domain->tags
+                : $domain->tags()->get();
+
+            if ($domainTags->contains(fn (DomainTag $tag): bool => $tag->name === $manualExclusionTagName)) {
+                return ['eligible' => false, 'reason' => 'primary domain is manually excluded from fleet coverage'];
+            }
+        }
+
+        if (! $domain->is_active) {
+            return ['eligible' => false, 'reason' => 'primary domain is inactive'];
+        }
+
+        if ($domain->isParkedForHosting()) {
+            return ['eligible' => false, 'reason' => 'primary domain is parked'];
+        }
+
+        if ($domain->isEmailOnly()) {
+            return ['eligible' => false, 'reason' => 'primary domain is email-only'];
+        }
+
+        return ['eligible' => true, 'reason' => null];
+    }
+
+    /**
+     * @return array{status: string, label: string, reason: string|null}
+     */
+    public function repositoryCoverageSummary(): array
+    {
+        $eligibility = $this->coverageEligibility();
+        if (! $eligibility['eligible']) {
+            return [
+                'status' => 'excluded',
+                'label' => 'Excluded',
+                'reason' => $eligibility['reason'],
+            ];
+        }
+
+        $repositories = $this->relationLoaded('repositories')
+            ? $this->repositories
+            : $this->repositories()->get();
+
+        $primaryRepository = $repositories
+            ->sortByDesc(fn (PropertyRepository $repository) => $repository->is_primary)
+            ->first();
+
+        if (! $primaryRepository instanceof PropertyRepository) {
+            return [
+                'status' => 'needs_repository',
+                'label' => 'Needs repository',
+                'reason' => 'eligible property has no linked repository/controller surface',
+            ];
+        }
+
+        return [
+            'status' => 'covered',
+            'label' => 'Covered',
+            'reason' => sprintf(
+                'primary repository %s is linked',
+                $primaryRepository->repo_name
+            ),
         ];
     }
 
@@ -375,32 +461,7 @@ class WebProperty extends Model
      */
     public function matomoEligibility(): array
     {
-        if ($this->status !== 'active') {
-            return ['eligible' => false, 'reason' => 'property is not active'];
-        }
-
-        if ($this->property_type === 'domain_asset') {
-            return ['eligible' => false, 'reason' => 'property is a domain asset'];
-        }
-
-        $domain = $this->primaryDomainModel();
-        if (! $domain instanceof Domain) {
-            return ['eligible' => false, 'reason' => 'no primary domain linked'];
-        }
-
-        if (! $domain->is_active) {
-            return ['eligible' => false, 'reason' => 'primary domain is inactive'];
-        }
-
-        if ($domain->isParkedForHosting()) {
-            return ['eligible' => false, 'reason' => 'primary domain is parked'];
-        }
-
-        if ($domain->isEmailOnly()) {
-            return ['eligible' => false, 'reason' => 'primary domain is email-only'];
-        }
-
-        return ['eligible' => true, 'reason' => null];
+        return $this->coverageEligibility();
     }
 
     /**
@@ -450,6 +511,375 @@ class WebProperty extends Model
             'status' => 'bound_attention',
             'label' => 'Needs attention',
             'reason' => $audit->summary,
+        ];
+    }
+
+    /**
+     * @return array{status: string, label: string, reason: string|null}
+     */
+    public function searchConsoleCoverageSummary(): array
+    {
+        $eligibility = $this->coverageEligibility();
+        if (! $eligibility['eligible']) {
+            return [
+                'status' => 'excluded',
+                'label' => 'Excluded',
+                'reason' => $eligibility['reason'],
+            ];
+        }
+
+        $matomoSource = $this->primaryAnalyticsSource('matomo');
+        if (! $matomoSource instanceof PropertyAnalyticsSource) {
+            return [
+                'status' => 'needs_matomo',
+                'label' => 'Needs Matomo',
+                'reason' => 'Search Console coverage depends on a primary Matomo binding',
+            ];
+        }
+
+        $coverage = $matomoSource->relationLoaded('latestSearchConsoleCoverage')
+            ? $matomoSource->latestSearchConsoleCoverage
+            : $matomoSource->latestSearchConsoleCoverage()->first();
+
+        if (! $coverage instanceof SearchConsoleCoverageStatus || $coverage->mapping_state === 'not_mapped') {
+            return [
+                'status' => 'needs_property',
+                'label' => 'Needs Search Console',
+                'reason' => 'Matomo is linked but no Search Console property is mapped yet',
+            ];
+        }
+
+        if ($coverage->freshnessState() === 'never_imported') {
+            return [
+                'status' => 'needs_import',
+                'label' => 'Needs import',
+                'reason' => 'Search Console property is mapped but no data has been imported yet',
+            ];
+        }
+
+        if ($coverage->freshnessState() === 'stale') {
+            return [
+                'status' => 'stale_import',
+                'label' => 'Import stale',
+                'reason' => 'Search Console coverage import is stale',
+            ];
+        }
+
+        if ($coverage->mapping_state === 'url_prefix') {
+            return [
+                'status' => 'url_prefix_only',
+                'label' => 'URL prefix only',
+                'reason' => 'Search Console is mapped as a URL prefix instead of a domain property',
+            ];
+        }
+
+        $primaryDomain = $this->primaryDomainModel();
+        $latestBaseline = $primaryDomain && $primaryDomain->relationLoaded('latestSeoBaseline')
+            ? $primaryDomain->latestSeoBaseline
+            : $primaryDomain?->latestSeoBaseline()->first();
+
+        if (! $latestBaseline instanceof DomainSeoBaseline) {
+            return [
+                'status' => 'needs_baseline',
+                'label' => 'Needs baseline',
+                'reason' => 'Search Console is mapped but no SEO baseline has been imported yet',
+            ];
+        }
+
+        return [
+            'status' => 'covered',
+            'label' => 'Covered',
+            'reason' => sprintf(
+                'domain property is mapped and fresh for %s',
+                $coverage->property_uri ?? $primaryDomain->domain ?? $this->slug
+            ),
+        ];
+    }
+
+    /**
+     * @return array{
+     *   required: bool,
+     *   status: string,
+     *   label: string,
+     *   reason: string|null,
+     *   reasons: array<int, string>,
+     *   checks: array<string, array{status: string, label: string, reason: string|null}>
+     * }
+     */
+    public function fullCoverageSummary(): array
+    {
+        $eligibility = $this->coverageEligibility();
+        $checks = [
+            'repository' => $this->repositoryCoverageSummary(),
+            'matomo' => $this->matomoCoverageSummary(),
+            'search_console' => $this->searchConsoleCoverageSummary(),
+        ];
+
+        if (! $eligibility['eligible']) {
+            return [
+                'required' => false,
+                'status' => 'excluded',
+                'label' => 'Excluded',
+                'reason' => $eligibility['reason'],
+                'reasons' => array_filter([$eligibility['reason']]),
+                'checks' => $checks,
+            ];
+        }
+
+        $gapReasons = collect($checks)
+            ->reject(fn (array $check): bool => $check['status'] === 'covered')
+            ->pluck('reason')
+            ->filter(fn ($reason): bool => is_string($reason) && $reason !== '')
+            ->values()
+            ->all();
+
+        if ($gapReasons === []) {
+            return [
+                'required' => true,
+                'status' => 'complete',
+                'label' => 'Complete',
+                'reason' => 'repository, Matomo, and Search Console coverage are all in place',
+                'reasons' => [],
+                'checks' => $checks,
+            ];
+        }
+
+        return [
+            'required' => true,
+            'status' => 'gap',
+            'label' => 'Gap',
+            'reason' => $gapReasons[0],
+            'reasons' => $gapReasons,
+            'checks' => $checks,
+        ];
+    }
+
+    /**
+     * @return array{status: string, label: string, reason: string|null}
+     */
+    public function baselineSyncSummary(): array
+    {
+        $eligibility = $this->coverageEligibility();
+        if (! $eligibility['eligible']) {
+            return [
+                'status' => 'excluded',
+                'label' => 'Excluded',
+                'reason' => $eligibility['reason'],
+            ];
+        }
+
+        $searchConsole = $this->searchConsoleCoverageSummary();
+        if ($searchConsole['status'] !== 'covered') {
+            return [
+                'status' => 'blocked',
+                'label' => 'Blocked',
+                'reason' => $searchConsole['reason'],
+            ];
+        }
+
+        $primaryDomain = $this->primaryDomainModel();
+        $latestBaseline = $primaryDomain && $primaryDomain->relationLoaded('latestSeoBaseline')
+            ? $primaryDomain->latestSeoBaseline
+            : $primaryDomain?->latestSeoBaseline()->first();
+
+        if (! $latestBaseline instanceof DomainSeoBaseline) {
+            return [
+                'status' => 'needs_sync',
+                'label' => 'Needs baseline sync',
+                'reason' => 'Search Console data is ready, but no Domain Monitor SEO baseline has been synced yet',
+            ];
+        }
+
+        if ($latestBaseline->captured_at->lt(now()->subDays(30))) {
+            return [
+                'status' => 'stale',
+                'label' => 'Baseline stale',
+                'reason' => 'The latest Domain Monitor SEO baseline is older than 30 days',
+            ];
+        }
+
+        return [
+            'status' => 'covered',
+            'label' => 'Covered',
+            'reason' => sprintf(
+                'latest SEO baseline captured %s',
+                $latestBaseline->captured_at->toDateString()
+            ),
+        ];
+    }
+
+    /**
+     * @return array{status: string, label: string, reason: string|null}
+     */
+    public function manualCsvCoverageSummary(): array
+    {
+        $eligibility = $this->coverageEligibility();
+        if (! $eligibility['eligible']) {
+            return [
+                'status' => 'excluded',
+                'label' => 'Excluded',
+                'reason' => $eligibility['reason'],
+            ];
+        }
+
+        $baseline = $this->baselineSyncSummary();
+        if ($baseline['status'] !== 'covered') {
+            return [
+                'status' => 'blocked',
+                'label' => 'Blocked',
+                'reason' => $baseline['reason'],
+            ];
+        }
+
+        $primaryDomain = $this->primaryDomainModel();
+        $latestBaseline = $primaryDomain && $primaryDomain->relationLoaded('latestSeoBaseline')
+            ? $primaryDomain->latestSeoBaseline
+            : $primaryDomain?->latestSeoBaseline()->first();
+
+        if (! $latestBaseline instanceof DomainSeoBaseline) {
+            return [
+                'status' => 'blocked',
+                'label' => 'Blocked',
+                'reason' => 'No SEO baseline is available yet',
+            ];
+        }
+
+        if ($latestBaseline->import_method === 'matomo_plus_manual_csv') {
+            return [
+                'status' => 'covered',
+                'label' => 'Covered',
+                'reason' => 'Manual Search Console CSV evidence has been imported',
+            ];
+        }
+
+        return [
+            'status' => 'pending',
+            'label' => 'Manual CSV pending',
+            'reason' => 'Automation is in place, but no manual Search Console CSV evidence has been uploaded yet',
+        ];
+    }
+
+    /**
+     * @return array{
+     *   required: bool,
+     *   status: string,
+     *   label: string,
+     *   reason: string|null,
+     *   reasons: array<int, string>,
+     *   checks: array<string, array{status: string, label: string, reason: string|null}>
+     * }
+     */
+    public function automationCoverageSummary(): array
+    {
+        $eligibility = $this->coverageEligibility();
+        $checks = [
+            'repository' => $this->repositoryCoverageSummary(),
+            'matomo' => $this->matomoCoverageSummary(),
+            'search_console' => $this->searchConsoleCoverageSummary(),
+            'baseline_sync' => $this->baselineSyncSummary(),
+            'manual_csv' => $this->manualCsvCoverageSummary(),
+        ];
+
+        if (! $eligibility['eligible']) {
+            return [
+                'required' => false,
+                'status' => 'excluded',
+                'label' => 'Excluded',
+                'reason' => $eligibility['reason'],
+                'reasons' => array_filter([$eligibility['reason']]),
+                'checks' => $checks,
+            ];
+        }
+
+        $repository = $checks['repository'];
+        if ($repository['status'] !== 'covered') {
+            return [
+                'required' => true,
+                'status' => 'needs_controller',
+                'label' => 'Needs controller',
+                'reason' => $repository['reason'],
+                'reasons' => array_filter([$repository['reason']]),
+                'checks' => $checks,
+            ];
+        }
+
+        $matomo = $checks['matomo'];
+        if ($matomo['status'] !== 'covered') {
+            return [
+                'required' => true,
+                'status' => 'needs_matomo_binding',
+                'label' => 'Needs Matomo',
+                'reason' => $matomo['reason'],
+                'reasons' => array_filter([$matomo['reason']]),
+                'checks' => $checks,
+            ];
+        }
+
+        $searchConsole = $checks['search_console'];
+        if (in_array($searchConsole['status'], ['needs_matomo', 'needs_property', 'url_prefix_only'], true)) {
+            return [
+                'required' => true,
+                'status' => 'needs_search_console_mapping',
+                'label' => 'Needs Search Console',
+                'reason' => $searchConsole['reason'],
+                'reasons' => array_filter([$searchConsole['reason']]),
+                'checks' => $checks,
+            ];
+        }
+
+        if ($searchConsole['status'] === 'needs_import') {
+            return [
+                'required' => true,
+                'status' => 'needs_onboarding',
+                'label' => 'Needs onboarding',
+                'reason' => $searchConsole['reason'],
+                'reasons' => array_filter([$searchConsole['reason']]),
+                'checks' => $checks,
+            ];
+        }
+
+        if ($searchConsole['status'] === 'stale_import') {
+            return [
+                'required' => true,
+                'status' => 'import_stale',
+                'label' => 'Import stale',
+                'reason' => $searchConsole['reason'],
+                'reasons' => array_filter([$searchConsole['reason']]),
+                'checks' => $checks,
+            ];
+        }
+
+        $baseline = $checks['baseline_sync'];
+        if (in_array($baseline['status'], ['needs_sync', 'stale'], true)) {
+            return [
+                'required' => true,
+                'status' => 'needs_baseline_sync',
+                'label' => 'Needs baseline sync',
+                'reason' => $baseline['reason'],
+                'reasons' => array_filter([$baseline['reason']]),
+                'checks' => $checks,
+            ];
+        }
+
+        $manualCsv = $checks['manual_csv'];
+        if ($manualCsv['status'] === 'pending') {
+            return [
+                'required' => true,
+                'status' => 'manual_csv_pending',
+                'label' => 'Manual CSV pending',
+                'reason' => $manualCsv['reason'],
+                'reasons' => array_filter([$manualCsv['reason']]),
+                'checks' => $checks,
+            ];
+        }
+
+        return [
+            'required' => true,
+            'status' => 'complete',
+            'label' => 'Complete',
+            'reason' => 'All automatic coverage checks are in place and only optional manual evidence remains complete',
+            'reasons' => [],
+            'checks' => $checks,
         ];
     }
 
