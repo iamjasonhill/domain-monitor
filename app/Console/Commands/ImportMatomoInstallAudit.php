@@ -118,6 +118,23 @@ class ImportMatomoInstallAudit extends Command
                 ])
             );
 
+            $existingAudit = AnalyticsInstallAudit::query()
+                ->where('property_analytics_source_id', $source->id)
+                ->first();
+
+            if (
+                ($audit['verdict'] ?? null) === 'fetch_failed'
+                && $existingAudit instanceof AnalyticsInstallAudit
+                && $existingAudit->install_verdict === 'installed_match'
+            ) {
+                $this->warn(sprintf(
+                    'Preserved the last successful Matomo install audit for site [%s] after a fetch failure.',
+                    $externalId
+                ));
+
+                continue;
+            }
+
             AnalyticsInstallAudit::query()->updateOrCreate(
                 ['property_analytics_source_id' => $source->id],
                 [

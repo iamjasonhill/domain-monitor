@@ -77,4 +77,83 @@ class ImportMatomoInstallAuditCommandTest extends TestCase
 
         @unlink($path);
     }
+
+    public function test_it_preserves_last_successful_audit_when_new_payload_only_reports_fetch_failed(): void
+    {
+        $property = WebProperty::factory()->create([
+            'slug' => 'steady-site',
+            'name' => 'Steady Site',
+        ]);
+
+        $source = PropertyAnalyticsSource::create([
+            'web_property_id' => $property->id,
+            'provider' => 'matomo',
+            'external_id' => '18',
+            'external_name' => 'Steady Site',
+            'is_primary' => true,
+            'status' => 'active',
+        ]);
+
+        AnalyticsInstallAudit::create([
+            'property_analytics_source_id' => $source->id,
+            'web_property_id' => $property->id,
+            'provider' => 'matomo',
+            'external_id' => '18',
+            'external_name' => 'Steady Site',
+            'expected_tracker_host' => 'stats.redirection.com.au',
+            'install_verdict' => 'installed_match',
+            'best_url' => 'https://steady.example.au/',
+            'detected_site_ids' => ['18'],
+            'detected_tracker_hosts' => ['stats.redirection.com.au'],
+            'summary' => 'Previous good audit.',
+            'checked_at' => now()->subDay(),
+            'raw_payload' => ['id_site' => '18', 'verdict' => 'installed_match'],
+        ]);
+
+        $path = $this->writeAuditPayload([
+            [
+                'id_site' => '18',
+                'site_name' => 'Steady Site',
+                'expected_tracker_host' => 'stats.redirection.com.au',
+                'verdict' => 'fetch_failed',
+                'best_url' => 'https://steady.example.au/',
+                'detected_site_ids' => [],
+                'detected_tracker_hosts' => [],
+                'summary' => 'Could not fetch any candidate URL to verify the Matomo install.',
+            ],
+        ]);
+
+        $this->assertSame(0, Artisan::call('analytics:import-matomo-audit', ['path' => $path]));
+
+        $audit = AnalyticsInstallAudit::query()->where('property_analytics_source_id', $source->id)->firstOrFail();
+        $this->assertSame('installed_match', $audit->install_verdict);
+        $this->assertSame('Previous good audit.', $audit->summary);
+
+        $observation = AnalyticsSourceObservation::query()
+            ->where('provider', 'matomo')
+            ->where('external_id', '18')
+            ->firstOrFail();
+
+        $this->assertSame('fetch_failed', $observation->install_verdict);
+
+        @unlink($path);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $audits
+     */
+    private function writeAuditPayload(array $audits): string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'matomo-audit-');
+
+        file_put_contents($path, json_encode([
+            'source_system' => 'matamo',
+            'contract_version' => 1,
+            'report_type' => 'install_verification',
+            'generated_at' => now()->toIso8601String(),
+            'install_audits' => $audits,
+        ], JSON_PRETTY_PRINT));
+
+        return $path;
+    }
 }
