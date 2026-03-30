@@ -40,6 +40,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return view('automation-coverage.index');
     })->name('automation-coverage.index');
 
+    Route::get('/manual-csv-backlog', function () {
+        return view('manual-csv-backlog.index');
+    })->name('manual-csv-backlog.index');
+
     Route::get('/search-console-coverage', function () {
         return view('search-console-coverage.index');
     })->name('search-console-coverage.index');

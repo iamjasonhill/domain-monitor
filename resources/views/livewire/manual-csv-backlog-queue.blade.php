@@ -1,0 +1,81 @@
+<div class="space-y-6">
+    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
+        <div class="p-6">
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Manual Search Console CSV Backlog</h3>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                These properties are fully automated up to the final Search Console CSV evidence step. Use this queue to clear the remaining manual backlog.
+            </p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        @foreach([
+            ['id' => 'pending_properties', 'label' => 'Pending Properties'],
+            ['id' => 'pending_domains', 'label' => 'Pending Domains'],
+        ] as $stat)
+            <div class="rounded-lg bg-white dark:bg-gray-800 shadow-xs p-4">
+                <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $stat['label'] }}</div>
+                <div class="mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats[$stat['id']] }}</div>
+            </div>
+        @endforeach
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
+        <div class="p-6">
+            <div class="flex items-center justify-between">
+                <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Pending Evidence</h4>
+                <span class="text-sm text-gray-500 dark:text-gray-400">{{ $pendingItems->count() }} properties</span>
+            </div>
+
+            <div class="mt-4 space-y-3">
+                @if($pendingItems->isEmpty())
+                    <p class="text-sm text-gray-500 dark:text-gray-400">No properties are waiting on manual Search Console CSV evidence right now.</p>
+                @else
+                    @foreach($pendingItems as $item)
+                        <div class="rounded-lg border border-yellow-200 dark:border-yellow-800 bg-yellow-50/60 dark:bg-yellow-900/10 text-yellow-800 dark:text-yellow-200 p-4">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ $item['property']->name }}</div>
+                                    <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                        {{ $item['primary_domain'] ?? 'No primary domain' }}
+                                        @if($item['matomo_source'])
+                                            · Matomo {{ $item['matomo_source']->external_id }}
+                                        @endif
+                                    </div>
+                                </div>
+                                <a href="{{ route('web-properties.show', $item['property']->slug) }}" wire:navigate class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                                    Open property
+                                </a>
+                            </div>
+
+                            <div class="mt-2 text-sm">{{ $item['automation']['reason'] }}</div>
+
+                            @if($item['repository'])
+                                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Controller: {{ $item['repository']->repo_name }}
+                                </div>
+                            @endif
+
+                            @if($item['search_console_coverage'])
+                                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    {{ $item['search_console_coverage']->mappingStateLabel() }}
+                                    @if($item['search_console_coverage']->property_uri)
+                                        · {{ $item['search_console_coverage']->property_uri }}
+                                    @endif
+                                    · {{ $item['search_console_coverage']->freshnessLabel() }}
+                                </div>
+                            @endif
+
+                            @if($item['latest_baseline'])
+                                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Latest baseline {{ $item['latest_baseline']->captured_at->format('Y-m-d') }}
+                                    · {{ $item['latest_baseline']->importMethodLabel() }}
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
