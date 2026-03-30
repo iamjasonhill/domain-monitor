@@ -115,6 +115,74 @@ class RefreshMatomoInstallAuditsCommandTest extends TestCase
         ]);
     }
 
+    public function test_it_fails_when_expected_tracker_host_is_not_configured(): void
+    {
+        config()->set('services.matomo.base_url', null);
+
+        $property = $this->makeProperty('missing-config.example.au', 'Missing Config');
+
+        PropertyAnalyticsSource::create([
+            'web_property_id' => $property->id,
+            'provider' => 'matomo',
+            'external_id' => '48',
+            'external_name' => 'Missing Config',
+            'is_primary' => true,
+            'status' => 'active',
+        ]);
+
+        $this->assertSame(1, Artisan::call('analytics:refresh-matomo-install-audits'));
+        $this->assertDatabaseCount('analytics_install_audits', 0);
+    }
+
+    public function test_it_detects_same_origin_script_assets_with_variable_tracker_urls(): void
+    {
+        config()->set('services.matomo.base_url', 'https://stats.redirection.com.au');
+
+        $property = $this->makeProperty('bundled.example.au', 'Bundled Site');
+
+        $source = PropertyAnalyticsSource::create([
+            'web_property_id' => $property->id,
+            'provider' => 'matomo',
+            'external_id' => '58',
+            'external_name' => 'Bundled Site',
+            'is_primary' => true,
+            'status' => 'active',
+        ]);
+
+        Http::fake([
+            'https://bundled.example.au/' => Http::response(
+                <<<'HTML'
+                <html>
+                    <head>
+                        <script src="/assets/app.js"></script>
+                    </head>
+                    <body>Bundled</body>
+                </html>
+                HTML,
+                200
+            ),
+            'https://bundled.example.au/assets/app.js' => Http::response(
+                <<<'JS'
+                const trackerBase = '//stats.redirection.com.au/';
+                var _paq = window._paq = window._paq || [];
+                _paq.push(['setSiteId', '58']);
+                _paq.push(['setTrackerUrl', trackerBase + 'matomo.php']);
+                JS,
+                200
+            ),
+        ]);
+
+        $this->assertSame(0, Artisan::call('analytics:refresh-matomo-install-audits'));
+
+        $audit = AnalyticsInstallAudit::query()
+            ->where('property_analytics_source_id', $source->id)
+            ->firstOrFail();
+
+        $this->assertSame('installed_match', $audit->install_verdict);
+        $this->assertSame(['58'], $audit->detected_site_ids);
+        $this->assertSame(['stats.redirection.com.au'], $audit->detected_tracker_hosts);
+    }
+
     private function makeProperty(string $domainName, string $name): WebProperty
     {
         $domain = Domain::factory()->create([
