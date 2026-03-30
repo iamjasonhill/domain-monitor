@@ -8,7 +8,8 @@ use Illuminate\Console\Command;
 
 class RefreshShouldFixQueue extends Command
 {
-    protected $signature = 'domains:refresh-should-fix';
+    protected $signature = 'domains:refresh-should-fix
+                            {--domain= : Optional domain to refresh only one domain in the should-fix queue}';
 
     protected $description = 'Refresh health checks for domains currently in the dashboard should-fix queue';
 
@@ -29,8 +30,14 @@ class RefreshShouldFixQueue extends Command
 
     public function handle(DashboardIssueQueueService $queueService): int
     {
+        $domainFilter = $this->normalizeDomain((string) $this->option('domain'));
+
         $domains = Domain::query()
             ->where('is_active', true)
+            ->when(
+                $domainFilter,
+                fn ($query) => $query->where('domain', $domainFilter)
+            )
             ->with([
                 'platform',
                 'webProperties:id,slug,name,property_type,status',
@@ -95,6 +102,13 @@ class RefreshShouldFixQueue extends Command
         $this->info("Refreshed {$checksRun} check(s) across {$domainsRefreshed} should-fix domain(s).");
 
         return self::SUCCESS;
+    }
+
+    private function normalizeDomain(string $value): ?string
+    {
+        $normalized = trim(mb_strtolower($value));
+
+        return $normalized !== '' ? $normalized : null;
     }
 
     /**
