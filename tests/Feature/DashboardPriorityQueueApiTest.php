@@ -23,6 +23,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'is_active' => true,
             'platform' => 'WordPress',
             'hosting_provider' => 'DreamIT Host',
+            'expires_at' => null,
         ]);
 
         $mustFixProperty = WebProperty::factory()->create([
@@ -66,6 +67,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'is_active' => true,
             'platform' => 'Astro',
             'hosting_provider' => 'Vercel',
+            'expires_at' => null,
         ]);
 
         $shouldFixProperty = WebProperty::factory()->create([
@@ -103,6 +105,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'is_active' => true,
             'platform' => 'WordPress',
             'hosting_provider' => 'Synergy Wholesale PTY',
+            'expires_at' => null,
         ]);
 
         $coverageGapProperty = WebProperty::factory()->create([
@@ -124,6 +127,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'domain' => 'parked.example.com',
             'is_active' => true,
             'dns_config_name' => 'Parked',
+            'expires_at' => null,
         ]);
 
         DomainCheck::factory()->create([
@@ -136,6 +140,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'domain' => 'mail-only.example.com',
             'is_active' => true,
             'platform' => 'Email Only',
+            'expires_at' => null,
         ]);
 
         DomainCheck::factory()->create([
