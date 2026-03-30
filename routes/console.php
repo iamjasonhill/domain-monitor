@@ -177,6 +177,12 @@ Schedule::command('domains:prune-monitoring-data')
     ->at('09:00')
     ->timezone('UTC');
 
+// Refresh fleet automation coverage after upstream analytics imports have had time to settle.
+Schedule::command('analytics:refresh-automation-coverage')
+    ->daily()
+    ->at('09:05')
+    ->timezone('UTC');
+
 // Prune failed queue jobs older than 14 days (336 hours)
 Schedule::command('queue:prune-failed --hours=336')
     ->daily()
