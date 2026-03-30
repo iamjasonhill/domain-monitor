@@ -6,83 +6,31 @@
             $repositories = $property->repositories;
             $analyticsSources = $property->analyticsSources;
             $tags = collect($property->tagSummaries());
-            $repositoryCoverage = $property->repositoryCoverageSummary();
-            $matomoCoverage = $property->matomoCoverageSummary();
-            $searchConsoleCoverage = $property->searchConsoleCoverageSummary();
             $automationCoverage = $property->automationCoverageSummary();
-            $latestPropertyBaseline = $property->relationLoaded('latestSeoBaseline')
-                ? $property->latestSeoBaseline
-                : $property->latestSeoBaseline()->first();
-            $baselineCoverage = match (true) {
-                $searchConsoleCoverage['status'] !== 'covered' => [
-                    'status' => 'blocked',
-                    'label' => 'Blocked',
-                    'reason' => $searchConsoleCoverage['reason'],
-                    'queue' => route('automation-coverage.index'),
-                ],
-                ! $latestPropertyBaseline instanceof \App\Models\DomainSeoBaseline => [
-                    'status' => 'needs_sync',
-                    'label' => 'Needs baseline sync',
-                    'reason' => 'Search Console data is ready, but no property baseline has been synced yet',
-                    'queue' => route('automation-coverage.index'),
-                ],
-                $latestPropertyBaseline->captured_at->lt(now()->subDays(30)) => [
-                    'status' => 'stale',
-                    'label' => 'Baseline stale',
-                    'reason' => 'The latest property baseline is older than 30 days',
-                    'queue' => route('automation-coverage.index'),
-                ],
-                default => [
-                    'status' => 'covered',
-                    'label' => 'Covered',
-                    'reason' => sprintf('Latest property baseline captured %s', $latestPropertyBaseline->captured_at->toDateString()),
-                    'queue' => route('automation-coverage.index'),
-                ],
-            };
-            $manualCsvCoverage = match (true) {
-                $baselineCoverage['status'] !== 'covered' => [
-                    'status' => 'blocked',
-                    'label' => 'Blocked',
-                    'reason' => $baselineCoverage['reason'],
-                    'queue' => route('manual-csv-backlog.index'),
-                ],
-                $latestPropertyBaseline instanceof \App\Models\DomainSeoBaseline && $latestPropertyBaseline->import_method === 'matomo_plus_manual_csv' => [
-                    'status' => 'covered',
-                    'label' => 'Covered',
-                    'reason' => 'Manual Search Console CSV evidence has been imported for this property',
-                    'queue' => route('manual-csv-backlog.index'),
-                ],
-                default => [
-                    'status' => 'pending',
-                    'label' => 'Manual CSV pending',
-                    'reason' => 'Automation is in place, but this property still needs manual Search Console CSV evidence',
-                    'queue' => route('manual-csv-backlog.index'),
-                ],
-            };
             $automationChecks = [
                 [
                     'title' => 'Controller',
-                    'summary' => $repositoryCoverage,
+                    'summary' => $automationCoverage['checks']['repository'],
                     'queue' => route('automation-coverage.index'),
                 ],
                 [
                     'title' => 'Matomo',
-                    'summary' => $matomoCoverage,
+                    'summary' => $automationCoverage['checks']['matomo'],
                     'queue' => route('matomo-coverage.index'),
                 ],
                 [
                     'title' => 'Search Console',
-                    'summary' => $searchConsoleCoverage,
+                    'summary' => $automationCoverage['checks']['search_console'],
                     'queue' => route('search-console-coverage.index'),
                 ],
                 [
                     'title' => 'Baseline Sync',
-                    'summary' => $baselineCoverage,
+                    'summary' => $automationCoverage['checks']['baseline_sync'],
                     'queue' => route('automation-coverage.index'),
                 ],
                 [
                     'title' => 'Manual CSV',
-                    'summary' => $manualCsvCoverage,
+                    'summary' => $automationCoverage['checks']['manual_csv'],
                     'queue' => route('manual-csv-backlog.index'),
                 ],
             ];

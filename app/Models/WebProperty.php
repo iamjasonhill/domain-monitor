@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -110,14 +109,6 @@ class WebProperty extends Model
     public function analyticsSources(): HasMany
     {
         return $this->hasMany(PropertyAnalyticsSource::class)->orderByDesc('is_primary');
-    }
-
-    /**
-     * @return HasOne<DomainSeoBaseline, $this>
-     */
-    public function latestSeoBaseline(): HasOne
-    {
-        return $this->hasOne(DomainSeoBaseline::class)->orderByDesc('captured_at')->orderByDesc('created_at');
     }
 
     /**

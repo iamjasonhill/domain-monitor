@@ -21,7 +21,6 @@ class WebPropertyDetail extends Component
         $this->property = WebProperty::query()
             ->with([
                 'primaryDomain',
-                'latestSeoBaseline',
                 'repositories',
                 'analyticsSources',
                 'analyticsSources.latestInstallAudit',
