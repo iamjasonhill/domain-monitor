@@ -57,10 +57,11 @@ class SyncCoverageTags extends Command
             ->map(fn (string $domain) => mb_strtolower(trim($domain)))
             ->values();
 
-        $tagDefinitionsArray = $tagDefinitions->all();
-        $tagIds = $this->ensureTags($tagDefinitionsArray, $dryRun);
-
         $properties = WebProperty::query()
+            ->when(
+                $targetDomains->isNotEmpty(),
+                fn ($query) => $query->whereHas('primaryDomain', fn ($domainQuery) => $domainQuery->whereIn('domain', $targetDomains->all()))
+            )
             ->with([
                 'primaryDomain.tags',
                 'primaryDomain.latestSeoBaseline',
@@ -69,17 +70,12 @@ class SyncCoverageTags extends Command
                 'analyticsSources.latestSearchConsoleCoverage',
                 'propertyDomains.domain',
             ])
+            ->orderBy('primary_domain_id')
             ->orderBy('name')
             ->get()
-            ->filter(function (WebProperty $property) use ($targetDomains): bool {
-                if ($targetDomains->isEmpty()) {
-                    return true;
-                }
-
-                $domainName = $property->primaryDomainName();
-
-                return is_string($domainName) && $targetDomains->contains(mb_strtolower($domainName));
-            })
+            ->groupBy(fn (WebProperty $property): string => (string) ($property->primary_domain_id ?? $property->id))
+            ->map(fn (Collection $group): ?WebProperty => $this->authoritativePropertyForPrimaryDomain($group))
+            ->filter()
             ->values();
 
         if ($properties->isEmpty()) {
@@ -88,6 +84,8 @@ class SyncCoverageTags extends Command
             return self::SUCCESS;
         }
 
+        $tagDefinitionsArray = $tagDefinitions->all();
+        $tagIds = $this->ensureTags($tagDefinitionsArray, $dryRun);
         $coverageTagNames = $managedTagDefinitions->pluck('name')->values();
 
         $rows = [];
@@ -268,6 +266,58 @@ class SyncCoverageTags extends Command
         ));
 
         return collect($filteredTagNames);
+    }
+
+    /**
+     * @param  Collection<int, WebProperty>  $properties
+     */
+    private function authoritativePropertyForPrimaryDomain(Collection $properties): ?WebProperty
+    {
+        $canonicalProperties = $properties->filter(
+            fn (WebProperty $property): bool => $this->isCanonicalForPrimaryDomain($property)
+        );
+
+        $candidates = $canonicalProperties->isNotEmpty() ? $canonicalProperties : $properties;
+
+        $controllerBackedCandidates = $candidates->filter(
+            fn (WebProperty $property): bool => $this->hasControllerPath($property)
+        );
+
+        if ($controllerBackedCandidates->isNotEmpty()) {
+            $candidates = $controllerBackedCandidates;
+        }
+
+        /** @var WebProperty|null $property */
+        $property = $candidates->sortBy('name')->first();
+
+        return $property;
+    }
+
+    private function isCanonicalForPrimaryDomain(WebProperty $property): bool
+    {
+        if (! $property->primary_domain_id) {
+            return false;
+        }
+
+        $links = $property->relationLoaded('propertyDomains')
+            ? $property->propertyDomains
+            : $property->propertyDomains()->get();
+
+        return $links->contains(
+            fn ($link): bool => (string) $link->domain_id === (string) $property->primary_domain_id
+                && (bool) $link->is_canonical
+        );
+    }
+
+    private function hasControllerPath(WebProperty $property): bool
+    {
+        $repositories = $property->relationLoaded('repositories')
+            ? $property->repositories
+            : $property->repositories()->get();
+
+        return $repositories->contains(
+            fn ($repository): bool => is_string($repository->local_path) && trim($repository->local_path) !== ''
+        );
     }
 
     /**

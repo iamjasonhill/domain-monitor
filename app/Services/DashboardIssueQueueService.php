@@ -57,7 +57,7 @@ class DashboardIssueQueueService
 
         return [
             'source_system' => 'domain-monitor-priority-queue',
-            'contract_version' => 1,
+            'contract_version' => 2,
             'generated_at' => now()->toIso8601String(),
             'recent_failures_hours' => $recentFailuresHours,
             'stats' => $stats,
@@ -82,16 +82,20 @@ class DashboardIssueQueueService
             }
 
             $property = $this->primaryProperty($domain);
-            [$mustFixReasons, $shouldFixReasons] = $this->issueReasonsForDomain($domain, $property);
+            $coverageStatus = $this->controlCoverageStatus($domain, $property);
+            [$mustFixReasons, $shouldFixReasons] = $this->issueReasonsForDomain(
+                $domain,
+                $this->controlCoverageReasonForStatus($coverageStatus)
+            );
 
             if ($mustFixReasons !== []) {
-                $mustFixDomains->push($this->makeQueueItem($domain, $property, $mustFixReasons, $shouldFixReasons));
+                $mustFixDomains->push($this->makeQueueItem($domain, $property, $coverageStatus, $mustFixReasons, $shouldFixReasons));
 
                 continue;
             }
 
             if ($shouldFixReasons !== []) {
-                $shouldFixDomains->push($this->makeQueueItem($domain, $property, $shouldFixReasons));
+                $shouldFixDomains->push($this->makeQueueItem($domain, $property, $coverageStatus, $shouldFixReasons));
             }
         }
 
@@ -108,7 +112,7 @@ class DashboardIssueQueueService
     /**
      * @return array{0: array<int, string>, 1: array<int, string>}
      */
-    private function issueReasonsForDomain(Domain $domain, ?WebProperty $property): array
+    private function issueReasonsForDomain(Domain $domain, ?string $coverageReason): array
     {
         $mustFix = [];
         $shouldFix = [];
@@ -148,8 +152,6 @@ class DashboardIssueQueueService
             $daysUntilExpiry = max(0, now()->startOfDay()->diffInDays($domain->expires_at->copy()->startOfDay(), false));
             $shouldFix[] = "Domain expires in {$daysUntilExpiry} days";
         }
-
-        $coverageReason = $this->controlCoverageReason($domain, $property);
 
         if ($coverageReason !== null) {
             $shouldFix[] = $coverageReason;
@@ -194,10 +196,13 @@ class DashboardIssueQueueService
      * @param  array<int, string>  $secondaryReasons
      * @return array<string, mixed>
      */
-    private function makeQueueItem(Domain $domain, ?WebProperty $property, array $primaryReasons, array $secondaryReasons = []): array
-    {
-        $coverageStatus = $this->controlCoverageStatus($domain, $property);
-
+    private function makeQueueItem(
+        Domain $domain,
+        ?WebProperty $property,
+        string $coverageStatus,
+        array $primaryReasons,
+        array $secondaryReasons = []
+    ): array {
         return $this->enrichQueueItem($domain, $property, [
             'id' => $domain->id,
             'domain' => $domain->domain,
@@ -280,9 +285,11 @@ class DashboardIssueQueueService
 
     private function primaryProperty(Domain $domain): ?WebProperty
     {
+        $canonicalProperties = $domain->webProperties
+            ->filter(fn (WebProperty $entry): bool => (bool) data_get($entry, 'pivot.is_canonical', false));
+
         /** @var WebProperty|null $property */
-        $property = $domain->webProperties
-            ->sortByDesc(fn (WebProperty $entry): int => (bool) data_get($entry, 'pivot.is_canonical', false) ? 1 : 0)
+        $property = ($canonicalProperties->isNotEmpty() ? $canonicalProperties : $domain->webProperties)
             ->sortBy('name')
             ->first();
 
@@ -382,9 +389,9 @@ class DashboardIssueQueueService
         return $hasControllerPath ? 'controlled' : 'missing_local_path';
     }
 
-    private function controlCoverageReason(Domain $domain, ?WebProperty $property): ?string
+    private function controlCoverageReasonForStatus(string $coverageStatus): ?string
     {
-        return match ($this->controlCoverageStatus($domain, $property)) {
+        return match ($coverageStatus) {
             'missing_property' => 'Public site is not linked to a web property',
             'missing_repository' => 'Fleet controller access is missing',
             'missing_local_path' => 'Fleet controller path is missing',

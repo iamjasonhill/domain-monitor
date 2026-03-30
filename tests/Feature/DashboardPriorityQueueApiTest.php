@@ -157,7 +157,7 @@ class DashboardPriorityQueueApiTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonPath('source_system', 'domain-monitor-priority-queue')
-            ->assertJsonPath('contract_version', 1)
+            ->assertJsonPath('contract_version', 2)
             ->assertJsonPath('stats.must_fix', 1)
             ->assertJsonPath('stats.should_fix', 3)
             ->assertJsonPath('derived.standard_gap_candidates', 1)
@@ -208,5 +208,76 @@ class DashboardPriorityQueueApiTest extends TestCase
         $this->assertSame(['Fleet controller access is missing'], $coverageGap['primary_reasons']);
         $this->assertSame('domain_only', $coverageGap['rollout_scope']);
         $this->assertFalse($coverageGap['is_standard_gap']);
+    }
+
+    public function test_priority_queue_prefers_canonical_property_for_domain_metadata(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'canonical-choice.example.com',
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'DreamIT Host',
+        ]);
+
+        $alphabeticalNonCanonical = WebProperty::factory()->create([
+            'slug' => 'alpha-site',
+            'name' => 'Alpha Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $alphabeticalNonCanonical->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => false,
+        ]);
+
+        $canonicalProperty = WebProperty::factory()->create([
+            'slug' => 'zeta-site',
+            'name' => 'Zeta Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $canonicalProperty->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $canonicalProperty->id,
+            'repo_name' => 'zeta-site',
+            'repo_provider' => 'local_only',
+            'local_path' => '/Users/jasonhill/Projects/websites/zeta-site',
+            'framework' => 'WordPress',
+            'is_primary' => true,
+        ]);
+
+        DomainCheck::factory()->create([
+            'domain_id' => $domain->id,
+            'check_type' => 'security_headers',
+            'status' => 'warn',
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/dashboard/priority-queue');
+
+        $response->assertOk()->assertJsonPath('contract_version', 2);
+
+        $shouldFix = collect($response->json('should_fix'))->firstWhere('domain', 'canonical-choice.example.com');
+
+        $this->assertIsArray($shouldFix);
+        $this->assertSame('zeta-site', $shouldFix['web_property_slug']);
+        $this->assertSame('Zeta Site', $shouldFix['web_property_name']);
+        $this->assertSame('controlled', $shouldFix['coverage_status']);
+        $this->assertFalse($shouldFix['coverage_gap']);
     }
 }
