@@ -8,7 +8,7 @@
         : null;
 @endphp
 
-<div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+<div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
     <div class="p-6">
         <div class="flex items-start justify-between gap-4 mb-4">
             <div>

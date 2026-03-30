@@ -1,5 +1,5 @@
 <!-- Filters -->
-<div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+<div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
     <div class="p-6">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="md:col-span-2">
@@ -28,7 +28,7 @@
             <div>
                 <label class="flex items-center">
                     <input type="checkbox" wire:model.live="filterExpiring"
-                        class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-sm focus:ring-blue-500">
+                        class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-xs focus:ring-blue-500">
                     <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Expiring Soon (30 days)</span>
                 </label>
             </div>
@@ -72,7 +72,7 @@
                     <div class="flex items-center">
                         <label class="flex items-center cursor-pointer">
                             <input type="checkbox" wire:model.live="dnsMissing"
-                                class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-sm focus:ring-blue-500">
+                                class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-xs focus:ring-blue-500">
                             <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">
                                 Missing Records
                             </span>
@@ -94,7 +94,7 @@
             <div>
                 <label class="flex items-center">
                     <input type="checkbox" wire:model.live="filterExcludeParked"
-                        class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-sm focus:ring-blue-500">
+                        class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-xs focus:ring-blue-500">
                     <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Exclude Parked Domains</span>
                 </label>
             </div>
@@ -102,7 +102,7 @@
             <div>
                 <label class="flex items-center">
                     <input type="checkbox" wire:model.live="filterRecentFailures"
-                        class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-sm focus:ring-blue-500">
+                        class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-xs focus:ring-blue-500">
                     <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Recent Failures
                         ({{ config('domain_monitor.recent_failures_hours', 24) }} hours)</span>
                 </label>
@@ -111,7 +111,7 @@
             <div>
                 <label class="flex items-center">
                     <input type="checkbox" wire:model.live="filterFailedEligibility"
-                        class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-sm focus:ring-blue-500">
+                        class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-xs focus:ring-blue-500">
                     <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Failed Eligibility Status</span>
                 </label>
             </div>

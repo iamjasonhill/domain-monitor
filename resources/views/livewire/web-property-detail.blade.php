@@ -17,7 +17,7 @@
             </a>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
             <div class="p-6">
                 <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
                     <div>
@@ -68,7 +68,7 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            <div class="lg:col-span-2 bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="lg:col-span-2 bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
                 <div class="p-6">
                     <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Property Summary</h4>
                     <dl class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -110,7 +110,7 @@
                 </div>
             </div>
 
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
                 <div class="p-6">
                     <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Tags</h4>
                     <div class="mt-4 flex flex-wrap gap-2">
@@ -129,7 +129,7 @@
             </div>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
             <div class="p-6">
                 <div class="flex items-center justify-between">
                     <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Linked Domains</h4>
@@ -219,7 +219,7 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
                 <div class="p-6">
                     <div class="flex items-center justify-between">
                         <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Repositories</h4>
@@ -251,7 +251,7 @@
                 </div>
             </div>
 
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
                 <div class="p-6">
                     <div class="flex items-center justify-between">
                         <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Analytics Sources</h4>

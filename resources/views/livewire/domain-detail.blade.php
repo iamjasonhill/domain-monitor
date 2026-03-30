@@ -18,7 +18,7 @@
             $activeAlerts = $domain->alerts()->whereNull('resolved_at')->orderByDesc('triggered_at')->get();
         @endphp
         @if($activeAlerts->isNotEmpty())
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
                 <div class="p-6">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Active Alerts</h3>
                     <div class="space-y-3">
@@ -77,7 +77,7 @@
             $complianceChecks = $domain->complianceChecks()->orderByDesc('checked_at')->limit(10)->get();
         @endphp
         @if($isAustralianTld && $complianceChecks->isNotEmpty())
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
                 <div class="p-6">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Compliance Check History</h3>
                     <div class="overflow-x-auto">
@@ -124,7 +124,7 @@
         @endif
 
         <!-- Health Check Actions -->
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
             <div class="p-6">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Run Health Checks</h3>
                 @if($isParked)
@@ -154,7 +154,7 @@
         </div>
 
         <!-- Recent Health Checks -->
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
             <div class="p-6">
                 <div class="flex justify-between items-center mb-4">
                     <div class="flex items-center gap-2 cursor-pointer" wire:click="$toggle('showHealthChecks')">
@@ -217,7 +217,7 @@
         </div>
 
         <!-- Subdomains -->
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
             <div class="p-6">
                 <div class="flex justify-between items-center mb-4">
                     <div class="flex items-center gap-2 cursor-pointer" wire:click="$toggle('showSubdomains')">
@@ -368,7 +368,7 @@
             $latestUptimeCheck = $domain->checks()->where('check_type', 'uptime')->latest()->first();
             $uptimePayload = $latestUptimeCheck?->payload ?? [];
         @endphp
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
             <div class="p-6">
                  <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -455,7 +455,7 @@
             $protocol = $latestSslCheck->protocol ?? ($sslPayload['protocol'] ?? null);
             $cipher = $latestSslCheck->cipher ?? ($sslPayload['cipher'] ?? null);
         @endphp
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
             <div class="p-6">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -549,7 +549,7 @@
                     </div>
 
         <!-- DNS Records -->
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
             <div class="p-6">
                 <div class="flex justify-between items-center mb-4">
                     <div class="flex items-center gap-2 cursor-pointer" wire:click="$toggle('showDnsRecords')">
@@ -670,7 +670,7 @@
 
         @include('livewire.domain-detail.sections.analysis-panels')
     @else
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
             <div class="p-6 text-center">
                 <p class="text-gray-500 dark:text-gray-400">Domain not found.</p>
                 <a href="{{ route('domains.index') }}" wire:navigate class="mt-4 inline-block text-blue-600 dark:text-blue-400 hover:underline">

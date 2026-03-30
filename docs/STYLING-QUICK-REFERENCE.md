@@ -11,7 +11,7 @@ composer require livewire/livewire livewire/volt
 php artisan breeze:install livewire
 
 # NPM dependencies
-npm install -D tailwindcss@^3.1.0 @tailwindcss/forms@^0.5.2 @tailwindcss/vite@^4.0.0 autoprefixer@^10.4.2 postcss@^8.4.31 vite@^7.0.7 laravel-vite-plugin@^2.0.0
+npm install -D tailwindcss@^4.1.18 @tailwindcss/forms@^0.5.11 @tailwindcss/vite@^4.1.18 vite@^7.3.1 laravel-vite-plugin@^2.1.0
 
 # Build assets
 npm run build
@@ -20,9 +20,8 @@ npm run build
 ## Key Files to Copy
 
 1. `tailwind.config.js` - Tailwind configuration with Figtree font
-2. `postcss.config.js` - PostCSS configuration
-3. `vite.config.js` - Vite configuration
-4. `resources/css/app.css` - Tailwind directives
+2. `vite.config.js` - Vite configuration with `@tailwindcss/vite`
+3. `resources/css/app.css` - Tailwind import, config bridge, and compatibility base styles
 5. `resources/views/layouts/app.blade.php` - Main layout
 6. `resources/views/livewire/layout/navigation.blade.php` - Navigation
 7. `resources/views/components/*` - All Blade components
@@ -44,7 +43,7 @@ npm run build
 
 ### Card Container
 ```blade
-<div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+<div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
     <div class="p-6">
         {{ $slot }}
     </div>
@@ -53,7 +52,7 @@ npm run build
 
 ### Primary Button
 ```blade
-<button class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150">
+<button class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150">
     Button Text
 </button>
 ```
@@ -105,7 +104,7 @@ npm run build
 ## Tech Stack
 
 - **Laravel Breeze** (Livewire stack)
-- **Tailwind CSS v3**
+- **Tailwind CSS v4**
 - **Livewire v3**
 - **Alpine.js** (included with Livewire)
 - **Vite** for asset bundling
@@ -117,4 +116,3 @@ npm run build
 npm run dev    # Development with HMR
 npm run build  # Production build
 ```
-

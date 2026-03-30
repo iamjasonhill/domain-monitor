@@ -11,7 +11,7 @@
         </div>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
         <div class="p-6">
             @if(count($tasks) > 0)
                 <div class="overflow-x-auto">

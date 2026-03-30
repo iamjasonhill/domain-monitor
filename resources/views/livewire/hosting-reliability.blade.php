@@ -31,29 +31,29 @@
 
         @if(!$selectedHost)
             <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xs border border-gray-100 dark:border-gray-700">
                     <div class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Live Hosts</div>
                     <div class="text-3xl font-black text-gray-900 dark:text-gray-100">{{ $this->hostStats->count() }}</div>
                 </div>
-                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xs border border-gray-100 dark:border-gray-700">
                     <div class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Parked Domains</div>
                     <div class="text-3xl font-black text-gray-900 dark:text-gray-100">{{ $this->reviewStats['parked'] }}</div>
                 </div>
-                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xs border border-gray-100 dark:border-gray-700">
                     <div class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Missing Provider</div>
                     <div class="text-3xl font-black text-amber-600 dark:text-amber-400">{{ $this->reviewStats['missing'] }}</div>
                 </div>
-                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xs border border-gray-100 dark:border-gray-700">
                     <div class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Pending Review</div>
                     <div class="text-3xl font-black text-amber-600 dark:text-amber-400">{{ $this->reviewStats['pending'] }}</div>
                 </div>
-                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xs border border-gray-100 dark:border-gray-700">
                     <div class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Reviewed</div>
                     <div class="text-3xl font-black text-emerald-600 dark:text-emerald-400">{{ $this->reviewStats['reviewed'] }}</div>
                 </div>
             </div>
 
-            <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 mb-8">
+            <div class="bg-white dark:bg-gray-800 shadow-xs sm:rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 mb-8">
                 <div class="p-6 border-b border-gray-100 dark:border-gray-700">
                     <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
@@ -204,7 +204,7 @@
                 </div>
             </div>
 
-            <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 mb-8">
+            <div class="bg-white dark:bg-gray-800 shadow-xs sm:rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 mb-8">
                 <div class="p-6 border-b border-gray-100 dark:border-gray-700">
                     <h3 class="text-xl font-black text-gray-900 dark:text-gray-100">Parking / Non-live Providers</h3>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -257,7 +257,7 @@
                 </table>
             </div>
 
-            <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700">
+            <div class="bg-white dark:bg-gray-800 shadow-xs sm:rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700">
                 <div class="p-6 border-b border-gray-100 dark:border-gray-700">
                     <h3 class="text-xl font-black text-gray-900 dark:text-gray-100">Live Hosting Providers</h3>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -327,7 +327,7 @@
             </div>
         @else
             <div class="space-y-6">
-                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xs border border-gray-100 dark:border-gray-700 flex justify-between items-center">
                     <div>
                         <h3 class="text-xl font-black text-gray-900 dark:text-gray-100">{{ $selectedHost }} Breakdown</h3>
                     </div>
@@ -335,7 +335,7 @@
 
                 <div class="grid grid-cols-1 gap-6">
                     @foreach($this->selectedHostDetails as $domain)
-                        <div class="bg-white dark:bg-gray-800 shadow-sm rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700">
+                        <div class="bg-white dark:bg-gray-800 shadow-xs rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700">
                             <div class="p-4 bg-gray-50 dark:bg-gray-900/50 flex justify-between items-center border-b border-gray-100 dark:border-gray-700">
                                 <a href="{{ route('domains.show', $domain['domain_id']) }}" wire:navigate class="text-sm font-black text-gray-900 dark:text-gray-100 hover:text-blue-600 flex items-center gap-2">
                                     {{ $domain['domain'] }}

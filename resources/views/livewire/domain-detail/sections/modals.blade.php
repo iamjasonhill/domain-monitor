@@ -36,7 +36,7 @@
 
                     <div>
                         <x-input-label for="dns_record_type" value="Type" />
-                        <select wire:model="dnsRecordType" id="dns_record_type" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm">
+                        <select wire:model="dnsRecordType" id="dns_record_type" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-xs">
                             <option value="A">A (IPv4 Address)</option>
                             <option value="AAAA">AAAA (IPv6 Address)</option>
                             <option value="CNAME">CNAME (Canonical Name)</option>
@@ -123,7 +123,7 @@
 
                     <div>
                         <x-input-label for="subdomain_notes" value="Notes (optional)" />
-                        <textarea wire:model="subdomainNotes" id="subdomain_notes" rows="3" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm" placeholder="Optional notes about this subdomain..."></textarea>
+                        <textarea wire:model="subdomainNotes" id="subdomain_notes" rows="3" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-xs" placeholder="Optional notes about this subdomain..."></textarea>
                         <x-input-error :messages="$errors->get('subdomainNotes')" class="mt-2" />
                     </div>
                 </div>

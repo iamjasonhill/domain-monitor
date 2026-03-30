@@ -6,7 +6,7 @@ This document provides detailed instructions on how to duplicate the styling sys
 
 The Domain Monitor project uses:
 - **Laravel Breeze** (with Livewire stack) for authentication and base UI
-- **Tailwind CSS v3** for utility-first styling
+- **Tailwind CSS v4** for utility-first styling
 - **Livewire v3** for interactive components
 - **Alpine.js** (included with Livewire) for lightweight JavaScript interactions
 - **Vite** for asset bundling
@@ -45,7 +45,7 @@ npm install
 Or manually install:
 
 ```bash
-npm install -D tailwindcss@^3.1.0 @tailwindcss/forms@^0.5.2 @tailwindcss/vite@^4.0.0 autoprefixer@^10.4.2 postcss@^8.4.31 vite@^7.0.7 laravel-vite-plugin@^2.0.0
+npm install -D tailwindcss@^4.1.18 @tailwindcss/forms@^0.5.11 @tailwindcss/vite@^4.1.18 vite@^7.3.1 laravel-vite-plugin@^2.1.0
 ```
 
 ---
@@ -83,25 +83,16 @@ export default {
 - Custom font: **Figtree** (from Bunny Fonts)
 - Content paths include all Blade templates
 
-### 2. `postcss.config.js`
-
-```javascript
-export default {
-    plugins: {
-        tailwindcss: {},
-        autoprefixer: {},
-    },
-};
-```
-
-### 3. `vite.config.js`
+### 2. `vite.config.js`
 
 ```javascript
 import { defineConfig } from 'vite';
+import tailwindcss from '@tailwindcss/vite';
 import laravel from 'laravel-vite-plugin';
 
 export default defineConfig({
     plugins: [
+        tailwindcss(),
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.js'],
             refresh: true,
@@ -110,15 +101,15 @@ export default defineConfig({
 });
 ```
 
-### 4. `resources/css/app.css`
+### 3. `resources/css/app.css`
 
 ```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@config "../../tailwind.config.js";
 ```
 
-**Note:** This is the minimal setup. All styling is done via Tailwind utility classes.
+**Note:** Tailwind 4 uses `@import "tailwindcss"` instead of the old `@tailwind` directives, and the legacy JS config is loaded with `@config`.
 
 ### 5. `resources/js/app.js`
 
@@ -208,7 +199,7 @@ Key features:
 
 #### 1. **Card/Container**
 ```blade
-<div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+<div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
     <div class="p-6">
         <!-- Content -->
     </div>
@@ -217,10 +208,10 @@ Key features:
 
 #### 2. **Stats Cards**
 ```blade
-<div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow">
+<div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg hover:shadow-md transition-shadow">
     <div class="p-6">
         <div class="flex items-center">
-            <div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
+            <div class="shrink-0 bg-blue-500 rounded-md p-3">
                 <!-- Icon -->
             </div>
             <div class="ml-5 w-0 flex-1">
@@ -236,7 +227,7 @@ Key features:
 
 #### 3. **Primary Button**
 ```blade
-<button class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150">
+<button class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150">
     Button Text
 </button>
 ```
@@ -318,8 +309,8 @@ The navigation uses Livewire Volt component with Alpine.js for mobile menu.
 
 @php
 $classes = ($active ?? false)
-            ? 'inline-flex items-center px-1 pt-1 border-b-2 border-indigo-400 dark:border-indigo-600 text-sm font-medium leading-5 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-indigo-700 transition duration-150 ease-in-out'
-            : 'inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-700 focus:outline-none focus:text-gray-700 dark:focus:text-gray-300 focus:border-gray-300 dark:focus:border-gray-700 transition duration-150 ease-in-out';
+            ? 'inline-flex items-center px-1 pt-1 border-b-2 border-indigo-400 dark:border-indigo-600 text-sm font-medium leading-5 text-gray-900 dark:text-gray-100 focus:outline-hidden focus:border-indigo-700 transition duration-150 ease-in-out'
+            : 'inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-700 focus:outline-hidden focus:text-gray-700 dark:focus:text-gray-300 focus:border-gray-300 dark:focus:border-gray-700 transition duration-150 ease-in-out';
 @endphp
 
 <a {{ $attributes->merge(['class' => $classes]) }}>
@@ -485,7 +476,7 @@ Runs server, queue, logs, and Vite concurrently.
 - `tracking-widest` - Letter spacing
 
 ### Effects
-- `shadow-sm` / `shadow-md` / `shadow-lg` - Box shadow
+- `shadow-xs` / `shadow-md` / `shadow-lg` - Box shadow
 - `rounded-md` / `rounded-lg` - Border radius
 - `transition` - CSS transitions
 - `hover:`, `focus:`, `active:` - State variants
@@ -497,7 +488,7 @@ Runs server, queue, logs, and Vite concurrently.
 - [ ] Install Laravel Breeze with Livewire stack
 - [ ] Install NPM dependencies
 - [ ] Copy `tailwind.config.js` configuration
-- [ ] Copy `postcss.config.js` configuration
+- [ ] Copy `vite.config.js` with the `@tailwindcss/vite` plugin enabled
 - [ ] Copy `vite.config.js` configuration
 - [ ] Set up `resources/css/app.css` with Tailwind directives
 - [ ] Set up `resources/js/app.js` and `bootstrap.js`
@@ -528,4 +519,3 @@ Runs server, queue, logs, and Vite concurrently.
 - The `@tailwindcss/forms` plugin styles all form inputs automatically
 - Alpine.js is included with Livewire for lightweight JavaScript interactions
 - Vite provides hot module replacement during development
-

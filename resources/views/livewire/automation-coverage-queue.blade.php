@@ -1,5 +1,5 @@
 <div class="space-y-6">
-    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
         <div class="p-6">
             <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Automation Coverage</h3>
             <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
@@ -20,7 +20,7 @@
             ['id' => 'manual_csv_pending', 'label' => 'CSV Pending'],
             ['id' => 'complete', 'label' => 'Complete'],
         ] as $stat)
-            <div class="rounded-lg bg-white dark:bg-gray-800 shadow-sm p-4">
+            <div class="rounded-lg bg-white dark:bg-gray-800 shadow-xs p-4">
                 <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $stat['label'] }}</div>
                 <div class="mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats[$stat['id']] }}</div>
             </div>
@@ -42,7 +42,7 @@
     @endphp
 
     @foreach($sections as $section)
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
             <div class="p-6">
                 <div class="flex items-center justify-between">
                     <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ $section['title'] }}</h4>

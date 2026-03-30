@@ -61,7 +61,7 @@
     ];
 @endphp
 
-<div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+<div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
     <div class="p-6">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Email Security</h3>
@@ -89,7 +89,7 @@
                         <h4 class="font-semibold flex items-center {{ $spfMeta['heading'] }}">
                             SPF
                             <div x-data="{ open: false }" class="relative ml-1.5 inline-flex items-center">
-                                <button @mouseenter="open = true" @mouseleave="open = false" @click="open = !open" type="button" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 focus:outline-none">
+                                <button @mouseenter="open = true" @mouseleave="open = false" @click="open = !open" type="button" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 focus:outline-hidden">
                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
                                 </button>
                                 <div x-show="open" x-transition class="absolute z-50 w-56 p-2 mt-2 text-xs font-normal text-white bg-gray-900 rounded-lg shadow-xl -left-1 sm:left-auto sm:right-0 top-full" x-cloak>
@@ -152,7 +152,7 @@
                         <h4 class="font-semibold flex items-center {{ $dmarcMeta['heading'] }}">
                             DMARC
                             <div x-data="{ open: false }" class="relative ml-1.5 inline-flex items-center">
-                                <button @mouseenter="open = true" @mouseleave="open = false" @click="open = !open" type="button" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 focus:outline-none">
+                                <button @mouseenter="open = true" @mouseleave="open = false" @click="open = !open" type="button" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 focus:outline-hidden">
                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
                                 </button>
                                 <div x-show="open" x-transition class="absolute z-50 w-56 p-2 mt-2 text-xs font-normal text-white bg-gray-900 rounded-lg shadow-xl -left-1 sm:left-auto sm:right-0 top-full" x-cloak>
@@ -215,7 +215,7 @@
                         <h4 class="font-semibold flex items-center {{ $dkimMeta['heading'] }}">
                             DKIM
                             <div x-data="{ open: false }" class="relative ml-1.5 inline-flex items-center">
-                                <button @mouseenter="open = true" @mouseleave="open = false" @click="open = !open" type="button" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 focus:outline-none">
+                                <button @mouseenter="open = true" @mouseleave="open = false" @click="open = !open" type="button" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 focus:outline-hidden">
                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
                                 </button>
                                 <div x-show="open" x-transition class="absolute z-50 w-56 p-2 mt-2 text-xs font-normal text-white bg-gray-900 rounded-lg shadow-xl -left-1 sm:left-auto sm:right-0 top-full" x-cloak>
@@ -272,7 +272,7 @@
                                     id="dkim_selectors"
                                     wire:model="dkimSelectorsInput"
                                     placeholder="e.g. key1, selector1"
-                                    class="block w-full text-xs rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    class="block w-full text-xs rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-xs focus:border-indigo-500 focus:ring-indigo-500"
                                 >
                                 <button
                                     wire:click="saveDkimSelectors"
@@ -295,7 +295,7 @@
                         <h4 class="font-semibold flex items-center {{ $dnssecMeta['heading'] }}">
                             DNSSEC
                             <div x-data="{ open: false }" class="relative ml-1.5 inline-flex items-center">
-                                <button @mouseenter="open = true" @mouseleave="open = false" @click="open = !open" type="button" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 focus:outline-none">
+                                <button @mouseenter="open = true" @mouseleave="open = false" @click="open = !open" type="button" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 focus:outline-hidden">
                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
                                 </button>
                                 <div x-show="open" x-transition class="absolute z-50 w-56 p-2 mt-2 text-xs font-normal text-white bg-gray-900 rounded-lg shadow-xl -left-1 sm:left-auto sm:right-0 top-full" x-cloak>
@@ -337,7 +337,7 @@
                         <h4 class="font-semibold flex items-center {{ $caaMeta['heading'] }}">
                             CAA
                             <div x-data="{ open: false }" class="relative ml-1.5 inline-flex items-center">
-                                <button @mouseenter="open = true" @mouseleave="open = false" @click="open = !open" type="button" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 focus:outline-none">
+                                <button @mouseenter="open = true" @mouseleave="open = false" @click="open = !open" type="button" class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 focus:outline-hidden">
                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
                                 </button>
                                 <div x-show="open" x-transition class="absolute z-50 w-56 p-2 mt-2 text-xs font-normal text-white bg-gray-900 rounded-lg shadow-xl -left-1 sm:left-auto sm:right-0 top-full" x-cloak>

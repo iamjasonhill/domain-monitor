@@ -1,24 +1,24 @@
 <div>
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
             <div class="p-5">
                 <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Properties</dt>
                 <dd class="mt-2 text-3xl font-semibold text-gray-900 dark:text-gray-100">{{ $this->stats['total'] }}</dd>
             </div>
         </div>
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
             <div class="p-5">
                 <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Multi-Domain</dt>
                 <dd class="mt-2 text-3xl font-semibold text-gray-900 dark:text-gray-100">{{ $this->stats['multi_domain'] }}</dd>
             </div>
         </div>
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
             <div class="p-5">
                 <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Missing Repo</dt>
                 <dd class="mt-2 text-3xl font-semibold text-amber-600 dark:text-amber-400">{{ $this->stats['missing_repositories'] }}</dd>
             </div>
         </div>
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
             <div class="p-5">
                 <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Missing Analytics</dt>
                 <dd class="mt-2 text-3xl font-semibold text-amber-600 dark:text-amber-400">{{ $this->stats['missing_analytics'] }}</dd>
@@ -26,7 +26,7 @@
         </div>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
         <div class="p-6">
             <div class="flex flex-col lg:flex-row lg:items-end gap-4">
                 <div class="flex-1">
@@ -66,22 +66,22 @@
             <div class="mt-4 flex flex-wrap gap-4">
                 <label class="flex items-center">
                     <input type="checkbox" wire:model.live="reviewQueue"
-                        class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-sm focus:ring-blue-500">
+                        class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-xs focus:ring-blue-500">
                     <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Review Queue</span>
                 </label>
                 <label class="flex items-center">
                     <input type="checkbox" wire:model.live="multiDomainOnly"
-                        class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-sm focus:ring-blue-500">
+                        class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-xs focus:ring-blue-500">
                     <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Multi-Domain Only</span>
                 </label>
                 <label class="flex items-center">
                     <input type="checkbox" wire:model.live="missingRepoOnly"
-                        class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-sm focus:ring-blue-500">
+                        class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-xs focus:ring-blue-500">
                     <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Missing Repo Link</span>
                 </label>
                 <label class="flex items-center">
                     <input type="checkbox" wire:model.live="missingAnalyticsOnly"
-                        class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-sm focus:ring-blue-500">
+                        class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-xs focus:ring-blue-500">
                     <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Missing Analytics Link</span>
                 </label>
             </div>
@@ -95,7 +95,7 @@
         </div>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
         <div class="overflow-x-auto">
             @if($properties->count() > 0)
                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-700/20">

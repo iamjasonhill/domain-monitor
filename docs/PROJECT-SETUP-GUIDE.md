@@ -52,15 +52,13 @@ Add to `package.json`:
 ```json
 {
   "devDependencies": {
-    "@tailwindcss/forms": "^0.5.2",
-    "@tailwindcss/vite": "^4.0.0",
-    "autoprefixer": "^10.4.2",
+    "@tailwindcss/forms": "^0.5.11",
+    "@tailwindcss/vite": "^4.1.18",
     "axios": "^1.11.0",
     "concurrently": "^9.0.1",
-    "laravel-vite-plugin": "^2.0.0",
-    "postcss": "^8.4.31",
-    "tailwindcss": "^3.1.0",
-    "vite": "^7.0.7"
+    "laravel-vite-plugin": "^2.1.0",
+    "tailwindcss": "^4.1.18",
+    "vite": "^7.3.1"
   }
 }
 ```
@@ -214,29 +212,18 @@ export default {
 };
 ```
 
-### 5. PostCSS Configuration
-
-**File**: `postcss.config.js`
-
-```javascript
-export default {
-    plugins: {
-        tailwindcss: {},
-        autoprefixer: {},
-    },
-};
-```
-
-### 6. Vite Configuration
+### 5. Vite Configuration
 
 **File**: `vite.config.js`
 
 ```javascript
 import { defineConfig } from 'vite';
+import tailwindcss from '@tailwindcss/vite';
 import laravel from 'laravel-vite-plugin';
 
 export default defineConfig({
     plugins: [
+        tailwindcss(),
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.js'],
             refresh: true,
@@ -245,17 +232,17 @@ export default defineConfig({
 });
 ```
 
-### 7. CSS Entry Point
+### 6. CSS Entry Point
 
 **File**: `resources/css/app.css`
 
 ```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@config "../../tailwind.config.js";
 ```
 
-### 8. JavaScript Entry Point
+### 7. JavaScript Entry Point
 
 **File**: `resources/js/app.js`
 
@@ -785,7 +772,7 @@ Add to your main layout file (e.g., `resources/views/layouts/app.blade.php`):
 - [ ] Copy PHPStan config (`phpstan.neon`)
 - [ ] Copy Tailwind config (`tailwind.config.js`)
 - [ ] Copy Vite config (`vite.config.js`)
-- [ ] Copy PostCSS config (`postcss.config.js`)
+- [ ] Copy `vite.config.js` with the `@tailwindcss/vite` plugin enabled
 - [ ] Copy pre-commit hook (`scripts/pre-commit-hook.sh`)
 - [ ] Copy CI workflow (`.github/workflows/ci.yml`)
 - [ ] Add composer scripts (analyse, check)
@@ -825,6 +812,4 @@ npm run build                   # Production build
 - MCP server (Laravel Boost) provides powerful Laravel-specific tools
 - Pre-commit hook prevents committing code with errors
 - CI/CD runs all checks automatically on push/PR
-
-
 
