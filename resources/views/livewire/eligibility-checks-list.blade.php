@@ -1,6 +1,6 @@
 <div>
     <!-- Filters -->
-    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
         <div class="p-6">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <!-- Search -->
@@ -32,7 +32,7 @@
                 <!-- Recent Failures Filter -->
                 <div>
                     <label class="flex items-center mt-3">
-                        <input type="checkbox" wire:model.live="filterRecentFailures" class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-sm focus:ring-blue-500">
+                        <input type="checkbox" wire:model.live="filterRecentFailures" class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-xs focus:ring-blue-500">
                         <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Recent ({{ $recentFailuresHours }} hours)</span>
                     </label>
                 </div>
@@ -49,7 +49,7 @@
     </div>
 
     <!-- Eligibility Checks Table -->
-    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
         <div class="p-6">
             @if($checks->count() > 0)
                 <div class="overflow-x-auto">

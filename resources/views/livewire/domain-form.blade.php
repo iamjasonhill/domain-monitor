@@ -5,7 +5,7 @@
         </a>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
         <div class="p-6">
             <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-6">
                 {{ $domainId ? 'Edit Domain' : 'Add New Domain' }}
@@ -83,7 +83,7 @@
                                     type="checkbox" 
                                     wire:model="selectedTags" 
                                     value="{{ $tag->id }}"
-                                    class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-sm focus:ring-blue-500"
+                                    class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-xs focus:ring-blue-500"
                                 >
                                 <span 
                                     class="ms-2 px-2 py-1 text-xs font-semibold rounded-full"
@@ -113,7 +113,7 @@
                 <!-- Is Active -->
                 <div class="mb-4">
                     <label class="flex items-center">
-                        <input type="checkbox" wire:model="is_active" class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-sm focus:ring-blue-500">
+                        <input type="checkbox" wire:model="is_active" class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-xs focus:ring-blue-500">
                         <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Active</span>
                     </label>
                     <x-input-error :messages="$errors->get('is_active')" class="mt-2" />
@@ -122,7 +122,7 @@
                 <!-- Notes -->
                 <div class="mb-6">
                     <x-input-label for="notes" value="Notes" />
-                    <textarea wire:model="notes" id="notes" rows="4" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-sm"></textarea>
+                    <textarea wire:model="notes" id="notes" rows="4" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-blue-500 focus:ring-blue-500 shadow-xs"></textarea>
                     <x-input-error :messages="$errors->get('notes')" class="mt-2" />
                 </div>
 

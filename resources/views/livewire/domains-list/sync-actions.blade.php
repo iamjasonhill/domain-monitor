@@ -1,5 +1,5 @@
 <!-- Domain Sync Actions -->
-<div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+<div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
     <div class="p-6">
         <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Domain Sync Actions</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">

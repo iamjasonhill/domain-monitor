@@ -1,6 +1,6 @@
 <!-- Domain Information (for Australian TLD domains) -->
 @if($isAustralianTld && ($domain->registrant_name || $domain->eligibility_type || $domain->au_policy_id || $domain->au_compliance_reason || $domain->domain_roid))
-    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6">
+    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
         <div class="p-6">
             <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Australian Domain Information</h3>
             <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">

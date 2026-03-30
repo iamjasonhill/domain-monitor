@@ -7,10 +7,10 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <!-- Artisan Commands Card -->
         <a href="{{ route('settings.commands') }}" wire:navigate class="block">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer">
                 <div class="p-6">
                     <div class="flex items-center">
-                        <div class="flex-shrink-0 bg-indigo-100 dark:bg-indigo-900 rounded-lg p-3">
+                        <div class="shrink-0 bg-indigo-100 dark:bg-indigo-900 rounded-lg p-3">
                             <svg class="h-6 w-6 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                             </svg>
@@ -26,10 +26,10 @@
 
         <!-- Scheduled Tasks Card -->
         <a href="{{ route('settings.scheduled-tasks') }}" wire:navigate class="block">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer">
                 <div class="p-6">
                     <div class="flex items-center">
-                        <div class="flex-shrink-0 bg-green-100 dark:bg-green-900 rounded-lg p-3">
+                        <div class="shrink-0 bg-green-100 dark:bg-green-900 rounded-lg p-3">
                             <svg class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
@@ -45,10 +45,10 @@
 
         <!-- Horizon Queue Dashboard Card -->
         <a href="/horizon" target="_blank" class="block">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer">
                 <div class="p-6">
                     <div class="flex items-center">
-                        <div class="flex-shrink-0 bg-purple-100 dark:bg-purple-900 rounded-lg p-3">
+                        <div class="shrink-0 bg-purple-100 dark:bg-purple-900 rounded-lg p-3">
                             <svg class="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                             </svg>
@@ -64,10 +64,10 @@
 
         <!-- Domain Tags Card -->
         <a href="{{ route('settings.tags') }}" wire:navigate class="block">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer">
                 <div class="p-6">
                     <div class="flex items-center">
-                        <div class="flex-shrink-0 bg-yellow-100 dark:bg-yellow-900 rounded-lg p-3">
+                        <div class="shrink-0 bg-yellow-100 dark:bg-yellow-900 rounded-lg p-3">
                             <svg class="h-6 w-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
                             </svg>
@@ -83,10 +83,10 @@
 
         <!-- Monitoring Settings Card -->
         <a href="{{ route('settings.monitoring') }}" wire:navigate class="block">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer">
                 <div class="p-6">
                     <div class="flex items-center">
-                        <div class="flex-shrink-0 bg-red-100 dark:bg-red-900 rounded-lg p-3">
+                        <div class="shrink-0 bg-red-100 dark:bg-red-900 rounded-lg p-3">
                             <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
@@ -101,11 +101,11 @@
         </a>
 
         <!-- Synergy Balance Card -->
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
             <div class="p-6">
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center">
-                        <div class="flex-shrink-0 bg-blue-100 dark:bg-blue-900 rounded-lg p-3">
+                        <div class="shrink-0 bg-blue-100 dark:bg-blue-900 rounded-lg p-3">
                             <svg class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
@@ -151,10 +151,10 @@
 
         <!-- Synergy Refill Account Card -->
         <a href="https://manage.synergywholesale.com/home/resellers/refill/account" target="_blank" rel="noopener noreferrer" class="block">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg hover:shadow-md transition-shadow duration-200 cursor-pointer">
                 <div class="p-6">
                     <div class="flex items-center">
-                        <div class="flex-shrink-0 bg-green-100 dark:bg-green-900 rounded-lg p-3">
+                        <div class="shrink-0 bg-green-100 dark:bg-green-900 rounded-lg p-3">
                             <svg class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>

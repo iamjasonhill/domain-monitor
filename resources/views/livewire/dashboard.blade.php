@@ -2,10 +2,10 @@
     <!-- Stats Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <!-- Total Domains -->
-        <a href="{{ route('domains.index') }}" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+        <a href="{{ route('domains.index') }}" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
             <div class="p-6">
                 <div class="flex items-center">
-                    <div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
+                    <div class="shrink-0 bg-blue-500 rounded-md p-3">
                         <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path>
                         </svg>
@@ -21,10 +21,10 @@
         </a>
 
         <!-- Active Domains -->
-        <a href="{{ route('domains.index') }}?active=1" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+        <a href="{{ route('domains.index') }}?active=1" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
             <div class="p-6">
                 <div class="flex items-center">
-                    <div class="flex-shrink-0 bg-green-500 rounded-md p-3">
+                    <div class="shrink-0 bg-green-500 rounded-md p-3">
                         <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
@@ -40,10 +40,10 @@
         </a>
 
         <!-- Expiring Soon -->
-        <a href="{{ route('domains.index') }}?expiring=1" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+        <a href="{{ route('domains.index') }}?expiring=1" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
             <div class="p-6">
                 <div class="flex items-center">
-                    <div class="flex-shrink-0 bg-yellow-500 rounded-md p-3">
+                    <div class="shrink-0 bg-yellow-500 rounded-md p-3">
                         <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
@@ -59,10 +59,10 @@
         </a>
 
         <!-- Recent Failures -->
-        <a href="{{ route('health-checks.index') }}?recentFailures=1" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+        <a href="{{ route('health-checks.index') }}?recentFailures=1" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
             <div class="p-6">
                 <div class="flex items-center">
-                    <div class="flex-shrink-0 bg-red-500 rounded-md p-3">
+                    <div class="shrink-0 bg-red-500 rounded-md p-3">
                         <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
@@ -78,10 +78,10 @@
         </a>
 
         <!-- Failed Eligibility Status -->
-        <a href="{{ route('eligibility-checks.index') }}?failed=1" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+        <a href="{{ route('eligibility-checks.index') }}?failed=1" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
             <div class="p-6">
                 <div class="flex items-center">
-                    <div class="flex-shrink-0 bg-orange-500 rounded-md p-3">
+                    <div class="shrink-0 bg-orange-500 rounded-md p-3">
                         <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                         </svg>
@@ -97,10 +97,10 @@
         </a>
 
         <!-- Must Fix -->
-        <a href="{{ route('dashboard') }}#must-fix" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+        <a href="{{ route('dashboard') }}#must-fix" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
             <div class="p-6">
                 <div class="flex items-center">
-                    <div class="flex-shrink-0 bg-red-700 rounded-md p-3">
+                    <div class="shrink-0 bg-red-700 rounded-md p-3">
                         <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3l-8.47-14.14a2 2 0 00-3.42 0z"></path>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01"></path>
@@ -117,10 +117,10 @@
         </a>
 
         <!-- Should Fix -->
-        <a href="{{ route('dashboard') }}#should-fix" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+        <a href="{{ route('dashboard') }}#should-fix" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
             <div class="p-6">
                 <div class="flex items-center">
-                    <div class="flex-shrink-0 bg-amber-500 rounded-md p-3">
+                    <div class="shrink-0 bg-amber-500 rounded-md p-3">
                         <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
@@ -136,10 +136,10 @@
         </a>
 
         <!-- Unresolved Web Subdomains -->
-        <a href="{{ route('dashboard') }}#subdomain-cleanup" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+        <a href="{{ route('dashboard') }}#subdomain-cleanup" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
             <div class="p-6">
                 <div class="flex items-center">
-                    <div class="flex-shrink-0 bg-rose-500 rounded-md p-3">
+                    <div class="shrink-0 bg-rose-500 rounded-md p-3">
                         <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"></path>
                         </svg>
@@ -158,7 +158,7 @@
 
     <!-- Priority Queue -->
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
-        <div id="must-fix" class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+        <div id="must-fix" class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
             <div class="p-6">
                 <div class="flex items-center justify-between mb-4">
                     <div>
@@ -189,7 +189,7 @@
                                 <ul class="mt-4 space-y-2">
                                     @foreach($item['primary_reasons'] as $reason)
                                         <li class="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-2">
-                                            <span class="mt-1 h-2 w-2 rounded-full bg-red-500 flex-shrink-0"></span>
+                                            <span class="mt-1 h-2 w-2 rounded-full bg-red-500 shrink-0"></span>
                                             <span>{{ $reason }}</span>
                                         </li>
                                     @endforeach
@@ -220,7 +220,7 @@
             </div>
         </div>
 
-        <div id="should-fix" class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+        <div id="should-fix" class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
             <div class="p-6">
                 <div class="flex items-center justify-between mb-4">
                     <div>
@@ -257,7 +257,7 @@
                                 <ul class="mt-4 space-y-2">
                                     @foreach($item['primary_reasons'] as $reason)
                                         <li class="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-2">
-                                            <span class="mt-1 h-2 w-2 rounded-full bg-amber-500 flex-shrink-0"></span>
+                                            <span class="mt-1 h-2 w-2 rounded-full bg-amber-500 shrink-0"></span>
                                             <span>{{ $reason }}</span>
                                         </li>
                                     @endforeach
@@ -278,7 +278,7 @@
 
     <!-- Subdomain Cleanup -->
     <div id="subdomain-cleanup" class="mb-8">
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
             <div class="p-6">
                 <div class="flex items-center justify-between mb-4">
                     <div>

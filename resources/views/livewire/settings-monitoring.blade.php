@@ -10,7 +10,7 @@
         </div>
     @endif
 
-    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
         <div class="p-6">
             <form wire:submit.prevent="save" class="space-y-6">
                 <div>
