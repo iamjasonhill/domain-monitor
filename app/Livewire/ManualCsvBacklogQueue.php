@@ -16,7 +16,6 @@ class ManualCsvBacklogQueue extends Component
         $properties = WebProperty::query()
             ->with([
                 'primaryDomain.tags',
-                'primaryDomain.latestSeoBaseline',
                 'repositories',
                 'analyticsSources',
                 'analyticsSources.latestInstallAudit',
@@ -27,9 +26,17 @@ class ManualCsvBacklogQueue extends Component
             ->orderBy('name')
             ->get();
 
+        $baselinesByProperty = DomainSeoBaseline::query()
+            ->whereIn('web_property_id', $properties->pluck('id'))
+            ->orderByDesc('captured_at')
+            ->orderByDesc('created_at')
+            ->get()
+            ->unique('web_property_id')
+            ->keyBy('web_property_id');
+
         $pendingItems = $properties
-            ->map(function (WebProperty $property): ?array {
-                $baseline = $this->latestBaselineForProperty($property);
+            ->map(function (WebProperty $property) use ($baselinesByProperty): ?array {
+                $baseline = $baselinesByProperty->get($property->id);
                 if (! $baseline instanceof DomainSeoBaseline) {
                     return null;
                 }
@@ -37,6 +44,7 @@ class ManualCsvBacklogQueue extends Component
                 $repository = $property->repositoryCoverageSummary();
                 $matomo = $property->matomoCoverageSummary();
                 $searchConsole = $property->searchConsoleCoverageSummary();
+                $matomoSource = $property->primaryAnalyticsSource('matomo');
 
                 if (
                     $repository['status'] !== 'covered'
@@ -57,8 +65,8 @@ class ManualCsvBacklogQueue extends Component
                     ],
                     'primary_domain' => $property->primaryDomainName(),
                     'repository' => $property->repositories->first(),
-                    'matomo_source' => $property->primaryAnalyticsSource('matomo'),
-                    'search_console_coverage' => $property->primaryAnalyticsSource('matomo')?->latestSearchConsoleCoverage,
+                    'matomo_source' => $matomoSource,
+                    'search_console_coverage' => $matomoSource?->latestSearchConsoleCoverage,
                     'latest_baseline' => $baseline,
                 ];
             })
@@ -87,14 +95,5 @@ class ManualCsvBacklogQueue extends Component
                     ->count(),
             ],
         ]);
-    }
-
-    private function latestBaselineForProperty(WebProperty $property): ?DomainSeoBaseline
-    {
-        return DomainSeoBaseline::query()
-            ->where('web_property_id', $property->id)
-            ->latest('captured_at')
-            ->latest('created_at')
-            ->first();
     }
 }
