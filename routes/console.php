@@ -177,6 +177,12 @@ Schedule::command('domains:prune-monitoring-data')
     ->at('09:00')
     ->timezone('UTC');
 
+// Verify live Matomo tracker installs before automation coverage is refreshed.
+Schedule::command('analytics:refresh-matomo-install-audits')
+    ->daily()
+    ->at('08:50')
+    ->timezone('UTC');
+
 // Refresh fleet automation coverage after upstream analytics imports have had time to settle.
 Schedule::command('analytics:refresh-automation-coverage')
     ->daily()
