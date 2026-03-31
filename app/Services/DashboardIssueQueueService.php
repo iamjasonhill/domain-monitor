@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Domain;
 use App\Models\DomainCheck;
+use App\Models\PropertyRepository;
 use App\Models\WebProperty;
 use App\Models\WebsitePlatform;
 use Illuminate\Support\Collection;
@@ -451,6 +452,8 @@ class DashboardIssueQueueService
         $controlId = is_array($canonicalIssue) ? $canonicalIssue['control_id'] : null;
         $rolloutScope = is_array($canonicalIssue) ? $canonicalIssue['rollout_scope'] : 'domain_only';
         $baselineSurface = is_array($canonicalIssue) ? $canonicalIssue['baseline_surface'] : null;
+        $coverageStatus = is_string($item['coverage_status'] ?? null) ? $item['coverage_status'] : 'not_required';
+        $executionReadiness = $this->executionReadinessForQueue($property, $coverageStatus, $platformProfile);
 
         $item['issue_family'] = $issueFamily;
         $item['issue_families'] = $issueFamilies;
@@ -465,6 +468,10 @@ class DashboardIssueQueueService
         $item['property_match_confidence'] = $property ? 'high' : 'none';
         $item['rollout_scope'] = $rolloutScope;
         $item['is_standard_gap'] = $rolloutScope === 'fleet';
+        $item['control_state'] = $executionReadiness['control_state'];
+        $item['execution_surface'] = $executionReadiness['execution_surface'];
+        $item['fleet_managed'] = $executionReadiness['fleet_managed'];
+        $item['controller_repo'] = $executionReadiness['controller_repo'];
 
         return $item;
     }
@@ -516,6 +523,86 @@ class DashboardIssueQueueService
             'missing_local_path' => 'Fleet controller path is missing',
             default => null,
         };
+    }
+
+    /**
+     * @return array{
+     *   control_state:string,
+     *   execution_surface:string|null,
+     *   fleet_managed:bool,
+     *   controller_repo:string|null
+     * }
+     */
+    private function executionReadinessForQueue(?WebProperty $property, string $coverageStatus, string $platformProfile): array
+    {
+        $controllerRepository = $this->controllerRepositoryForProperty($property);
+        $controllerRepo = $controllerRepository?->repo_name;
+
+        if ($coverageStatus === 'not_required') {
+            return [
+                'control_state' => 'not_applicable',
+                'execution_surface' => null,
+                'fleet_managed' => false,
+                'controller_repo' => $controllerRepo,
+            ];
+        }
+
+        if ($coverageStatus !== 'controlled') {
+            return [
+                'control_state' => 'uncontrolled',
+                'execution_surface' => null,
+                'fleet_managed' => false,
+                'controller_repo' => $controllerRepo,
+            ];
+        }
+
+        $executionSurface = $this->executionSurfaceForQueue($controllerRepository, $platformProfile);
+
+        return [
+            'control_state' => 'controlled',
+            'execution_surface' => $executionSurface,
+            'fleet_managed' => in_array($executionSurface, [
+                'fleet_wordpress_controlled',
+                'astro_repo_controlled',
+            ], true),
+            'controller_repo' => $controllerRepo,
+        ];
+    }
+
+    private function controllerRepositoryForProperty(?WebProperty $property): ?PropertyRepository
+    {
+        if (! $property instanceof WebProperty) {
+            return null;
+        }
+
+        $repositories = $property->relationLoaded('repositories')
+            ? $property->getRelation('repositories')
+            : $property->repositories()->get();
+        $orderedRepositories = $repositories
+            ->sortByDesc(fn (PropertyRepository $repository) => $repository->is_primary)
+            ->values();
+
+        return $orderedRepositories->first(
+            fn (PropertyRepository $repository) => $this->repositoryHasControllerPath($repository)
+        ) ?? $orderedRepositories->first();
+    }
+
+    private function repositoryHasControllerPath(PropertyRepository $repository): bool
+    {
+        return is_string($repository->local_path) && trim($repository->local_path) !== '';
+    }
+
+    private function executionSurfaceForQueue(?PropertyRepository $repository, string $platformProfile): string
+    {
+        if ($repository?->repo_name === '_wp-house') {
+            return 'fleet_wordpress_controlled';
+        }
+
+        if ($platformProfile === 'astro_marketing_managed') {
+            return 'astro_repo_controlled';
+        }
+
+        return 'repository_controlled';
     }
 
     /**

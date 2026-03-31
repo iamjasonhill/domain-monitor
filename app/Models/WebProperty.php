@@ -234,6 +234,63 @@ class WebProperty extends Model
         ])->values()->all();
     }
 
+    public function controllerRepository(): ?PropertyRepository
+    {
+        $repositories = $this->relationLoaded('repositories') ? $this->repositories : $this->repositories()->get();
+        $orderedRepositories = $repositories
+            ->sortByDesc(fn (PropertyRepository $repository) => $repository->is_primary)
+            ->values();
+
+        return $orderedRepositories->first(
+            fn (PropertyRepository $repository) => $this->repositoryHasControllerPath($repository)
+        ) ?? $orderedRepositories->first();
+    }
+
+    /**
+     * @return array{
+     *   control_state:string,
+     *   execution_surface:string|null,
+     *   fleet_managed:bool,
+     *   controller_repo:string|null
+     * }
+     */
+    public function executionReadinessSummary(): array
+    {
+        $eligibility = $this->coverageEligibility();
+        $controllerRepository = $this->controllerRepository();
+        $controllerRepo = $controllerRepository?->repo_name;
+
+        if (! $eligibility['eligible']) {
+            return [
+                'control_state' => 'not_applicable',
+                'execution_surface' => null,
+                'fleet_managed' => false,
+                'controller_repo' => $controllerRepo,
+            ];
+        }
+
+        if (! $controllerRepository instanceof PropertyRepository || ! $this->repositoryHasControllerPath($controllerRepository)) {
+            return [
+                'control_state' => 'uncontrolled',
+                'execution_surface' => null,
+                'fleet_managed' => false,
+                'controller_repo' => $controllerRepo,
+            ];
+        }
+
+        $executionSurface = $this->executionSurfaceForRepository($controllerRepository);
+
+        return [
+            'control_state' => 'controlled',
+            'execution_surface' => $executionSurface,
+            'fleet_managed' => in_array($executionSurface, [
+                'fleet_wordpress_controlled',
+                'astro_repo_controlled',
+            ], true),
+            'controller_repo' => $controllerRepo,
+        ];
+    }
+
     /**
      * @return array<int, array<string, mixed>>
      */
@@ -365,6 +422,8 @@ class WebProperty extends Model
      */
     public function brainSummary(): array
     {
+        $executionReadiness = $this->executionReadinessSummary();
+
         return [
             'slug' => $this->slug,
             'name' => $this->name,
@@ -384,6 +443,10 @@ class WebProperty extends Model
             'health_summary' => $this->healthSummary(),
             'deployment_summary' => $this->deploymentSummary(),
             'tags' => $this->tagSummaries(),
+            'control_state' => $executionReadiness['control_state'],
+            'execution_surface' => $executionReadiness['execution_surface'],
+            'fleet_managed' => $executionReadiness['fleet_managed'],
+            'controller_repo' => $executionReadiness['controller_repo'],
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }
@@ -938,6 +1001,26 @@ class WebProperty extends Model
             1 => 'ok',
             default => 'unknown',
         };
+    }
+
+    private function repositoryHasControllerPath(PropertyRepository $repository): bool
+    {
+        return is_string($repository->local_path) && trim($repository->local_path) !== '';
+    }
+
+    private function executionSurfaceForRepository(PropertyRepository $repository): string
+    {
+        $framework = strtolower((string) ($repository->framework ?? $this->platform ?? ''));
+
+        if ($repository->repo_name === '_wp-house') {
+            return 'fleet_wordpress_controlled';
+        }
+
+        if (str_contains($framework, 'astro')) {
+            return 'astro_repo_controlled';
+        }
+
+        return 'repository_controlled';
     }
 
     /**
