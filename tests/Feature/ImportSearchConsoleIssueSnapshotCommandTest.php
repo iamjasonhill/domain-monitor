@@ -49,6 +49,32 @@ class ImportSearchConsoleIssueSnapshotCommandTest extends TestCase
         Storage::disk('local')->assertExists($snapshot->artifact_path);
     }
 
+    public function test_it_treats_na_last_crawled_values_as_null_in_drilldown_zip(): void
+    {
+        Storage::fake('local');
+
+        $property = $this->makeProperty('na-crawl-site', 'na-crawl.example.au', '43');
+        $zipPath = $this->makeDrilldownExportZip(
+            'Discovered - currently not indexed',
+            [
+                ['https://na-crawl.example.au/new-page/', 'N/A'],
+            ]
+        );
+
+        $exitCode = Artisan::call('analytics:import-search-console-issue-detail', [
+            'property' => $property->slug,
+            'path' => $zipPath,
+            '--captured-by' => 'test-suite',
+        ]);
+
+        $this->assertSame(0, $exitCode);
+
+        $snapshot = SearchConsoleIssueSnapshot::query()->firstOrFail();
+        $this->assertSame('discovered_currently_not_indexed', $snapshot->issue_class);
+        $this->assertNull(data_get($snapshot->examples, '0.last_crawled'));
+        $this->assertNull(data_get($snapshot->issueEvidence(), 'examples.0.last_crawled'));
+    }
+
     public function test_it_imports_search_console_api_evidence_json(): void
     {
         Storage::fake('local');

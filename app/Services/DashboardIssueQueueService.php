@@ -8,6 +8,7 @@ use App\Models\PropertyRepository;
 use App\Models\WebProperty;
 use App\Models\WebsitePlatform;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class DashboardIssueQueueService
 {
@@ -237,34 +238,54 @@ class DashboardIssueQueueService
         $mustFixIssues = [];
         $shouldFixIssues = [];
 
-        if ((int) ($baseline->pages_with_redirect ?? 0) > 0) {
-            $reason = sprintf(
-                'Search Console reports page with redirect (%d URLs)',
-                (int) $baseline->pages_with_redirect
-            );
-            $mustFix[] = $reason;
-            $mustFixIssues[] = $this->issueRecord('page_with_redirect_in_sitemap', $reason, 'must_fix');
-        }
+        foreach ([
+            'page_with_redirect_in_sitemap',
+            'blocked_by_robots_in_indexing',
+            'duplicate_without_user_selected_canonical',
+            'alternate_with_canonical',
+            'not_found_404',
+            'crawled_currently_not_indexed',
+            'discovered_currently_not_indexed',
+        ] as $issueClass) {
+            $count = $baseline->issueCount($issueClass);
 
-        if ((int) ($baseline->blocked_by_robots ?? 0) > 0) {
-            $reason = sprintf(
-                'Search Console reports blocked by robots.txt (%d URLs)',
-                (int) $baseline->blocked_by_robots
-            );
-            $mustFix[] = $reason;
-            $mustFixIssues[] = $this->issueRecord('blocked_by_robots_in_indexing', $reason, 'must_fix');
-        }
+            if ($count === null || $count <= 0) {
+                continue;
+            }
 
-        if ((int) ($baseline->duplicate_without_user_selected_canonical ?? 0) > 0) {
-            $reason = sprintf(
-                'Search Console reports duplicate without user-selected canonical (%d URLs)',
-                (int) $baseline->duplicate_without_user_selected_canonical
-            );
+            $reason = $this->searchConsoleReason($issueClass, $count);
+            $severity = $this->searchConsoleSeverity($issueClass);
+
+            if ($severity === 'must_fix') {
+                $mustFix[] = $reason;
+                $mustFixIssues[] = $this->issueRecord($issueClass, $reason, $severity);
+
+                continue;
+            }
+
             $shouldFix[] = $reason;
-            $shouldFixIssues[] = $this->issueRecord('duplicate_without_user_selected_canonical', $reason, 'should_fix');
+            $shouldFixIssues[] = $this->issueRecord($issueClass, $reason, $severity);
         }
 
         return [$mustFix, $shouldFix, $mustFixIssues, $shouldFixIssues];
+    }
+
+    private function searchConsoleReason(string $issueClass, int $count): string
+    {
+        $label = data_get(config('domain_monitor.search_console_issue_catalog.'.$issueClass), 'label', $issueClass);
+
+        return sprintf(
+            'Search Console reports %s (%d URLs)',
+            Str::of((string) $label)->lower()->toString(),
+            $count
+        );
+    }
+
+    private function searchConsoleSeverity(string $issueClass): string
+    {
+        return in_array($issueClass, ['page_with_redirect_in_sitemap', 'blocked_by_robots_in_indexing'], true)
+            ? 'must_fix'
+            : 'should_fix';
     }
 
     /**

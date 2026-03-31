@@ -257,6 +257,35 @@ class WebPropertyUiTest extends TestCase
             ],
         ]);
 
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'property_analytics_source_id' => $source->id,
+            'issue_class' => 'discovered_currently_not_indexed',
+            'source_issue_label' => 'Discovered - currently not indexed',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:checklist.example.au',
+            'captured_at' => now(),
+            'affected_url_count' => 1,
+            'sample_urls' => [
+                'https://checklist.example.au/new-page/',
+            ],
+            'examples' => [
+                ['url' => 'https://checklist.example.au/new-page/', 'last_crawled' => '1970-01-01'],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://checklist.example.au/new-page/',
+                ],
+            ],
+            'raw_payload' => [
+                'table' => [
+                    ['URL' => 'https://checklist.example.au/new-page/', 'Last crawled' => 'N/A'],
+                ],
+            ],
+        ]);
+
         $response = $this->actingAs($user)->get('/web-properties/checklist-site');
 
         $response->assertOk();
@@ -267,5 +296,7 @@ class WebPropertyUiTest extends TestCase
         $response->assertSee('Search Console Issue Evidence');
         $response->assertSee('Exact examples captured');
         $response->assertSee('https://checklist.example.au/');
+        $response->assertSee('https://checklist.example.au/new-page/');
+        $response->assertDontSee('1970-01-01');
     }
 }

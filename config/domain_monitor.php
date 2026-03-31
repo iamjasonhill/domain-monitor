@@ -609,6 +609,16 @@ return [
             'seo.canonical_consistency' => [
                 'issue_families' => [
                     'duplicate_without_user_selected_canonical',
+                    'alternate_with_canonical',
+                    'google_chose_different_canonical',
+                ],
+            ],
+            'seo.indexation_coverage' => [
+                'issue_families' => [
+                    'excluded_by_noindex',
+                    'not_found_404',
+                    'crawled_currently_not_indexed',
+                    'discovered_currently_not_indexed',
                 ],
             ],
             'seo.broken_links' => [

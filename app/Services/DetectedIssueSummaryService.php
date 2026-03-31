@@ -30,9 +30,11 @@ class DetectedIssueSummaryService
             ...($queueSnapshot['must_fix'] ?? []),
             ...($queueSnapshot['should_fix'] ?? []),
         ]);
-        $mustFix = $this->flattenIssues($queueSnapshot['must_fix'] ?? [], 'must_fix', $issueEvidence);
-        $shouldFix = $this->flattenIssues($queueSnapshot['should_fix'] ?? [], 'should_fix', $issueEvidence);
-        $issues = $mustFix->concat($shouldFix)->values();
+        $issues = $this->flattenIssues($queueSnapshot['must_fix'] ?? [], 'must_fix', $issueEvidence)
+            ->concat($this->flattenIssues($queueSnapshot['should_fix'] ?? [], 'should_fix', $issueEvidence))
+            ->values();
+        $mustFix = $issues->where('severity', 'must_fix')->values();
+        $shouldFix = $issues->where('severity', 'should_fix')->values();
 
         return $this->cachedSnapshot = [
             'source_system' => 'domain-monitor-issues',
@@ -89,7 +91,11 @@ class DetectedIssueSummaryService
         $detectedAt = is_string($item['updated_at_iso'] ?? null) && $item['updated_at_iso'] !== ''
             ? $item['updated_at_iso']
             : now()->toIso8601String();
-        $issueEntries = $this->normalizedIssueEntries($item, $severity);
+        $queueIssueEntries = $this->normalizedIssueEntries($item, $severity);
+        $issueEntries = array_merge(
+            $queueIssueEntries,
+            $this->supplementalIssueEntries($item, $issueEvidence[$evidenceKey] ?? [], $queueIssueEntries)
+        );
         $relatedIssueClasses = array_values(array_unique(array_map(
             static fn (array $entry): string => $entry['issue_class'],
             $issueEntries
@@ -151,6 +157,51 @@ class DetectedIssueSummaryService
         }
 
         return $issues;
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @param  array<string, array<string, mixed>>  $propertyEvidence
+     * @param  array<int, array{issue_class:string, reason:string, severity:string, control_id:?string, rollout_scope:string, baseline_surface:?string}>  $existingIssueEntries
+     * @return array<int, array{issue_class:string, reason:string, severity:string, control_id:?string, rollout_scope:string, baseline_surface:?string}>
+     */
+    private function supplementalIssueEntries(array $item, array $propertyEvidence, array $existingIssueEntries): array
+    {
+        $existingIssueClasses = array_values(array_unique(array_map(
+            static fn (array $entry): string => $entry['issue_class'],
+            $existingIssueEntries
+        )));
+        $entries = [];
+
+        foreach ($propertyEvidence as $issueClass => $evidence) {
+            if (in_array($issueClass, $existingIssueClasses, true)) {
+                continue;
+            }
+
+            if (! $this->shouldEmitSupplementalIssue($issueClass, $evidence)) {
+                continue;
+            }
+
+            $controlId = $this->controlIdForIssueClass($issueClass);
+            $baselineSurface = $this->defaultBaselineSurfaceForPlatformProfile(
+                is_string($item['platform_profile'] ?? null) ? $item['platform_profile'] : null
+            );
+            $configuredRolloutScope = $this->configuredRolloutScopeForControl($controlId);
+
+            $entries[] = [
+                'issue_class' => $issueClass,
+                'reason' => $this->supplementalIssueReason($issueClass, $evidence),
+                'severity' => $this->defaultSeverityForIssueClass($issueClass),
+                'control_id' => $controlId,
+                'rollout_scope' => $configuredRolloutScope
+                    ?? (($controlId && $baselineSurface) ? 'fleet' : 'domain_only'),
+                'baseline_surface' => ($configuredRolloutScope === 'domain_only' || ! $controlId || ! $baselineSurface)
+                    ? null
+                    : $baselineSurface,
+            ];
+        }
+
+        return $entries;
     }
 
     /**
@@ -221,5 +272,82 @@ class DetectedIssueSummaryService
         ksort($counts);
 
         return $counts;
+    }
+
+    /**
+     * @param  array<string, mixed>  $evidence
+     */
+    private function shouldEmitSupplementalIssue(string $issueClass, array $evidence): bool
+    {
+        if (! is_array(config('domain_monitor.search_console_issue_catalog.'.$issueClass))) {
+            return false;
+        }
+
+        if (is_numeric($evidence['affected_url_count'] ?? null) && (int) $evidence['affected_url_count'] > 0) {
+            return true;
+        }
+
+        foreach (['affected_urls', 'examples', 'url_inspection', 'sitemaps', 'referring_urls', 'canonical_state', 'search_analytics'] as $key) {
+            if (! empty($evidence[$key])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $evidence
+     */
+    private function supplementalIssueReason(string $issueClass, array $evidence): string
+    {
+        $label = data_get(config('domain_monitor.search_console_issue_catalog.'.$issueClass), 'label', $issueClass);
+        $count = is_numeric($evidence['affected_url_count'] ?? null) ? (int) $evidence['affected_url_count'] : null;
+
+        if ($count !== null && $count > 0) {
+            return sprintf('Search Console reports %s (%d URLs)', strtolower((string) $label), $count);
+        }
+
+        return sprintf('Search Console reports %s', strtolower((string) $label));
+    }
+
+    private function defaultSeverityForIssueClass(string $issueClass): string
+    {
+        return in_array($issueClass, ['page_with_redirect_in_sitemap', 'blocked_by_robots_in_indexing'], true)
+            ? 'must_fix'
+            : 'should_fix';
+    }
+
+    private function controlIdForIssueClass(string $issueClass): ?string
+    {
+        $controls = data_get(config('domain_monitor.priority_queue_standards'), 'controls', []);
+
+        if (! is_array($controls)) {
+            return null;
+        }
+
+        foreach ($controls as $controlId => $controlConfig) {
+            $mappedFamilies = data_get($controlConfig, 'issue_families', []);
+
+            if (is_array($mappedFamilies) && in_array($issueClass, $mappedFamilies, true)) {
+                return is_string($controlId) ? $controlId : null;
+            }
+        }
+
+        return null;
+    }
+
+    private function configuredRolloutScopeForControl(?string $controlId): ?string
+    {
+        return is_string($controlId)
+            ? data_get(config('domain_monitor.priority_queue_standards'), 'controls.'.$controlId.'.rollout_scope')
+            : null;
+    }
+
+    private function defaultBaselineSurfaceForPlatformProfile(?string $platformProfile): ?string
+    {
+        return is_string($platformProfile)
+            ? data_get(config('domain_monitor.priority_queue_standards'), 'platform_profiles.'.$platformProfile.'.baseline_surface')
+            : null;
     }
 }

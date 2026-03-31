@@ -132,6 +132,60 @@ class DetectedIssueApiTest extends TestCase
             'raw_payload' => ['source' => 'api'],
         ]);
 
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $redirectDomain->id,
+            'web_property_id' => $redirectProperty->id,
+            'issue_class' => 'excluded_by_noindex',
+            'source_issue_label' => "Excluded by 'noindex' tag",
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:redirect-issue.example.com',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => [
+                'https://redirect-issue.example.com/noindex-page/',
+            ],
+            'examples' => [
+                ['url' => 'https://redirect-issue.example.com/noindex-page/', 'last_crawled' => '2026-03-26'],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://redirect-issue.example.com/noindex-page/',
+                ],
+            ],
+            'raw_payload' => ['source' => 'drilldown'],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $redirectDomain->id,
+            'web_property_id' => $redirectProperty->id,
+            'issue_class' => 'discovered_currently_not_indexed',
+            'source_issue_label' => 'Discovered - currently not indexed',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:redirect-issue.example.com',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => [
+                'https://redirect-issue.example.com/new-page/',
+            ],
+            'examples' => [
+                ['url' => 'https://redirect-issue.example.com/new-page/', 'last_crawled' => '1970-01-01'],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://redirect-issue.example.com/new-page/',
+                ],
+            ],
+            'raw_payload' => [
+                'table' => [
+                    ['URL' => 'https://redirect-issue.example.com/new-page/', 'Last crawled' => 'N/A'],
+                ],
+            ],
+        ]);
+
         $headersDomain = Domain::factory()->create([
             'domain' => 'headers-issue.example.com',
             'is_active' => true,
@@ -177,13 +231,15 @@ class DetectedIssueApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('source_system', 'domain-monitor-issues')
             ->assertJsonPath('contract_version', 1)
-            ->assertJsonPath('stats.open', 3)
+            ->assertJsonPath('stats.open', 5)
             ->assertJsonPath('stats.must_fix', 2)
-            ->assertJsonPath('stats.should_fix', 1);
+            ->assertJsonPath('stats.should_fix', 3);
 
         $issueClassCounts = $response->json('stats.issue_class_counts');
         $this->assertSame(1, $issueClassCounts['page_with_redirect_in_sitemap'] ?? null);
         $this->assertSame(1, $issueClassCounts['blocked_by_robots_in_indexing'] ?? null);
+        $this->assertSame(1, $issueClassCounts['excluded_by_noindex'] ?? null);
+        $this->assertSame(1, $issueClassCounts['discovered_currently_not_indexed'] ?? null);
         $this->assertSame(1, $issueClassCounts['security.headers_baseline'] ?? null);
 
         /** @var array<int, array<string, mixed>> $payloadIssues */
@@ -192,10 +248,14 @@ class DetectedIssueApiTest extends TestCase
 
         $redirectIssue = $issues->firstWhere('property_slug', 'redirect-issue-site');
         $blockedIssue = $issues->firstWhere('issue_class', 'blocked_by_robots_in_indexing');
+        $noindexIssue = $issues->firstWhere('issue_class', 'excluded_by_noindex');
+        $discoveredIssue = $issues->firstWhere('issue_class', 'discovered_currently_not_indexed');
         $headersIssue = $issues->firstWhere('property_slug', 'headers-issue-site');
 
         $this->assertNotNull($redirectIssue);
         $this->assertNotNull($blockedIssue);
+        $this->assertNotNull($noindexIssue);
+        $this->assertNotNull($discoveredIssue);
         $this->assertNotNull($headersIssue);
         $this->assertSame('page_with_redirect_in_sitemap', $redirectIssue['issue_class']);
         $this->assertSame('must_fix', $redirectIssue['severity']);
@@ -226,6 +286,12 @@ class DetectedIssueApiTest extends TestCase
             'https://redirect-issue.example.com/blocked-page/',
             data_get($blockedIssue, 'evidence.canonical_state.google_canonical')
         );
+        $this->assertSame('should_fix', $noindexIssue['severity']);
+        $this->assertSame('seo.indexation_coverage', $noindexIssue['control_id']);
+        $this->assertSame('https://redirect-issue.example.com/noindex-page/', data_get($noindexIssue, 'evidence.examples.0.url'));
+        $this->assertSame('should_fix', $discoveredIssue['severity']);
+        $this->assertSame('seo.indexation_coverage', $discoveredIssue['control_id']);
+        $this->assertNull(data_get($discoveredIssue, 'evidence.examples.0.last_crawled'));
         $this->assertSame('security.headers_baseline', $headersIssue['issue_class']);
         $this->assertSame('controlled', $headersIssue['control_state']);
         $this->assertSame('astro_repo_controlled', $headersIssue['execution_surface']);

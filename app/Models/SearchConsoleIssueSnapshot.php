@@ -130,7 +130,7 @@ class SearchConsoleIssueSnapshot extends Model
 
             $examples[] = [
                 'url' => $url,
-                'last_crawled' => is_string($example['last_crawled'] ?? null) ? $example['last_crawled'] : null,
+                'last_crawled' => $this->normalizeLastCrawledValue($example['last_crawled'] ?? null),
             ];
         }
         /** @var array<int, string> $affectedUrlRows */
@@ -164,5 +164,28 @@ class SearchConsoleIssueSnapshot extends Model
             'canonical_state' => is_array($normalizedPayload['canonical_state'] ?? null) ? $normalizedPayload['canonical_state'] : null,
             'search_analytics' => is_array($normalizedPayload['search_analytics'] ?? null) ? $normalizedPayload['search_analytics'] : null,
         ], static fn (mixed $value): bool => $value !== null && $value !== []);
+    }
+
+    private function normalizeLastCrawledValue(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        if ($trimmed === '') {
+            return null;
+        }
+
+        if (in_array(strtolower($trimmed), ['n/a', 'na', '-', '--', 'not available'], true)) {
+            return null;
+        }
+
+        if ($trimmed === '1970-01-01') {
+            return null;
+        }
+
+        return $trimmed;
     }
 }
