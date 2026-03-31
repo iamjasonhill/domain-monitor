@@ -70,7 +70,14 @@ class DetectedIssueApiTest extends TestCase
             'indexed_pages' => 20,
             'not_indexed_pages' => 5,
             'pages_with_redirect' => 7,
-            'raw_payload' => ['issues' => [['label' => 'Page with redirect', 'count' => 7]]],
+            'raw_payload' => ['issues' => [[
+                'label' => 'Page with redirect',
+                'count' => 7,
+                'affected_urls' => [
+                    'https://redirect-issue.example.com/old-page/',
+                    'https://redirect-issue.example.com/another-page/',
+                ],
+            ]]],
         ]);
 
         $headersDomain = Domain::factory()->create([
@@ -143,6 +150,17 @@ class DetectedIssueApiTest extends TestCase
         $this->assertTrue($redirectIssue['fleet_managed']);
         $this->assertSame('_wp-house', $redirectIssue['controller_repo']);
         $this->assertSame(['Search Console reports page with redirect (7 URLs)'], $redirectIssue['evidence']['primary_reasons']);
+        $this->assertSame([
+            'https://redirect-issue.example.com/old-page/',
+            'https://redirect-issue.example.com/another-page/',
+        ], $redirectIssue['evidence']['affected_urls']);
+        $this->assertSame(2, $redirectIssue['evidence']['affected_url_count']);
+        $this->assertSame([
+            'https://redirect-issue.example.com/old-page/',
+            'https://redirect-issue.example.com/another-page/',
+        ], $redirectIssue['evidence']['sample_urls']);
+        $this->assertSame('search_console_page_indexing', $redirectIssue['evidence']['source_report']);
+        $this->assertSame('sc-domain:redirect-issue.example.com', $redirectIssue['evidence']['source_property']);
         $this->assertSame('security.headers_baseline', $headersIssue['issue_class']);
         $this->assertSame('controlled', $headersIssue['control_state']);
         $this->assertSame('astro_repo_controlled', $headersIssue['execution_surface']);
@@ -157,6 +175,7 @@ class DetectedIssueApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('issue_id', $redirectIssue['issue_id'])
             ->assertJsonPath('issue_class', 'page_with_redirect_in_sitemap')
+            ->assertJsonPath('evidence.affected_urls.0', 'https://redirect-issue.example.com/old-page/')
             ->assertJsonPath('evidence.source_domain_id', $redirectDomain->id);
     }
 

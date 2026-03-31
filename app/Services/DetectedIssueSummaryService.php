@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\WebProperty;
 use Illuminate\Support\Collection;
 
 class DetectedIssueSummaryService
@@ -25,8 +26,12 @@ class DetectedIssueSummaryService
         }
 
         $queueSnapshot = $this->queueService->snapshot();
-        $mustFix = $this->flattenIssues($queueSnapshot['must_fix'] ?? [], 'must_fix');
-        $shouldFix = $this->flattenIssues($queueSnapshot['should_fix'] ?? [], 'should_fix');
+        $baselineEvidence = $this->baselineEvidenceMap([
+            ...($queueSnapshot['must_fix'] ?? []),
+            ...($queueSnapshot['should_fix'] ?? []),
+        ]);
+        $mustFix = $this->flattenIssues($queueSnapshot['must_fix'] ?? [], 'must_fix', $baselineEvidence);
+        $shouldFix = $this->flattenIssues($queueSnapshot['should_fix'] ?? [], 'should_fix', $baselineEvidence);
         $issues = $mustFix->concat($shouldFix)->values();
 
         return $this->cachedSnapshot = [
@@ -60,24 +65,27 @@ class DetectedIssueSummaryService
 
     /**
      * @param  array<int, array<string, mixed>>  $items
+     * @param  array<string, array<string, array<string, mixed>>>  $baselineEvidence
      * @return Collection<int, array<string, mixed>>
      */
-    private function flattenIssues(array $items, string $severity): Collection
+    private function flattenIssues(array $items, string $severity, array $baselineEvidence): Collection
     {
         return collect($items)
-            ->flatMap(fn (array $item): array => $this->makeIssues($item, $severity))
+            ->flatMap(fn (array $item): array => $this->makeIssues($item, $severity, $baselineEvidence))
             ->values();
     }
 
     /**
      * @param  array<string, mixed>  $item
+     * @param  array<string, array<string, array<string, mixed>>>  $baselineEvidence
      * @return array<int, array<string, mixed>>
      */
-    private function makeIssues(array $item, string $severity): array
+    private function makeIssues(array $item, string $severity, array $baselineEvidence): array
     {
         $domainId = (string) ($item['id'] ?? '');
         $domain = is_string($item['domain'] ?? null) ? $item['domain'] : null;
         $propertySlug = is_string($item['web_property_slug'] ?? null) ? $item['web_property_slug'] : null;
+        $evidenceKey = $propertySlug ?: $domainId;
         $detectedAt = is_string($item['updated_at_iso'] ?? null) && $item['updated_at_iso'] !== ''
             ? $item['updated_at_iso']
             : now()->toIso8601String();
@@ -131,11 +139,46 @@ class DetectedIssueSummaryService
                     'property_match_confidence' => is_string($item['property_match_confidence'] ?? null) ? $item['property_match_confidence'] : null,
                     'baseline_surface' => $issueEntry['baseline_surface'],
                     'source_domain_id' => $domainId,
+                    ...($baselineEvidence[$evidenceKey][$issueClass] ?? []),
                 ],
             ];
         }
 
         return $issues;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array<string, array<string, array<string, mixed>>>
+     */
+    private function baselineEvidenceMap(array $items): array
+    {
+        $propertySlugs = collect($items)
+            ->pluck('web_property_slug')
+            ->filter(fn (mixed $slug): bool => is_string($slug) && $slug !== '')
+            ->values()
+            ->all();
+
+        if ($propertySlugs === []) {
+            return [];
+        }
+
+        return WebProperty::query()
+            ->whereIn('slug', $propertySlugs)
+            ->with('latestSeoBaselineForProperty')
+            ->get(['id', 'slug'])
+            ->mapWithKeys(function (WebProperty $property): array {
+                $baseline = $property->latestPropertySeoBaselineRecord();
+
+                if ($baseline === null) {
+                    return [$property->slug => []];
+                }
+
+                return [$property->slug => [
+                    'page_with_redirect_in_sitemap' => $baseline->issueEvidence('page_with_redirect_in_sitemap'),
+                ]];
+            })
+            ->all();
     }
 
     /**

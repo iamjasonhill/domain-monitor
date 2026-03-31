@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 /**
@@ -183,6 +184,150 @@ class DomainSeoBaseline extends Model
             ['label' => 'Alternate with canonical', 'value' => $this->alternate_with_canonical],
             ['label' => 'Duplicate without user-selected canonical', 'value' => $this->duplicate_without_user_selected_canonical],
         ])->filter(fn (array $issue): bool => (int) ($issue['value'] ?? 0) > 0)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function issueEvidence(string $issueClass): array
+    {
+        return match ($issueClass) {
+            'page_with_redirect_in_sitemap' => $this->pageIndexingIssueEvidence(
+                ['Page with redirect'],
+                (int) ($this->pages_with_redirect ?? 0)
+            ),
+            default => [],
+        };
+    }
+
+    /**
+     * @param  array<int, string>  $labels
+     * @return array<string, mixed>
+     */
+    private function pageIndexingIssueEvidence(array $labels, int $fallbackCount): array
+    {
+        $affectedUrls = $this->extractAffectedUrlsForLabels($labels);
+
+        return [
+            'affected_urls' => $affectedUrls,
+            'affected_url_count' => $affectedUrls !== [] ? count($affectedUrls) : $fallbackCount,
+            'sample_urls' => array_slice($affectedUrls, 0, 10),
+            'source_report' => 'search_console_page_indexing',
+            'source_property' => $this->search_console_property_uri,
+        ];
+    }
+
+    /**
+     * @param  array<int, string>  $labels
+     * @return array<int, string>
+     */
+    private function extractAffectedUrlsForLabels(array $labels): array
+    {
+        $matches = collect();
+
+        foreach ($this->candidateIssuePayloads() as $payload) {
+            $this->collectUrlsFromPayload($payload, $labels, $matches);
+        }
+
+        return $matches
+            ->map(fn (string $url): string => trim($url))
+            ->filter(fn (string $url): bool => str_starts_with($url, 'http://') || str_starts_with($url, 'https://'))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function candidateIssuePayloads(): array
+    {
+        $payloads = [];
+
+        foreach ([
+            $this->raw_payload,
+            data_get($this->raw_payload, 'parsed_export'),
+            data_get($this->raw_payload, 'issue_details'),
+            data_get($this->raw_payload, 'page_indexing_details'),
+        ] as $payload) {
+            if (is_array($payload)) {
+                $payloads[] = $payload;
+            }
+        }
+
+        return $payloads;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  array<int, string>  $labels
+     * @param  Collection<int, string>  $matches
+     */
+    private function collectUrlsFromPayload(array $payload, array $labels, Collection $matches): void
+    {
+        $label = $this->payloadLabel($payload);
+
+        if ($label !== null && in_array($label, $labels, true)) {
+            foreach (['affected_urls', 'urls', 'sample_urls', 'examples', 'example_urls', 'example_url'] as $key) {
+                $matches->push(...$this->normalizeUrls(data_get($payload, $key)));
+            }
+        }
+
+        foreach ($payload as $value) {
+            if (! is_array($value)) {
+                continue;
+            }
+
+            if (array_is_list($value)) {
+                foreach ($value as $entry) {
+                    if (is_array($entry)) {
+                        $this->collectUrlsFromPayload($entry, $labels, $matches);
+                    }
+                }
+
+                continue;
+            }
+
+            $this->collectUrlsFromPayload($value, $labels, $matches);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function payloadLabel(array $payload): ?string
+    {
+        foreach (['label', 'Label', 'reason', 'Reason', 'issue', 'Issue'] as $key) {
+            $value = data_get($payload, $key);
+
+            if (is_string($value) && $value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function normalizeUrls(mixed $value): array
+    {
+        if (is_array($value)) {
+            return collect($value)
+                ->flatMap(fn (mixed $entry): array => $this->normalizeUrls($entry))
+                ->all();
+        }
+
+        if (! is_string($value) || trim($value) === '') {
+            return [];
+        }
+
+        return collect(preg_split('/[\r\n,]+/', $value) ?: [])
+            ->map(fn (string $entry): string => trim($entry))
+            ->filter(fn (string $entry): bool => str_starts_with($entry, 'http://') || str_starts_with($entry, 'https://'))
             ->values()
             ->all();
     }
