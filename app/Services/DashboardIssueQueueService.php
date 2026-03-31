@@ -36,7 +36,7 @@ class DashboardIssueQueueService
             ->where('is_active', true)
             ->with([
                 'platform',
-                'webProperties',
+                'webProperties:id,slug,name,property_type,status',
                 'webProperties.repositories:id,web_property_id,repo_name,local_path,is_primary',
                 'webProperties.latestSeoBaselineForProperty',
             ])
@@ -159,9 +159,11 @@ class DashboardIssueQueueService
             $shouldFix[] = $coverageReason;
         }
 
-        [$baselineMustFixReasons, $baselineShouldFixReasons] = $this->seoBaselineReasonSet($property);
-        $mustFix = array_merge($mustFix, $baselineMustFixReasons);
-        $shouldFix = array_merge($shouldFix, $baselineShouldFixReasons);
+        if ($this->requiresControlCoverage($domain, $property) && ! $domain->shouldSkipMonitoringCheck('seo')) {
+            [$baselineMustFixReasons, $baselineShouldFixReasons] = $this->seoBaselineReasonSet($property);
+            $mustFix = array_merge($mustFix, $baselineMustFixReasons);
+            $shouldFix = array_merge($shouldFix, $baselineShouldFixReasons);
+        }
 
         return [
             array_values(array_unique($mustFix)),
@@ -191,13 +193,6 @@ class DashboardIssueQueueService
             $mustFix[] = sprintf(
                 'Search Console reports page with redirect (%d URLs)',
                 (int) $baseline->pages_with_redirect
-            );
-        }
-
-        if ((int) ($baseline->blocked_by_robots ?? 0) > 0) {
-            $mustFix[] = sprintf(
-                'Search Console reports indexable pages blocked by robots (%d URLs)',
-                (int) $baseline->blocked_by_robots
             );
         }
 
@@ -449,7 +444,11 @@ class DashboardIssueQueueService
      */
     private function deriveIssueFamilies(Domain $domain, array $item): array
     {
-        $families = $this->reasonDerivedIssueFamilies($item);
+        $families = [];
+
+        if (in_array('page_with_redirect_in_sitemap', $this->reasonDerivedIssueFamilies($item), true)) {
+            $families[] = 'page_with_redirect_in_sitemap';
+        }
 
         if ((int) ($domain->open_critical_alerts_count ?? 0) > 0 || (int) ($domain->open_warning_alerts_count ?? 0) > 0) {
             $families[] = 'alerts.open';
@@ -519,45 +518,8 @@ class DashboardIssueQueueService
 
         $families = [];
 
-        if (preg_match('/http[^|]*200|http url returns 200|http page accessible|http accessible/', $reasonText)) {
-            $families[] = 'health.http';
-            $families[] = 'http_url_returns_200';
-        }
-
-        if (preg_match('/https[^|]*redirect|redirect[^|]*https|force https|https not enforced|missing https redirect|http\\/https duplicate/', $reasonText)) {
-            $families[] = 'duplicate_http_https';
-        }
-
-        if (preg_match('/google chose different canonical/', $reasonText)) {
-            $families[] = 'google_chose_different_canonical';
-        }
-
-        if (preg_match('/canonical/', $reasonText) && preg_match('/(host|www|non-www|domain)/', $reasonText)) {
-            $families[] = 'canonical_host_mismatch';
-        }
-
-        if (preg_match('/canonical/', $reasonText) && preg_match('/(https|http|protocol)/', $reasonText)) {
-            $families[] = 'canonical_protocol_mismatch';
-        }
-
-        if (preg_match('/sitemap/', $reasonText) && preg_match('/noindex/', $reasonText)) {
-            $families[] = 'sitemap_includes_noindex';
-        }
-
         if (preg_match('/page with redirect/', $reasonText) || (preg_match('/sitemap/', $reasonText) && preg_match('/redirect/', $reasonText))) {
             $families[] = 'page_with_redirect_in_sitemap';
-        }
-
-        if (preg_match('/robots|blocked by robots|crawl blocked|indexable page blocked/', $reasonText)) {
-            $families[] = 'indexable_page_blocked';
-        }
-
-        if (preg_match('/missing hsts|hsts/', $reasonText)) {
-            $families[] = 'missing_hsts';
-        }
-
-        if (preg_match('/security headers|missing headers|content-security-policy|csp|x-frame-options|permissions-policy/', $reasonText)) {
-            $families[] = 'missing_security_headers';
         }
 
         return $families;

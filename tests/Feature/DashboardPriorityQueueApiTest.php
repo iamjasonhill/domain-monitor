@@ -156,6 +156,53 @@ class DashboardPriorityQueueApiTest extends TestCase
             'status' => 'warn',
         ]);
 
+        $emailOnlyProperty = WebProperty::factory()->create([
+            'slug' => 'mail-only-site',
+            'name' => 'Mail Only Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $emailOnlyDomain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $emailOnlyProperty->id,
+            'domain_id' => $emailOnlyDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $emailOnlyProperty->id,
+            'repo_name' => 'mail-only-site',
+            'repo_provider' => 'local_only',
+            'local_path' => '/Users/jasonhill/Projects/websites/mail-only-site',
+            'framework' => 'WordPress',
+            'is_primary' => true,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $emailOnlyDomain->id,
+            'web_property_id' => $emailOnlyProperty->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '99',
+            'search_console_property_uri' => 'sc-domain:mail-only.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_api',
+            'clicks' => 0,
+            'impressions' => 0,
+            'ctr' => 0,
+            'average_position' => 0,
+            'indexed_pages' => 1,
+            'not_indexed_pages' => 3,
+            'pages_with_redirect' => 4,
+            'raw_payload' => ['issues' => [['label' => 'Page with redirect', 'count' => 4]]],
+        ]);
+
         $response = $this->withHeaders([
             'Authorization' => 'Bearer test-api-key',
         ])->getJson('/api/dashboard/priority-queue');
@@ -198,7 +245,7 @@ class DashboardPriorityQueueApiTest extends TestCase
         $astroShouldFix = $shouldFixDomains->firstWhere('domain', 'should-fix.example.com');
 
         $this->assertIsArray($astroShouldFix);
-        $this->assertSame('missing_security_headers', $astroShouldFix['issue_family']);
+        $this->assertSame('security.headers_baseline', $astroShouldFix['issue_family']);
         $this->assertSame('security.headers_baseline', $astroShouldFix['control_id']);
         $this->assertSame('astro_marketing_managed', $astroShouldFix['platform_profile']);
         $this->assertSame('vercel_astro', $astroShouldFix['host_profile']);
@@ -298,8 +345,6 @@ class DashboardPriorityQueueApiTest extends TestCase
         $controls = is_array(data_get($standards, 'controls')) ? data_get($standards, 'controls') : [];
         $controls['seo.robots_and_sitemap_consistency'] = [
             'issue_families' => [
-                'sitemap_includes_noindex',
-                'indexable_page_blocked',
                 'page_with_redirect_in_sitemap',
             ],
         ];
