@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Domain;
 use App\Models\DomainCheck;
+use App\Models\DomainSeoBaseline;
 use App\Models\PropertyRepository;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
@@ -197,7 +198,7 @@ class DashboardPriorityQueueApiTest extends TestCase
         $astroShouldFix = $shouldFixDomains->firstWhere('domain', 'should-fix.example.com');
 
         $this->assertIsArray($astroShouldFix);
-        $this->assertSame('security.headers_baseline', $astroShouldFix['issue_family']);
+        $this->assertSame('missing_security_headers', $astroShouldFix['issue_family']);
         $this->assertSame('security.headers_baseline', $astroShouldFix['control_id']);
         $this->assertSame('astro_marketing_managed', $astroShouldFix['platform_profile']);
         $this->assertSame('vercel_astro', $astroShouldFix['host_profile']);
@@ -288,5 +289,95 @@ class DashboardPriorityQueueApiTest extends TestCase
         $this->assertSame('Zeta Site', $shouldFix['web_property_name']);
         $this->assertSame('controlled', $shouldFix['coverage_status']);
         $this->assertFalse($shouldFix['coverage_gap']);
+    }
+
+    public function test_priority_queue_promotes_page_with_redirect_baseline_issue_into_fleet_standard_gap(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        $standards = config('domain_monitor.priority_queue_standards', []);
+        $controls = is_array(data_get($standards, 'controls')) ? data_get($standards, 'controls') : [];
+        $controls['seo.robots_and_sitemap_consistency'] = [
+            'issue_families' => [
+                'sitemap_includes_noindex',
+                'indexable_page_blocked',
+                'page_with_redirect_in_sitemap',
+            ],
+        ];
+        $standards['controls'] = $controls;
+        config()->set('domain_monitor.priority_queue_standards', $standards);
+
+        $domain = Domain::factory()->create([
+            'domain' => 'redirect-gap.example.com',
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'Synergy Wholesale PTY',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'redirect-gap-site',
+            'name' => 'Redirect Gap Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => '_wp-house',
+            'repo_provider' => 'local_only',
+            'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+            'framework' => 'WordPress',
+            'is_primary' => true,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '15',
+            'search_console_property_uri' => 'sc-domain:redirect-gap.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_api',
+            'clicks' => 0,
+            'impressions' => 0,
+            'ctr' => 0,
+            'average_position' => 0,
+            'indexed_pages' => 12,
+            'not_indexed_pages' => 18,
+            'pages_with_redirect' => 7,
+            'raw_payload' => ['issues' => [['label' => 'Page with redirect', 'count' => 7]]],
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/dashboard/priority-queue');
+
+        $response->assertOk()->assertJsonPath('contract_version', 2);
+
+        $mustFix = collect($response->json('must_fix'))->firstWhere('domain', 'redirect-gap.example.com');
+
+        $this->assertIsArray($mustFix);
+        $this->assertContains('Search Console reports page with redirect (7 URLs)', $mustFix['primary_reasons']);
+        $this->assertSame('page_with_redirect_in_sitemap', $mustFix['issue_family']);
+        $this->assertContains('page_with_redirect_in_sitemap', $mustFix['issue_families']);
+        $this->assertSame('seo.robots_and_sitemap_consistency', $mustFix['control_id']);
+        $this->assertSame('wordpress_house_managed', $mustFix['platform_profile']);
+        $this->assertSame('ventra_litespeed_wordpress', $mustFix['host_profile']);
+        $this->assertSame('leadgen_wordpress_core', $mustFix['control_profile']);
+        $this->assertSame('shared_wordpress_house_and_live_host_config', $mustFix['baseline_surface']);
+        $this->assertSame('fleet', $mustFix['rollout_scope']);
+        $this->assertTrue($mustFix['is_standard_gap']);
     }
 }

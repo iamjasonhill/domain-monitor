@@ -552,6 +552,13 @@ return [
             'seo.fundamentals' => [
                 'issue_families' => ['seo.fundamentals'],
             ],
+            'seo.robots_and_sitemap_consistency' => [
+                'issue_families' => [
+                    'sitemap_includes_noindex',
+                    'indexable_page_blocked',
+                    'page_with_redirect_in_sitemap',
+                ],
+            ],
             'seo.broken_links' => [
                 'issue_families' => ['seo.broken_links'],
             ],

@@ -36,8 +36,9 @@ class DashboardIssueQueueService
             ->where('is_active', true)
             ->with([
                 'platform',
-                'webProperties:id,slug,name,property_type,status',
+                'webProperties',
                 'webProperties.repositories:id,web_property_id,repo_name,local_path,is_primary',
+                'webProperties.latestSeoBaselineForProperty',
             ])
             ->withLatestCheckStatuses()
             ->withCount([
@@ -85,6 +86,7 @@ class DashboardIssueQueueService
             $coverageStatus = $this->controlCoverageStatus($domain, $property);
             [$mustFixReasons, $shouldFixReasons] = $this->issueReasonsForDomain(
                 $domain,
+                $property,
                 $this->controlCoverageReasonForStatus($coverageStatus)
             );
 
@@ -112,7 +114,7 @@ class DashboardIssueQueueService
     /**
      * @return array{0: array<int, string>, 1: array<int, string>}
      */
-    private function issueReasonsForDomain(Domain $domain, ?string $coverageReason): array
+    private function issueReasonsForDomain(Domain $domain, ?WebProperty $property, ?string $coverageReason): array
     {
         $mustFix = [];
         $shouldFix = [];
@@ -157,10 +159,49 @@ class DashboardIssueQueueService
             $shouldFix[] = $coverageReason;
         }
 
+        [$baselineMustFixReasons, $baselineShouldFixReasons] = $this->seoBaselineReasonSet($property);
+        $mustFix = array_merge($mustFix, $baselineMustFixReasons);
+        $shouldFix = array_merge($shouldFix, $baselineShouldFixReasons);
+
         return [
             array_values(array_unique($mustFix)),
             array_values(array_unique($shouldFix)),
         ];
+    }
+
+    /**
+     * @return array{0: array<int, string>, 1: array<int, string>}
+     */
+    private function seoBaselineReasonSet(?WebProperty $property): array
+    {
+        if (! $property instanceof WebProperty) {
+            return [[], []];
+        }
+
+        $baseline = $property->latestPropertySeoBaselineRecord();
+
+        if ($baseline === null) {
+            return [[], []];
+        }
+
+        $mustFix = [];
+        $shouldFix = [];
+
+        if ((int) ($baseline->pages_with_redirect ?? 0) > 0) {
+            $mustFix[] = sprintf(
+                'Search Console reports page with redirect (%d URLs)',
+                (int) $baseline->pages_with_redirect
+            );
+        }
+
+        if ((int) ($baseline->blocked_by_robots ?? 0) > 0) {
+            $mustFix[] = sprintf(
+                'Search Console reports indexable pages blocked by robots (%d URLs)',
+                (int) $baseline->blocked_by_robots
+            );
+        }
+
+        return [$mustFix, $shouldFix];
     }
 
     /**
@@ -314,7 +355,7 @@ class DashboardIssueQueueService
     private function enrichQueueItem(Domain $domain, ?WebProperty $property, array $item): array
     {
         $standards = config('domain_monitor.priority_queue_standards', []);
-        $issueFamilies = $this->deriveIssueFamilies($domain);
+        $issueFamilies = $this->deriveIssueFamilies($domain, $item);
         if (($item['coverage_gap'] ?? false) === true) {
             $issueFamilies[] = 'control.coverage_required';
         }
@@ -402,9 +443,13 @@ class DashboardIssueQueueService
     /**
      * @return array<int, string>
      */
-    private function deriveIssueFamilies(Domain $domain): array
+    /**
+     * @param  array<string, mixed>  $item
+     * @return array<int, string>
+     */
+    private function deriveIssueFamilies(Domain $domain, array $item): array
     {
-        $families = [];
+        $families = $this->reasonDerivedIssueFamilies($item);
 
         if ((int) ($domain->open_critical_alerts_count ?? 0) > 0 || (int) ($domain->open_warning_alerts_count ?? 0) > 0) {
             $families[] = 'alerts.open';
@@ -455,6 +500,67 @@ class DashboardIssueQueueService
         }
 
         return array_values(array_unique($families));
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @return array<int, string>
+     */
+    private function reasonDerivedIssueFamilies(array $item): array
+    {
+        $reasonText = strtolower(trim(implode(' | ', array_merge(
+            array_map('strval', is_array($item['primary_reasons'] ?? null) ? $item['primary_reasons'] : []),
+            array_map('strval', is_array($item['secondary_reasons'] ?? null) ? $item['secondary_reasons'] : []),
+        ))));
+
+        if ($reasonText === '') {
+            return [];
+        }
+
+        $families = [];
+
+        if (preg_match('/http[^|]*200|http url returns 200|http page accessible|http accessible/', $reasonText)) {
+            $families[] = 'health.http';
+            $families[] = 'http_url_returns_200';
+        }
+
+        if (preg_match('/https[^|]*redirect|redirect[^|]*https|force https|https not enforced|missing https redirect|http\\/https duplicate/', $reasonText)) {
+            $families[] = 'duplicate_http_https';
+        }
+
+        if (preg_match('/google chose different canonical/', $reasonText)) {
+            $families[] = 'google_chose_different_canonical';
+        }
+
+        if (preg_match('/canonical/', $reasonText) && preg_match('/(host|www|non-www|domain)/', $reasonText)) {
+            $families[] = 'canonical_host_mismatch';
+        }
+
+        if (preg_match('/canonical/', $reasonText) && preg_match('/(https|http|protocol)/', $reasonText)) {
+            $families[] = 'canonical_protocol_mismatch';
+        }
+
+        if (preg_match('/sitemap/', $reasonText) && preg_match('/noindex/', $reasonText)) {
+            $families[] = 'sitemap_includes_noindex';
+        }
+
+        if (preg_match('/page with redirect/', $reasonText) || (preg_match('/sitemap/', $reasonText) && preg_match('/redirect/', $reasonText))) {
+            $families[] = 'page_with_redirect_in_sitemap';
+        }
+
+        if (preg_match('/robots|blocked by robots|crawl blocked|indexable page blocked/', $reasonText)) {
+            $families[] = 'indexable_page_blocked';
+        }
+
+        if (preg_match('/missing hsts|hsts/', $reasonText)) {
+            $families[] = 'missing_hsts';
+        }
+
+        if (preg_match('/security headers|missing headers|content-security-policy|csp|x-frame-options|permissions-policy/', $reasonText)) {
+            $families[] = 'missing_security_headers';
+        }
+
+        return $families;
     }
 
     private function matchesCheckStatus(Domain $domain, string $checkType): bool
