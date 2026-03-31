@@ -71,6 +71,13 @@ See `DEPLOYMENT.md` for a complete list of required environment variables.
 - `BRAIN_BASE_URL` - Brain API base URL
 - `BRAIN_API_KEY` - Brain API key
 
+### Integration API Keys
+- `BRAIN_API_KEY` - Existing Brain/MM BRAIN bearer token for `Authorization: Bearer <token>`
+- `OPS_API_KEY` - Optional separate bearer token for ops-style integrations
+- `FLEET_CONTROL_API_KEY` - Preferred dedicated bearer token for `fleet-control`
+
+Use dedicated integration keys per client where possible instead of reusing one shared token across every external service.
+
 ### Optional
 - `SYNERGY_WHOLESALE_*` - Synergy Wholesale API credentials (for .com.au domains)
 - `HORIZON_ALLOWED_EMAILS` - Comma-separated allowlist for Horizon dashboard access in non-local environments (recommended in production).
@@ -136,6 +143,7 @@ The detailed project documentation has been moved to the `docs/` folder:
 ### Integrations
 - [Synergy Wholesale Setup](docs/SYNERGY-SETUP.md)
 - [Synergy API Fields](docs/SYNERGY-API-FIELDS.md)
+- [Domain Monitor API Integration](docs/DOMAIN-MONITOR-API-INTEGRATION.md)
 
 ## Contributing
 
