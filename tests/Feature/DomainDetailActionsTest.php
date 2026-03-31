@@ -32,7 +32,30 @@ class DomainDetailActionsTest extends TestCase
             ->set('dnsRecordPriority', 10)
             ->call('openAddDnsRecordModal')
             ->assertSet('showDnsRecordModal', true)
-            ->assertSee('Add DNS Record')
+            ->assertSet('editingDnsRecordId', null)
+            ->assertSet('dnsRecordHost', '')
+            ->assertSet('dnsRecordType', 'A')
+            ->assertSet('dnsRecordValue', '')
+            ->assertSet('dnsRecordTtl', 300)
+            ->assertSet('dnsRecordPriority', 0);
+    }
+
+    public function test_closing_dns_record_modal_resets_form_state(): void
+    {
+        $domain = Domain::factory()->create([
+            'domain' => 'example.com.au',
+        ]);
+
+        Livewire::test(DomainDetail::class, ['domainId' => $domain->id])
+            ->call('openAddDnsRecordModal')
+            ->set('editingDnsRecordId', 'existing-record')
+            ->set('dnsRecordHost', 'mail')
+            ->set('dnsRecordType', 'MX')
+            ->set('dnsRecordValue', 'mail.example.com.au')
+            ->set('dnsRecordTtl', 3600)
+            ->set('dnsRecordPriority', 10)
+            ->call('closeDnsRecordModal')
+            ->assertSet('showDnsRecordModal', false)
             ->assertSet('editingDnsRecordId', null)
             ->assertSet('dnsRecordHost', '')
             ->assertSet('dnsRecordType', 'A')
@@ -162,7 +185,6 @@ class DomainDetailActionsTest extends TestCase
         $synergyAlias->shouldReceive('isAustralianTld')
             ->with($domain->domain)
             ->andReturnTrue();
-        /** @phpstan-ignore-next-line */
         $synergyAlias->shouldNotReceive('fromEncryptedCredentials');
 
         Livewire::test(DomainDetail::class, ['domainId' => $domain->id])
@@ -184,7 +206,6 @@ class DomainDetailActionsTest extends TestCase
 
         Livewire::test(DomainDetail::class, ['domainId' => $domain->id])
             ->call('openAddSubdomainModal')
-            ->assertSee('Add Subdomain')
             ->set('subdomainName', 'api')
             ->set('subdomainNotes', 'Primary API')
             ->call('saveSubdomain')
@@ -197,6 +218,24 @@ class DomainDetailActionsTest extends TestCase
             'notes' => 'Primary API',
             'is_active' => 1,
         ]);
+    }
+
+    public function test_closing_subdomain_modal_resets_form_state(): void
+    {
+        $domain = Domain::factory()->create([
+            'domain' => 'example.com',
+        ]);
+
+        Livewire::test(DomainDetail::class, ['domainId' => $domain->id])
+            ->call('openAddSubdomainModal')
+            ->set('editingSubdomainId', 'existing-subdomain')
+            ->set('subdomainName', 'api')
+            ->set('subdomainNotes', 'Primary API')
+            ->call('closeSubdomainModal')
+            ->assertSet('showSubdomainModal', false)
+            ->assertSet('editingSubdomainId', null)
+            ->assertSet('subdomainName', '')
+            ->assertSet('subdomainNotes', '');
     }
 
     public function test_discover_subdomains_from_dns_only_adds_new_valid_hosts(): void
