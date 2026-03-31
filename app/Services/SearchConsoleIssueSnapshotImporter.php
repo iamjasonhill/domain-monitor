@@ -130,6 +130,7 @@ class SearchConsoleIssueSnapshotImporter
      *   first_detected_at:Carbon|null,
      *   last_updated_at:Carbon|null,
      *   affected_url_count:int,
+     *   exact_example_count:int,
      *   affected_urls:array<int, string>,
      *   sample_urls:array<int, string>,
      *   examples:array<int, array{url:string,last_crawled:?string}>,
@@ -183,22 +184,31 @@ class SearchConsoleIssueSnapshotImporter
             $examples
         )));
 
+        $chartPoints = collect($chartRows)
+            ->filter(fn (array $row): bool => ($row['Date'] ?? '') !== '')
+            ->map(fn (array $row): array => [
+                'date' => (string) $row['Date'],
+                'affected_pages' => $this->nullableInt($row['Affected pages'] ?? null),
+            ])->values()->all();
+
+        $summaryAffectedCount = collect($chartPoints)
+            ->pluck('affected_pages')
+            ->filter(fn (mixed $value): bool => is_int($value))
+            ->last();
+        $exactExampleCount = count($affectedUrls);
+
         return [
             'issue_class' => $issueClass,
             'source_issue_label' => $issueLabel,
             'property_scope' => is_string($metadata['Sitemap'] ?? null) ? $metadata['Sitemap'] : null,
             'first_detected_at' => $this->parseDate($metadata['First detected'] ?? null),
             'last_updated_at' => $this->parseDate($metadata['Last update'] ?? null),
-            'affected_url_count' => count($affectedUrls),
+            'affected_url_count' => max($exactExampleCount, is_int($summaryAffectedCount) ? $summaryAffectedCount : 0),
+            'exact_example_count' => $exactExampleCount,
             'affected_urls' => $affectedUrls,
             'sample_urls' => array_slice($affectedUrls, 0, 10),
             'examples' => $examples,
-            'chart_points' => collect($chartRows)
-                ->filter(fn (array $row): bool => ($row['Date'] ?? '') !== '')
-                ->map(fn (array $row): array => [
-                    'date' => (string) $row['Date'],
-                    'affected_pages' => $this->nullableInt($row['Affected pages'] ?? null),
-                ])->values()->all(),
+            'chart_points' => $chartPoints,
             'raw_payload' => [
                 'table' => $tableRows,
                 'chart' => $chartRows,

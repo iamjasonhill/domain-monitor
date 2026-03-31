@@ -218,6 +218,8 @@ class DomainSeoBaseline extends Model
         return array_filter([
             'affected_urls' => $affectedUrls !== [] ? $affectedUrls : null,
             'affected_url_count' => $affectedUrls !== [] ? count($affectedUrls) : $count,
+            'exact_example_count' => $affectedUrls !== [] ? count($affectedUrls) : null,
+            'is_example_set_truncated' => null,
             'sample_urls' => $affectedUrls !== [] ? array_slice($affectedUrls, 0, 10) : null,
             'source_report' => 'search_console_page_indexing_summary',
             'source_capture_method' => $this->import_method,

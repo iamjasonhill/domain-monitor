@@ -85,7 +85,7 @@ class DetectedIssueApiTest extends TestCase
             'source_property' => 'sc-domain:redirect-issue.example.com',
             'captured_at' => now(),
             'captured_by' => 'test',
-            'affected_url_count' => 2,
+            'affected_url_count' => 7,
             'sample_urls' => [
                 'https://redirect-issue.example.com/',
                 'http://redirect-issue.example.com/',
@@ -271,7 +271,9 @@ class DetectedIssueApiTest extends TestCase
             ['https://redirect-issue.example.com/', 'http://redirect-issue.example.com/'],
             $redirectIssue['evidence']['affected_urls']
         );
-        $this->assertSame(2, $redirectIssue['evidence']['affected_url_count']);
+        $this->assertSame(7, $redirectIssue['evidence']['affected_url_count']);
+        $this->assertSame(2, $redirectIssue['evidence']['exact_example_count']);
+        $this->assertTrue($redirectIssue['evidence']['is_example_set_truncated']);
         $this->assertSame('search_console_page_indexing_drilldown', $redirectIssue['evidence']['source_report']);
         $this->assertSame('gsc_drilldown_zip', $redirectIssue['evidence']['source_capture_method']);
         $this->assertSame('2026-03-28', $redirectIssue['evidence']['examples'][0]['last_crawled']);
