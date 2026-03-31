@@ -42,6 +42,7 @@ class RefreshShouldFixQueue extends Command
                 'platform',
                 'webProperties:id,slug,name,property_type,status',
                 'webProperties.repositories:id,web_property_id,repo_name,local_path,is_primary',
+                'webProperties.latestSeoBaselineForProperty',
             ])
             ->withLatestCheckStatuses()
             ->withCount([

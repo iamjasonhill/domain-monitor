@@ -436,9 +436,6 @@ class DashboardIssueQueueService
     }
 
     /**
-     * @return array<int, string>
-     */
-    /**
      * @param  array<string, mixed>  $item
      * @return array<int, string>
      */
@@ -507,19 +504,28 @@ class DashboardIssueQueueService
      */
     private function reasonDerivedIssueFamilies(array $item): array
     {
-        $reasonText = strtolower(trim(implode(' | ', array_merge(
-            array_map('strval', is_array($item['primary_reasons'] ?? null) ? $item['primary_reasons'] : []),
-            array_map('strval', is_array($item['secondary_reasons'] ?? null) ? $item['secondary_reasons'] : []),
-        ))));
+        $reasonSegments = array_values(array_filter(array_map(
+            static fn (mixed $reason): string => strtolower(trim((string) $reason)),
+            array_merge(
+                is_array($item['primary_reasons'] ?? null) ? $item['primary_reasons'] : [],
+                is_array($item['secondary_reasons'] ?? null) ? $item['secondary_reasons'] : [],
+            )
+        )));
 
-        if ($reasonText === '') {
+        if ($reasonSegments === []) {
             return [];
         }
 
         $families = [];
 
-        if (preg_match('/page with redirect/', $reasonText) || (preg_match('/sitemap/', $reasonText) && preg_match('/redirect/', $reasonText))) {
+        foreach ($reasonSegments as $reasonText) {
+            if (! preg_match('/page with redirect/', $reasonText)
+                && ! (preg_match('/sitemap/', $reasonText) && preg_match('/redirect/', $reasonText))) {
+                continue;
+            }
+
             $families[] = 'page_with_redirect_in_sitemap';
+            break;
         }
 
         return $families;
