@@ -75,6 +75,36 @@ class ImportSearchConsoleIssueSnapshotCommandTest extends TestCase
         $this->assertNull(data_get($snapshot->issueEvidence(), 'examples.0.last_crawled'));
     }
 
+    public function test_it_preserves_higher_summary_count_than_exported_examples_for_large_drilldown_exports(): void
+    {
+        Storage::fake('local');
+
+        $property = $this->makeProperty('large-drilldown-site', 'large-drilldown.example.au', '44');
+        $zipPath = $this->makeDrilldownExportZip(
+            'Discovered - currently not indexed',
+            [
+                ['https://large-drilldown.example.au/example-one/', '2026-03-28'],
+                ['https://large-drilldown.example.au/example-two/', '2026-03-27'],
+            ],
+            1741
+        );
+
+        $exitCode = Artisan::call('analytics:import-search-console-issue-detail', [
+            'property' => $property->slug,
+            'path' => $zipPath,
+            '--captured-by' => 'test-suite',
+        ]);
+
+        $this->assertSame(0, $exitCode);
+
+        $snapshot = SearchConsoleIssueSnapshot::query()->firstOrFail();
+        $this->assertSame(1741, $snapshot->affected_url_count);
+        $this->assertSame(2, count($snapshot->sample_urls ?? []));
+        $this->assertSame(2, count($snapshot->examples ?? []));
+        $this->assertSame(2, data_get($snapshot->issueEvidence(), 'exact_example_count'));
+        $this->assertTrue((bool) data_get($snapshot->issueEvidence(), 'is_example_set_truncated'));
+    }
+
     public function test_it_imports_search_console_api_evidence_json(): void
     {
         Storage::fake('local');
@@ -189,7 +219,7 @@ class ImportSearchConsoleIssueSnapshotCommandTest extends TestCase
     /**
      * @param  array<int, array{0:string,1:string}>  $rows
      */
-    private function makeDrilldownExportZip(string $issueLabel, array $rows): string
+    private function makeDrilldownExportZip(string $issueLabel, array $rows, ?int $chartAffectedPages = null): string
     {
         $path = tempnam(sys_get_temp_dir(), 'gsc-drilldown-');
         $zip = new ZipArchive;
@@ -201,7 +231,7 @@ class ImportSearchConsoleIssueSnapshotCommandTest extends TestCase
         ]));
         $zip->addFromString('Chart.csv', implode("\n", [
             'Date,Affected pages',
-            '2026-03-28,'.count($rows),
+            '2026-03-28,'.($chartAffectedPages ?? count($rows)),
         ]));
         $tableRows = ['URL,Last crawled'];
         foreach ($rows as [$url, $lastCrawled]) {

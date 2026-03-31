@@ -147,9 +147,17 @@ class SearchConsoleIssueSnapshot extends Model
             )));
         }
 
+        $exactExampleCount = count($affectedUrls);
+        $affectedUrlCount = $this->affected_url_count;
+        $isExampleSetTruncated = $exactExampleCount > 0
+            && is_int($affectedUrlCount)
+            && $affectedUrlCount > $exactExampleCount;
+
         return array_filter([
             'affected_urls' => $affectedUrls !== [] ? $affectedUrls : null,
-            'affected_url_count' => $this->affected_url_count,
+            'affected_url_count' => $affectedUrlCount,
+            'exact_example_count' => $exactExampleCount > 0 ? $exactExampleCount : null,
+            'is_example_set_truncated' => $isExampleSetTruncated ? true : null,
             'sample_urls' => is_array($this->sample_urls) && $this->sample_urls !== [] ? $this->sample_urls : array_slice($affectedUrls, 0, 10),
             'examples' => $examples !== [] ? $examples : null,
             'first_detected' => $this->first_detected_at?->toDateString(),
