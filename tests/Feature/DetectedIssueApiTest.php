@@ -233,6 +233,14 @@ class DetectedIssueApiTest extends TestCase
             ['blocked_by_robots_in_indexing', 'duplicate_without_user_selected_canonical'],
             $issues->pluck('issue_class')->sort()->values()->all()
         );
+        $blockedIssue = $issues->firstWhere('issue_class', 'blocked_by_robots_in_indexing');
+        $duplicateIssue = $issues->firstWhere('issue_class', 'duplicate_without_user_selected_canonical');
+        $this->assertIsArray($blockedIssue);
+        $this->assertIsArray($duplicateIssue);
+        $this->assertSame('must_fix', $blockedIssue['severity']);
+        $this->assertSame('seo.robots_and_sitemap_consistency', $blockedIssue['control_id']);
+        $this->assertSame('should_fix', $duplicateIssue['severity']);
+        $this->assertSame('seo.canonical_consistency', $duplicateIssue['control_id']);
         /** @var array<int, string> $relatedIssueClasses */
         $relatedIssueClasses = is_array($issues->first()['evidence']['related_issue_classes'] ?? null)
             ? $issues->first()['evidence']['related_issue_classes']

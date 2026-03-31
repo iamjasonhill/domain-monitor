@@ -583,4 +583,84 @@ class DashboardPriorityQueueApiTest extends TestCase
         $this->assertSame('seo.canonical_consistency', $shouldFix['control_id']);
         $this->assertSame('fleet', $shouldFix['rollout_scope']);
     }
+
+    public function test_priority_queue_keeps_primary_transport_failure_as_canonical_issue_family(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'mixed-priority.example.com',
+            'is_active' => true,
+            'platform' => 'Astro',
+            'hosting_provider' => 'Vercel',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'mixed-priority-site',
+            'name' => 'Mixed Priority Site',
+            'property_type' => 'marketing_site',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => 'mixed-priority-site',
+            'repo_provider' => 'local_only',
+            'local_path' => '/Users/jasonhill/Projects/websites/mixed-priority-site',
+            'framework' => 'Astro',
+            'is_primary' => true,
+        ]);
+
+        DomainCheck::factory()->create([
+            'domain_id' => $domain->id,
+            'check_type' => 'http',
+            'status' => 'fail',
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '101',
+            'search_console_property_uri' => 'sc-domain:mixed-priority.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_api',
+            'blocked_by_robots' => 5,
+            'raw_payload' => [
+                'issues' => [
+                    ['label' => 'Blocked by robots.txt', 'count' => 5],
+                ],
+            ],
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/dashboard/priority-queue');
+
+        $response->assertOk()->assertJsonPath('contract_version', 2);
+
+        /** @var array<int, array<string, mixed>> $mustFixPayload */
+        $mustFixPayload = $response->json('must_fix') ?? [];
+        $mustFix = collect($mustFixPayload)->firstWhere('domain', 'mixed-priority.example.com');
+
+        $this->assertIsArray($mustFix);
+        $this->assertContains('HTTP check is failing', $mustFix['primary_reasons']);
+        $this->assertContains('Search Console reports blocked by robots.txt (5 URLs)', $mustFix['primary_reasons']);
+        $this->assertSame('health.http', $mustFix['issue_family']);
+        $this->assertSame('transport.http_health', $mustFix['control_id']);
+        $this->assertContains('blocked_by_robots_in_indexing', $mustFix['issue_families']);
+    }
 }
