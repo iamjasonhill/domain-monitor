@@ -33,6 +33,10 @@ $maxWidth = [
         nextFocusableIndex() { return (this.focusables().indexOf(document.activeElement) + 1) % (this.focusables().length + 1) },
         prevFocusableIndex() { return Math.max(0, this.focusables().indexOf(document.activeElement)) -1 },
         close() {
+            if (! this.show) {
+                return
+            }
+
             this.show = false
 
             if (this.closeAction && this.$wire && typeof this.$wire[this.closeAction] === 'function') {
@@ -49,7 +53,7 @@ $maxWidth = [
         }
     })"
     x-on:open-modal.window="$event.detail == '{{ $name }}' ? show = true : null"
-    x-on:close-modal.window="$event.detail == '{{ $name }}' ? show = false : null"
+    x-on:close-modal.window="$event.detail == '{{ $name }}' ? close() : null"
     x-on:close.stop="close()"
     x-on:keydown.escape.window="close()"
     x-on:keydown.tab.prevent="$event.shiftKey || nextFocusable().focus()"
