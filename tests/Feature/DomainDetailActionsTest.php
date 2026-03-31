@@ -32,6 +32,7 @@ class DomainDetailActionsTest extends TestCase
             ->set('dnsRecordPriority', 10)
             ->call('openAddDnsRecordModal')
             ->assertSet('showDnsRecordModal', true)
+            ->assertSee('Add DNS Record')
             ->assertSet('editingDnsRecordId', null)
             ->assertSet('dnsRecordHost', '')
             ->assertSet('dnsRecordType', 'A')
@@ -183,6 +184,7 @@ class DomainDetailActionsTest extends TestCase
 
         Livewire::test(DomainDetail::class, ['domainId' => $domain->id])
             ->call('openAddSubdomainModal')
+            ->assertSee('Add Subdomain')
             ->set('subdomainName', 'api')
             ->set('subdomainNotes', 'Primary API')
             ->call('saveSubdomain')
