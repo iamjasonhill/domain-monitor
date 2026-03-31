@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\DashboardPriorityQueueController;
 use App\Http\Controllers\Api\DeploymentController;
+use App\Http\Controllers\Api\DetectedIssueController;
 use App\Http\Controllers\Api\DomainController;
 use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\WebPropertyController;
@@ -32,6 +33,8 @@ Route::middleware(['api-key'])->group(function () {
     Route::get('/web-properties/{slug}', [WebPropertyController::class, 'show']);
     Route::get('/web-properties/{slug}/health-summary', [WebPropertyController::class, 'healthSummary']);
     Route::get('/dashboard/priority-queue', DashboardPriorityQueueController::class);
+    Route::get('/issues', [DetectedIssueController::class, 'index']);
+    Route::get('/issues/{issueId}', [DetectedIssueController::class, 'show']);
 
     // Tags
     Route::get('/tags', [TagController::class, 'index']);
