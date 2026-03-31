@@ -454,12 +454,18 @@ class SearchConsoleIssueSnapshotImporter
 
     private function parseDate(mixed $value): ?Carbon
     {
-        if (! is_string($value) || trim($value) === '') {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        if ($trimmed === '' || in_array(strtolower($trimmed), ['n/a', 'na', '-', '--', 'not available'], true)) {
             return null;
         }
 
         try {
-            return Carbon::parse($value);
+            return Carbon::parse($trimmed);
         } catch (\Throwable) {
             return null;
         }
