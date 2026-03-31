@@ -227,8 +227,12 @@ class DashboardPriorityQueueApiTest extends TestCase
         $this->assertGreaterThanOrEqual(1, (int) data_get($payload, 'derived.standard_gap_candidates', 0));
         $this->assertGreaterThanOrEqual(1, (int) data_get($payload, 'derived.coverage_gap_candidates', 0));
 
-        $mustFixDomains = collect(data_get($payload, 'must_fix', []));
-        $shouldFixDomains = collect(data_get($payload, 'should_fix', []));
+        /** @var array<int, array<string, mixed>> $mustFixPayload */
+        $mustFixPayload = data_get($payload, 'must_fix', []);
+        /** @var array<int, array<string, mixed>> $shouldFixPayload */
+        $shouldFixPayload = data_get($payload, 'should_fix', []);
+        $mustFixDomains = collect($mustFixPayload);
+        $shouldFixDomains = collect($shouldFixPayload);
 
         $this->assertFalse($mustFixDomains->contains(fn (array $item): bool => $item['domain'] === 'parked.example.com'));
         $this->assertFalse($mustFixDomains->contains(fn (array $item): bool => $item['domain'] === 'mail-only.example.com'));
@@ -329,7 +333,9 @@ class DashboardPriorityQueueApiTest extends TestCase
 
         $response->assertOk()->assertJsonPath('contract_version', 2);
 
-        $shouldFix = collect($response->json('should_fix'))->firstWhere('domain', 'canonical-choice.example.com');
+        /** @var array<int, array<string, mixed>> $shouldFixPayload */
+        $shouldFixPayload = $response->json('should_fix') ?? [];
+        $shouldFix = collect($shouldFixPayload)->firstWhere('domain', 'canonical-choice.example.com');
 
         $this->assertIsArray($shouldFix);
         $this->assertSame('zeta-site', $shouldFix['web_property_slug']);
@@ -411,7 +417,9 @@ class DashboardPriorityQueueApiTest extends TestCase
 
         $response->assertOk()->assertJsonPath('contract_version', 2);
 
-        $mustFix = collect($response->json('must_fix'))->firstWhere('domain', 'redirect-gap.example.com');
+        /** @var array<int, array<string, mixed>> $mustFixPayload */
+        $mustFixPayload = $response->json('must_fix') ?? [];
+        $mustFix = collect($mustFixPayload)->firstWhere('domain', 'redirect-gap.example.com');
 
         $this->assertIsArray($mustFix);
         $this->assertContains('Search Console reports page with redirect (7 URLs)', $mustFix['primary_reasons']);
@@ -424,5 +432,155 @@ class DashboardPriorityQueueApiTest extends TestCase
         $this->assertSame('shared_wordpress_house_and_live_host_config', $mustFix['baseline_surface']);
         $this->assertSame('fleet', $mustFix['rollout_scope']);
         $this->assertTrue($mustFix['is_standard_gap']);
+    }
+
+    public function test_priority_queue_promotes_blocked_by_robots_and_duplicate_canonical_baseline_issues(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $blockedDomain = Domain::factory()->create([
+            'domain' => 'blocked-by-robots.example.com',
+            'is_active' => true,
+            'platform' => 'Astro',
+            'hosting_provider' => 'Vercel',
+        ]);
+
+        $blockedProperty = WebProperty::factory()->create([
+            'slug' => 'blocked-by-robots-site',
+            'name' => 'Blocked By Robots Site',
+            'property_type' => 'marketing_site',
+            'status' => 'active',
+            'primary_domain_id' => $blockedDomain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $blockedProperty->id,
+            'domain_id' => $blockedDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $blockedProperty->id,
+            'repo_name' => 'blocked-by-robots-site',
+            'repo_provider' => 'local_only',
+            'local_path' => '/Users/jasonhill/Projects/websites/blocked-by-robots-site',
+            'framework' => 'Astro',
+            'is_primary' => true,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $blockedDomain->id,
+            'web_property_id' => $blockedProperty->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '99',
+            'search_console_property_uri' => 'sc-domain:blocked-by-robots.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_plus_manual_csv',
+            'clicks' => 0,
+            'impressions' => 0,
+            'ctr' => 0,
+            'average_position' => 0,
+            'indexed_pages' => 50,
+            'not_indexed_pages' => 8,
+            'blocked_by_robots' => 3,
+            'duplicate_without_user_selected_canonical' => 11,
+            'raw_payload' => [
+                'issues' => [
+                    ['label' => 'Blocked by robots.txt', 'count' => 3],
+                    ['label' => 'Duplicate without user-selected canonical', 'count' => 11],
+                ],
+            ],
+        ]);
+
+        $canonicalDomain = Domain::factory()->create([
+            'domain' => 'duplicate-canonical.example.com',
+            'is_active' => true,
+            'platform' => 'Astro',
+            'hosting_provider' => 'Vercel',
+        ]);
+
+        $canonicalProperty = WebProperty::factory()->create([
+            'slug' => 'duplicate-canonical-site',
+            'name' => 'Duplicate Canonical Site',
+            'property_type' => 'marketing_site',
+            'status' => 'active',
+            'primary_domain_id' => $canonicalDomain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $canonicalProperty->id,
+            'domain_id' => $canonicalDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $canonicalProperty->id,
+            'repo_name' => 'duplicate-canonical-site',
+            'repo_provider' => 'local_only',
+            'local_path' => '/Users/jasonhill/Projects/websites/duplicate-canonical-site',
+            'framework' => 'Astro',
+            'is_primary' => true,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $canonicalDomain->id,
+            'web_property_id' => $canonicalProperty->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '100',
+            'search_console_property_uri' => 'sc-domain:duplicate-canonical.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_plus_manual_csv',
+            'clicks' => 0,
+            'impressions' => 0,
+            'ctr' => 0,
+            'average_position' => 0,
+            'indexed_pages' => 50,
+            'not_indexed_pages' => 8,
+            'duplicate_without_user_selected_canonical' => 11,
+            'raw_payload' => [
+                'issues' => [
+                    ['label' => 'Duplicate without user-selected canonical', 'count' => 11],
+                ],
+            ],
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/dashboard/priority-queue');
+
+        $response->assertOk()->assertJsonPath('contract_version', 2);
+
+        /** @var array<int, array<string, mixed>> $mustFixPayload */
+        $mustFixPayload = $response->json('must_fix') ?? [];
+        /** @var array<int, array<string, mixed>> $shouldFixPayload */
+        $shouldFixPayload = $response->json('should_fix') ?? [];
+        $mustFix = collect($mustFixPayload)->firstWhere('domain', 'blocked-by-robots.example.com');
+        $shouldFix = collect($shouldFixPayload)->firstWhere('domain', 'duplicate-canonical.example.com');
+
+        $this->assertIsArray($mustFix);
+        $this->assertContains('Search Console reports blocked by robots.txt (3 URLs)', $mustFix['primary_reasons']);
+        $this->assertContains('blocked_by_robots_in_indexing', $mustFix['issue_families']);
+        $this->assertSame('blocked_by_robots_in_indexing', $mustFix['issue_family']);
+        $this->assertSame('seo.robots_and_sitemap_consistency', $mustFix['control_id']);
+        $this->assertSame('fleet', $mustFix['rollout_scope']);
+
+        $this->assertIsArray($shouldFix);
+        $this->assertContains('Search Console reports duplicate without user-selected canonical (11 URLs)', $shouldFix['primary_reasons']);
+        $this->assertContains('duplicate_without_user_selected_canonical', $shouldFix['issue_families']);
+        $this->assertSame('duplicate_without_user_selected_canonical', $shouldFix['issue_family']);
+        $this->assertSame('seo.canonical_consistency', $shouldFix['control_id']);
+        $this->assertSame('fleet', $shouldFix['rollout_scope']);
     }
 }

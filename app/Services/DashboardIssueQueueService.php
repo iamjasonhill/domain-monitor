@@ -196,6 +196,20 @@ class DashboardIssueQueueService
             );
         }
 
+        if ((int) ($baseline->blocked_by_robots ?? 0) > 0) {
+            $mustFix[] = sprintf(
+                'Search Console reports blocked by robots.txt (%d URLs)',
+                (int) $baseline->blocked_by_robots
+            );
+        }
+
+        if ((int) ($baseline->duplicate_without_user_selected_canonical ?? 0) > 0) {
+            $shouldFix[] = sprintf(
+                'Search Console reports duplicate without user-selected canonical (%d URLs)',
+                (int) $baseline->duplicate_without_user_selected_canonical
+            );
+        }
+
         return [$mustFix, $shouldFix];
     }
 
@@ -442,9 +456,18 @@ class DashboardIssueQueueService
     private function deriveIssueFamilies(Domain $domain, array $item): array
     {
         $families = [];
+        $reasonDerivedFamilies = $this->reasonDerivedIssueFamilies($item);
 
-        if (in_array('page_with_redirect_in_sitemap', $this->reasonDerivedIssueFamilies($item), true)) {
+        if (in_array('page_with_redirect_in_sitemap', $reasonDerivedFamilies, true)) {
             $families[] = 'page_with_redirect_in_sitemap';
+        }
+
+        if (in_array('blocked_by_robots_in_indexing', $reasonDerivedFamilies, true)) {
+            $families[] = 'blocked_by_robots_in_indexing';
+        }
+
+        if (in_array('duplicate_without_user_selected_canonical', $reasonDerivedFamilies, true)) {
+            $families[] = 'duplicate_without_user_selected_canonical';
         }
 
         if ((int) ($domain->open_critical_alerts_count ?? 0) > 0 || (int) ($domain->open_warning_alerts_count ?? 0) > 0) {
@@ -519,16 +542,21 @@ class DashboardIssueQueueService
         $families = [];
 
         foreach ($reasonSegments as $reasonText) {
-            if (! preg_match('/page with redirect/', $reasonText)
-                && ! (preg_match('/sitemap/', $reasonText) && preg_match('/redirect/', $reasonText))) {
-                continue;
+            if (preg_match('/page with redirect/', $reasonText)
+                || (preg_match('/sitemap/', $reasonText) && preg_match('/redirect/', $reasonText))) {
+                $families[] = 'page_with_redirect_in_sitemap';
             }
 
-            $families[] = 'page_with_redirect_in_sitemap';
-            break;
+            if (preg_match('/blocked by robots(?:\\.txt)?/', $reasonText)) {
+                $families[] = 'blocked_by_robots_in_indexing';
+            }
+
+            if (preg_match('/duplicate without user-selected canonical/', $reasonText)) {
+                $families[] = 'duplicate_without_user_selected_canonical';
+            }
         }
 
-        return $families;
+        return array_values(array_unique($families));
     }
 
     private function matchesCheckStatus(Domain $domain, string $checkType): bool
