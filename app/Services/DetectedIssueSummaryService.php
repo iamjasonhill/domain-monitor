@@ -6,11 +6,6 @@ use Illuminate\Support\Collection;
 
 class DetectedIssueSummaryService
 {
-    /**
-     * @var array<string, mixed>|null
-     */
-    private ?array $cachedSnapshot = null;
-
     public function __construct(
         private readonly DashboardIssueQueueService $queueService,
         private readonly SearchConsoleIssueEvidenceService $issueEvidenceService,
@@ -21,10 +16,6 @@ class DetectedIssueSummaryService
      */
     public function snapshot(): array
     {
-        if ($this->cachedSnapshot !== null) {
-            return $this->cachedSnapshot;
-        }
-
         $queueSnapshot = $this->queueService->snapshot();
         $issueEvidence = $this->issueEvidenceService->evidenceMapForQueueItems([
             ...($queueSnapshot['must_fix'] ?? []),
@@ -36,7 +27,7 @@ class DetectedIssueSummaryService
         $mustFix = $issues->where('severity', 'must_fix')->values();
         $shouldFix = $issues->where('severity', 'should_fix')->values();
 
-        return $this->cachedSnapshot = [
+        return [
             'source_system' => 'domain-monitor-issues',
             'contract_version' => 1,
             'generated_at' => $queueSnapshot['generated_at'] ?? now()->toIso8601String(),
