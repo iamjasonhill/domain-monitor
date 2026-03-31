@@ -189,7 +189,10 @@ class SearchConsoleIssueSnapshotImporter
             ->map(fn (array $row): array => [
                 'date' => (string) $row['Date'],
                 'affected_pages' => $this->nullableInt($row['Affected pages'] ?? null),
-            ])->values()->all();
+            ])
+            ->sortBy('date')
+            ->values()
+            ->all();
 
         $summaryAffectedCount = collect($chartPoints)
             ->pluck('affected_pages')

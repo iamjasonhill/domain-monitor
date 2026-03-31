@@ -149,7 +149,9 @@ class SearchConsoleIssueSnapshot extends Model
 
         $exactExampleCount = count($affectedUrls);
         $affectedUrlCount = $this->affected_url_count;
-        $isExampleSetTruncated = is_int($affectedUrlCount) && $affectedUrlCount > $exactExampleCount;
+        $isExampleSetTruncated = $exactExampleCount > 0
+            && is_int($affectedUrlCount)
+            && $affectedUrlCount > $exactExampleCount;
 
         return array_filter([
             'affected_urls' => $affectedUrls !== [] ? $affectedUrls : null,
