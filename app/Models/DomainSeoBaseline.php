@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 /**
@@ -185,5 +186,127 @@ class DomainSeoBaseline extends Model
         ])->filter(fn (array $issue): bool => (int) ($issue['value'] ?? 0) > 0)
             ->values()
             ->all();
+    }
+
+    public function issueCount(string $issueClass): ?int
+    {
+        $countField = config('domain_monitor.search_console_issue_catalog.'.$issueClass.'.count_field');
+
+        if (! is_string($countField) || $countField === '') {
+            return null;
+        }
+
+        $count = $this->getAttribute($countField);
+
+        return is_numeric($count) ? (int) $count : null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function issueEvidence(string $issueClass): array
+    {
+        $catalogEntry = config('domain_monitor.search_console_issue_catalog.'.$issueClass);
+
+        if (! is_array($catalogEntry)) {
+            return [];
+        }
+
+        $affectedUrls = $this->extractAffectedUrlsForLabels(array_values(array_filter($catalogEntry['labels'] ?? [], 'is_string')));
+        $count = $this->issueCount($issueClass);
+
+        return array_filter([
+            'affected_urls' => $affectedUrls !== [] ? $affectedUrls : null,
+            'affected_url_count' => $affectedUrls !== [] ? count($affectedUrls) : $count,
+            'sample_urls' => $affectedUrls !== [] ? array_slice($affectedUrls, 0, 10) : null,
+            'source_report' => 'search_console_page_indexing_summary',
+            'source_capture_method' => $this->import_method,
+            'source_property' => $this->search_console_property_uri,
+            'captured_at' => $this->captured_at->toIso8601String(),
+        ], static fn (mixed $value): bool => $value !== null && $value !== []);
+    }
+
+    /**
+     * @param  array<int, string>  $labels
+     * @return array<int, string>
+     */
+    private function extractAffectedUrlsForLabels(array $labels): array
+    {
+        if ($labels === []) {
+            return [];
+        }
+
+        $matches = collect();
+
+        foreach ($this->candidateIssuePayloads() as $payload) {
+            $this->collectUrlsFromPayload($payload, $labels, $matches);
+        }
+
+        return $matches
+            ->map(fn (string $url): string => trim($url))
+            ->filter(fn (string $url): bool => str_starts_with($url, 'http://') || str_starts_with($url, 'https://'))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function candidateIssuePayloads(): array
+    {
+        $payloads = [];
+
+        foreach ([
+            $this->raw_payload,
+            data_get($this->raw_payload, 'parsed_export'),
+            data_get($this->raw_payload, 'issue_details'),
+            data_get($this->raw_payload, 'page_indexing_details'),
+        ] as $payload) {
+            if (is_array($payload)) {
+                $payloads[] = $payload;
+            }
+        }
+
+        return $payloads;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  array<int, string>  $labels
+     * @param  Collection<int, string>  $matches
+     */
+    private function collectUrlsFromPayload(array $payload, array $labels, Collection $matches): void
+    {
+        $issueLabel = data_get($payload, 'label');
+        $url = data_get($payload, 'url');
+
+        if (is_string($issueLabel) && in_array($issueLabel, $labels, true) && is_string($url)) {
+            $matches->push($url);
+        }
+
+        foreach ($payload as $value) {
+            if (is_array($value)) {
+                if ($this->isListArray($value)) {
+                    foreach ($value as $entry) {
+                        if (is_array($entry)) {
+                            $this->collectUrlsFromPayload($entry, $labels, $matches);
+                        }
+                    }
+
+                    continue;
+                }
+
+                $this->collectUrlsFromPayload($value, $labels, $matches);
+            }
+        }
+    }
+
+    /**
+     * @param  array<mixed>  $value
+     */
+    private function isListArray(array $value): bool
+    {
+        return array_is_list($value);
     }
 }

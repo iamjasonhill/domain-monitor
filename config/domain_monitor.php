@@ -510,6 +510,54 @@ return [
         ],
     ],
 
+    'search_console_issue_catalog' => [
+        'page_with_redirect_in_sitemap' => [
+            'label' => 'Page with redirect',
+            'labels' => ['Page with redirect'],
+            'count_field' => 'pages_with_redirect',
+        ],
+        'blocked_by_robots_in_indexing' => [
+            'label' => 'Blocked by robots.txt',
+            'labels' => ['Blocked by robots.txt'],
+            'count_field' => 'blocked_by_robots',
+        ],
+        'duplicate_without_user_selected_canonical' => [
+            'label' => 'Duplicate without user-selected canonical',
+            'labels' => ['Duplicate without user-selected canonical'],
+            'count_field' => 'duplicate_without_user_selected_canonical',
+        ],
+        'alternate_with_canonical' => [
+            'label' => 'Alternative page with proper canonical tag',
+            'labels' => ['Alternative page with proper canonical tag'],
+            'count_field' => 'alternate_with_canonical',
+        ],
+        'excluded_by_noindex' => [
+            'label' => "Excluded by 'noindex' tag",
+            'labels' => ["Excluded by 'noindex' tag", 'Excluded by ‘noindex’ tag'],
+            'count_field' => null,
+        ],
+        'not_found_404' => [
+            'label' => 'Not found (404)',
+            'labels' => ['Not found (404)'],
+            'count_field' => 'not_found_404',
+        ],
+        'crawled_currently_not_indexed' => [
+            'label' => 'Crawled - currently not indexed',
+            'labels' => ['Crawled - currently not indexed'],
+            'count_field' => 'crawled_currently_not_indexed',
+        ],
+        'discovered_currently_not_indexed' => [
+            'label' => 'Discovered - currently not indexed',
+            'labels' => ['Discovered - currently not indexed', 'Discovered – currently not indexed'],
+            'count_field' => 'discovered_currently_not_indexed',
+        ],
+        'google_chose_different_canonical' => [
+            'label' => 'Duplicate, Google chose different canonical than user',
+            'labels' => ['Duplicate, Google chose different canonical than user'],
+            'count_field' => null,
+        ],
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Priority Queue Standards

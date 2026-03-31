@@ -12,7 +12,8 @@ class DetectedIssueSummaryService
     private ?array $cachedSnapshot = null;
 
     public function __construct(
-        private readonly DashboardIssueQueueService $queueService
+        private readonly DashboardIssueQueueService $queueService,
+        private readonly SearchConsoleIssueEvidenceService $issueEvidenceService,
     ) {}
 
     /**
@@ -25,8 +26,12 @@ class DetectedIssueSummaryService
         }
 
         $queueSnapshot = $this->queueService->snapshot();
-        $mustFix = $this->flattenIssues($queueSnapshot['must_fix'] ?? [], 'must_fix');
-        $shouldFix = $this->flattenIssues($queueSnapshot['should_fix'] ?? [], 'should_fix');
+        $issueEvidence = $this->issueEvidenceService->evidenceMapForQueueItems([
+            ...($queueSnapshot['must_fix'] ?? []),
+            ...($queueSnapshot['should_fix'] ?? []),
+        ]);
+        $mustFix = $this->flattenIssues($queueSnapshot['must_fix'] ?? [], 'must_fix', $issueEvidence);
+        $shouldFix = $this->flattenIssues($queueSnapshot['should_fix'] ?? [], 'should_fix', $issueEvidence);
         $issues = $mustFix->concat($shouldFix)->values();
 
         return $this->cachedSnapshot = [
@@ -60,24 +65,27 @@ class DetectedIssueSummaryService
 
     /**
      * @param  array<int, array<string, mixed>>  $items
+     * @param  array<string, array<string, array<string, mixed>>>  $issueEvidence
      * @return Collection<int, array<string, mixed>>
      */
-    private function flattenIssues(array $items, string $severity): Collection
+    private function flattenIssues(array $items, string $severity, array $issueEvidence): Collection
     {
         return collect($items)
-            ->flatMap(fn (array $item): array => $this->makeIssues($item, $severity))
+            ->flatMap(fn (array $item): array => $this->makeIssues($item, $severity, $issueEvidence))
             ->values();
     }
 
     /**
      * @param  array<string, mixed>  $item
+     * @param  array<string, array<string, array<string, mixed>>>  $issueEvidence
      * @return array<int, array<string, mixed>>
      */
-    private function makeIssues(array $item, string $severity): array
+    private function makeIssues(array $item, string $severity, array $issueEvidence): array
     {
         $domainId = (string) ($item['id'] ?? '');
         $domain = is_string($item['domain'] ?? null) ? $item['domain'] : null;
         $propertySlug = is_string($item['web_property_slug'] ?? null) ? $item['web_property_slug'] : null;
+        $evidenceKey = $propertySlug ?: $domainId;
         $detectedAt = is_string($item['updated_at_iso'] ?? null) && $item['updated_at_iso'] !== ''
             ? $item['updated_at_iso']
             : now()->toIso8601String();
@@ -122,8 +130,14 @@ class DetectedIssueSummaryService
                 'fleet_managed' => (bool) ($item['fleet_managed'] ?? false),
                 'controller_repo' => is_string($item['controller_repo'] ?? null) ? $item['controller_repo'] : null,
                 'evidence' => [
-                    'primary_reasons' => array_values(array_filter($item['primary_reasons'] ?? [], 'is_string')),
-                    'secondary_reasons' => array_values(array_filter($item['secondary_reasons'] ?? [], 'is_string')),
+                    'primary_reasons' => [$issueEntry['reason']],
+                    'secondary_reasons' => array_values(array_filter(
+                        array_map(
+                            static fn (array $entry): ?string => $entry['issue_class'] !== $issueClass ? $entry['reason'] : null,
+                            $issueEntries
+                        ),
+                        'is_string'
+                    )),
                     'related_issue_classes' => $relatedIssueClasses,
                     'coverage_required' => (bool) ($item['coverage_required'] ?? false),
                     'coverage_status' => is_string($item['coverage_status'] ?? null) ? $item['coverage_status'] : null,
@@ -131,6 +145,7 @@ class DetectedIssueSummaryService
                     'property_match_confidence' => is_string($item['property_match_confidence'] ?? null) ? $item['property_match_confidence'] : null,
                     'baseline_surface' => $issueEntry['baseline_surface'],
                     'source_domain_id' => $domainId,
+                    ...($issueEvidence[$evidenceKey][$issueClass] ?? []),
                 ],
             ];
         }
@@ -140,7 +155,7 @@ class DetectedIssueSummaryService
 
     /**
      * @param  array<string, mixed>  $item
-     * @return array<int, array{issue_class:string, severity:string, control_id:?string, rollout_scope:string, baseline_surface:?string}>
+     * @return array<int, array{issue_class:string, reason:string, severity:string, control_id:?string, rollout_scope:string, baseline_surface:?string}>
      */
     private function normalizedIssueEntries(array $item, string $fallbackSeverity): array
     {
@@ -162,6 +177,7 @@ class DetectedIssueSummaryService
 
                 return [
                     'issue_class' => $issueClass,
+                    'reason' => (string) $entry['reason'],
                     'severity' => $severity,
                     'control_id' => is_string($entry['control_id'] ?? null) ? $entry['control_id'] : null,
                     'rollout_scope' => $rolloutScope,
@@ -176,6 +192,7 @@ class DetectedIssueSummaryService
 
         return [[
             'issue_class' => $fallbackIssueClass,
+            'reason' => is_string($item['primary_reasons'][0] ?? null) ? $item['primary_reasons'][0] : $fallbackIssueClass,
             'severity' => $fallbackSeverity,
             'control_id' => is_string($item['control_id'] ?? null) ? $item['control_id'] : null,
             'rollout_scope' => is_string($item['rollout_scope'] ?? null) ? $item['rollout_scope'] : 'domain_only',

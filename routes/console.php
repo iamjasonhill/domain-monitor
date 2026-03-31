@@ -2,6 +2,7 @@
 
 use App\Models\WebProperty;
 use App\Services\ManualSearchConsoleEvidenceImporter;
+use App\Services\SearchConsoleIssueSnapshotImporter;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -72,6 +73,96 @@ Artisan::command('analytics:import-search-console-evidence {property : Web prope
 
     return Command::SUCCESS;
 })->purpose('Import a Google Search Console page indexing export ZIP and clear a manual CSV backlog item.');
+
+Artisan::command('analytics:import-search-console-issue-detail {property : Web property slug} {path : Path to the Google Search Console issue-detail drilldown ZIP} {--captured-by= : Optional captured_by value}', function (SearchConsoleIssueSnapshotImporter $importer) {
+    $propertyArgument = $this->argument('property');
+    $pathArgument = $this->argument('path');
+    $capturedByOption = $this->option('captured-by');
+
+    $property = WebProperty::query()
+        ->where('slug', is_string($propertyArgument) ? $propertyArgument : '')
+        ->first();
+
+    if (! $property instanceof WebProperty) {
+        $this->error('Could not find the requested web property.');
+
+        return Command::FAILURE;
+    }
+
+    try {
+        $result = $importer->importDrilldownZipForProperty(
+            $property,
+            is_string($pathArgument) ? $pathArgument : '',
+            is_string($capturedByOption) && $capturedByOption !== ''
+                ? $capturedByOption
+                : 'artisan_issue_detail_import'
+        );
+    } catch (\Throwable $exception) {
+        $this->error($exception->getMessage());
+
+        return Command::FAILURE;
+    }
+
+    $snapshot = $result['snapshot'];
+
+    $this->info(sprintf(
+        'Imported Search Console issue detail for [%s] issue [%s] and stored snapshot [%s].',
+        $property->slug,
+        $snapshot->issue_class,
+        $snapshot->id
+    ));
+    $this->line(sprintf('Artifact path: %s', $result['artifact_path']));
+
+    return Command::SUCCESS;
+})->purpose('Import a Google Search Console issue-detail drilldown ZIP for one property.');
+
+Artisan::command('analytics:import-search-console-api-evidence {property : Web property slug} {issueClass : Normalized issue class} {path : Path to the Search Console API or MCP JSON payload} {--capture-method=gsc_api : Either gsc_api or gsc_mcp_api} {--captured-by= : Optional captured_by value}', function (SearchConsoleIssueSnapshotImporter $importer) {
+    $propertyArgument = $this->argument('property');
+    $issueClassArgument = $this->argument('issueClass');
+    $pathArgument = $this->argument('path');
+    $captureMethodOption = $this->option('capture-method');
+    $capturedByOption = $this->option('captured-by');
+
+    $property = WebProperty::query()
+        ->where('slug', is_string($propertyArgument) ? $propertyArgument : '')
+        ->first();
+
+    if (! $property instanceof WebProperty) {
+        $this->error('Could not find the requested web property.');
+
+        return Command::FAILURE;
+    }
+
+    try {
+        $result = $importer->importApiEvidenceForProperty(
+            $property,
+            is_string($issueClassArgument) ? $issueClassArgument : '',
+            is_string($pathArgument) ? $pathArgument : '',
+            is_string($captureMethodOption) && $captureMethodOption !== ''
+                ? $captureMethodOption
+                : 'gsc_api',
+            is_string($capturedByOption) && $capturedByOption !== ''
+                ? $capturedByOption
+                : 'artisan_api_issue_import'
+        );
+    } catch (\Throwable $exception) {
+        $this->error($exception->getMessage());
+
+        return Command::FAILURE;
+    }
+
+    $snapshot = $result['snapshot'];
+
+    $this->info(sprintf(
+        'Imported Search Console API evidence for [%s] issue [%s] and stored snapshot [%s].',
+        $property->slug,
+        $snapshot->issue_class,
+        $snapshot->id
+    ));
+    $this->line(sprintf('Artifact path: %s', $result['artifact_path']));
+
+    return Command::SUCCESS;
+})->purpose('Import Search Console API or MCP evidence for one issue class on one property.');
 
 $brainConfigured = filled(config('services.brain.base_url')) && filled(config('services.brain.api_key'));
 
