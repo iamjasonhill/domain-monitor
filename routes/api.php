@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\DashboardPriorityQueueController;
 use App\Http\Controllers\Api\DeploymentController;
 use App\Http\Controllers\Api\DetectedIssueController;
 use App\Http\Controllers\Api\DomainController;
+use App\Http\Controllers\Api\IntegrationMetaController;
 use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\WebPropertyController;
 use Illuminate\Support\Facades\Route;
@@ -20,6 +21,8 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::middleware(['api-key'])->group(function () {
+    Route::get('/meta/integrations', IntegrationMetaController::class);
+
     // Domains
     Route::get('/domains', [DomainController::class, 'index']);
     Route::get('/domains/{domain}', [DomainController::class, 'show']);

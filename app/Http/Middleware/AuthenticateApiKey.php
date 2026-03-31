@@ -32,6 +32,7 @@ class AuthenticateApiKey
         $allowedKeys = [
             config('services.domain_monitor.brain_api_key'),
             config('services.domain_monitor.ops_api_key'),
+            config('services.domain_monitor.fleet_control_api_key'),
         ];
 
         // Filter out empty values
