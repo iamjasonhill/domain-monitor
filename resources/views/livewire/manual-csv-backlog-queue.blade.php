@@ -1,9 +1,21 @@
 <div class="space-y-6">
+    @if (session('message'))
+        <div class="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 px-4 py-3 text-sm text-green-800 dark:text-green-200">
+            {{ session('message') }}
+        </div>
+    @endif
+
+    @if (session('error'))
+        <div class="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-800 dark:text-red-200">
+            {{ session('error') }}
+        </div>
+    @endif
+
     <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
         <div class="p-6">
             <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Manual Search Console CSV Backlog</h3>
             <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                These properties are fully automated up to the final Search Console CSV evidence step. Use this queue to clear the remaining manual backlog.
+                These properties are fully automated up to the final Search Console CSV evidence step. Upload the Google Search Console Page indexing export ZIP here to clear the remaining manual backlog.
             </p>
         </div>
     </div>
@@ -72,6 +84,32 @@
                                     · {{ $item['latest_baseline']->importMethodLabel() }}
                                 </div>
                             @endif
+
+                            <div class="mt-4 rounded-md border border-yellow-200 dark:border-yellow-800/60 bg-white/70 dark:bg-gray-900/40 p-3">
+                                <div class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                    Import Search Console export
+                                </div>
+                                <div class="mt-2 flex flex-col gap-3 md:flex-row md:items-center">
+                                    <input
+                                        type="file"
+                                        accept=".zip,application/zip"
+                                        wire:model="evidenceArchives.{{ $item['property']->id }}"
+                                        class="block w-full text-sm text-gray-700 dark:text-gray-200 file:mr-4 file:rounded-md file:border-0 file:bg-yellow-600 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-yellow-700"
+                                    />
+                                    <button
+                                        type="button"
+                                        wire:click="importEvidence('{{ $item['property']->id }}')"
+                                        wire:loading.attr="disabled"
+                                        wire:target="importEvidence('{{ $item['property']->id }}'), evidenceArchives.{{ $item['property']->id }}"
+                                        class="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        Import ZIP
+                                    </button>
+                                </div>
+                                @error('evidenceArchives.'.$item['property']->id)
+                                    <div class="mt-2 text-xs text-red-600 dark:text-red-400">{{ $message }}</div>
+                                @enderror
+                            </div>
                         </div>
                     @endforeach
                 @endif
