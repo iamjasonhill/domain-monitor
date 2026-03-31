@@ -36,6 +36,18 @@
             ];
         @endphp
 
+        @if (session('message'))
+            <div class="mb-6 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 px-4 py-3 text-sm text-green-800 dark:text-green-200">
+                {{ session('message') }}
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div class="mb-6 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-800 dark:text-red-200">
+                {{ session('error') }}
+            </div>
+        @endif
+
         <div class="mb-6">
             <a href="{{ route('web-properties.index') }}" wire:navigate class="inline-flex items-center text-sm text-blue-600 dark:text-blue-400 hover:underline">
                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -203,6 +215,116 @@
                             </a>
                         </div>
                     @endforeach
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
+            <div class="p-6">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                        <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Search Console Issue Evidence</h4>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            Exact issue-detail evidence from Google Search Console drilldown exports lives here. Domain Monitor still keeps the baseline counts, but these snapshots add the concrete example URLs and crawl dates fleet remediation needs.
+                        </p>
+                    </div>
+
+                    <div class="w-full max-w-xl rounded-lg border border-blue-200 dark:border-blue-800/60 bg-blue-50/70 dark:bg-blue-900/10 p-4">
+                        <div class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            Import Search Console drilldown ZIP
+                        </div>
+                        <div class="mt-2 flex flex-col gap-3 md:flex-row md:items-center">
+                            <input
+                                type="file"
+                                accept=".zip,application/zip"
+                                wire:model="issueDetailArchive"
+                                class="block w-full text-sm text-gray-700 dark:text-gray-200 file:mr-4 file:rounded-md file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-blue-700"
+                            />
+                            <button
+                                type="button"
+                                wire:click="importIssueDetail"
+                                wire:loading.attr="disabled"
+                                wire:target="importIssueDetail, issueDetailArchive"
+                                class="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                Import ZIP
+                            </button>
+                        </div>
+                        @error('issueDetailArchive')
+                            <div class="mt-2 text-xs text-red-600 dark:text-red-400">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+
+                <div class="mt-6 space-y-4">
+                    @if($searchConsoleIssueSummaries === [])
+                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                            No Search Console issue evidence is stored for this property yet. Baseline summary counts will still flow into the issues feed where available.
+                        </p>
+                    @else
+                        @foreach($searchConsoleIssueSummaries as $issue)
+                            <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ $issue['label'] }}</div>
+                                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                            @if($issue['affected_url_count'] !== null)
+                                                {{ $issue['affected_url_count'] }} affected URLs
+                                            @else
+                                                Count unavailable
+                                            @endif
+                                            @if($issue['captured_at'])
+                                                · Captured {{ \Illuminate\Support\Carbon::parse($issue['captured_at'])->format('Y-m-d H:i') }}
+                                            @endif
+                                            @if($issue['source_capture_method'])
+                                                · {{ str($issue['source_capture_method'])->replace('_', ' ')->title() }}
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <span @class([
+                                        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                                        'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' => $issue['has_exact_examples'],
+                                        'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' => ! $issue['has_exact_examples'],
+                                    ])>
+                                        {{ $issue['has_exact_examples'] ? 'Exact examples captured' : 'Summary only' }}
+                                    </span>
+                                </div>
+
+                                <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                    @if($issue['source_report'])
+                                        Source: {{ $issue['source_report'] }}
+                                    @endif
+                                    @if($issue['source_property'])
+                                        · {{ $issue['source_property'] }}
+                                    @endif
+                                    @if($issue['first_detected'])
+                                        · First detected {{ $issue['first_detected'] }}
+                                    @endif
+                                </div>
+
+                                @if($issue['examples'] !== [])
+                                    <div class="mt-3 space-y-2">
+                                        @foreach($issue['examples'] as $example)
+                                            <div class="rounded-md bg-gray-50 dark:bg-gray-900/50 px-3 py-2 text-xs text-gray-700 dark:text-gray-200 break-all">
+                                                <div>{{ $example['url'] }}</div>
+                                                @if($example['last_crawled'])
+                                                    <div class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Last crawled {{ $example['last_crawled'] }}</div>
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @elseif($issue['sample_urls'] !== [])
+                                    <div class="mt-3 space-y-2">
+                                        @foreach($issue['sample_urls'] as $sampleUrl)
+                                            <div class="rounded-md bg-gray-50 dark:bg-gray-900/50 px-3 py-2 text-xs text-gray-700 dark:text-gray-200 break-all">
+                                                {{ $sampleUrl }}
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    @endif
                 </div>
             </div>
         </div>

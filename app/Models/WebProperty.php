@@ -123,6 +123,16 @@ class WebProperty extends Model
     }
 
     /**
+     * @return HasMany<SearchConsoleIssueSnapshot, $this>
+     */
+    public function searchConsoleIssueSnapshots(): HasMany
+    {
+        return $this->hasMany(SearchConsoleIssueSnapshot::class)
+            ->orderByDesc('captured_at')
+            ->orderByDesc('created_at');
+    }
+
+    /**
      * @return HasOne<DomainSeoBaseline, $this>
      */
     public function latestSeoBaselineForProperty(): HasOne

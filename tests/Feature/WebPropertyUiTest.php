@@ -8,6 +8,7 @@ use App\Models\DomainSeoBaseline;
 use App\Models\PropertyAnalyticsSource;
 use App\Models\PropertyRepository;
 use App\Models\SearchConsoleCoverageStatus;
+use App\Models\SearchConsoleIssueSnapshot;
 use App\Models\User;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
@@ -227,6 +228,33 @@ class WebPropertyUiTest extends TestCase
             'impressions' => 120,
             'ctr' => 0.16,
             'average_position' => 9.8,
+            'pages_with_redirect' => 3,
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'property_analytics_source_id' => $source->id,
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'source_issue_label' => 'Page with redirect',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:checklist.example.au',
+            'captured_at' => now(),
+            'affected_url_count' => 2,
+            'sample_urls' => [
+                'https://checklist.example.au/',
+                'http://checklist.example.au/',
+            ],
+            'examples' => [
+                ['url' => 'https://checklist.example.au/', 'last_crawled' => '2026-03-28'],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://checklist.example.au/',
+                    'http://checklist.example.au/',
+                ],
+            ],
         ]);
 
         $response = $this->actingAs($user)->get('/web-properties/checklist-site');
@@ -236,5 +264,8 @@ class WebPropertyUiTest extends TestCase
         $response->assertSee('Checklist Site');
         $response->assertSee('Manual CSV pending');
         $response->assertSee('Open related queue');
+        $response->assertSee('Search Console Issue Evidence');
+        $response->assertSee('Exact examples captured');
+        $response->assertSee('https://checklist.example.au/');
     }
 }
