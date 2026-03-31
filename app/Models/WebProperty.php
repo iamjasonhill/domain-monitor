@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -109,6 +110,35 @@ class WebProperty extends Model
     public function analyticsSources(): HasMany
     {
         return $this->hasMany(PropertyAnalyticsSource::class)->orderByDesc('is_primary');
+    }
+
+    /**
+     * @return HasMany<DomainSeoBaseline, $this>
+     */
+    public function seoBaselines(): HasMany
+    {
+        return $this->hasMany(DomainSeoBaseline::class)
+            ->orderByDesc('captured_at')
+            ->orderByDesc('created_at');
+    }
+
+    /**
+     * @return HasOne<DomainSeoBaseline, $this>
+     */
+    public function latestSeoBaselineForProperty(): HasOne
+    {
+        return $this->hasOne(DomainSeoBaseline::class)
+            ->orderByDesc('captured_at')
+            ->orderByDesc('created_at');
+    }
+
+    public function latestPropertySeoBaselineRecord(): ?DomainSeoBaseline
+    {
+        $latestBaseline = $this->relationLoaded('latestSeoBaselineForProperty')
+            ? $this->latestSeoBaselineForProperty
+            : $this->latestSeoBaselineForProperty()->first();
+
+        return $latestBaseline instanceof DomainSeoBaseline ? $latestBaseline : null;
     }
 
     /**
@@ -741,10 +771,7 @@ class WebProperty extends Model
             ];
         }
 
-        $primaryDomain = $this->primaryDomainModel();
-        $latestBaseline = $primaryDomain && $primaryDomain->relationLoaded('latestSeoBaseline')
-            ? $primaryDomain->latestSeoBaseline
-            : $primaryDomain?->latestSeoBaseline()->first();
+        $latestBaseline = $this->latestPropertySeoBaselineRecord();
 
         if (! $latestBaseline instanceof DomainSeoBaseline) {
             return [

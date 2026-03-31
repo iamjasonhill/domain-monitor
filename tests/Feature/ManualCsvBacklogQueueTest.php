@@ -143,7 +143,7 @@ class ManualCsvBacklogQueueTest extends TestCase
         $source = $this->attachMatomo($property, '701');
         $this->attachInstallAudit($property, $source);
         $this->attachCoverage($property, $source, 'domain_property', now()->subDay()->toDateString());
-        $this->attachBaseline($property, $source, 'matomo_api');
+        $this->attachBaseline($property, $source, 'matomo_api', now()->subMinute());
         $property->primaryDomainModel()?->tags()->syncWithoutDetaching([$manualCsvTag->id]);
 
         $zipPath = $this->makeSearchConsoleExportZip();
@@ -155,7 +155,10 @@ class ManualCsvBacklogQueueTest extends TestCase
             ->test(ManualCsvBacklogQueue::class)
             ->set('evidenceArchives.'.$property->id, UploadedFile::fake()->createWithContent('page-indexing.zip', $zipContents))
             ->call('importEvidence', $property->id)
-            ->assertHasNoErrors()
+            ->assertHasNoErrors();
+
+        Livewire::actingAs($user)
+            ->test(ManualCsvBacklogQueue::class)
             ->assertViewHas('stats', fn (array $stats): bool => $stats['pending_properties'] === 0);
 
         $latestBaseline = $property->primaryDomainModel()?->latestSeoBaseline()->first();
@@ -167,6 +170,80 @@ class ManualCsvBacklogQueueTest extends TestCase
         $this->assertSame(35, $latestBaseline->pages_with_redirect);
         $this->assertSame('complete', $property->fresh()->automationCoverageSummary()['status']);
         Storage::disk('local')->assertExists($latestBaseline->artifact_path);
+    }
+
+    public function test_upload_uses_the_target_property_baseline_on_shared_domains(): void
+    {
+        Storage::fake('local');
+
+        $user = User::factory()->create();
+        $manualCsvTag = DomainTag::create([
+            'name' => 'automation.manual_csv_pending',
+            'priority' => 68,
+            'color' => '#ca8a04',
+        ]);
+
+        $domain = Domain::factory()->create([
+            'domain' => 'shared-csv.example.au',
+            'is_active' => true,
+            'platform' => 'Astro',
+        ]);
+
+        $propertyA = WebProperty::factory()->create([
+            'slug' => 'shared-property-a',
+            'name' => 'Shared Property A',
+            'status' => 'active',
+            'property_type' => 'marketing_site',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        $propertyB = WebProperty::factory()->create([
+            'slug' => 'shared-property-b',
+            'name' => 'Shared Property B',
+            'status' => 'active',
+            'property_type' => 'marketing_site',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        foreach ([$propertyA, $propertyB] as $property) {
+            WebPropertyDomain::create([
+                'web_property_id' => $property->id,
+                'domain_id' => $domain->id,
+                'usage_type' => 'primary',
+                'is_canonical' => $property->id === $propertyA->id,
+            ]);
+            $this->attachRepository($property);
+            $property->primaryDomainModel()?->tags()->syncWithoutDetaching([$manualCsvTag->id]);
+        }
+
+        $sourceA = $this->attachMatomo($propertyA, '810');
+        $sourceB = $this->attachMatomo($propertyB, '811');
+        $this->attachInstallAudit($propertyA, $sourceA);
+        $this->attachInstallAudit($propertyB, $sourceB);
+        $this->attachCoverage($propertyA, $sourceA, 'domain_property', now()->subDay()->toDateString());
+        $this->attachCoverage($propertyB, $sourceB, 'domain_property', now()->subDay()->toDateString());
+        $this->attachBaseline($propertyA, $sourceA, 'matomo_api', now()->subMinutes(2), 10, 100);
+        $this->attachBaseline($propertyB, $sourceB, 'matomo_api', now()->subMinute(), 999, 5000);
+
+        $zipPath = $this->makeSearchConsoleExportZip();
+        $zipContents = file_get_contents($zipPath);
+
+        $this->assertIsString($zipContents);
+
+        Livewire::actingAs($user)
+            ->test(ManualCsvBacklogQueue::class)
+            ->set('evidenceArchives.'.$propertyB->id, UploadedFile::fake()->createWithContent('page-indexing.zip', $zipContents))
+            ->call('importEvidence', $propertyB->id)
+            ->assertHasNoErrors();
+
+        $propertyBLatestBaseline = $propertyB->fresh()->latestPropertySeoBaselineRecord();
+
+        $this->assertNotNull($propertyBLatestBaseline);
+        $this->assertSame('matomo_plus_manual_csv', $propertyBLatestBaseline->import_method);
+        $this->assertSame(999.0, $propertyBLatestBaseline->clicks);
+        $this->assertSame(5000.0, $propertyBLatestBaseline->impressions);
+        $this->assertSame('complete', $propertyB->fresh()->automationCoverageSummary()['status']);
+        $this->assertSame('manual_csv_pending', $propertyA->fresh()->automationCoverageSummary()['status']);
     }
 
     private function makeProperty(string $domainName, string $name): WebProperty
@@ -254,8 +331,14 @@ class ManualCsvBacklogQueueTest extends TestCase
         ]);
     }
 
-    private function attachBaseline(WebProperty $property, PropertyAnalyticsSource $source, string $importMethod, ?\Illuminate\Support\Carbon $capturedAt = null): void
-    {
+    private function attachBaseline(
+        WebProperty $property,
+        PropertyAnalyticsSource $source,
+        string $importMethod,
+        ?\Illuminate\Support\Carbon $capturedAt = null,
+        int $clicks = 10,
+        int $impressions = 100
+    ): void {
         DomainSeoBaseline::create([
             'domain_id' => $property->primary_domain_id,
             'web_property_id' => $property->id,
@@ -267,9 +350,9 @@ class ManualCsvBacklogQueueTest extends TestCase
             'search_console_property_uri' => 'sc-domain:'.$property->primaryDomainName(),
             'search_type' => 'web',
             'import_method' => $importMethod,
-            'clicks' => 10,
-            'impressions' => 100,
-            'ctr' => 0.1,
+            'clicks' => $clicks,
+            'impressions' => $impressions,
+            'ctr' => $impressions > 0 ? round($clicks / $impressions, 4) : 0.0,
             'average_position' => 12.4,
         ]);
     }

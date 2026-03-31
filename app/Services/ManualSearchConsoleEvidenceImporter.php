@@ -8,6 +8,7 @@ use App\Models\PropertyAnalyticsSource;
 use App\Models\SearchConsoleCoverageStatus;
 use App\Models\WebProperty;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -16,6 +17,10 @@ use ZipArchive;
 
 class ManualSearchConsoleEvidenceImporter
 {
+    private const MAX_ARCHIVE_BYTES = 5_242_880;
+
+    private const MAX_ENTRY_BYTES = 1_048_576;
+
     /**
      * @return array{baseline: DomainSeoBaseline, artifact_path: string, parsed: array<string, mixed>}
      */
@@ -23,6 +28,13 @@ class ManualSearchConsoleEvidenceImporter
     {
         if (! is_file($archivePath)) {
             throw new InvalidArgumentException(sprintf('Evidence archive not found at [%s].', $archivePath));
+        }
+
+        $this->assertArchiveWithinLimits($archivePath);
+
+        $automation = $property->automationCoverageSummary();
+        if ($automation['status'] !== 'manual_csv_pending') {
+            throw new InvalidArgumentException('This property is not currently waiting on manual Search Console CSV evidence.');
         }
 
         $domain = $property->primaryDomainModel();
@@ -35,62 +47,87 @@ class ManualSearchConsoleEvidenceImporter
             throw new InvalidArgumentException('The property does not have a primary Matomo source.');
         }
 
-        $latestBaseline = $domain->latestSeoBaseline()->first();
+        $latestBaseline = $property->latestPropertySeoBaselineRecord();
         if (! $latestBaseline instanceof DomainSeoBaseline) {
             throw new InvalidArgumentException('The property does not have an existing SEO baseline to enrich.');
         }
 
         $parsed = $this->parseArchive($archivePath);
-        $artifactPath = $this->storeArtifact($property, $archivePath);
         $coverage = $matomoSource->latestSearchConsoleCoverage()->first();
+        $artifactPath = $this->storeArtifact($property, $archivePath);
 
-        $baseline = DomainSeoBaseline::query()->create([
-            'domain_id' => $domain->id,
-            'web_property_id' => $property->id,
-            'property_analytics_source_id' => $matomoSource->id,
-            'baseline_type' => $latestBaseline->baseline_type ?: 'search_console',
-            'captured_at' => now(),
-            'captured_by' => $capturedBy ?: 'manual_csv_import',
-            'source_provider' => $latestBaseline->source_provider ?: 'matomo',
-            'matomo_site_id' => $matomoSource->external_id,
-            'search_console_property_uri' => $coverage instanceof SearchConsoleCoverageStatus
-                ? $coverage->property_uri
-                : $latestBaseline->search_console_property_uri,
-            'search_type' => $latestBaseline->search_type ?: 'web',
-            'date_range_start' => $parsed['date_range_start'] ?? $latestBaseline->date_range_start,
-            'date_range_end' => $parsed['date_range_end'] ?? $latestBaseline->date_range_end,
-            'import_method' => 'matomo_plus_manual_csv',
-            'artifact_path' => $artifactPath,
-            'clicks' => $latestBaseline->clicks,
-            'impressions' => $latestBaseline->impressions,
-            'ctr' => $latestBaseline->ctr,
-            'average_position' => $latestBaseline->average_position,
-            'indexed_pages' => $parsed['indexed_pages'],
-            'not_indexed_pages' => $parsed['not_indexed_pages'],
-            'pages_with_redirect' => $parsed['pages_with_redirect'],
-            'not_found_404' => $parsed['not_found_404'],
-            'blocked_by_robots' => $parsed['blocked_by_robots'],
-            'alternate_with_canonical' => $parsed['alternate_with_canonical'],
-            'crawled_currently_not_indexed' => $parsed['crawled_currently_not_indexed'],
-            'discovered_currently_not_indexed' => $parsed['discovered_currently_not_indexed'],
-            'duplicate_without_user_selected_canonical' => $parsed['duplicate_without_user_selected_canonical'],
-            'top_pages_count' => $latestBaseline->top_pages_count,
-            'top_queries_count' => $latestBaseline->top_queries_count,
-            'inspected_url_count' => $latestBaseline->inspected_url_count,
-            'inspection_indexed_url_count' => $latestBaseline->inspection_indexed_url_count,
-            'inspection_non_indexed_url_count' => $latestBaseline->inspection_non_indexed_url_count,
-            'amp_urls' => $latestBaseline->amp_urls,
-            'mobile_issue_urls' => $latestBaseline->mobile_issue_urls,
-            'rich_result_urls' => $latestBaseline->rich_result_urls,
-            'rich_result_issue_urls' => $latestBaseline->rich_result_issue_urls,
-            'notes' => $this->buildNotes($latestBaseline->notes, $archivePath, $parsed),
-            'raw_payload' => [
-                'source_system' => 'google_search_console_page_indexing_export',
-                'imported_from' => basename($archivePath),
-                'parsed_export' => $parsed['raw_payload'],
-                'previous_baseline_id' => $latestBaseline->id,
-            ],
-        ]);
+        try {
+            $baseline = DB::transaction(function () use (
+                $capturedBy,
+                $coverage,
+                $domain,
+                $latestBaseline,
+                $matomoSource,
+                $parsed,
+                $property,
+                $archivePath,
+                $artifactPath
+            ): DomainSeoBaseline {
+                return DomainSeoBaseline::query()->create([
+                    'domain_id' => $domain->id,
+                    'web_property_id' => $property->id,
+                    'property_analytics_source_id' => $matomoSource->id,
+                    'baseline_type' => $latestBaseline->baseline_type ?: 'search_console',
+                    'captured_at' => now(),
+                    'captured_by' => $capturedBy ?: 'manual_csv_import',
+                    'source_provider' => $latestBaseline->source_provider ?: 'matomo',
+                    'matomo_site_id' => $matomoSource->external_id,
+                    'search_console_property_uri' => $coverage instanceof SearchConsoleCoverageStatus
+                        ? $coverage->property_uri
+                        : $latestBaseline->search_console_property_uri,
+                    'search_type' => $latestBaseline->search_type ?: 'web',
+                    // Keep the original Matomo/API window on the enriched baseline.
+                    'date_range_start' => $latestBaseline->date_range_start,
+                    'date_range_end' => $latestBaseline->date_range_end,
+                    'import_method' => 'matomo_plus_manual_csv',
+                    'artifact_path' => $artifactPath,
+                    'clicks' => $latestBaseline->clicks,
+                    'impressions' => $latestBaseline->impressions,
+                    'ctr' => $latestBaseline->ctr,
+                    'average_position' => $latestBaseline->average_position,
+                    'indexed_pages' => $parsed['indexed_pages'],
+                    'not_indexed_pages' => $parsed['not_indexed_pages'],
+                    'pages_with_redirect' => $parsed['pages_with_redirect'],
+                    'not_found_404' => $parsed['not_found_404'],
+                    'blocked_by_robots' => $parsed['blocked_by_robots'],
+                    'alternate_with_canonical' => $parsed['alternate_with_canonical'],
+                    'crawled_currently_not_indexed' => $parsed['crawled_currently_not_indexed'],
+                    'discovered_currently_not_indexed' => $parsed['discovered_currently_not_indexed'],
+                    'duplicate_without_user_selected_canonical' => $parsed['duplicate_without_user_selected_canonical'],
+                    'top_pages_count' => $latestBaseline->top_pages_count,
+                    'top_queries_count' => $latestBaseline->top_queries_count,
+                    'inspected_url_count' => $latestBaseline->inspected_url_count,
+                    'inspection_indexed_url_count' => $latestBaseline->inspection_indexed_url_count,
+                    'inspection_non_indexed_url_count' => $latestBaseline->inspection_non_indexed_url_count,
+                    'amp_urls' => $latestBaseline->amp_urls,
+                    'mobile_issue_urls' => $latestBaseline->mobile_issue_urls,
+                    'rich_result_urls' => $latestBaseline->rich_result_urls,
+                    'rich_result_issue_urls' => $latestBaseline->rich_result_issue_urls,
+                    'notes' => $this->buildNotes($latestBaseline->notes, $archivePath, $parsed),
+                    'raw_payload' => [
+                        'source_system' => 'google_search_console_page_indexing_export',
+                        'imported_from' => basename($archivePath),
+                        'parsed_export' => $parsed['raw_payload'],
+                        'page_indexing_window' => [
+                            'date_range_start' => $parsed['date_range_start']?->toDateString(),
+                            'date_range_end' => $parsed['date_range_end']?->toDateString(),
+                        ],
+                        'previous_baseline_id' => $latestBaseline->id,
+                    ],
+                ]);
+            });
+        } catch (\Throwable $exception) {
+            if ($artifactPath !== '') {
+                Storage::disk('local')->delete($artifactPath);
+            }
+
+            throw $exception;
+        }
 
         return [
             'baseline' => $baseline,
@@ -164,20 +201,32 @@ class ManualSearchConsoleEvidenceImporter
         $safeExtension = $extension !== '' ? '.'.Str::lower($extension) : '';
         $filename = now()->format('Ymd-His').'-'.Str::slug(pathinfo($archivePath, PATHINFO_FILENAME)).$safeExtension;
         $relativePath = 'search-console-manual-evidence/'.$property->slug.'/'.$filename;
+        $stream = fopen($archivePath, 'rb');
 
-        $contents = file_get_contents($archivePath);
-
-        if (! is_string($contents)) {
+        if (! is_resource($stream)) {
             throw new RuntimeException('Unable to read Search Console evidence archive.');
         }
 
-        Storage::disk('local')->put($relativePath, $contents);
+        try {
+            $written = Storage::disk('local')->writeStream($relativePath, $stream);
+        } finally {
+            fclose($stream);
+        }
+
+        if ($written === false) {
+            throw new RuntimeException('Unable to store Search Console evidence archive.');
+        }
 
         return $relativePath;
     }
 
     private function zipEntryContents(ZipArchive $zip, string $entryName, bool $required = true): ?string
     {
+        $stats = $zip->statName($entryName);
+        if (is_array($stats) && (int) $stats['size'] > self::MAX_ENTRY_BYTES) {
+            throw new RuntimeException(sprintf('The Search Console export entry [%s] exceeds the supported size limit.', $entryName));
+        }
+
         $contents = $zip->getFromName($entryName);
 
         if (is_string($contents)) {
@@ -287,5 +336,18 @@ class ManualSearchConsoleEvidenceImporter
         ]);
 
         return implode(' ', $segments);
+    }
+
+    private function assertArchiveWithinLimits(string $archivePath): void
+    {
+        $size = filesize($archivePath);
+
+        if ($size === false) {
+            throw new InvalidArgumentException('Unable to determine Search Console evidence archive size.');
+        }
+
+        if ($size > self::MAX_ARCHIVE_BYTES) {
+            throw new InvalidArgumentException('The Search Console evidence archive exceeds the 5 MB upload limit.');
+        }
     }
 }

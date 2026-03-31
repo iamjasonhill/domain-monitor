@@ -18,6 +18,7 @@ class ManualCsvBacklogService
             ->with([
                 'primaryDomain.tags',
                 'primaryDomain.latestSeoBaseline',
+                'latestSeoBaselineForProperty',
                 'repositories',
                 'analyticsSources',
                 'analyticsSources.latestInstallAudit',
@@ -45,7 +46,7 @@ class ManualCsvBacklogService
                     'repository' => $property->repositories->first(),
                     'matomo_source' => $matomoSource,
                     'search_console_coverage' => $matomoSource?->latestSearchConsoleCoverage,
-                    'latest_baseline' => $property->primaryDomainModel()?->latestSeoBaseline,
+                    'latest_baseline' => $property->latestPropertySeoBaselineRecord(),
                 ];
             })
             ->filter()

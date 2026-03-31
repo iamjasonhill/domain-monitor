@@ -41,6 +41,22 @@ Artisan::command('analytics:import-search-console-evidence {property : Web prope
     }
 
     $baseline = $result['baseline'];
+    $tagRefreshMessage = null;
+    $primaryDomain = $property->primaryDomainName();
+
+    if (is_string($primaryDomain) && $primaryDomain !== '') {
+        try {
+            $tagRefreshExitCode = Artisan::call('coverage:sync-tags', [
+                '--domain' => [$primaryDomain],
+            ]);
+
+            if ($tagRefreshExitCode !== 0) {
+                $tagRefreshMessage = trim(Artisan::output()) ?: 'Coverage tags will refresh on the next scheduled sync.';
+            }
+        } catch (\Throwable $exception) {
+            $tagRefreshMessage = $exception->getMessage();
+        }
+    }
 
     $this->info(sprintf(
         'Imported manual Search Console evidence for [%s] and stored baseline [%s].',
@@ -48,6 +64,11 @@ Artisan::command('analytics:import-search-console-evidence {property : Web prope
         $baseline->id
     ));
     $this->line(sprintf('Artifact path: %s', $result['artifact_path']));
+    if (is_string($tagRefreshMessage) && $tagRefreshMessage !== '') {
+        $this->warn(sprintf('Coverage tags were not refreshed automatically: %s', $tagRefreshMessage));
+    } else {
+        $this->line('Coverage tags refreshed for the affected domain.');
+    }
 
     return Command::SUCCESS;
 })->purpose('Import a Google Search Console page indexing export ZIP and clear a manual CSV backlog item.');

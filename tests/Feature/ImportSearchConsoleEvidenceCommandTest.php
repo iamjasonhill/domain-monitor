@@ -98,6 +98,8 @@ class ImportSearchConsoleEvidenceCommandTest extends TestCase
             'matomo_site_id' => '6',
             'search_console_property_uri' => 'sc-domain:moveroo.com.au',
             'search_type' => 'web',
+            'date_range_start' => '2025-12-31',
+            'date_range_end' => '2026-03-30',
             'import_method' => 'matomo_api',
             'clicks' => 287,
             'impressions' => 8200,
@@ -122,6 +124,8 @@ class ImportSearchConsoleEvidenceCommandTest extends TestCase
         $this->assertSame('test-suite', $latestBaseline->captured_by);
         $this->assertSame(287.0, $latestBaseline->clicks);
         $this->assertSame(8200.0, $latestBaseline->impressions);
+        $this->assertSame('2025-12-31', $latestBaseline->date_range_start?->toDateString());
+        $this->assertSame('2026-03-30', $latestBaseline->date_range_end?->toDateString());
         $this->assertSame(18, $latestBaseline->indexed_pages);
         $this->assertSame(186, $latestBaseline->not_indexed_pages);
         $this->assertSame(35, $latestBaseline->pages_with_redirect);
@@ -129,6 +133,106 @@ class ImportSearchConsoleEvidenceCommandTest extends TestCase
         $this->assertSame(23, $latestBaseline->duplicate_without_user_selected_canonical);
         Storage::disk('local')->assertExists($latestBaseline->artifact_path);
         $this->assertSame('complete', $property->fresh()->automationCoverageSummary()['status']);
+    }
+
+    public function test_it_rejects_import_when_property_is_not_waiting_on_manual_csv(): void
+    {
+        Storage::fake('local');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'already-complete.example.au',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'already-complete-site',
+            'name' => 'Already Complete Site',
+            'primary_domain_id' => $domain->id,
+            'status' => 'active',
+            'property_type' => 'website',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'production',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_provider' => 'local',
+            'repo_name' => 'already-complete-site-repo',
+            'local_path' => '/tmp/already-complete-site',
+            'is_primary' => true,
+            'status' => 'active',
+        ]);
+
+        $source = PropertyAnalyticsSource::create([
+            'web_property_id' => $property->id,
+            'provider' => 'matomo',
+            'external_id' => '9',
+            'external_name' => 'Already Complete Site',
+            'is_primary' => true,
+            'status' => 'active',
+        ]);
+
+        AnalyticsInstallAudit::create([
+            'property_analytics_source_id' => $source->id,
+            'web_property_id' => $property->id,
+            'provider' => 'matomo',
+            'external_id' => '9',
+            'external_name' => 'Already Complete Site',
+            'install_verdict' => 'installed_match',
+            'best_url' => 'https://already-complete.example.au/',
+            'summary' => 'Tracker matches the linked Matomo site.',
+            'checked_at' => now(),
+            'raw_payload' => ['verdict' => 'installed_match'],
+        ]);
+
+        SearchConsoleCoverageStatus::create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'property_analytics_source_id' => $source->id,
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '9',
+            'matomo_site_name' => 'Already Complete Site',
+            'mapping_state' => 'domain_property',
+            'property_uri' => 'sc-domain:already-complete.example.au',
+            'property_type' => 'domain',
+            'latest_metric_date' => now()->subDay()->toDateString(),
+            'checked_at' => now(),
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'property_analytics_source_id' => $source->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now()->subDay(),
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '9',
+            'search_console_property_uri' => 'sc-domain:already-complete.example.au',
+            'search_type' => 'web',
+            'import_method' => 'matomo_plus_manual_csv',
+            'clicks' => 30,
+            'impressions' => 400,
+            'ctr' => 0.075,
+            'average_position' => 8.5,
+        ]);
+
+        $zipPath = $this->makeSearchConsoleExportZip();
+
+        $exitCode = Artisan::call('analytics:import-search-console-evidence', [
+            'property' => 'already-complete-site',
+            'path' => $zipPath,
+        ]);
+
+        $this->assertSame(1, $exitCode);
+        $this->assertSame(
+            'This property is not currently waiting on manual Search Console CSV evidence.',
+            trim(Artisan::output())
+        );
+        $this->assertCount(1, DomainSeoBaseline::query()->where('web_property_id', $property->id)->get());
     }
 
     private function makeSearchConsoleExportZip(): string
