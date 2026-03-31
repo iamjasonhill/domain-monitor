@@ -14,9 +14,12 @@ use App\Models\User;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
+use ZipArchive;
 
 class ManualCsvBacklogQueueTest extends TestCase
 {
@@ -124,6 +127,48 @@ class ManualCsvBacklogQueueTest extends TestCase
             });
     }
 
+    public function test_operator_can_upload_search_console_zip_and_clear_manual_csv_backlog(): void
+    {
+        Storage::fake('local');
+
+        $user = User::factory()->create();
+        $manualCsvTag = DomainTag::create([
+            'name' => 'automation.manual_csv_pending',
+            'priority' => 68,
+            'color' => '#ca8a04',
+        ]);
+
+        $property = $this->makeProperty('csv-pending.example.au', 'CSV Pending Site');
+        $this->attachRepository($property);
+        $source = $this->attachMatomo($property, '701');
+        $this->attachInstallAudit($property, $source);
+        $this->attachCoverage($property, $source, 'domain_property', now()->subDay()->toDateString());
+        $this->attachBaseline($property, $source, 'matomo_api');
+        $property->primaryDomainModel()?->tags()->syncWithoutDetaching([$manualCsvTag->id]);
+
+        $zipPath = $this->makeSearchConsoleExportZip();
+        $zipContents = file_get_contents($zipPath);
+
+        $this->assertIsString($zipContents);
+
+        Livewire::actingAs($user)
+            ->test(ManualCsvBacklogQueue::class)
+            ->set('evidenceArchives.'.$property->id, UploadedFile::fake()->createWithContent('page-indexing.zip', $zipContents))
+            ->call('importEvidence', $property->id)
+            ->assertHasNoErrors()
+            ->assertViewHas('stats', fn (array $stats): bool => $stats['pending_properties'] === 0);
+
+        $latestBaseline = $property->primaryDomainModel()?->latestSeoBaseline()->first();
+
+        $this->assertNotNull($latestBaseline);
+        $this->assertSame('matomo_plus_manual_csv', $latestBaseline->import_method);
+        $this->assertSame(18, $latestBaseline->indexed_pages);
+        $this->assertSame(186, $latestBaseline->not_indexed_pages);
+        $this->assertSame(35, $latestBaseline->pages_with_redirect);
+        $this->assertSame('complete', $property->fresh()->automationCoverageSummary()['status']);
+        Storage::disk('local')->assertExists($latestBaseline->artifact_path);
+    }
+
     private function makeProperty(string $domainName, string $name): WebProperty
     {
         $domain = Domain::factory()->create([
@@ -227,5 +272,37 @@ class ManualCsvBacklogQueueTest extends TestCase
             'ctr' => 0.1,
             'average_position' => 12.4,
         ]);
+    }
+
+    private function makeSearchConsoleExportZip(): string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'sc-export-');
+        $zipPath = $path.'.zip';
+
+        @unlink($path);
+
+        $zip = new ZipArchive;
+        $zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        $zip->addFromString('Chart.csv', implode("\n", [
+            'Date,Not indexed,Indexed,Impressions',
+            '2026-03-29,188,18,140',
+            '2026-03-30,186,18,160',
+        ]));
+        $zip->addFromString('Critical issues.csv', implode("\n", [
+            'Reason,Source,Validation,Pages',
+            'Page with redirect,Website,Not Started,35',
+            'Duplicate without user-selected canonical,Website,Not Started,23',
+            'Not found (404),Website,Not Started,12',
+            'Alternative page with proper canonical tag,Website,Not Started,4',
+            'Crawled - currently not indexed,Google systems,Not Started,90',
+        ]));
+        $zip->addFromString('Non-critical issues.csv', "Reason,Source,Validation,Pages\n");
+        $zip->addFromString('Metadata.csv', implode("\n", [
+            'Property,Value',
+            'Sitemap,All known pages',
+        ]));
+        $zip->close();
+
+        return $zipPath;
     }
 }

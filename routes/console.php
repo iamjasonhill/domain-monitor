@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\WebProperty;
+use App\Services\ManualSearchConsoleEvidenceImporter;
+use Illuminate\Console\Command;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -7,6 +10,47 @@ use Illuminate\Support\Facades\Schedule;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+Artisan::command('analytics:import-search-console-evidence {property : Web property slug} {path : Path to the Google Search Console page indexing export ZIP} {--captured-by= : Optional captured_by value}', function (ManualSearchConsoleEvidenceImporter $importer) {
+    $propertyArgument = $this->argument('property');
+    $pathArgument = $this->argument('path');
+    $capturedByOption = $this->option('captured-by');
+
+    $property = WebProperty::query()
+        ->where('slug', is_string($propertyArgument) ? $propertyArgument : '')
+        ->first();
+
+    if (! $property instanceof WebProperty) {
+        $this->error('Could not find the requested web property.');
+
+        return Command::FAILURE;
+    }
+
+    try {
+        $result = $importer->importForProperty(
+            $property,
+            is_string($pathArgument) ? $pathArgument : '',
+            is_string($capturedByOption) && $capturedByOption !== ''
+                ? $capturedByOption
+                : 'artisan_manual_csv_import'
+        );
+    } catch (\Throwable $exception) {
+        $this->error($exception->getMessage());
+
+        return Command::FAILURE;
+    }
+
+    $baseline = $result['baseline'];
+
+    $this->info(sprintf(
+        'Imported manual Search Console evidence for [%s] and stored baseline [%s].',
+        $property->slug,
+        $baseline->id
+    ));
+    $this->line(sprintf('Artifact path: %s', $result['artifact_path']));
+
+    return Command::SUCCESS;
+})->purpose('Import a Google Search Console page indexing export ZIP and clear a manual CSV backlog item.');
 
 $brainConfigured = filled(config('services.brain.base_url')) && filled(config('services.brain.api_key'));
 
