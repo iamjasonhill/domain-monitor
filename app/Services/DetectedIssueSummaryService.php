@@ -117,6 +117,10 @@ class DetectedIssueSummaryService
                 'platform_profile' => is_string($item['platform_profile'] ?? null) ? $item['platform_profile'] : null,
                 'host_profile' => is_string($item['host_profile'] ?? null) ? $item['host_profile'] : null,
                 'control_profile' => is_string($item['control_profile'] ?? null) ? $item['control_profile'] : null,
+                'control_state' => is_string($item['control_state'] ?? null) ? $item['control_state'] : null,
+                'execution_surface' => is_string($item['execution_surface'] ?? null) ? $item['execution_surface'] : null,
+                'fleet_managed' => (bool) ($item['fleet_managed'] ?? false),
+                'controller_repo' => is_string($item['controller_repo'] ?? null) ? $item['controller_repo'] : null,
                 'evidence' => [
                     'primary_reasons' => array_values(array_filter($item['primary_reasons'] ?? [], 'is_string')),
                     'secondary_reasons' => array_values(array_filter($item['secondary_reasons'] ?? [], 'is_string')),

@@ -43,9 +43,9 @@ class DetectedIssueApiTest extends TestCase
 
         PropertyRepository::create([
             'web_property_id' => $redirectProperty->id,
-            'repo_name' => 'redirect-issue-site',
+            'repo_name' => '_wp-house',
             'repo_provider' => 'local_only',
-            'local_path' => '/Users/jasonhill/Projects/websites/redirect-issue-site',
+            'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
             'framework' => 'WordPress',
             'is_primary' => true,
         ]);
@@ -138,7 +138,16 @@ class DetectedIssueApiTest extends TestCase
         $this->assertSame('seo.robots_and_sitemap_consistency', $redirectIssue['control_id']);
         $this->assertSame('domain_only', $redirectIssue['rollout_scope']);
         $this->assertSame('domain_monitor.priority_queue', $redirectIssue['detector']);
+        $this->assertSame('controlled', $redirectIssue['control_state']);
+        $this->assertSame('fleet_wordpress_controlled', $redirectIssue['execution_surface']);
+        $this->assertTrue($redirectIssue['fleet_managed']);
+        $this->assertSame('_wp-house', $redirectIssue['controller_repo']);
         $this->assertSame(['Search Console reports page with redirect (7 URLs)'], $redirectIssue['evidence']['primary_reasons']);
+        $this->assertSame('security.headers_baseline', $headersIssue['issue_class']);
+        $this->assertSame('controlled', $headersIssue['control_state']);
+        $this->assertSame('astro_repo_controlled', $headersIssue['execution_surface']);
+        $this->assertTrue($headersIssue['fleet_managed']);
+        $this->assertSame('headers-issue-site', $headersIssue['controller_repo']);
 
         $detailResponse = $this->withHeaders([
             'Authorization' => 'Bearer test-api-key',
@@ -250,5 +259,78 @@ class DetectedIssueApiTest extends TestCase
             collect($relatedIssueClasses)->sort()->values()->all()
         );
         $this->assertCount(2, $issues->pluck('issue_id')->unique());
+    }
+
+    public function test_issues_endpoint_reports_uncontrolled_when_no_controller_path_exists(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'uncontrolled.example.com',
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'DreamIT Host',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'uncontrolled-site',
+            'name' => 'Uncontrolled Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => '_wp-house',
+            'repo_provider' => 'local_only',
+            'local_path' => null,
+            'framework' => 'WordPress',
+            'is_primary' => true,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '31',
+            'search_console_property_uri' => 'sc-domain:uncontrolled.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_api',
+            'clicks' => 10,
+            'impressions' => 100,
+            'ctr' => 0.1,
+            'average_position' => 12.3,
+            'indexed_pages' => 20,
+            'not_indexed_pages' => 5,
+            'pages_with_redirect' => 4,
+            'raw_payload' => ['issues' => [['label' => 'Page with redirect', 'count' => 4]]],
+        ]);
+
+        /** @var array<int, array<string, mixed>> $issues */
+        $issues = $this->withHeaders(['Authorization' => 'Bearer test-api-key'])
+            ->getJson('/api/issues')
+            ->assertOk()
+            ->json('issues');
+
+        $issue = collect($issues)->firstWhere('property_slug', 'uncontrolled-site');
+
+        $this->assertNotNull($issue);
+        $this->assertSame('uncontrolled', $issue['control_state']);
+        $this->assertNull($issue['execution_surface']);
+        $this->assertFalse($issue['fleet_managed']);
+        $this->assertSame('_wp-house', $issue['controller_repo']);
     }
 }

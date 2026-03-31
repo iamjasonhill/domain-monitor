@@ -154,7 +154,67 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.health_summary.checks.uptime', 'ok')
             ->assertJsonPath('web_properties.0.health_summary.checks.http', 'ok')
             ->assertJsonPath('web_properties.0.health_summary.checks.ssl', 'warn')
+            ->assertJsonPath('web_properties.0.control_state', 'controlled')
+            ->assertJsonPath('web_properties.0.execution_surface', 'astro_repo_controlled')
+            ->assertJsonPath('web_properties.0.fleet_managed', true)
+            ->assertJsonPath('web_properties.0.controller_repo', 'moveroo-website-astro')
             ->assertJsonPath('web_properties.0.health_summary.active_alerts_count', 1);
+    }
+
+    public function test_web_properties_summary_prefers_any_controller_repo_with_local_path(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'secondary-controller.example.com',
+            'platform' => 'WordPress',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'secondary-controller-site',
+            'name' => 'Secondary Controller Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'platform' => 'WordPress',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => 'secondary-controller-site',
+            'repo_provider' => 'local_only',
+            'local_path' => null,
+            'framework' => 'WordPress',
+            'is_primary' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => '_wp-house',
+            'repo_provider' => 'local_only',
+            'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+            'framework' => 'WordPress',
+            'is_primary' => false,
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/web-properties-summary');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('web_properties.0.slug', 'secondary-controller-site')
+            ->assertJsonPath('web_properties.0.control_state', 'controlled')
+            ->assertJsonPath('web_properties.0.execution_surface', 'fleet_wordpress_controlled')
+            ->assertJsonPath('web_properties.0.fleet_managed', true)
+            ->assertJsonPath('web_properties.0.controller_repo', '_wp-house');
     }
 
     public function test_web_property_health_summary_endpoint_returns_property_health(): void
