@@ -84,20 +84,36 @@ class DashboardIssueQueueService
 
             $property = $this->primaryProperty($domain);
             $coverageStatus = $this->controlCoverageStatus($domain, $property);
-            [$mustFixReasons, $shouldFixReasons] = $this->issueReasonsForDomain(
+            [$mustFixReasons, $shouldFixReasons, $mustFixIssueRecords, $shouldFixIssueRecords] = $this->issueReasonsForDomain(
                 $domain,
                 $property,
                 $this->controlCoverageReasonForStatus($coverageStatus)
             );
 
             if ($mustFixReasons !== []) {
-                $mustFixDomains->push($this->makeQueueItem($domain, $property, $coverageStatus, $mustFixReasons, $shouldFixReasons));
+                $mustFixDomains->push($this->makeQueueItem(
+                    $domain,
+                    $property,
+                    $coverageStatus,
+                    $mustFixReasons,
+                    $shouldFixReasons,
+                    $mustFixIssueRecords,
+                    $shouldFixIssueRecords
+                ));
 
                 continue;
             }
 
             if ($shouldFixReasons !== []) {
-                $shouldFixDomains->push($this->makeQueueItem($domain, $property, $coverageStatus, $shouldFixReasons));
+                $shouldFixDomains->push($this->makeQueueItem(
+                    $domain,
+                    $property,
+                    $coverageStatus,
+                    $shouldFixReasons,
+                    [],
+                    $shouldFixIssueRecords,
+                    []
+                ));
             }
         }
 
@@ -112,29 +128,42 @@ class DashboardIssueQueueService
     }
 
     /**
-     * @return array{0: array<int, string>, 1: array<int, string>}
+     * @return array{
+     *   0: array<int, string>,
+     *   1: array<int, string>,
+     *   2: array<int, array{issue_family:string, reason:string, severity:string}>,
+     *   3: array<int, array{issue_family:string, reason:string, severity:string}>
+     * }
      */
     private function issueReasonsForDomain(Domain $domain, ?WebProperty $property, ?string $coverageReason): array
     {
         $mustFix = [];
         $shouldFix = [];
+        $mustFixIssues = [];
+        $shouldFixIssues = [];
 
         if ((int) ($domain->open_critical_alerts_count ?? 0) > 0) {
-            $mustFix[] = $this->formatAlertReason((int) $domain->open_critical_alerts_count, 'critical');
+            $reason = $this->formatAlertReason((int) $domain->open_critical_alerts_count, 'critical');
+            $mustFix[] = $reason;
+            $mustFixIssues[] = $this->issueRecord('alerts.open', $reason, 'must_fix');
         }
 
         if ($domain->eligibility_valid === false) {
-            $mustFix[] = 'Eligibility or compliance has failed';
+            $reason = 'Eligibility or compliance has failed';
+            $mustFix[] = $reason;
+            $mustFixIssues[] = $this->issueRecord('domain.eligibility', $reason, 'must_fix');
         }
 
-        $mustFix = array_merge($mustFix, $this->statusReasonSet($domain, [
+        $mustFixStatusIssues = $this->statusIssueSet($domain, [
             'uptime' => ['fail' => 'Uptime check is failing', 'warn' => 'Uptime is unstable'],
             'http' => ['fail' => 'HTTP check is failing', 'warn' => 'HTTP check needs review'],
             'ssl' => ['fail' => 'SSL is failing', 'warn' => 'SSL needs review'],
             'dns' => ['fail' => 'DNS check is failing', 'warn' => 'DNS needs review'],
-        ], ['fail']));
+        ], ['fail']);
+        $mustFix = array_merge($mustFix, array_column($mustFixStatusIssues, 'reason'));
+        $mustFixIssues = array_merge($mustFixIssues, $mustFixStatusIssues);
 
-        $shouldFix = array_merge($shouldFix, $this->statusReasonSet($domain, [
+        $shouldFixStatusIssues = $this->statusIssueSet($domain, [
             'uptime' => ['warn' => 'Uptime is unstable'],
             'http' => ['warn' => 'HTTP check needs review'],
             'ssl' => ['warn' => 'SSL needs review'],
@@ -144,69 +173,107 @@ class DashboardIssueQueueService
             'seo' => ['fail' => 'SEO checks are failing', 'warn' => 'SEO checks need review'],
             'reputation' => ['fail' => 'Reputation checks are failing', 'warn' => 'Reputation needs review'],
             'broken_links' => ['fail' => 'Broken links were detected', 'warn' => 'Broken links need review'],
-        ], ['warn', 'fail']));
+        ], ['warn', 'fail']);
+        $shouldFix = array_merge($shouldFix, array_column($shouldFixStatusIssues, 'reason'));
+        $shouldFixIssues = array_merge($shouldFixIssues, $shouldFixStatusIssues);
 
         if ((int) ($domain->open_warning_alerts_count ?? 0) > 0) {
-            $shouldFix[] = $this->formatAlertReason((int) $domain->open_warning_alerts_count, 'open');
+            $reason = $this->formatAlertReason((int) $domain->open_warning_alerts_count, 'open');
+            $shouldFix[] = $reason;
+            $shouldFixIssues[] = $this->issueRecord('alerts.open', $reason, 'should_fix');
         }
 
         if ($domain->expires_at && $domain->expires_at->isFuture() && $domain->expires_at->lte(now()->addDays(30)->endOfDay())) {
             $daysUntilExpiry = max(0, now()->startOfDay()->diffInDays($domain->expires_at->copy()->startOfDay(), false));
-            $shouldFix[] = "Domain expires in {$daysUntilExpiry} days";
+            $reason = "Domain expires in {$daysUntilExpiry} days";
+            $shouldFix[] = $reason;
+            $shouldFixIssues[] = $this->issueRecord('domain.expiry', $reason, 'should_fix');
         }
 
         if ($coverageReason !== null) {
             $shouldFix[] = $coverageReason;
+            $shouldFixIssues[] = $this->issueRecord('control.coverage_required', $coverageReason, 'should_fix');
         }
 
         if ($this->requiresControlCoverage($domain, $property) && ! $domain->shouldSkipMonitoringCheck('seo')) {
-            [$baselineMustFixReasons, $baselineShouldFixReasons] = $this->seoBaselineReasonSet($property);
+            [$baselineMustFixReasons, $baselineShouldFixReasons, $baselineMustFixIssues, $baselineShouldFixIssues] = $this->seoBaselineReasonSet($property);
             $mustFix = array_merge($mustFix, $baselineMustFixReasons);
             $shouldFix = array_merge($shouldFix, $baselineShouldFixReasons);
+            $mustFixIssues = array_merge($mustFixIssues, $baselineMustFixIssues);
+            $shouldFixIssues = array_merge($shouldFixIssues, $baselineShouldFixIssues);
         }
 
         return [
             array_values(array_unique($mustFix)),
             array_values(array_unique($shouldFix)),
+            $this->uniqueIssueRecords($mustFixIssues),
+            $this->uniqueIssueRecords($shouldFixIssues),
         ];
     }
 
     /**
-     * @return array{0: array<int, string>, 1: array<int, string>}
+     * @return array{
+     *   0: array<int, string>,
+     *   1: array<int, string>,
+     *   2: array<int, array{issue_family:string, reason:string, severity:string}>,
+     *   3: array<int, array{issue_family:string, reason:string, severity:string}>
+     * }
      */
     private function seoBaselineReasonSet(?WebProperty $property): array
     {
         if (! $property instanceof WebProperty) {
-            return [[], []];
+            return [[], [], [], []];
         }
 
         $baseline = $property->latestPropertySeoBaselineRecord();
 
         if ($baseline === null) {
-            return [[], []];
+            return [[], [], [], []];
         }
 
         $mustFix = [];
         $shouldFix = [];
+        $mustFixIssues = [];
+        $shouldFixIssues = [];
 
         if ((int) ($baseline->pages_with_redirect ?? 0) > 0) {
-            $mustFix[] = sprintf(
+            $reason = sprintf(
                 'Search Console reports page with redirect (%d URLs)',
                 (int) $baseline->pages_with_redirect
             );
+            $mustFix[] = $reason;
+            $mustFixIssues[] = $this->issueRecord('page_with_redirect_in_sitemap', $reason, 'must_fix');
         }
 
-        return [$mustFix, $shouldFix];
+        if ((int) ($baseline->blocked_by_robots ?? 0) > 0) {
+            $reason = sprintf(
+                'Search Console reports blocked by robots.txt (%d URLs)',
+                (int) $baseline->blocked_by_robots
+            );
+            $mustFix[] = $reason;
+            $mustFixIssues[] = $this->issueRecord('blocked_by_robots_in_indexing', $reason, 'must_fix');
+        }
+
+        if ((int) ($baseline->duplicate_without_user_selected_canonical ?? 0) > 0) {
+            $reason = sprintf(
+                'Search Console reports duplicate without user-selected canonical (%d URLs)',
+                (int) $baseline->duplicate_without_user_selected_canonical
+            );
+            $shouldFix[] = $reason;
+            $shouldFixIssues[] = $this->issueRecord('duplicate_without_user_selected_canonical', $reason, 'should_fix');
+        }
+
+        return [$mustFix, $shouldFix, $mustFixIssues, $shouldFixIssues];
     }
 
     /**
      * @param  array<string, array<string, string>>  $definitions
      * @param  array<int, string>  $matchingStatuses
-     * @return array<int, string>
+     * @return array<int, array{issue_family:string, reason:string, severity:string}>
      */
-    private function statusReasonSet(Domain $domain, array $definitions, array $matchingStatuses): array
+    private function statusIssueSet(Domain $domain, array $definitions, array $matchingStatuses): array
     {
-        $reasons = [];
+        $issues = [];
 
         foreach ($definitions as $checkType => $messages) {
             if ($domain->shouldSkipMonitoringCheck($checkType)) {
@@ -220,16 +287,22 @@ class DashboardIssueQueueService
             }
 
             if (isset($messages[$status])) {
-                $reasons[] = $messages[$status];
+                $issues[] = $this->issueRecord(
+                    $this->issueFamilyForCheckType($checkType),
+                    $messages[$status],
+                    in_array($status, ['fail'], true) ? 'must_fix' : 'should_fix'
+                );
             }
         }
 
-        return $reasons;
+        return $issues;
     }
 
     /**
      * @param  array<int, string>  $primaryReasons
      * @param  array<int, string>  $secondaryReasons
+     * @param  array<int, array{issue_family:string, reason:string, severity:string}>  $primaryIssueRecords
+     * @param  array<int, array{issue_family:string, reason:string, severity:string}>  $secondaryIssueRecords
      * @return array<string, mixed>
      */
     private function makeQueueItem(
@@ -237,7 +310,9 @@ class DashboardIssueQueueService
         ?WebProperty $property,
         string $coverageStatus,
         array $primaryReasons,
-        array $secondaryReasons = []
+        array $secondaryReasons = [],
+        array $primaryIssueRecords = [],
+        array $secondaryIssueRecords = []
     ): array {
         return $this->enrichQueueItem($domain, $property, [
             'id' => $domain->id,
@@ -252,6 +327,8 @@ class DashboardIssueQueueService
             'secondary_reasons' => $secondaryReasons,
             'primary_reason_count' => count($primaryReasons),
             'secondary_reason_count' => count($secondaryReasons),
+            'primary_issue_records' => $primaryIssueRecords,
+            'secondary_issue_records' => $secondaryIssueRecords,
             'coverage_required' => $this->requiresControlCoverage($domain, $property),
             'coverage_status' => $coverageStatus,
             'coverage_gap' => in_array($coverageStatus, ['missing_property', 'missing_repository', 'missing_local_path'], true),
@@ -350,30 +427,36 @@ class DashboardIssueQueueService
     private function enrichQueueItem(Domain $domain, ?WebProperty $property, array $item): array
     {
         $standards = config('domain_monitor.priority_queue_standards', []);
-        $issueFamilies = $this->deriveIssueFamilies($domain, $item);
-        if (($item['coverage_gap'] ?? false) === true) {
-            $issueFamilies[] = 'control.coverage_required';
-        }
-        $issueFamily = $issueFamilies[0] ?? null;
-        $controlId = $this->controlIdForIssueFamilies($issueFamilies, is_array($standards) ? $standards : []);
         $hostProfile = $this->deriveHostProfile($domain);
         $platformProfile = $this->derivePlatformProfile($domain, $hostProfile);
         $controlProfile = $this->deriveControlProfile($property, $platformProfile);
-        $controlConfig = is_string($controlId) && isset($standards['controls'][$controlId]) && is_array($standards['controls'][$controlId])
-            ? $standards['controls'][$controlId]
-            : [];
         $defaultBaselineSurface = is_string(data_get($standards, 'platform_profiles.'.$platformProfile.'.baseline_surface'))
             ? data_get($standards, 'platform_profiles.'.$platformProfile.'.baseline_surface')
             : null;
-        $configuredRolloutScope = is_string($controlConfig['rollout_scope'] ?? null)
-            ? $controlConfig['rollout_scope']
-            : null;
-        $rolloutScope = $configuredRolloutScope
-            ?? (($controlId && $defaultBaselineSurface) ? 'fleet' : 'domain_only');
-        $baselineSurface = $rolloutScope === 'fleet' ? $defaultBaselineSurface : null;
+        $issueEntries = $this->buildIssueEntries($item, is_array($standards) ? $standards : [], $defaultBaselineSurface);
+        $issueFamilies = array_values(array_unique(array_map(
+            static fn (array $entry): string => $entry['issue_family'],
+            $issueEntries
+        )));
+        $primaryIssueFamilies = array_values(array_unique(array_map(
+            static fn (array $entry): string => $entry['issue_family'],
+            array_filter($issueEntries, static fn (array $entry): bool => $entry['severity'] === 'must_fix')
+        )));
+        $secondaryIssueFamilies = array_values(array_unique(array_map(
+            static fn (array $entry): string => $entry['issue_family'],
+            array_filter($issueEntries, static fn (array $entry): bool => $entry['severity'] === 'should_fix')
+        )));
+        $canonicalIssue = $issueEntries[0] ?? null;
+        $issueFamily = is_array($canonicalIssue) ? $canonicalIssue['issue_family'] : null;
+        $controlId = is_array($canonicalIssue) ? $canonicalIssue['control_id'] : null;
+        $rolloutScope = is_array($canonicalIssue) ? $canonicalIssue['rollout_scope'] : 'domain_only';
+        $baselineSurface = is_array($canonicalIssue) ? $canonicalIssue['baseline_surface'] : null;
 
         $item['issue_family'] = $issueFamily;
         $item['issue_families'] = $issueFamilies;
+        $item['primary_issue_families'] = $primaryIssueFamilies;
+        $item['secondary_issue_families'] = $secondaryIssueFamilies;
+        $item['issue_entries'] = $issueEntries;
         $item['control_id'] = $controlId;
         $item['platform_profile'] = $platformProfile;
         $item['host_profile'] = $hostProfile;
@@ -437,105 +520,90 @@ class DashboardIssueQueueService
 
     /**
      * @param  array<string, mixed>  $item
-     * @return array<int, string>
+     * @param  array<string, mixed>  $standards
+     * @return array<int, array{issue_family:string, reason:string, severity:string, control_id:?string, rollout_scope:string, baseline_surface:?string}>
      */
-    private function deriveIssueFamilies(Domain $domain, array $item): array
+    private function buildIssueEntries(array $item, array $standards, ?string $defaultBaselineSurface): array
     {
-        $families = [];
+        $primaryRecords = is_array($item['primary_issue_records'] ?? null) ? $item['primary_issue_records'] : [];
+        $secondaryRecords = is_array($item['secondary_issue_records'] ?? null) ? $item['secondary_issue_records'] : [];
+        $records = array_merge($primaryRecords, $secondaryRecords);
+        $entries = [];
 
-        if (in_array('page_with_redirect_in_sitemap', $this->reasonDerivedIssueFamilies($item), true)) {
-            $families[] = 'page_with_redirect_in_sitemap';
-        }
+        foreach ($records as $record) {
+            $issueFamily = is_string($record['issue_family'] ?? null) ? $record['issue_family'] : null;
+            $reason = is_string($record['reason'] ?? null) ? $record['reason'] : null;
+            $severity = is_string($record['severity'] ?? null) ? $record['severity'] : null;
 
-        if ((int) ($domain->open_critical_alerts_count ?? 0) > 0 || (int) ($domain->open_warning_alerts_count ?? 0) > 0) {
-            $families[] = 'alerts.open';
-        }
-
-        if ($domain->eligibility_valid === false) {
-            $families[] = 'domain.eligibility';
-        }
-
-        if ($this->matchesCheckStatus($domain, 'uptime')) {
-            $families[] = 'health.uptime';
-        }
-
-        if ($this->matchesCheckStatus($domain, 'http')) {
-            $families[] = 'health.http';
-        }
-
-        if ($this->matchesCheckStatus($domain, 'ssl')) {
-            $families[] = 'transport.tls';
-        }
-
-        if ($this->matchesCheckStatus($domain, 'dns')) {
-            $families[] = 'dns.health';
-        }
-
-        if ($this->matchesCheckStatus($domain, 'email_security')) {
-            $families[] = 'email.security_baseline';
-        }
-
-        if ($this->matchesCheckStatus($domain, 'security_headers')) {
-            $families[] = 'security.headers_baseline';
-        }
-
-        if ($this->matchesCheckStatus($domain, 'seo')) {
-            $families[] = 'seo.fundamentals';
-        }
-
-        if ($this->matchesCheckStatus($domain, 'reputation')) {
-            $families[] = 'reputation.health';
-        }
-
-        if ($this->matchesCheckStatus($domain, 'broken_links')) {
-            $families[] = 'seo.broken_links';
-        }
-
-        if ($domain->expires_at && $domain->expires_at->isFuture() && $domain->expires_at->lte(now()->addDays(30)->endOfDay())) {
-            $families[] = 'domain.expiry';
-        }
-
-        return array_values(array_unique($families));
-    }
-
-    /**
-     * @param  array<string, mixed>  $item
-     * @return array<int, string>
-     */
-    private function reasonDerivedIssueFamilies(array $item): array
-    {
-        $reasonSegments = array_values(array_filter(array_map(
-            static fn (mixed $reason): string => strtolower(trim((string) $reason)),
-            array_merge(
-                is_array($item['primary_reasons'] ?? null) ? $item['primary_reasons'] : [],
-                is_array($item['secondary_reasons'] ?? null) ? $item['secondary_reasons'] : [],
-            )
-        )));
-
-        if ($reasonSegments === []) {
-            return [];
-        }
-
-        $families = [];
-
-        foreach ($reasonSegments as $reasonText) {
-            if (! preg_match('/page with redirect/', $reasonText)
-                && ! (preg_match('/sitemap/', $reasonText) && preg_match('/redirect/', $reasonText))) {
+            if ($issueFamily === null || $reason === null || $severity === null) {
                 continue;
             }
 
-            $families[] = 'page_with_redirect_in_sitemap';
-            break;
+            $controlId = $this->controlIdForIssueFamilies([$issueFamily], $standards);
+            $controlConfig = is_string($controlId) && isset($standards['controls'][$controlId]) && is_array($standards['controls'][$controlId])
+                ? $standards['controls'][$controlId]
+                : [];
+            $configuredRolloutScope = is_string($controlConfig['rollout_scope'] ?? null)
+                ? $controlConfig['rollout_scope']
+                : null;
+            $rolloutScope = $configuredRolloutScope
+                ?? (($controlId && $defaultBaselineSurface) ? 'fleet' : 'domain_only');
+
+            $entries[] = [
+                'issue_family' => $issueFamily,
+                'reason' => $reason,
+                'severity' => $severity,
+                'control_id' => $controlId,
+                'rollout_scope' => $rolloutScope,
+                'baseline_surface' => $rolloutScope === 'fleet' ? $defaultBaselineSurface : null,
+            ];
         }
 
-        return $families;
+        return $entries;
     }
 
-    private function matchesCheckStatus(Domain $domain, string $checkType): bool
+    /**
+     * @param  array<int, array{issue_family:string, reason:string, severity:string}>  $issues
+     * @return array<int, array{issue_family:string, reason:string, severity:string}>
+     */
+    private function uniqueIssueRecords(array $issues): array
     {
-        $status = $domain->{'latest_'.$checkType.'_status'} ?? null;
+        $unique = [];
 
-        return is_string($status) && in_array($status, ['warn', 'fail'], true);
+        foreach ($issues as $issue) {
+            $key = sprintf('%s|%s|%s', $issue['issue_family'], $issue['severity'], $issue['reason']);
+            $unique[$key] = $issue;
+        }
+
+        return array_values($unique);
+    }
+
+    /**
+     * @return array{issue_family:string, reason:string, severity:string}
+     */
+    private function issueRecord(string $issueFamily, string $reason, string $severity): array
+    {
+        return [
+            'issue_family' => $issueFamily,
+            'reason' => $reason,
+            'severity' => $severity,
+        ];
+    }
+
+    private function issueFamilyForCheckType(string $checkType): string
+    {
+        return match ($checkType) {
+            'uptime' => 'health.uptime',
+            'http' => 'health.http',
+            'ssl' => 'transport.tls',
+            'dns' => 'dns.health',
+            'email_security' => 'email.security_baseline',
+            'security_headers' => 'security.headers_baseline',
+            'seo' => 'seo.fundamentals',
+            'reputation' => 'reputation.health',
+            'broken_links' => 'seo.broken_links',
+            default => 'unclassified',
+        };
     }
 
     /**

@@ -555,6 +555,12 @@ return [
             'seo.robots_and_sitemap_consistency' => [
                 'issue_families' => [
                     'page_with_redirect_in_sitemap',
+                    'blocked_by_robots_in_indexing',
+                ],
+            ],
+            'seo.canonical_consistency' => [
+                'issue_families' => [
+                    'duplicate_without_user_selected_canonical',
                 ],
             ],
             'seo.broken_links' => [
