@@ -148,8 +148,8 @@ class DetectedIssueApiTest extends TestCase
 
         $detailResponse
             ->assertOk()
-            ->assertJsonPath('data.issue_id', $redirectIssue['issue_id'])
-            ->assertJsonPath('data.issue_class', 'page_with_redirect_in_sitemap')
-            ->assertJsonPath('data.evidence.source_domain_id', $redirectDomain->id);
+            ->assertJsonPath('issue_id', $redirectIssue['issue_id'])
+            ->assertJsonPath('issue_class', 'page_with_redirect_in_sitemap')
+            ->assertJsonPath('evidence.source_domain_id', $redirectDomain->id);
     }
 }

@@ -21,6 +21,6 @@ class DetectedIssueController extends Controller
             return response()->json(['error' => 'Not found'], 404);
         }
 
-        return response()->json(['data' => $issue]);
+        return response()->json($issue);
     }
 }

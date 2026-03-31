@@ -6,6 +6,11 @@ use Illuminate\Support\Collection;
 
 class DetectedIssueSummaryService
 {
+    /**
+     * @var array<string, mixed>|null
+     */
+    private ?array $cachedSnapshot = null;
+
     public function __construct(
         private readonly DashboardIssueQueueService $queueService
     ) {}
@@ -15,12 +20,16 @@ class DetectedIssueSummaryService
      */
     public function snapshot(): array
     {
+        if ($this->cachedSnapshot !== null) {
+            return $this->cachedSnapshot;
+        }
+
         $queueSnapshot = $this->queueService->snapshot();
         $mustFix = $this->flattenIssues($queueSnapshot['must_fix'] ?? [], 'must_fix');
         $shouldFix = $this->flattenIssues($queueSnapshot['should_fix'] ?? [], 'should_fix');
         $issues = $mustFix->concat($shouldFix)->values();
 
-        return [
+        return $this->cachedSnapshot = [
             'source_system' => 'domain-monitor-issues',
             'contract_version' => 1,
             'generated_at' => $queueSnapshot['generated_at'] ?? now()->toIso8601String(),
@@ -75,9 +84,23 @@ class DetectedIssueSummaryService
         $detectedAt = is_string($item['updated_at_iso'] ?? null) && $item['updated_at_iso'] !== ''
             ? $item['updated_at_iso']
             : now()->toIso8601String();
+        $issueFamilies = array_values(array_unique(array_filter($item['issue_families'] ?? [], 'is_string')));
+        sort($issueFamilies);
+        $issueIdentity = [
+            'source_domain_id' => $domainId,
+            'property_slug' => $propertySlug,
+            'control_id' => is_string($item['control_id'] ?? null) ? $item['control_id'] : null,
+            'issue_families' => $issueFamilies,
+            'coverage_status' => is_string($item['coverage_status'] ?? null) ? $item['coverage_status'] : null,
+        ];
+        $issueId = sprintf(
+            'dm:%s:%s',
+            $domainId !== '' ? $domainId : 'unknown',
+            substr(sha1(json_encode($issueIdentity, JSON_THROW_ON_ERROR)), 0, 16)
+        );
 
         return [
-            'issue_id' => "{$domainId}:{$severity}:{$issueClass}",
+            'issue_id' => $issueId,
             'property_slug' => $propertySlug,
             'property_name' => is_string($item['web_property_name'] ?? null) ? $item['web_property_name'] : null,
             'domain' => $domain,
