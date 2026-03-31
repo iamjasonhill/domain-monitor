@@ -38,6 +38,7 @@ class DashboardIssueQueueService
                 'platform',
                 'webProperties:id,slug,name,property_type,status',
                 'webProperties.repositories:id,web_property_id,repo_name,local_path,is_primary',
+                'webProperties.latestSeoBaselineForProperty',
             ])
             ->withLatestCheckStatuses()
             ->withCount([
@@ -85,6 +86,7 @@ class DashboardIssueQueueService
             $coverageStatus = $this->controlCoverageStatus($domain, $property);
             [$mustFixReasons, $shouldFixReasons] = $this->issueReasonsForDomain(
                 $domain,
+                $property,
                 $this->controlCoverageReasonForStatus($coverageStatus)
             );
 
@@ -112,7 +114,7 @@ class DashboardIssueQueueService
     /**
      * @return array{0: array<int, string>, 1: array<int, string>}
      */
-    private function issueReasonsForDomain(Domain $domain, ?string $coverageReason): array
+    private function issueReasonsForDomain(Domain $domain, ?WebProperty $property, ?string $coverageReason): array
     {
         $mustFix = [];
         $shouldFix = [];
@@ -157,10 +159,44 @@ class DashboardIssueQueueService
             $shouldFix[] = $coverageReason;
         }
 
+        if ($this->requiresControlCoverage($domain, $property) && ! $domain->shouldSkipMonitoringCheck('seo')) {
+            [$baselineMustFixReasons, $baselineShouldFixReasons] = $this->seoBaselineReasonSet($property);
+            $mustFix = array_merge($mustFix, $baselineMustFixReasons);
+            $shouldFix = array_merge($shouldFix, $baselineShouldFixReasons);
+        }
+
         return [
             array_values(array_unique($mustFix)),
             array_values(array_unique($shouldFix)),
         ];
+    }
+
+    /**
+     * @return array{0: array<int, string>, 1: array<int, string>}
+     */
+    private function seoBaselineReasonSet(?WebProperty $property): array
+    {
+        if (! $property instanceof WebProperty) {
+            return [[], []];
+        }
+
+        $baseline = $property->latestPropertySeoBaselineRecord();
+
+        if ($baseline === null) {
+            return [[], []];
+        }
+
+        $mustFix = [];
+        $shouldFix = [];
+
+        if ((int) ($baseline->pages_with_redirect ?? 0) > 0) {
+            $mustFix[] = sprintf(
+                'Search Console reports page with redirect (%d URLs)',
+                (int) $baseline->pages_with_redirect
+            );
+        }
+
+        return [$mustFix, $shouldFix];
     }
 
     /**
@@ -314,7 +350,7 @@ class DashboardIssueQueueService
     private function enrichQueueItem(Domain $domain, ?WebProperty $property, array $item): array
     {
         $standards = config('domain_monitor.priority_queue_standards', []);
-        $issueFamilies = $this->deriveIssueFamilies($domain);
+        $issueFamilies = $this->deriveIssueFamilies($domain, $item);
         if (($item['coverage_gap'] ?? false) === true) {
             $issueFamilies[] = 'control.coverage_required';
         }
@@ -400,11 +436,16 @@ class DashboardIssueQueueService
     }
 
     /**
+     * @param  array<string, mixed>  $item
      * @return array<int, string>
      */
-    private function deriveIssueFamilies(Domain $domain): array
+    private function deriveIssueFamilies(Domain $domain, array $item): array
     {
         $families = [];
+
+        if (in_array('page_with_redirect_in_sitemap', $this->reasonDerivedIssueFamilies($item), true)) {
+            $families[] = 'page_with_redirect_in_sitemap';
+        }
 
         if ((int) ($domain->open_critical_alerts_count ?? 0) > 0 || (int) ($domain->open_warning_alerts_count ?? 0) > 0) {
             $families[] = 'alerts.open';
@@ -455,6 +496,39 @@ class DashboardIssueQueueService
         }
 
         return array_values(array_unique($families));
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @return array<int, string>
+     */
+    private function reasonDerivedIssueFamilies(array $item): array
+    {
+        $reasonSegments = array_values(array_filter(array_map(
+            static fn (mixed $reason): string => strtolower(trim((string) $reason)),
+            array_merge(
+                is_array($item['primary_reasons'] ?? null) ? $item['primary_reasons'] : [],
+                is_array($item['secondary_reasons'] ?? null) ? $item['secondary_reasons'] : [],
+            )
+        )));
+
+        if ($reasonSegments === []) {
+            return [];
+        }
+
+        $families = [];
+
+        foreach ($reasonSegments as $reasonText) {
+            if (! preg_match('/page with redirect/', $reasonText)
+                && ! (preg_match('/sitemap/', $reasonText) && preg_match('/redirect/', $reasonText))) {
+                continue;
+            }
+
+            $families[] = 'page_with_redirect_in_sitemap';
+            break;
+        }
+
+        return $families;
     }
 
     private function matchesCheckStatus(Domain $domain, string $checkType): bool
