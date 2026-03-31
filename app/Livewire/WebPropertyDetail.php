@@ -70,7 +70,7 @@ class WebPropertyDetail extends Component
             $result = $importer->importDrilldownZipForProperty(
                 $this->property,
                 (string) $this->issueDetailArchive->getRealPath(),
-                auth()->user()->email ?: 'domain_monitor_ui'
+                auth()->user()?->email ?: 'domain_monitor_ui'
             );
 
             $this->issueDetailArchive = null;

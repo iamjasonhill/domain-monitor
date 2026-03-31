@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
@@ -31,6 +32,9 @@ use Illuminate\Support\Str;
  */
 class SearchConsoleIssueSnapshot extends Model
 {
+    /** @use HasFactory<\Database\Factories\SearchConsoleIssueSnapshotFactory> */
+    use HasFactory;
+
     public $incrementing = false;
 
     protected $keyType = 'string';
@@ -115,13 +119,20 @@ class SearchConsoleIssueSnapshot extends Model
         $normalizedPayload = $this->normalized_payload ?? [];
         /** @var array<int, array<string, mixed>> $exampleRows */
         $exampleRows = is_array($this->examples) ? $this->examples : [];
-        $examples = collect($exampleRows)
-            ->map(fn (array $example): array => [
-                'url' => $example['url'],
+        $examples = [];
+
+        foreach ($exampleRows as $example) {
+            $url = is_string($example['url'] ?? null) ? $example['url'] : null;
+
+            if ($url === null || $url === '') {
+                continue;
+            }
+
+            $examples[] = [
+                'url' => $url,
                 'last_crawled' => is_string($example['last_crawled'] ?? null) ? $example['last_crawled'] : null,
-            ])
-            ->values()
-            ->all();
+            ];
+        }
         /** @var array<int, string> $affectedUrlRows */
         $affectedUrlRows = is_array($normalizedPayload['affected_urls'] ?? null) ? $normalizedPayload['affected_urls'] : [];
         $affectedUrls = collect($affectedUrlRows)

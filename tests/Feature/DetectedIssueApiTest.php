@@ -75,7 +75,7 @@ class DetectedIssueApiTest extends TestCase
             'raw_payload' => ['issues' => [['label' => 'Page with redirect', 'count' => 7]]],
         ]);
 
-        SearchConsoleIssueSnapshot::create([
+        SearchConsoleIssueSnapshot::factory()->create([
             'domain_id' => $redirectDomain->id,
             'web_property_id' => $redirectProperty->id,
             'issue_class' => 'page_with_redirect_in_sitemap',
@@ -103,7 +103,7 @@ class DetectedIssueApiTest extends TestCase
             'raw_payload' => ['source' => 'drilldown'],
         ]);
 
-        SearchConsoleIssueSnapshot::create([
+        SearchConsoleIssueSnapshot::factory()->create([
             'domain_id' => $redirectDomain->id,
             'web_property_id' => $redirectProperty->id,
             'issue_class' => 'blocked_by_robots_in_indexing',

@@ -43,29 +43,7 @@ class SearchConsoleIssueEvidenceService
             return [];
         }
 
-        $snapshots = $this->latestSnapshotsForProperties($properties->pluck('id')->values()->all());
-
-        return $properties->mapWithKeys(function (WebProperty $property) use ($snapshots): array {
-            $baseline = $property->latestPropertySeoBaselineRecord();
-            $snapshotEntries = $snapshots[$property->id] ?? [];
-            $issueClasses = array_values(array_unique(array_filter([
-                ...array_keys($snapshotEntries),
-                ...array_keys($this->baselineIssueEvidence($baseline)),
-            ])));
-
-            $issueEvidence = [];
-
-            foreach ($issueClasses as $issueClass) {
-                $baselineEvidence = $this->baselineIssueEvidenceForClass($baseline, $issueClass);
-                $snapshotEvidence = $this->snapshotEvidenceForClass($snapshotEntries[$issueClass] ?? [
-                    'detail' => null,
-                    'api' => null,
-                ]);
-                $issueEvidence[$issueClass] = array_replace($baselineEvidence, $snapshotEvidence);
-            }
-
-            return [$property->slug => $issueEvidence];
-        })->all();
+        return $this->buildPropertyEvidenceContext($properties)['evidence'];
     }
 
     /**
@@ -73,10 +51,10 @@ class SearchConsoleIssueEvidenceService
      */
     public function propertyIssueSummaries(WebProperty $property): array
     {
-        $evidenceMap = $this->evidenceMapForProperties(collect([$property]));
-        $propertyEvidence = $evidenceMap[$property->slug] ?? [];
+        $context = $this->buildPropertyEvidenceContext(collect([$property]));
+        $propertyEvidence = $context['evidence'][$property->slug] ?? [];
         $baseline = $property->latestPropertySeoBaselineRecord();
-        $snapshots = $this->latestSnapshotsForProperties([$property->id])[$property->id] ?? [];
+        $snapshots = $context['snapshots'][$property->id] ?? [];
 
         return collect($propertyEvidence)
             ->map(function (array $evidence, string $issueClass) use ($baseline, $snapshots): array {
@@ -106,6 +84,45 @@ class SearchConsoleIssueEvidenceService
             ->sortByDesc(fn (array $summary): int => (int) ($summary['affected_url_count'] ?? 0))
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  Collection<int, WebProperty>  $properties
+     * @return array{
+     *   evidence: array<string, array<string, array<string, mixed>>>,
+     *   snapshots: array<string, array<string, array{detail:?SearchConsoleIssueSnapshot, api:?SearchConsoleIssueSnapshot}>>
+     * }
+     */
+    private function buildPropertyEvidenceContext(Collection $properties): array
+    {
+        $snapshots = $this->latestSnapshotsForProperties($properties->pluck('id')->values()->all());
+
+        $evidence = $properties->mapWithKeys(function (WebProperty $property) use ($snapshots): array {
+            $baseline = $property->latestPropertySeoBaselineRecord();
+            $snapshotEntries = $snapshots[$property->id] ?? [];
+            $issueClasses = array_values(array_unique(array_filter([
+                ...array_keys($snapshotEntries),
+                ...array_keys($this->baselineIssueEvidence($baseline)),
+            ])));
+
+            $issueEvidence = [];
+
+            foreach ($issueClasses as $issueClass) {
+                $baselineEvidence = $this->baselineIssueEvidenceForClass($baseline, $issueClass);
+                $snapshotEvidence = $this->snapshotEvidenceForClass($snapshotEntries[$issueClass] ?? [
+                    'detail' => null,
+                    'api' => null,
+                ]);
+                $issueEvidence[$issueClass] = array_replace($baselineEvidence, $snapshotEvidence);
+            }
+
+            return [$property->slug => $issueEvidence];
+        })->all();
+
+        return [
+            'evidence' => $evidence,
+            'snapshots' => $snapshots,
+        ];
     }
 
     /**

@@ -231,7 +231,7 @@ class WebPropertyUiTest extends TestCase
             'pages_with_redirect' => 3,
         ]);
 
-        SearchConsoleIssueSnapshot::create([
+        SearchConsoleIssueSnapshot::factory()->create([
             'domain_id' => $domain->id,
             'web_property_id' => $property->id,
             'property_analytics_source_id' => $source->id,
