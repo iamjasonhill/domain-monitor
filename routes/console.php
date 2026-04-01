@@ -2,6 +2,7 @@
 
 use App\Models\WebProperty;
 use App\Services\ManualSearchConsoleEvidenceImporter;
+use App\Services\SearchConsoleApiBundleCollector;
 use App\Services\SearchConsoleApiBundleImporter;
 use App\Services\SearchConsoleIssueSnapshotImporter;
 use Illuminate\Console\Command;
@@ -208,6 +209,88 @@ Artisan::command('analytics:import-search-console-api-bundle {property : Web pro
 
     return Command::SUCCESS;
 })->purpose('Import a Search Console API or MCP bundle and fan it out into per-issue snapshots.');
+
+Artisan::command('analytics:collect-search-console-api-bundle {property : Web property slug} {--capture-method=gsc_api : Either gsc_api or gsc_mcp_api} {--days=28 : Lookback window for Search Analytics totals} {--url-limit= : Override the max inspected URLs per issue class} {--row-limit= : Override the Search Analytics row limit} {--captured-by= : Optional captured_by value} {--dry-run : Only collect and print a summary without importing}', function (SearchConsoleApiBundleCollector $collector, SearchConsoleApiBundleImporter $importer) {
+    $propertyArgument = $this->argument('property');
+    $captureMethodOption = $this->option('capture-method');
+    $daysOption = $this->option('days');
+    $urlLimitOption = $this->option('url-limit');
+    $rowLimitOption = $this->option('row-limit');
+    $capturedByOption = $this->option('captured-by');
+    $dryRunOption = (bool) $this->option('dry-run');
+
+    $property = WebProperty::query()
+        ->where('slug', is_string($propertyArgument) ? $propertyArgument : '')
+        ->first();
+
+    if (! $property instanceof WebProperty) {
+        $this->error('Could not find the requested web property.');
+
+        return Command::FAILURE;
+    }
+
+    try {
+        $bundle = $collector->collectBundleForProperty(
+            $property,
+            is_numeric($daysOption) ? (int) $daysOption : 28,
+            is_numeric($urlLimitOption) ? (int) $urlLimitOption : null,
+            is_numeric($rowLimitOption) ? (int) $rowLimitOption : null,
+        );
+    } catch (\Throwable $exception) {
+        $this->error($exception->getMessage());
+
+        return Command::FAILURE;
+    }
+
+    if ($dryRunOption) {
+        $this->line(json_encode($bundle, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) ?: '{}');
+
+        return Command::SUCCESS;
+    }
+
+    $temporaryPath = tempnam(sys_get_temp_dir(), 'gsc-api-bundle-');
+    if (! is_string($temporaryPath)) {
+        $this->error('Unable to create a temporary Search Console API bundle file.');
+
+        return Command::FAILURE;
+    }
+
+    try {
+        $bytesWritten = file_put_contents($temporaryPath, json_encode($bundle, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        if ($bytesWritten === false) {
+            throw new RuntimeException('Unable to write the temporary Search Console API bundle file.');
+        }
+
+        $result = $importer->importBundleForProperty(
+            $property,
+            $temporaryPath,
+            is_string($captureMethodOption) && $captureMethodOption !== ''
+                ? $captureMethodOption
+                : 'gsc_api',
+            is_string($capturedByOption) && $capturedByOption !== ''
+                ? $capturedByOption
+                : 'artisan_api_bundle_collect'
+        );
+    } catch (\Throwable $exception) {
+        @unlink($temporaryPath);
+        $this->error($exception->getMessage());
+
+        return Command::FAILURE;
+    }
+
+    @unlink($temporaryPath);
+
+    $this->info(sprintf(
+        'Collected and imported Search Console API bundle for [%s]; stored [%d] issue snapshots.',
+        $property->slug,
+        count($result['snapshots'])
+    ));
+    $this->line(sprintf('Artifact path: %s', $result['artifact_path']));
+    $this->line(sprintf('Issue classes: %s', implode(', ', $result['imported_issue_classes'])));
+
+    return Command::SUCCESS;
+})->purpose('Collect Search Console API evidence for one property and import it as a per-issue bundle.');
 
 $brainConfigured = filled(config('services.brain.base_url')) && filled(config('services.brain.api_key'));
 

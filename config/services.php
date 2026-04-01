@@ -49,6 +49,19 @@ return [
 
     'google' => [
         'safe_browsing_key' => env('GOOGLE_SAFE_BROWSING_KEY'),
+        'search_console' => [
+            'api_base_url' => env('GOOGLE_SEARCH_CONSOLE_API_BASE_URL', 'https://www.googleapis.com'),
+            'inspection_base_url' => env('GOOGLE_SEARCH_CONSOLE_INSPECTION_BASE_URL', 'https://searchconsole.googleapis.com'),
+            'token_url' => env('GOOGLE_SEARCH_CONSOLE_TOKEN_URL', 'https://oauth2.googleapis.com/token'),
+            'access_token' => env('GOOGLE_SEARCH_CONSOLE_ACCESS_TOKEN'),
+            'refresh_token' => env('GOOGLE_SEARCH_CONSOLE_REFRESH_TOKEN'),
+            'client_id' => env('GOOGLE_SEARCH_CONSOLE_CLIENT_ID'),
+            'client_secret' => env('GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET'),
+            'language_code' => env('GOOGLE_SEARCH_CONSOLE_LANGUAGE_CODE', 'en-AU'),
+            'analytics_row_limit' => (int) env('GOOGLE_SEARCH_CONSOLE_ANALYTICS_ROW_LIMIT', 250),
+            'inspection_url_limit' => (int) env('GOOGLE_SEARCH_CONSOLE_INSPECTION_URL_LIMIT', 10),
+            'inspection_request_delay_micros' => (int) env('GOOGLE_SEARCH_CONSOLE_INSPECTION_REQUEST_DELAY_MICROS', 200000),
+        ],
     ],
 
     'matomo' => [
