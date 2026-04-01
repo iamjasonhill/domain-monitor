@@ -111,3 +111,78 @@ Purpose:
   values.
 - Do not scrape random local `.env` files from other repos to discover tokens.
   Provision the token explicitly for the consuming service.
+
+## Google Search Console Collector
+
+The official Google Search Console collector uses its own runtime credentials on
+the Domain Monitor side. Do not treat repository-local `.env` files as the
+source of truth for these values.
+
+### Source Of Truth
+
+The durable shared Google Search Console connection currently lives in the live
+Matomo install:
+
+```text
+Host: 43.250.142.23
+Port: 2683
+User: transpor
+Path: /home/transpor/stats.redirection.com.au
+```
+
+Relevant storage on the Matomo side:
+
+- table `vsb3_plugin_setting`
+  - `plugin_name = SearchConsoleIntegration`
+  - settings:
+    - `googleClientId`
+    - `googleClientSecret`
+    - `googleRedirectUri`
+- table `vsb3_option`
+  - `option_name = SearchConsoleIntegration.googleTokens`
+  - contains the connected Google `refresh_token` and current `access_token`
+
+This is the preferred place to recover or rotate the Search Console collector
+credentials because it reflects the real connected Google account already in
+use for Search Console operations.
+
+### Domain Monitor Runtime Variables
+
+Set these on the live Domain Monitor host:
+
+- `GOOGLE_SEARCH_CONSOLE_API_BASE_URL`
+- `GOOGLE_SEARCH_CONSOLE_INSPECTION_BASE_URL`
+- `GOOGLE_SEARCH_CONSOLE_TOKEN_URL`
+- `GOOGLE_SEARCH_CONSOLE_REFRESH_TOKEN`
+- `GOOGLE_SEARCH_CONSOLE_CLIENT_ID`
+- `GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET`
+- `GOOGLE_SEARCH_CONSOLE_ANALYTICS_ROW_LIMIT`
+- `GOOGLE_SEARCH_CONSOLE_INSPECTION_URL_LIMIT`
+
+Do not commit the actual values into git.
+
+### Verification Path
+
+The safest live verification sequence is:
+
+1. exchange the refresh token for an access token against
+   `https://oauth2.googleapis.com/token`
+2. verify the token can list Search Console properties from
+   `https://www.googleapis.com/webmasters/v3/sites`
+3. run the Domain Monitor collector command on one property:
+
+```text
+php artisan analytics:collect-search-console-api-bundle <property-slug> --dry-run
+```
+
+4. once the dry-run output looks correct, run the real import without
+   `--dry-run`
+
+### Operational Notes
+
+- The collector should reuse the existing Matomo-connected Google account rather
+  than creating a separate ad hoc OAuth app when possible.
+- Prefer the refresh-token flow over a pasted short-lived access token.
+- If the Matomo Google connection is rotated, update Domain Monitor from the
+  same Matomo source-of-truth path instead of inventing a second credential
+  store.
