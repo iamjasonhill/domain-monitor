@@ -75,17 +75,35 @@ class CollectSearchConsoleApiBundleCommandTest extends TestCase
             ], 200),
             'https://searchconsole.googleapis.com/v1/urlInspection/index:inspect' => Http::response([
                 'inspectionResult' => [
+                    'verdict' => 'PASS',
                     'indexStatusResult' => [
                         'coverageState' => 'Page with redirect',
                         'robotsTxtState' => 'ALLOWED',
                         'indexingState' => 'INDEXING_ALLOWED',
                         'pageFetchState' => 'SUCCESSFUL',
                         'lastCrawlTime' => '2026-04-01T00:00:00Z',
+                        'crawledAs' => 'MOBILE',
                         'googleCanonical' => 'https://collector.example.au/new-page/',
                         'userCanonical' => 'https://collector.example.au/old-page/',
                         'referringUrls' => ['https://collector.example.au/sitemap_index.xml'],
                         'sitemap' => ['https://collector.example.au/sitemap_index.xml'],
                     ],
+                    'richResultsResult' => [
+                        'verdict' => 'PASS',
+                        'detectedItems' => [
+                            [
+                                'richResultType' => 'Breadcrumbs',
+                                'items' => 1,
+                                'issues' => [
+                                    [
+                                        'issueMessage' => 'Optional field missing',
+                                        'severity' => 'WARNING',
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                    'inspectionResultLink' => 'https://search.google.com/search-console/inspect?resource_id=sc-domain:collector.example.au&id=abc123',
                 ],
             ], 200),
         ]);
@@ -96,7 +114,7 @@ class CollectSearchConsoleApiBundleCommandTest extends TestCase
             '--captured-by' => 'test-suite',
         ]);
 
-        $this->assertSame(0, $exitCode);
+        $this->assertSame(0, $exitCode, Artisan::output());
 
         $apiSnapshot = SearchConsoleIssueSnapshot::query()
             ->where('web_property_id', $property->id)
@@ -109,6 +127,12 @@ class CollectSearchConsoleApiBundleCommandTest extends TestCase
         $this->assertSame(3, data_get($apiSnapshot->normalized_payload, 'search_analytics.totals.clicks'));
         $this->assertSame('https://collector.example.au/sitemap_index.xml', data_get($apiSnapshot->normalized_payload, 'sitemaps.0.path'));
         $this->assertSame(1, data_get($apiSnapshot->normalized_payload, 'url_inspection.summary.coverage_states.Page with redirect'));
+        $this->assertSame('MOBILE', data_get($apiSnapshot->normalized_payload, 'url_inspection.inspected_urls.0.crawled_as'));
+        $this->assertSame('https://search.google.com/search-console/inspect?resource_id=sc-domain:collector.example.au&id=abc123', data_get($apiSnapshot->normalized_payload, 'url_inspection.inspected_urls.0.verdict'));
+        $this->assertSame('PASS', data_get($apiSnapshot->normalized_payload, 'url_inspection.inspected_urls.0.inspection_verdict'));
+        $this->assertSame('https://search.google.com/search-console/inspect?resource_id=sc-domain:collector.example.au&id=abc123', data_get($apiSnapshot->normalized_payload, 'url_inspection.inspected_urls.0.inspection_link'));
+        $this->assertSame('PASS', data_get($apiSnapshot->normalized_payload, 'url_inspection.inspected_urls.0.rich_results.verdict'));
+        $this->assertSame('Breadcrumbs', data_get($apiSnapshot->normalized_payload, 'url_inspection.inspected_urls.0.rich_results.detected_items.0.rich_result_type'));
         Storage::disk('local')->assertExists($apiSnapshot->artifact_path);
 
         Http::assertSentCount(4);
@@ -118,7 +142,16 @@ class CollectSearchConsoleApiBundleCommandTest extends TestCase
                 && $request['refresh_token'] === 'test-refresh-token';
         });
         Http::assertSent(function ($request): bool {
+            return str_contains($request->url(), '/webmasters/v3/sites/')
+                && str_contains($request->url(), '/sitemaps');
+        });
+        Http::assertSent(function ($request): bool {
+            return str_contains($request->url(), '/webmasters/v3/sites/')
+                && str_contains($request->url(), '/searchAnalytics/query');
+        });
+        Http::assertSent(function ($request): bool {
             return $request->url() === 'https://searchconsole.googleapis.com/v1/urlInspection/index:inspect'
+                && $request['inspectionUrl'] === 'https://collector.example.au/old-page/'
                 && $request['languageCode'] === 'en-US';
         });
     }
