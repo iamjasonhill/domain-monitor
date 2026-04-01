@@ -90,8 +90,42 @@ class SearchConsoleIssueSnapshotImporter
             throw new InvalidArgumentException('Issue evidence payload exceeds the supported size limit.');
         }
 
-        $parsed = $this->parseApiEvidenceJson($issueClass, $jsonPath, $captureMethod);
         $artifactPath = $this->storeArtifact($property, $jsonPath, 'search-console-api-evidence');
+        $decoded = json_decode((string) file_get_contents($jsonPath), true);
+
+        if (! is_array($decoded)) {
+            throw new RuntimeException('Issue evidence payload is not valid JSON.');
+        }
+
+        return $this->importApiEvidencePayloadForProperty(
+            $property,
+            $issueClass,
+            $decoded,
+            $captureMethod,
+            $capturedBy,
+            $artifactPath
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{snapshot: SearchConsoleIssueSnapshot, artifact_path: string, parsed: array<string, mixed>}
+     */
+    public function importApiEvidencePayloadForProperty(
+        WebProperty $property,
+        string $issueClass,
+        array $payload,
+        string $captureMethod = 'gsc_api',
+        ?string $capturedBy = null,
+        ?string $artifactPath = null
+    ): array {
+        if (! in_array($captureMethod, ['gsc_api', 'gsc_mcp_api'], true)) {
+            throw new InvalidArgumentException('Capture method must be gsc_api or gsc_mcp_api.');
+        }
+
+        $parsed = $this->parseApiEvidencePayload($issueClass, $payload, $captureMethod);
+        $artifactPath ??= $this->storeJsonArtifact($property, $payload, 'search-console-api-evidence');
+
         $snapshot = $this->persistSnapshot(
             $property,
             $issueClass,
@@ -248,6 +282,32 @@ class SearchConsoleIssueSnapshotImporter
             throw new RuntimeException('Issue evidence payload is not valid JSON.');
         }
 
+        return $this->parseApiEvidencePayload($issueClass, $decoded, $captureMethod);
+    }
+
+    /**
+     * @param  array<string, mixed>  $decoded
+     * @return array{
+     *   source_issue_label:string|null,
+     *   source_report:string,
+     *   source_property:string|null,
+     *   property_scope:string|null,
+     *   first_detected_at:Carbon|null,
+     *   last_updated_at:Carbon|null,
+     *   affected_url_count:int|null,
+     *   sample_urls:array<int, string>|null,
+     *   examples:array<int, array<string, mixed>>|null,
+     *   chart_points:array<int, array<string, mixed>>|null,
+     *   normalized_payload:array<string, mixed>,
+     *   raw_payload:array<string, mixed>
+     * }
+     */
+    public function parseApiEvidencePayload(string $issueClass, array $decoded, string $captureMethod): array
+    {
+        if (! is_array(config('domain_monitor.search_console_issue_catalog.'.$issueClass))) {
+            throw new InvalidArgumentException(sprintf('Unsupported Search Console issue class [%s].', $issueClass));
+        }
+
         $normalizedPayload = array_filter([
             'affected_urls' => $this->stringList($decoded['affected_urls'] ?? []),
             'url_inspection' => is_array($decoded['url_inspection'] ?? null) ? $decoded['url_inspection'] : null,
@@ -339,6 +399,11 @@ class SearchConsoleIssueSnapshotImporter
         return $property->latestPropertySeoBaselineRecord()?->search_console_property_uri;
     }
 
+    public function storeArtifactForProperty(WebProperty $property, string $sourcePath, string $directory): string
+    {
+        return $this->storeArtifact($property, $sourcePath, $directory);
+    }
+
     private function storeArtifact(WebProperty $property, string $sourcePath, string $directory): string
     {
         $extension = pathinfo($sourcePath, PATHINFO_EXTENSION);
@@ -362,6 +427,29 @@ class SearchConsoleIssueSnapshotImporter
         }
 
         return $relativePath;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function storeJsonArtifact(WebProperty $property, array $payload, string $directory): string
+    {
+        $temporaryBasePath = tempnam(sys_get_temp_dir(), 'gsc-api-evidence-');
+
+        if (! is_string($temporaryBasePath)) {
+            throw new RuntimeException('Unable to create a temporary Search Console issue evidence artifact.');
+        }
+
+        $temporaryPath = $temporaryBasePath.'.json';
+
+        try {
+            file_put_contents($temporaryPath, json_encode($payload, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+            return $this->storeArtifact($property, $temporaryPath, $directory);
+        } finally {
+            @unlink($temporaryBasePath);
+            @unlink($temporaryPath);
+        }
     }
 
     private function issueClassForLabel(string $label): ?string

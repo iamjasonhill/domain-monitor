@@ -146,6 +146,70 @@ class ImportSearchConsoleIssueSnapshotCommandTest extends TestCase
         Storage::disk('local')->assertExists($snapshot->artifact_path);
     }
 
+    public function test_it_imports_search_console_api_bundle_json_into_multiple_issue_snapshots(): void
+    {
+        Storage::fake('local');
+
+        $property = $this->makeProperty('bundle-site', 'bundle.example.au', '85');
+        $jsonPath = $this->makeApiBundleJson([
+            'source_report' => 'search_console_api_bundle',
+            'source_property' => 'sc-domain:bundle.example.au',
+            'shared' => [
+                'sitemaps' => [
+                    ['path' => 'https://bundle.example.au/sitemap_index.xml', 'warnings' => 0, 'errors' => 0],
+                ],
+                'referring_urls' => ['https://bundle.example.au/sitemap_index.xml'],
+                'search_analytics' => [
+                    'date_range' => ['start' => '2026-03-01', 'end' => '2026-03-28'],
+                    'totals' => ['clicks' => 44, 'impressions' => 640],
+                ],
+            ],
+            'issue_evidence' => [
+                'blocked_by_robots_in_indexing' => [
+                    'url_inspection' => [
+                        'coverageState' => 'Blocked by robots.txt',
+                        'robotsTxtState' => 'BLOCKED',
+                    ],
+                ],
+                'page_with_redirect_in_sitemap' => [
+                    'affected_urls' => ['https://bundle.example.au/old-page/'],
+                    'examples' => [
+                        ['url' => 'https://bundle.example.au/old-page/', 'last_crawled' => '2026-03-28'],
+                    ],
+                ],
+            ],
+        ]);
+
+        $exitCode = Artisan::call('analytics:import-search-console-api-bundle', [
+            'property' => $property->slug,
+            'path' => $jsonPath,
+            '--capture-method' => 'gsc_api',
+            '--captured-by' => 'test-suite',
+        ]);
+
+        $this->assertSame(0, $exitCode);
+
+        $snapshots = SearchConsoleIssueSnapshot::query()
+            ->orderBy('issue_class')
+            ->get();
+
+        $this->assertCount(2, $snapshots);
+        $this->assertSame(
+            ['blocked_by_robots_in_indexing', 'page_with_redirect_in_sitemap'],
+            $snapshots->pluck('issue_class')->all()
+        );
+        $this->assertTrue($snapshots->every(fn (SearchConsoleIssueSnapshot $snapshot): bool => $snapshot->capture_method === 'gsc_api'));
+        $this->assertTrue($snapshots->every(fn (SearchConsoleIssueSnapshot $snapshot): bool => data_get($snapshot->normalized_payload, 'search_analytics.totals.clicks') === 44));
+        $this->assertTrue($snapshots->every(fn (SearchConsoleIssueSnapshot $snapshot): bool => data_get($snapshot->normalized_payload, 'sitemaps.0.path') === 'https://bundle.example.au/sitemap_index.xml'));
+        $this->assertSame('BLOCKED', data_get($snapshots->firstWhere('issue_class', 'blocked_by_robots_in_indexing'), 'normalized_payload.url_inspection.robotsTxtState'));
+        $this->assertSame(['https://bundle.example.au/old-page/'], data_get($snapshots->firstWhere('issue_class', 'page_with_redirect_in_sitemap'), 'normalized_payload.affected_urls'));
+        $this->assertSame(
+            $snapshots->first()->artifact_path,
+            $snapshots->last()->artifact_path
+        );
+        Storage::disk('local')->assertExists($snapshots->first()->artifact_path);
+    }
+
     public function test_it_rejects_unknown_issue_label_in_drilldown_zip(): void
     {
         Storage::fake('local');
@@ -249,6 +313,17 @@ class ImportSearchConsoleIssueSnapshotCommandTest extends TestCase
     private function makeApiEvidenceJson(array $payload): string
     {
         $path = tempnam(sys_get_temp_dir(), 'gsc-api-');
+        file_put_contents($path, json_encode($payload, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        return $path;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function makeApiBundleJson(array $payload): string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'gsc-api-bundle-');
         file_put_contents($path, json_encode($payload, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
         return $path;

@@ -162,6 +162,9 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.has_issue_detail', false)
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.issue_detail_snapshot_count', 0)
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.latest_issue_detail_captured_at', null)
+            ->assertJsonPath('web_properties.0.gsc_evidence_summary.has_api_enrichment', false)
+            ->assertJsonPath('web_properties.0.gsc_evidence_summary.api_snapshot_count', 0)
+            ->assertJsonPath('web_properties.0.gsc_evidence_summary.latest_api_captured_at', null)
             ->assertJsonPath('web_properties.0.health_summary.active_alerts_count', 1);
     }
 
@@ -268,7 +271,65 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.slug', 'backloading-au-com-au')
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.has_issue_detail', true)
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.issue_detail_snapshot_count', 2)
-            ->assertJsonPath('web_properties.0.gsc_evidence_summary.latest_issue_detail_captured_at', '2026-03-31T14:58:44+00:00');
+            ->assertJsonPath('web_properties.0.gsc_evidence_summary.latest_issue_detail_captured_at', '2026-03-31T14:58:44+00:00')
+            ->assertJsonPath('web_properties.0.gsc_evidence_summary.has_api_enrichment', false)
+            ->assertJsonPath('web_properties.0.gsc_evidence_summary.api_snapshot_count', 0)
+            ->assertJsonPath('web_properties.0.gsc_evidence_summary.latest_api_captured_at', null);
+    }
+
+    public function test_web_properties_summary_surfaces_property_level_gsc_api_enrichment_coverage(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'api-enriched.example.au',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'api-enriched-site',
+            'name' => 'API Enriched Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'platform' => 'WordPress',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'blocked_by_robots_in_indexing',
+            'capture_method' => 'gsc_api',
+            'captured_at' => '2026-04-01T03:41:19+00:00',
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'capture_method' => 'gsc_mcp_api',
+            'captured_at' => '2026-04-01T05:12:02+00:00',
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/web-properties-summary');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('web_properties.0.slug', 'api-enriched-site')
+            ->assertJsonPath('web_properties.0.gsc_evidence_summary.has_issue_detail', false)
+            ->assertJsonPath('web_properties.0.gsc_evidence_summary.issue_detail_snapshot_count', 0)
+            ->assertJsonPath('web_properties.0.gsc_evidence_summary.latest_issue_detail_captured_at', null)
+            ->assertJsonPath('web_properties.0.gsc_evidence_summary.has_api_enrichment', true)
+            ->assertJsonPath('web_properties.0.gsc_evidence_summary.api_snapshot_count', 2)
+            ->assertJsonPath('web_properties.0.gsc_evidence_summary.latest_api_captured_at', '2026-04-01T05:12:02+00:00');
     }
 
     public function test_web_property_health_summary_endpoint_returns_property_health(): void
