@@ -309,6 +309,18 @@ Artisan::command('analytics:refresh-search-console-api-enrichment {--capture-met
     $batchLimit = is_numeric($limitOption)
         ? (int) $limitOption
         : max(1, (int) config('services.google.search_console.api_refresh_batch_limit', 3));
+    $captureMethod = is_string($captureMethodOption) && $captureMethodOption !== ''
+        ? $captureMethodOption
+        : 'gsc_api';
+
+    if (! in_array($captureMethod, ['gsc_api', 'gsc_mcp_api'], true)) {
+        $this->error(sprintf(
+            'Invalid --capture-method "%s". Allowed values: gsc_api, gsc_mcp_api.',
+            $captureMethod
+        ));
+
+        return Command::FAILURE;
+    }
 
     try {
         $result = $refresher->run(
@@ -317,7 +329,7 @@ Artisan::command('analytics:refresh-search-console-api-enrichment {--capture-met
             is_numeric($daysOption) ? (int) $daysOption : 28,
             is_numeric($urlLimitOption) ? (int) $urlLimitOption : null,
             is_numeric($rowLimitOption) ? (int) $rowLimitOption : null,
-            is_string($captureMethodOption) && $captureMethodOption !== '' ? $captureMethodOption : 'gsc_api',
+            $captureMethod,
             is_string($capturedByOption) && $capturedByOption !== '' ? $capturedByOption : null,
             $dryRunOption,
         );
@@ -336,7 +348,7 @@ Artisan::command('analytics:refresh-search-console-api-enrichment {--capture-met
     foreach ($result['properties'] as $propertyResult) {
         if ($dryRunOption) {
             $this->line(sprintf(
-                '[dry-run] %s (%d issue classes; latest api: %s)',
+                '[dry-run] %s (%d issue snapshots; latest api: %s)',
                 $propertyResult['property_slug'],
                 $propertyResult['issue_count'],
                 $propertyResult['latest_api_captured_at'] ?? 'never'
@@ -346,7 +358,7 @@ Artisan::command('analytics:refresh-search-console-api-enrichment {--capture-met
         }
 
         $this->line(sprintf(
-            'Refreshed %s (%d issue classes) -> %s',
+            'Refreshed %s (%d issue snapshots) -> %s',
             $propertyResult['property_slug'],
             $propertyResult['issue_count'],
             $propertyResult['artifact_path'] ?? 'artifact path unavailable'

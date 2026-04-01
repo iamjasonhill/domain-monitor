@@ -169,6 +169,19 @@ class RefreshSearchConsoleApiEnrichmentCommandTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_it_rejects_an_invalid_capture_method_before_processing_properties(): void
+    {
+        Http::fake();
+
+        $exitCode = Artisan::call('analytics:refresh-search-console-api-enrichment', [
+            '--capture-method' => 'invalid-method',
+        ]);
+
+        $this->assertSame(1, $exitCode);
+        $this->assertStringContainsString('Invalid --capture-method "invalid-method"', Artisan::output());
+        Http::assertNothingSent();
+    }
+
     private function makeProperty(string $slug, string $domainName, string $matomoSiteId): WebProperty
     {
         $domain = Domain::factory()->create([
