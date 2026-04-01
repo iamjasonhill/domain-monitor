@@ -93,7 +93,11 @@ class CollectSearchConsoleApiBundleCommandTest extends TestCase
                         'detectedItems' => [
                             [
                                 'richResultType' => 'Breadcrumbs',
-                                'items' => 1,
+                                'items' => [
+                                    [
+                                        'name' => 'BreadcrumbList',
+                                    ],
+                                ],
                                 'issues' => [
                                     [
                                         'issueMessage' => 'Optional field missing',
@@ -133,6 +137,9 @@ class CollectSearchConsoleApiBundleCommandTest extends TestCase
         $this->assertSame('https://search.google.com/search-console/inspect?resource_id=sc-domain:collector.example.au&id=abc123', data_get($apiSnapshot->normalized_payload, 'url_inspection.inspected_urls.0.inspection_link'));
         $this->assertSame('PASS', data_get($apiSnapshot->normalized_payload, 'url_inspection.inspected_urls.0.rich_results.verdict'));
         $this->assertSame('Breadcrumbs', data_get($apiSnapshot->normalized_payload, 'url_inspection.inspected_urls.0.rich_results.detected_items.0.rich_result_type'));
+        $this->assertSame('BreadcrumbList', data_get($apiSnapshot->normalized_payload, 'url_inspection.inspected_urls.0.rich_results.detected_items.0.items.0.name'));
+        $this->assertSame('Optional field missing', data_get($apiSnapshot->normalized_payload, 'url_inspection.inspected_urls.0.rich_results.detected_items.0.issues.0.issue_message'));
+        $this->assertSame('WARNING', data_get($apiSnapshot->normalized_payload, 'url_inspection.inspected_urls.0.rich_results.detected_items.0.issues.0.severity'));
         Storage::disk('local')->assertExists($apiSnapshot->artifact_path);
 
         Http::assertSentCount(4);

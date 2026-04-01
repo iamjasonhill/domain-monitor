@@ -267,12 +267,31 @@ class SearchConsoleApiBundleCollector
                         'issue_message' => $issue['issueMessage'] ?? null,
                         'severity' => $issue['severity'] ?? null,
                     ], static fn (mixed $value): bool => $value !== null && $value !== []))
+                    ->filter(static fn (array $issue): bool => $issue !== [])
+                    ->values()
+                    ->all();
+
+                $items = collect(is_array($item['items'] ?? null) ? $item['items'] : [])
+                    ->filter(static fn (mixed $detectedItem): bool => is_array($detectedItem))
+                    ->map(static fn (array $detectedItem): array => array_filter([
+                        'name' => $detectedItem['name'] ?? null,
+                        'issues' => collect(is_array($detectedItem['issues'] ?? null) ? $detectedItem['issues'] : [])
+                            ->filter(static fn (mixed $issue): bool => is_array($issue))
+                            ->map(static fn (array $issue): array => array_filter([
+                                'issue_message' => $issue['issueMessage'] ?? null,
+                                'severity' => $issue['severity'] ?? null,
+                            ], static fn (mixed $value): bool => $value !== null && $value !== []))
+                            ->filter(static fn (array $issue): bool => $issue !== [])
+                            ->values()
+                            ->all() ?: null,
+                    ], static fn (mixed $value): bool => $value !== null && $value !== []))
+                    ->filter(static fn (array $detectedItem): bool => $detectedItem !== [])
                     ->values()
                     ->all();
 
                 return array_filter([
                     'rich_result_type' => $item['richResultType'] ?? null,
-                    'items' => is_numeric($item['items'] ?? null) ? (int) $item['items'] : null,
+                    'items' => $items !== [] ? $items : null,
                     'issues' => $issues !== [] ? $issues : null,
                 ], static fn (mixed $value): bool => $value !== null && $value !== []);
             })
