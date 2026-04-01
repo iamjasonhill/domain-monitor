@@ -4,6 +4,7 @@ use App\Models\WebProperty;
 use App\Services\ManualSearchConsoleEvidenceImporter;
 use App\Services\SearchConsoleApiBundleCollector;
 use App\Services\SearchConsoleApiBundleImporter;
+use App\Services\SearchConsoleApiEnrichmentRefresher;
 use App\Services\SearchConsoleIssueSnapshotImporter;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Inspiring;
@@ -292,7 +293,89 @@ Artisan::command('analytics:collect-search-console-api-bundle {property : Web pr
     return Command::SUCCESS;
 })->purpose('Collect Search Console API evidence for one property and import it as a per-issue bundle.');
 
+Artisan::command('analytics:refresh-search-console-api-enrichment {--capture-method=gsc_api : Either gsc_api or gsc_mcp_api} {--days=28 : Lookback window for Search Analytics totals} {--url-limit= : Override the max inspected URLs per issue class} {--row-limit= : Override the Search Analytics row limit} {--stale-days= : Refresh properties whose latest API enrichment is older than this many days} {--limit= : Max properties to refresh in one run} {--captured-by= : Optional captured_by value} {--dry-run : Only list the properties that would refresh}', function (SearchConsoleApiEnrichmentRefresher $refresher) {
+    $captureMethodOption = $this->option('capture-method');
+    $daysOption = $this->option('days');
+    $urlLimitOption = $this->option('url-limit');
+    $rowLimitOption = $this->option('row-limit');
+    $staleDaysOption = $this->option('stale-days');
+    $limitOption = $this->option('limit');
+    $capturedByOption = $this->option('captured-by');
+    $dryRunOption = (bool) $this->option('dry-run');
+
+    $staleDays = is_numeric($staleDaysOption)
+        ? (int) $staleDaysOption
+        : max(1, (int) config('services.google.search_console.api_refresh_stale_days', 7));
+    $batchLimit = is_numeric($limitOption)
+        ? (int) $limitOption
+        : max(1, (int) config('services.google.search_console.api_refresh_batch_limit', 3));
+
+    try {
+        $result = $refresher->run(
+            $staleDays,
+            $batchLimit,
+            is_numeric($daysOption) ? (int) $daysOption : 28,
+            is_numeric($urlLimitOption) ? (int) $urlLimitOption : null,
+            is_numeric($rowLimitOption) ? (int) $rowLimitOption : null,
+            is_string($captureMethodOption) && $captureMethodOption !== '' ? $captureMethodOption : 'gsc_api',
+            is_string($capturedByOption) && $capturedByOption !== '' ? $capturedByOption : null,
+            $dryRunOption,
+        );
+    } catch (\Throwable $exception) {
+        $this->error($exception->getMessage());
+
+        return Command::FAILURE;
+    }
+
+    if ($result['candidate_count'] === 0) {
+        $this->info('No eligible properties currently need Search Console API enrichment refresh.');
+
+        return Command::SUCCESS;
+    }
+
+    foreach ($result['properties'] as $propertyResult) {
+        if ($dryRunOption) {
+            $this->line(sprintf(
+                '[dry-run] %s (%d issue classes; latest api: %s)',
+                $propertyResult['property_slug'],
+                $propertyResult['issue_count'],
+                $propertyResult['latest_api_captured_at'] ?? 'never'
+            ));
+
+            continue;
+        }
+
+        $this->line(sprintf(
+            'Refreshed %s (%d issue classes) -> %s',
+            $propertyResult['property_slug'],
+            $propertyResult['issue_count'],
+            $propertyResult['artifact_path'] ?? 'artifact path unavailable'
+        ));
+    }
+
+    foreach ($result['errors'] as $error) {
+        $this->warn(sprintf('%s: %s', $error['property_slug'], $error['message']));
+    }
+
+    $this->info(sprintf(
+        '%s %d of %d candidate properties for Search Console API enrichment.',
+        $dryRunOption ? 'Listed' : 'Refreshed',
+        $result['processed_count'],
+        $result['candidate_count']
+    ));
+
+    return $result['errors'] === []
+        ? Command::SUCCESS
+        : Command::FAILURE;
+})->purpose('Refresh missing or stale Search Console API enrichment for drilldown-backed properties.');
+
 $brainConfigured = filled(config('services.brain.base_url')) && filled(config('services.brain.api_key'));
+$googleSearchConsoleConfigured = filled(config('services.google.search_console.access_token'))
+    || (
+        filled(config('services.google.search_console.refresh_token'))
+        && filled(config('services.google.search_console.client_id'))
+        && filled(config('services.google.search_console.client_secret'))
+    );
 
 // Health ping - only schedule when Brain is configured
 if ($brainConfigured) {
@@ -472,6 +555,14 @@ Schedule::command('analytics:refresh-automation-coverage')
     ->daily()
     ->at('09:05')
     ->timezone('UTC');
+
+// Refresh a small batch of stale or missing official Search Console API enrichment after analytics coverage settles.
+if ($googleSearchConsoleConfigured) {
+    Schedule::command('analytics:refresh-search-console-api-enrichment')
+        ->daily()
+        ->at('09:15')
+        ->timezone('UTC');
+}
 
 // Prune failed queue jobs older than 14 days (336 hours)
 Schedule::command('queue:prune-failed --hours=336')

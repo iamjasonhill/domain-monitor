@@ -61,6 +61,8 @@ return [
             'analytics_row_limit' => (int) env('GOOGLE_SEARCH_CONSOLE_ANALYTICS_ROW_LIMIT', 250),
             'inspection_url_limit' => (int) env('GOOGLE_SEARCH_CONSOLE_INSPECTION_URL_LIMIT', 10),
             'inspection_request_delay_micros' => (int) env('GOOGLE_SEARCH_CONSOLE_INSPECTION_REQUEST_DELAY_MICROS', 200000),
+            'api_refresh_stale_days' => (int) env('GOOGLE_SEARCH_CONSOLE_API_REFRESH_STALE_DAYS', 7),
+            'api_refresh_batch_limit' => (int) env('GOOGLE_SEARCH_CONSOLE_API_REFRESH_BATCH_LIMIT', 3),
         ],
     ],
 
