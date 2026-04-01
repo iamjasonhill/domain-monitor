@@ -7,12 +7,18 @@ use RuntimeException;
 
 class GoogleSearchConsoleTokenProvider
 {
+    private ?string $cachedToken = null;
+
     public function accessToken(): string
     {
+        if (is_string($this->cachedToken) && $this->cachedToken !== '') {
+            return $this->cachedToken;
+        }
+
         $configuredAccessToken = trim((string) config('services.google.search_console.access_token', ''));
 
         if ($configuredAccessToken !== '') {
-            return $configuredAccessToken;
+            return $this->cachedToken = $configuredAccessToken;
         }
 
         $refreshToken = trim((string) config('services.google.search_console.refresh_token', ''));
@@ -47,6 +53,6 @@ class GoogleSearchConsoleTokenProvider
             throw new RuntimeException('Google token refresh response did not include an access token.');
         }
 
-        return $accessToken;
+        return $this->cachedToken = $accessToken;
     }
 }

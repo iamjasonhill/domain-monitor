@@ -256,7 +256,11 @@ Artisan::command('analytics:collect-search-console-api-bundle {property : Web pr
     }
 
     try {
-        file_put_contents($temporaryPath, json_encode($bundle, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+        $bytesWritten = file_put_contents($temporaryPath, json_encode($bundle, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+
+        if ($bytesWritten === false) {
+            throw new RuntimeException('Unable to write the temporary Search Console API bundle file.');
+        }
 
         $result = $importer->importBundleForProperty(
             $property,

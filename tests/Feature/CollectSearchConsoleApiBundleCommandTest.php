@@ -23,7 +23,12 @@ class CollectSearchConsoleApiBundleCommandTest extends TestCase
     {
         Storage::fake('local');
 
-        config()->set('services.google.search_console.access_token', 'test-access-token');
+        config()->set('services.google.search_console.access_token', null);
+        config()->set('services.google.search_console.refresh_token', 'test-refresh-token');
+        config()->set('services.google.search_console.client_id', 'test-client-id');
+        config()->set('services.google.search_console.client_secret', 'test-client-secret');
+        config()->set('services.google.search_console.language_code', 'en-US');
+        config()->set('services.google.search_console.inspection_request_delay_micros', 0);
 
         $property = $this->makeProperty('collector-site', 'collector.example.au', '87');
 
@@ -43,6 +48,11 @@ class CollectSearchConsoleApiBundleCommandTest extends TestCase
         ]);
 
         Http::fake([
+            'https://oauth2.googleapis.com/token' => Http::response([
+                'access_token' => 'refreshed-access-token',
+                'expires_in' => 3600,
+                'token_type' => 'Bearer',
+            ], 200),
             'https://www.googleapis.com/webmasters/v3/sites/*/sitemaps' => Http::response([
                 'sitemap' => [
                     [
@@ -100,6 +110,17 @@ class CollectSearchConsoleApiBundleCommandTest extends TestCase
         $this->assertSame('https://collector.example.au/sitemap_index.xml', data_get($apiSnapshot->normalized_payload, 'sitemaps.0.path'));
         $this->assertSame(1, data_get($apiSnapshot->normalized_payload, 'url_inspection.summary.coverage_states.Page with redirect'));
         Storage::disk('local')->assertExists($apiSnapshot->artifact_path);
+
+        Http::assertSentCount(4);
+        Http::assertSent(function ($request): bool {
+            return $request->url() === 'https://oauth2.googleapis.com/token'
+                && $request['grant_type'] === 'refresh_token'
+                && $request['refresh_token'] === 'test-refresh-token';
+        });
+        Http::assertSent(function ($request): bool {
+            return $request->url() === 'https://searchconsole.googleapis.com/v1/urlInspection/index:inspect'
+                && $request['languageCode'] === 'en-US';
+        });
     }
 
     private function makeProperty(string $slug, string $domainName, string $matomoSiteId): WebProperty

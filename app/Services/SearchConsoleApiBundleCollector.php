@@ -39,10 +39,11 @@ class SearchConsoleApiBundleCollector
 
         $analyticsRowLimit ??= max(1, (int) config('services.google.search_console.analytics_row_limit', 250));
         $urlLimit ??= max(1, (int) config('services.google.search_console.inspection_url_limit', 10));
+        $inspectionDelayMicros = max(0, (int) config('services.google.search_console.inspection_request_delay_micros', 200000));
 
         $baseline = $property->latestPropertySeoBaselineRecord();
-        $endDate = $baseline?->date_range_end ?: now()->subDay()->toDateString();
-        $startDate = $baseline?->date_range_start ?: now()->subDays(max(1, $days))->toDateString();
+        $endDate = $baseline?->date_range_end?->toDateString() ?: now()->subDay()->toDateString();
+        $startDate = $baseline?->date_range_start?->toDateString() ?: now()->subDays(max(1, $days))->toDateString();
 
         $sitemaps = $this->normalizeSitemaps($this->client->listSitemaps($siteUrl));
         $searchAnalytics = $this->normalizeSearchAnalytics(
@@ -63,6 +64,10 @@ class SearchConsoleApiBundleCollector
                     $url,
                     $this->client->inspectUrl($siteUrl, $url)
                 );
+
+                if ($inspectionDelayMicros > 0) {
+                    usleep($inspectionDelayMicros);
+                }
             }
 
             $issueEvidence[$issueClass] = array_filter([

@@ -72,7 +72,7 @@ class GoogleSearchConsoleClient
             ->post($this->inspectionBaseUrl().'/v1/urlInspection/index:inspect', [
                 'inspectionUrl' => $inspectionUrl,
                 'siteUrl' => $siteUrl,
-                'languageCode' => 'en-AU',
+                'languageCode' => $this->inspectionLanguageCode(),
             ]);
 
         $this->throwIfFailed($response->status(), $response->json(), 'inspect Search Console URL');
@@ -98,6 +98,11 @@ class GoogleSearchConsoleClient
     private function inspectionBaseUrl(): string
     {
         return rtrim((string) config('services.google.search_console.inspection_base_url', 'https://searchconsole.googleapis.com'), '/');
+    }
+
+    private function inspectionLanguageCode(): string
+    {
+        return trim((string) config('services.google.search_console.language_code', 'en-AU')) ?: 'en-AU';
     }
 
     /**
