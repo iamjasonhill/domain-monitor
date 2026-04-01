@@ -8,6 +8,7 @@ use App\Models\DomainAlert;
 use App\Models\DomainCheck;
 use App\Models\PropertyAnalyticsSource;
 use App\Models\PropertyRepository;
+use App\Models\SearchConsoleIssueSnapshot;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -158,6 +159,9 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.execution_surface', 'astro_repo_controlled')
             ->assertJsonPath('web_properties.0.fleet_managed', true)
             ->assertJsonPath('web_properties.0.controller_repo', 'moveroo-website-astro')
+            ->assertJsonPath('web_properties.0.gsc_evidence_summary.has_issue_detail', false)
+            ->assertJsonPath('web_properties.0.gsc_evidence_summary.issue_detail_snapshot_count', 0)
+            ->assertJsonPath('web_properties.0.gsc_evidence_summary.latest_issue_detail_captured_at', null)
             ->assertJsonPath('web_properties.0.health_summary.active_alerts_count', 1);
     }
 
@@ -215,6 +219,56 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.execution_surface', 'fleet_wordpress_controlled')
             ->assertJsonPath('web_properties.0.fleet_managed', true)
             ->assertJsonPath('web_properties.0.controller_repo', '_wp-house');
+    }
+
+    public function test_web_properties_summary_surfaces_property_level_gsc_issue_detail_coverage(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'backloading-au.com.au',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'backloading-au-com-au',
+            'name' => 'Backloading AU',
+            'property_type' => 'website',
+            'status' => 'active',
+            'platform' => 'WordPress',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'captured_at' => '2026-03-31T14:58:44+00:00',
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'excluded_by_noindex',
+            'captured_at' => '2026-03-31T14:32:19+00:00',
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/web-properties-summary');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('web_properties.0.slug', 'backloading-au-com-au')
+            ->assertJsonPath('web_properties.0.gsc_evidence_summary.has_issue_detail', true)
+            ->assertJsonPath('web_properties.0.gsc_evidence_summary.issue_detail_snapshot_count', 2)
+            ->assertJsonPath('web_properties.0.gsc_evidence_summary.latest_issue_detail_captured_at', '2026-03-31T14:58:44+00:00');
     }
 
     public function test_web_property_health_summary_endpoint_returns_property_health(): void
