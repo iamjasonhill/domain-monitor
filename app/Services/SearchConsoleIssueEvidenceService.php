@@ -210,7 +210,32 @@ class SearchConsoleIssueEvidenceService
         }
 
         if ($snapshots['api'] instanceof SearchConsoleIssueSnapshot) {
-            $evidence = array_replace($evidence, $snapshots['api']->issueEvidence());
+            $apiEvidence = $snapshots['api']->issueEvidence();
+
+            foreach (['url_inspection', 'sitemaps', 'referring_urls', 'canonical_state', 'search_analytics'] as $key) {
+                if (array_key_exists($key, $apiEvidence)) {
+                    $evidence[$key] = $apiEvidence[$key];
+                }
+            }
+
+            if (! array_key_exists('source_capture_method', $evidence)) {
+                foreach (['source_capture_method', 'source_report', 'source_property', 'captured_at'] as $key) {
+                    if (array_key_exists($key, $apiEvidence)) {
+                        $evidence[$key] = $apiEvidence[$key];
+                    }
+                }
+            } else {
+                foreach ([
+                    'source_capture_method' => 'api_source_capture_method',
+                    'source_report' => 'api_source_report',
+                    'source_property' => 'api_source_property',
+                    'captured_at' => 'api_captured_at',
+                ] as $sourceKey => $targetKey) {
+                    if (array_key_exists($sourceKey, $apiEvidence)) {
+                        $evidence[$targetKey] = $apiEvidence[$sourceKey];
+                    }
+                }
+            }
         }
 
         return $evidence;

@@ -193,6 +193,22 @@ class WebProperty extends Model
         return $this->canonicalDomainLink()?->domain;
     }
 
+    public function searchConsolePropertyUri(): ?string
+    {
+        $matomoSource = $this->primaryAnalyticsSource('matomo');
+        $coverage = $matomoSource instanceof PropertyAnalyticsSource
+            ? ($matomoSource->relationLoaded('latestSearchConsoleCoverage')
+                ? $matomoSource->latestSearchConsoleCoverage
+                : $matomoSource->latestSearchConsoleCoverage()->first())
+            : null;
+
+        if ($coverage instanceof SearchConsoleCoverageStatus && is_string($coverage->property_uri) && $coverage->property_uri !== '') {
+            return $coverage->property_uri;
+        }
+
+        return $this->latestPropertySeoBaselineRecord()?->search_console_property_uri;
+    }
+
     /**
      * @return array<int, array<string, mixed>>
      */

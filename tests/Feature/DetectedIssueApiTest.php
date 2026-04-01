@@ -106,6 +106,37 @@ class DetectedIssueApiTest extends TestCase
         SearchConsoleIssueSnapshot::factory()->create([
             'domain_id' => $redirectDomain->id,
             'web_property_id' => $redirectProperty->id,
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'source_issue_label' => 'Page with redirect',
+            'capture_method' => 'gsc_api',
+            'source_report' => 'search_console_api_bundle',
+            'source_property' => 'sc-domain:redirect-issue.example.com',
+            'captured_at' => now()->addMinute(),
+            'captured_by' => 'test',
+            'normalized_payload' => [
+                'url_inspection' => [
+                    'inspected_urls' => [
+                        [
+                            'url' => 'https://redirect-issue.example.com/',
+                            'coverage_state' => 'Page with redirect',
+                            'page_fetch_state' => 'SUCCESSFUL',
+                        ],
+                    ],
+                ],
+                'sitemaps' => [
+                    ['path' => 'https://redirect-issue.example.com/sitemap_index.xml', 'warnings' => 0, 'errors' => 0],
+                ],
+                'search_analytics' => [
+                    'date_range' => ['start' => '2026-03-01', 'end' => '2026-03-28'],
+                    'totals' => ['clicks' => 10, 'impressions' => 100],
+                ],
+            ],
+            'raw_payload' => ['source' => 'api'],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $redirectDomain->id,
+            'web_property_id' => $redirectProperty->id,
             'issue_class' => 'blocked_by_robots_in_indexing',
             'source_issue_label' => 'Blocked by robots.txt',
             'capture_method' => 'gsc_api',
@@ -276,7 +307,11 @@ class DetectedIssueApiTest extends TestCase
         $this->assertTrue($redirectIssue['evidence']['is_example_set_truncated']);
         $this->assertSame('search_console_page_indexing_drilldown', $redirectIssue['evidence']['source_report']);
         $this->assertSame('gsc_drilldown_zip', $redirectIssue['evidence']['source_capture_method']);
+        $this->assertSame('gsc_api', $redirectIssue['evidence']['api_source_capture_method']);
+        $this->assertSame('search_console_api_bundle', $redirectIssue['evidence']['api_source_report']);
         $this->assertSame('2026-03-28', $redirectIssue['evidence']['examples'][0]['last_crawled']);
+        $this->assertSame('Page with redirect', data_get($redirectIssue, 'evidence.url_inspection.inspected_urls.0.coverage_state'));
+        $this->assertSame(10, data_get($redirectIssue, 'evidence.search_analytics.totals.clicks'));
         $this->assertSame('must_fix', $blockedIssue['severity']);
         $this->assertSame('seo.robots_and_sitemap_consistency', $blockedIssue['control_id']);
         $this->assertSame('BLOCKED', data_get($blockedIssue, 'evidence.url_inspection.robotsTxtState'));
