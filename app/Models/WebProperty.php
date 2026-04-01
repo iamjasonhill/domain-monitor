@@ -466,7 +466,10 @@ class WebProperty extends Model
      * @return array{
      *   has_issue_detail: bool,
      *   issue_detail_snapshot_count: int,
-     *   latest_issue_detail_captured_at: string|null
+     *   latest_issue_detail_captured_at: string|null,
+     *   has_api_enrichment: bool,
+     *   api_snapshot_count: int,
+     *   latest_api_captured_at: string|null
      * }
      */
     public function gscEvidenceSummary(): array
@@ -474,6 +477,9 @@ class WebProperty extends Model
         $hasIssueDetail = (bool) ($this->getAttribute('has_gsc_issue_detail') ?? false);
         $snapshotCount = (int) ($this->getAttribute('gsc_issue_detail_snapshot_count') ?? 0);
         $latestCapturedAt = $this->getAttribute('gsc_issue_detail_last_captured_at');
+        $hasApiEnrichment = (bool) ($this->getAttribute('has_gsc_api_enrichment') ?? false);
+        $apiSnapshotCount = (int) ($this->getAttribute('gsc_api_snapshot_count') ?? 0);
+        $latestApiCapturedAt = $this->getAttribute('gsc_api_last_captured_at');
 
         return [
             'has_issue_detail' => $hasIssueDetail,
@@ -482,6 +488,13 @@ class WebProperty extends Model
                 ? $latestCapturedAt->format(\DateTimeInterface::ATOM)
                 : (is_string($latestCapturedAt) && $latestCapturedAt !== ''
                     ? \Illuminate\Support\Carbon::parse($latestCapturedAt, 'UTC')->utc()->toIso8601String()
+                    : null),
+            'has_api_enrichment' => $hasApiEnrichment,
+            'api_snapshot_count' => $apiSnapshotCount,
+            'latest_api_captured_at' => $latestApiCapturedAt instanceof \DateTimeInterface
+                ? $latestApiCapturedAt->format(\DateTimeInterface::ATOM)
+                : (is_string($latestApiCapturedAt) && $latestApiCapturedAt !== ''
+                    ? \Illuminate\Support\Carbon::parse($latestApiCapturedAt, 'UTC')->utc()->toIso8601String()
                     : null),
         ];
     }
