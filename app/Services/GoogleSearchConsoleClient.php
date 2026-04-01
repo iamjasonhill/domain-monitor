@@ -43,16 +43,23 @@ class GoogleSearchConsoleClient
     }
 
     /**
+     * @param  array<int, string>  $dimensions
      * @return array<string, mixed>
      */
-    public function querySearchAnalytics(string $siteUrl, string $startDate, string $endDate, int $rowLimit = 250): array
-    {
+    public function querySearchAnalytics(
+        string $siteUrl,
+        string $startDate,
+        string $endDate,
+        int $rowLimit = 250,
+        array $dimensions = ['page'],
+        string $type = 'web'
+    ): array {
         $response = $this->request()
             ->post($this->apiBaseUrl().'/webmasters/v3/sites/'.rawurlencode($siteUrl).'/searchAnalytics/query', [
                 'startDate' => $startDate,
                 'endDate' => $endDate,
-                'dimensions' => ['page'],
-                'type' => 'web',
+                'dimensions' => $dimensions,
+                'type' => $type,
                 'rowLimit' => $rowLimit,
             ]);
 

@@ -57,22 +57,63 @@ class CollectSearchConsoleApiBundleCommandTest extends TestCase
                 'sitemap' => [
                     [
                         'path' => 'https://collector.example.au/sitemap_index.xml',
+                        'lastSubmitted' => '2026-03-31T23:00:00Z',
                         'warnings' => '0',
                         'errors' => '0',
+                        'contents' => [
+                            [
+                                'type' => 'web',
+                                'submitted' => '24',
+                                'indexed' => '21',
+                            ],
+                        ],
                     ],
                 ],
             ], 200),
-            'https://www.googleapis.com/webmasters/v3/sites/*/searchAnalytics/query' => Http::response([
-                'rows' => [
-                    [
-                        'keys' => ['https://collector.example.au/old-page/'],
-                        'clicks' => 3,
-                        'impressions' => 40,
-                        'ctr' => 0.075,
-                        'position' => 12.4,
-                    ],
-                ],
-            ], 200),
+            'https://www.googleapis.com/webmasters/v3/sites/*/searchAnalytics/query' => function ($request) {
+                $dimension = data_get($request->data(), 'dimensions.0');
+
+                return Http::response([
+                    'rows' => match ($dimension) {
+                        'page' => [[
+                            'keys' => ['https://collector.example.au/old-page/'],
+                            'clicks' => 3,
+                            'impressions' => 40,
+                            'ctr' => 0.075,
+                            'position' => 12.4,
+                        ]],
+                        'query' => [[
+                            'keys' => ['old page redirect'],
+                            'clicks' => 2,
+                            'impressions' => 18,
+                            'ctr' => 0.111,
+                            'position' => 6.2,
+                        ]],
+                        'country' => [[
+                            'keys' => ['aus'],
+                            'clicks' => 3,
+                            'impressions' => 35,
+                            'ctr' => 0.085,
+                            'position' => 11.7,
+                        ]],
+                        'device' => [[
+                            'keys' => ['mobile'],
+                            'clicks' => 2,
+                            'impressions' => 22,
+                            'ctr' => 0.09,
+                            'position' => 10.1,
+                        ]],
+                        'searchAppearance' => [[
+                            'keys' => ['AMP_BLUE_LINK'],
+                            'clicks' => 1,
+                            'impressions' => 12,
+                            'ctr' => 0.083,
+                            'position' => 7.4,
+                        ]],
+                        default => [],
+                    },
+                ], 200);
+            },
             'https://searchconsole.googleapis.com/v1/urlInspection/index:inspect' => Http::response([
                 'inspectionResult' => [
                     'verdict' => 'PASS',
@@ -128,8 +169,16 @@ class CollectSearchConsoleApiBundleCommandTest extends TestCase
         $this->assertSame('page_with_redirect_in_sitemap', $apiSnapshot->issue_class);
         $this->assertSame('search_console_api_bundle', $apiSnapshot->source_report);
         $this->assertSame('sc-domain:collector.example.au', $apiSnapshot->source_property);
+        $this->assertSame('web', data_get($apiSnapshot->normalized_payload, 'search_analytics.type'));
         $this->assertSame(3, data_get($apiSnapshot->normalized_payload, 'search_analytics.totals.clicks'));
+        $this->assertSame('https://collector.example.au/old-page/', data_get($apiSnapshot->normalized_payload, 'search_analytics.top_pages.0.page'));
         $this->assertSame('https://collector.example.au/sitemap_index.xml', data_get($apiSnapshot->normalized_payload, 'sitemaps.0.path'));
+        $this->assertSame('2026-03-31T23:00:00Z', data_get($apiSnapshot->normalized_payload, 'sitemaps.0.last_submitted'));
+        $this->assertSame(24, data_get($apiSnapshot->normalized_payload, 'sitemaps.0.contents.0.submitted'));
+        $this->assertSame('old page redirect', data_get($apiSnapshot->normalized_payload, 'search_analytics.top_queries.0.query'));
+        $this->assertSame('aus', data_get($apiSnapshot->normalized_payload, 'search_analytics.top_countries.0.country'));
+        $this->assertSame('mobile', data_get($apiSnapshot->normalized_payload, 'search_analytics.top_devices.0.device'));
+        $this->assertSame('AMP_BLUE_LINK', data_get($apiSnapshot->normalized_payload, 'search_analytics.search_appearance.0.search_appearance'));
         $this->assertSame(1, data_get($apiSnapshot->normalized_payload, 'url_inspection.summary.coverage_states.Page with redirect'));
         $this->assertSame('MOBILE', data_get($apiSnapshot->normalized_payload, 'url_inspection.inspected_urls.0.crawled_as'));
         $this->assertSame('https://search.google.com/search-console/inspect?resource_id=sc-domain:collector.example.au&id=abc123', data_get($apiSnapshot->normalized_payload, 'url_inspection.inspected_urls.0.verdict'));
@@ -142,7 +191,6 @@ class CollectSearchConsoleApiBundleCommandTest extends TestCase
         $this->assertSame('WARNING', data_get($apiSnapshot->normalized_payload, 'url_inspection.inspected_urls.0.rich_results.detected_items.0.issues.0.severity'));
         Storage::disk('local')->assertExists($apiSnapshot->artifact_path);
 
-        Http::assertSentCount(4);
         Http::assertSent(function ($request): bool {
             return $request->url() === 'https://oauth2.googleapis.com/token'
                 && $request['grant_type'] === 'refresh_token'
@@ -157,10 +205,130 @@ class CollectSearchConsoleApiBundleCommandTest extends TestCase
                 && str_contains($request->url(), '/searchAnalytics/query');
         });
         Http::assertSent(function ($request): bool {
+            return str_contains($request->url(), '/searchAnalytics/query')
+                && $request['dimensions'] === ['page']
+                && $request['type'] === 'web';
+        });
+        Http::assertSent(function ($request): bool {
+            return str_contains($request->url(), '/searchAnalytics/query')
+                && $request['dimensions'] === ['query']
+                && $request['type'] === 'web';
+        });
+        Http::assertSent(function ($request): bool {
+            return str_contains($request->url(), '/searchAnalytics/query')
+                && $request['dimensions'] === ['country']
+                && $request['type'] === 'web';
+        });
+        Http::assertSent(function ($request): bool {
+            return str_contains($request->url(), '/searchAnalytics/query')
+                && $request['dimensions'] === ['device']
+                && $request['type'] === 'web';
+        });
+        Http::assertSent(function ($request): bool {
+            return str_contains($request->url(), '/searchAnalytics/query')
+                && $request['dimensions'] === ['searchAppearance']
+                && $request['type'] === 'web';
+        });
+        Http::assertSent(function ($request): bool {
             return $request->url() === 'https://searchconsole.googleapis.com/v1/urlInspection/index:inspect'
                 && $request['inspectionUrl'] === 'https://collector.example.au/old-page/'
                 && $request['languageCode'] === 'en-US';
         });
+
+        $analyticsRequests = collect(Http::recorded())
+            ->filter(static fn (array $entry): bool => str_contains($entry[0]->url(), '/searchAnalytics/query'));
+
+        $this->assertCount(5, $analyticsRequests);
+    }
+
+    public function test_it_keeps_collecting_when_an_optional_search_analytics_slice_fails(): void
+    {
+        Storage::fake('local');
+
+        config()->set('services.google.search_console.access_token', 'direct-access-token');
+        config()->set('services.google.search_console.refresh_token', null);
+        config()->set('services.google.search_console.inspection_request_delay_micros', 0);
+
+        $property = $this->makeProperty('collector-site-fallback', 'collector-fallback.example.au', '88');
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $property->primaryDomainModel()?->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'capture_method' => 'gsc_drilldown_zip',
+            'affected_url_count' => 1,
+            'sample_urls' => ['https://collector-fallback.example.au/old-page/'],
+            'examples' => [
+                ['url' => 'https://collector-fallback.example.au/old-page/', 'last_crawled' => '2026-03-28'],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => ['https://collector-fallback.example.au/old-page/'],
+            ],
+        ]);
+
+        Http::fake([
+            'https://www.googleapis.com/webmasters/v3/sites/*/sitemaps' => Http::response([
+                'sitemap' => [
+                    ['path' => 'https://collector-fallback.example.au/sitemap_index.xml'],
+                ],
+            ], 200),
+            'https://www.googleapis.com/webmasters/v3/sites/*/searchAnalytics/query' => function ($request) {
+                $dimension = data_get($request->data(), 'dimensions.0');
+
+                if ($dimension === 'query') {
+                    return Http::response([
+                        'error' => [
+                            'message' => 'Quota exceeded',
+                            'status' => 'RESOURCE_EXHAUSTED',
+                        ],
+                    ], 429);
+                }
+
+                return Http::response([
+                    'rows' => [[
+                        'keys' => match ($dimension) {
+                            'page' => ['https://collector-fallback.example.au/old-page/'],
+                            'country' => ['aus'],
+                            'device' => ['mobile'],
+                            'searchAppearance' => ['AMP_BLUE_LINK'],
+                            default => ['fallback'],
+                        },
+                        'clicks' => 1,
+                        'impressions' => 10,
+                        'ctr' => 0.1,
+                        'position' => 9.5,
+                    ]],
+                ], 200);
+            },
+            'https://searchconsole.googleapis.com/v1/urlInspection/index:inspect' => Http::response([
+                'inspectionResult' => [
+                    'verdict' => 'PASS',
+                    'indexStatusResult' => [
+                        'coverageState' => 'Page with redirect',
+                        'robotsTxtState' => 'ALLOWED',
+                        'indexingState' => 'INDEXING_ALLOWED',
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $exitCode = Artisan::call('analytics:collect-search-console-api-bundle', [
+            'property' => $property->slug,
+            '--capture-method' => 'gsc_api',
+            '--captured-by' => 'test-suite',
+        ]);
+
+        $this->assertSame(0, $exitCode, Artisan::output());
+
+        $apiSnapshot = SearchConsoleIssueSnapshot::query()
+            ->where('web_property_id', $property->id)
+            ->where('capture_method', 'gsc_api')
+            ->firstOrFail();
+
+        $this->assertSame('https://collector-fallback.example.au/old-page/', data_get($apiSnapshot->normalized_payload, 'search_analytics.top_pages.0.page'));
+        $this->assertNull(data_get($apiSnapshot->normalized_payload, 'search_analytics.top_queries.0.query'));
+        $this->assertSame('aus', data_get($apiSnapshot->normalized_payload, 'search_analytics.top_countries.0.country'));
+        $this->assertSame(1, data_get($apiSnapshot->normalized_payload, 'url_inspection.summary.coverage_states.Page with redirect'));
     }
 
     private function makeProperty(string $slug, string $domainName, string $matomoSiteId): WebProperty

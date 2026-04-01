@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\WebProperty;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Throwable;
 
 class SearchConsoleApiBundleCollector
 {
@@ -46,11 +48,7 @@ class SearchConsoleApiBundleCollector
         $startDate = $baseline?->date_range_start?->toDateString() ?: now()->subDays(max(1, $days))->toDateString();
 
         $sitemaps = $this->normalizeSitemaps($this->client->listSitemaps($siteUrl));
-        $searchAnalytics = $this->normalizeSearchAnalytics(
-            $this->client->querySearchAnalytics($siteUrl, $startDate, $endDate, $analyticsRowLimit),
-            $startDate,
-            $endDate
-        );
+        $searchAnalytics = $this->collectSearchAnalytics($siteUrl, $startDate, $endDate, $analyticsRowLimit);
 
         $issueEvidence = [];
 
@@ -138,37 +136,45 @@ class SearchConsoleApiBundleCollector
         return array_values(array_map(
             static fn (array $sitemap): array => array_filter([
                 'path' => $sitemap['path'] ?? null,
+                'last_submitted' => $sitemap['lastSubmitted'] ?? null,
                 'last_downloaded' => $sitemap['lastDownloaded'] ?? null,
                 'warnings' => is_numeric($sitemap['warnings'] ?? null) ? (int) $sitemap['warnings'] : null,
                 'errors' => is_numeric($sitemap['errors'] ?? null) ? (int) $sitemap['errors'] : null,
                 'is_pending' => is_bool($sitemap['isPending'] ?? null) ? $sitemap['isPending'] : null,
                 'is_sitemaps_index' => is_bool($sitemap['isSitemapsIndex'] ?? null) ? $sitemap['isSitemapsIndex'] : null,
                 'type' => $sitemap['type'] ?? null,
+                'contents' => collect(is_array($sitemap['contents'] ?? null) ? $sitemap['contents'] : [])
+                    ->filter(static fn (mixed $content): bool => is_array($content))
+                    ->map(static fn (array $content): array => array_filter([
+                        'type' => $content['type'] ?? null,
+                        'submitted' => is_numeric($content['submitted'] ?? null) ? (int) $content['submitted'] : null,
+                        'indexed' => is_numeric($content['indexed'] ?? null) ? (int) $content['indexed'] : null,
+                    ], static fn (mixed $value): bool => $value !== null && $value !== []))
+                    ->filter(static fn (array $content): bool => $content !== [])
+                    ->values()
+                    ->all() ?: null,
             ], static fn (mixed $value): bool => $value !== null && $value !== []),
             array_filter($sitemaps, 'is_array')
         ));
     }
 
     /**
-     * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    private function normalizeSearchAnalytics(array $payload, string $startDate, string $endDate): array
+    private function collectSearchAnalytics(string $siteUrl, string $startDate, string $endDate, int $analyticsRowLimit): array
     {
-        $rows = array_values(array_map(
-            static fn (array $row): array => [
-                'page' => is_array($row['keys'] ?? null) ? ($row['keys'][0] ?? null) : null,
-                'clicks' => is_numeric($row['clicks'] ?? null) ? (float) $row['clicks'] : null,
-                'impressions' => is_numeric($row['impressions'] ?? null) ? (float) $row['impressions'] : null,
-                'ctr' => is_numeric($row['ctr'] ?? null) ? (float) $row['ctr'] : null,
-                'position' => is_numeric($row['position'] ?? null) ? (float) $row['position'] : null,
-            ],
-            array_filter(is_array($payload['rows'] ?? null) ? $payload['rows'] : [], 'is_array')
-        ));
+        $topPages = $this->normalizeSearchAnalyticsRows(
+            $this->client->querySearchAnalytics($siteUrl, $startDate, $endDate, $analyticsRowLimit, ['page'], 'web'),
+            'page'
+        );
+        $topQueries = $this->optionalSearchAnalyticsRows($siteUrl, $startDate, $endDate, $analyticsRowLimit, 'query', 'query');
+        $topCountries = $this->optionalSearchAnalyticsRows($siteUrl, $startDate, $endDate, $analyticsRowLimit, 'country', 'country');
+        $topDevices = $this->optionalSearchAnalyticsRows($siteUrl, $startDate, $endDate, $analyticsRowLimit, 'device', 'device');
+        $searchAppearance = $this->optionalSearchAnalyticsRows($siteUrl, $startDate, $endDate, $analyticsRowLimit, 'searchAppearance', 'search_appearance');
 
         $totals = [
-            'clicks' => array_sum(array_map(static fn (array $row): float => (float) ($row['clicks'] ?? 0), $rows)),
-            'impressions' => array_sum(array_map(static fn (array $row): float => (float) ($row['impressions'] ?? 0), $rows)),
+            'clicks' => array_sum(array_map(static fn (array $row): float => (float) ($row['clicks'] ?? 0), $topPages)),
+            'impressions' => array_sum(array_map(static fn (array $row): float => (float) ($row['impressions'] ?? 0), $topPages)),
         ];
 
         return [
@@ -176,9 +182,63 @@ class SearchConsoleApiBundleCollector
                 'start' => $startDate,
                 'end' => $endDate,
             ],
+            'type' => 'web',
             'totals' => $totals,
-            'top_pages' => array_values(array_filter($rows, static fn (array $row): bool => is_string($row['page'] ?? null))),
+            'top_pages' => array_values(array_filter($topPages, static fn (array $row): bool => is_string($row['page'] ?? null))),
+            'top_queries' => array_values(array_filter($topQueries, static fn (array $row): bool => is_string($row['query'] ?? null))),
+            'top_countries' => array_values(array_filter($topCountries, static fn (array $row): bool => is_string($row['country'] ?? null))),
+            'top_devices' => array_values(array_filter($topDevices, static fn (array $row): bool => is_string($row['device'] ?? null))),
+            'search_appearance' => array_values(array_filter($searchAppearance, static fn (array $row): bool => is_string($row['search_appearance'] ?? null))),
         ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function optionalSearchAnalyticsRows(
+        string $siteUrl,
+        string $startDate,
+        string $endDate,
+        int $analyticsRowLimit,
+        string $requestDimension,
+        string $normalizedDimension
+    ): array {
+        try {
+            return $this->normalizeSearchAnalyticsRows(
+                $this->client->querySearchAnalytics($siteUrl, $startDate, $endDate, $analyticsRowLimit, [$requestDimension], 'web'),
+                $normalizedDimension
+            );
+        } catch (Throwable $exception) {
+            Log::warning('Optional Search Console analytics slice failed.', [
+                'site_url' => $siteUrl,
+                'dimension' => $requestDimension,
+                'message' => $exception->getMessage(),
+            ]);
+
+            return [];
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeSearchAnalyticsRows(array $payload, string $dimensionKey): array
+    {
+        return array_values(array_map(
+            static function (array $row) use ($dimensionKey): array {
+                $keys = is_array($row['keys'] ?? null) ? $row['keys'] : [];
+
+                return array_filter([
+                    $dimensionKey => $keys[0] ?? null,
+                    'clicks' => is_numeric($row['clicks'] ?? null) ? (float) $row['clicks'] : null,
+                    'impressions' => is_numeric($row['impressions'] ?? null) ? (float) $row['impressions'] : null,
+                    'ctr' => is_numeric($row['ctr'] ?? null) ? (float) $row['ctr'] : null,
+                    'position' => is_numeric($row['position'] ?? null) ? (float) $row['position'] : null,
+                ], static fn (mixed $value): bool => $value !== null && $value !== []);
+            },
+            array_filter(is_array($payload['rows'] ?? null) ? $payload['rows'] : [], 'is_array')
+        ));
     }
 
     /**
