@@ -457,7 +457,32 @@ class WebProperty extends Model
             'execution_surface' => $executionReadiness['execution_surface'],
             'fleet_managed' => $executionReadiness['fleet_managed'],
             'controller_repo' => $executionReadiness['controller_repo'],
+            'gsc_evidence_summary' => $this->gscEvidenceSummary(),
             'updated_at' => $this->updated_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * @return array{
+     *   has_issue_detail: bool,
+     *   issue_detail_snapshot_count: int,
+     *   latest_issue_detail_captured_at: string|null
+     * }
+     */
+    public function gscEvidenceSummary(): array
+    {
+        $hasIssueDetail = (bool) ($this->getAttribute('has_gsc_issue_detail') ?? false);
+        $snapshotCount = (int) ($this->getAttribute('gsc_issue_detail_snapshot_count') ?? 0);
+        $latestCapturedAt = $this->getAttribute('gsc_issue_detail_last_captured_at');
+
+        return [
+            'has_issue_detail' => $hasIssueDetail,
+            'issue_detail_snapshot_count' => $snapshotCount,
+            'latest_issue_detail_captured_at' => $latestCapturedAt instanceof \DateTimeInterface
+                ? $latestCapturedAt->format(\DateTimeInterface::ATOM)
+                : (is_string($latestCapturedAt) && $latestCapturedAt !== ''
+                    ? \Illuminate\Support\Carbon::parse($latestCapturedAt, 'UTC')->utc()->toIso8601String()
+                    : null),
         ];
     }
 

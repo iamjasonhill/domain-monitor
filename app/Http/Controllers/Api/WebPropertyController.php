@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\WebPropertyHealthSummaryResource;
 use App\Http\Resources\WebPropertyResource;
+use App\Models\SearchConsoleIssueSnapshot;
 use App\Models\WebProperty;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -86,6 +87,18 @@ class WebPropertyController extends Controller
     private function baseQuery(): Builder
     {
         return WebProperty::query()
+            ->addSelect([
+                'has_gsc_issue_detail' => SearchConsoleIssueSnapshot::query()
+                    ->selectRaw('1')
+                    ->whereColumn('web_property_id', 'web_properties.id')
+                    ->limit(1),
+                'gsc_issue_detail_snapshot_count' => SearchConsoleIssueSnapshot::query()
+                    ->selectRaw('count(*)')
+                    ->whereColumn('web_property_id', 'web_properties.id'),
+                'gsc_issue_detail_last_captured_at' => SearchConsoleIssueSnapshot::query()
+                    ->selectRaw('max(captured_at)')
+                    ->whereColumn('web_property_id', 'web_properties.id'),
+            ])
             ->with([
                 'primaryDomain',
                 'repositories',
