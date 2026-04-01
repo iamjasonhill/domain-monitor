@@ -191,6 +191,8 @@ class SearchConsoleApiBundleCollector
         $result = is_array($payload['inspectionResult'] ?? null) ? $payload['inspectionResult'] : [];
         /** @var array<string, mixed> $indexStatus */
         $indexStatus = is_array($result['indexStatusResult'] ?? null) ? $result['indexStatusResult'] : [];
+        /** @var array<string, mixed> $richResults */
+        $richResults = is_array($result['richResultsResult'] ?? null) ? $result['richResultsResult'] : [];
 
         return array_filter([
             'url' => $url,
@@ -199,13 +201,18 @@ class SearchConsoleApiBundleCollector
             'indexing_state' => $indexStatus['indexingState'] ?? null,
             'page_fetch_state' => $indexStatus['pageFetchState'] ?? null,
             'last_crawl_time' => $indexStatus['lastCrawlTime'] ?? null,
+            'crawled_as' => $indexStatus['crawledAs'] ?? null,
             'google_canonical' => $indexStatus['googleCanonical'] ?? null,
             'user_canonical' => $indexStatus['userCanonical'] ?? null,
             'referring_urls' => is_array($indexStatus['referringUrls'] ?? null) ? array_values(array_filter($indexStatus['referringUrls'], 'is_string')) : null,
             'sitemaps' => is_array($indexStatus['sitemap'] ?? null)
                 ? array_values(array_filter($indexStatus['sitemap'], 'is_string'))
                 : (is_string($indexStatus['sitemap'] ?? null) ? [(string) $indexStatus['sitemap']] : null),
+            // Keep the historical key as a compatibility alias for the inspection deep link.
             'verdict' => $result['inspectionResultLink'] ?? null,
+            'inspection_verdict' => $result['verdict'] ?? null,
+            'inspection_link' => $result['inspectionResultLink'] ?? null,
+            'rich_results' => $this->normalizeRichResults($richResults),
         ], static fn (mixed $value): bool => $value !== null && $value !== []);
     }
 
@@ -239,6 +246,64 @@ class SearchConsoleApiBundleCollector
         }
 
         return $summary;
+    }
+
+    /**
+     * @param  array<string, mixed>  $richResults
+     * @return array<string, mixed>|null
+     */
+    private function normalizeRichResults(array $richResults): ?array
+    {
+        if ($richResults === []) {
+            return null;
+        }
+
+        $detectedItems = collect(is_array($richResults['detectedItems'] ?? null) ? $richResults['detectedItems'] : [])
+            ->filter(static fn (mixed $item): bool => is_array($item))
+            ->map(static function (array $item): array {
+                $issues = collect(is_array($item['issues'] ?? null) ? $item['issues'] : [])
+                    ->filter(static fn (mixed $issue): bool => is_array($issue))
+                    ->map(static fn (array $issue): array => array_filter([
+                        'issue_message' => $issue['issueMessage'] ?? null,
+                        'severity' => $issue['severity'] ?? null,
+                    ], static fn (mixed $value): bool => $value !== null && $value !== []))
+                    ->filter(static fn (array $issue): bool => $issue !== [])
+                    ->values()
+                    ->all();
+
+                $items = collect(is_array($item['items'] ?? null) ? $item['items'] : [])
+                    ->filter(static fn (mixed $detectedItem): bool => is_array($detectedItem))
+                    ->map(static fn (array $detectedItem): array => array_filter([
+                        'name' => $detectedItem['name'] ?? null,
+                        'issues' => collect(is_array($detectedItem['issues'] ?? null) ? $detectedItem['issues'] : [])
+                            ->filter(static fn (mixed $issue): bool => is_array($issue))
+                            ->map(static fn (array $issue): array => array_filter([
+                                'issue_message' => $issue['issueMessage'] ?? null,
+                                'severity' => $issue['severity'] ?? null,
+                            ], static fn (mixed $value): bool => $value !== null && $value !== []))
+                            ->filter(static fn (array $issue): bool => $issue !== [])
+                            ->values()
+                            ->all() ?: null,
+                    ], static fn (mixed $value): bool => $value !== null && $value !== []))
+                    ->filter(static fn (array $detectedItem): bool => $detectedItem !== [])
+                    ->values()
+                    ->all();
+
+                return array_filter([
+                    'rich_result_type' => $item['richResultType'] ?? null,
+                    'items' => $items !== [] ? $items : null,
+                    'issues' => $issues !== [] ? $issues : null,
+                ], static fn (mixed $value): bool => $value !== null && $value !== []);
+            })
+            ->values()
+            ->all();
+
+        $normalized = array_filter([
+            'verdict' => $richResults['verdict'] ?? null,
+            'detected_items' => $detectedItems !== [] ? $detectedItems : null,
+        ], static fn (mixed $value): bool => $value !== null && $value !== []);
+
+        return $normalized !== [] ? $normalized : null;
     }
 
     /**
