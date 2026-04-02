@@ -169,6 +169,49 @@ class RefreshSearchConsoleApiEnrichmentCommandTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_it_expands_the_default_batch_limit_to_cover_eligible_properties_within_a_week(): void
+    {
+        config()->set('services.google.search_console.access_token', null);
+        config()->set('services.google.search_console.refresh_token', 'test-refresh-token');
+        config()->set('services.google.search_console.client_id', 'test-client-id');
+        config()->set('services.google.search_console.client_secret', 'test-client-secret');
+        config()->set('services.google.search_console.api_refresh_stale_days', 7);
+        config()->set('services.google.search_console.api_refresh_batch_limit', 3);
+
+        foreach (range(1, 22) as $index) {
+            $property = $this->makeProperty(
+                sprintf('weekly-coverage-%02d', $index),
+                sprintf('weekly-%02d.example.au', $index),
+                (string) (200 + $index),
+            );
+
+            SearchConsoleIssueSnapshot::factory()->create([
+                'domain_id' => $property->primaryDomainModel()?->id,
+                'web_property_id' => $property->id,
+                'issue_class' => 'page_with_redirect_in_sitemap',
+                'capture_method' => 'gsc_drilldown_zip',
+                'affected_url_count' => 1,
+                'sample_urls' => ['https://'.$property->primaryDomainName().'/old-page/'],
+                'examples' => [
+                    ['url' => 'https://'.$property->primaryDomainName().'/old-page/', 'last_crawled' => '2026-03-28'],
+                ],
+                'normalized_payload' => [
+                    'affected_urls' => ['https://'.$property->primaryDomainName().'/old-page/'],
+                ],
+            ]);
+        }
+
+        Http::fake();
+
+        $exitCode = Artisan::call('analytics:refresh-search-console-api-enrichment', [
+            '--dry-run' => true,
+        ]);
+
+        $this->assertSame(0, $exitCode);
+        $this->assertStringContainsString('Listed 4 of 4 candidate properties', Artisan::output());
+        Http::assertNothingSent();
+    }
+
     public function test_it_rejects_an_invalid_capture_method_before_processing_properties(): void
     {
         Http::fake();

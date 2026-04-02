@@ -448,9 +448,10 @@ Artisan::command('analytics:refresh-search-console-api-enrichment {--capture-met
     $staleDays = is_numeric($staleDaysOption)
         ? (int) $staleDaysOption
         : max(1, (int) config('services.google.search_console.api_refresh_stale_days', 7));
+    $configuredBatchLimit = max(1, (int) config('services.google.search_console.api_refresh_batch_limit', 3));
     $batchLimit = is_numeric($limitOption)
         ? (int) $limitOption
-        : max(1, (int) config('services.google.search_console.api_refresh_batch_limit', 3));
+        : $refresher->recommendedBatchLimit($staleDays, $configuredBatchLimit);
     $captureMethod = is_string($captureMethodOption) && $captureMethodOption !== ''
         ? $captureMethodOption
         : 'gsc_api';
