@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\SearchConsoleIssueSnapshot;
 use App\Models\WebProperty;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use RuntimeException;
 
@@ -114,6 +115,19 @@ class SearchConsoleApiEnrichmentRefresher
         ];
     }
 
+    public function recommendedBatchLimit(int $staleDays = 7, int $minimumBatchLimit = 1): int
+    {
+        $eligibleCount = $this->eligibleProperties()->count();
+        $days = max(1, $staleDays);
+        $minimum = max(1, $minimumBatchLimit);
+
+        if ($eligibleCount === 0) {
+            return $minimum;
+        }
+
+        return max($minimum, (int) ceil($eligibleCount / $days));
+    }
+
     /**
      * @return Collection<int, WebProperty>
      */
@@ -121,10 +135,8 @@ class SearchConsoleApiEnrichmentRefresher
     {
         $staleCutoff = now()->subDays(max(1, $staleDays));
 
-        $properties = WebProperty::query()
-            ->where('status', 'active')
-            ->where('property_type', '!=', 'domain_asset')
-            ->whereHas('searchConsoleIssueSnapshots', fn ($query) => $query->where('capture_method', 'gsc_drilldown_zip'))
+        /** @var Collection<int, WebProperty> $properties */
+        $properties = $this->eligibleProperties()
             ->with([
                 'primaryDomain.tags',
                 'analyticsSources.latestSearchConsoleCoverage',
@@ -174,6 +186,17 @@ class SearchConsoleApiEnrichmentRefresher
             ])
             ->take(max(1, $batchLimit))
             ->values();
+    }
+
+    /**
+     * @return Builder<WebProperty>
+     */
+    private function eligibleProperties(): Builder
+    {
+        return WebProperty::query()
+            ->where('status', 'active')
+            ->where('property_type', '!=', 'domain_asset')
+            ->whereHas('searchConsoleIssueSnapshots', fn ($query) => $query->where('capture_method', 'gsc_drilldown_zip'));
     }
 
     private function normalizeCapturedAt(mixed $value): ?\Illuminate\Support\Carbon
