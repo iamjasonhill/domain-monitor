@@ -16,7 +16,11 @@ use Illuminate\Support\Str;
  * @property string|null $default_branch
  * @property string|null $deployment_branch
  * @property string|null $framework
+ * @property string|null $deployment_provider
+ * @property string|null $deployment_project_name
+ * @property string|null $deployment_project_id
  * @property bool $is_primary
+ * @property bool $is_controller
  * @property string|null $notes
  */
 class PropertyRepository extends Model
@@ -34,7 +38,11 @@ class PropertyRepository extends Model
         'default_branch',
         'deployment_branch',
         'framework',
+        'deployment_provider',
+        'deployment_project_name',
+        'deployment_project_id',
         'is_primary',
+        'is_controller',
         'notes',
     ];
 
@@ -42,6 +50,7 @@ class PropertyRepository extends Model
     {
         return [
             'is_primary' => 'boolean',
+            'is_controller' => 'boolean',
         ];
     }
 

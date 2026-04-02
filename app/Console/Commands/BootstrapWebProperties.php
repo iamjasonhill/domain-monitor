@@ -180,20 +180,7 @@ class BootstrapWebProperties extends Command
         $analyticsAttached = 0;
 
         $repository = $this->resolveRepository($domain, $override);
-        if (is_array($repository) && $this->shouldAttachRepository($property, $repository['repo_name'])) {
-            if ($dryRun) {
-                $this->line(sprintf(
-                    '  [dry-run] would attach repo %s to %s',
-                    $repository['repo_name'],
-                    $property->slug
-                ));
-            } else {
-                PropertyRepository::create([
-                    'web_property_id' => $property->id,
-                    ...$repository,
-                ]);
-            }
-
+        if (is_array($repository) && $this->syncRepositoryLink($property, $repository, $dryRun)) {
             $repoAttached++;
         }
 
@@ -295,6 +282,10 @@ class BootstrapWebProperties extends Command
                     'deployment_branch' => null,
                     'framework' => $this->detectFramework($repoName, is_array($packageJson) ? $packageJson : []),
                     'is_primary' => true,
+                    'is_controller' => false,
+                    'deployment_provider' => null,
+                    'deployment_project_name' => null,
+                    'deployment_project_id' => null,
                     'notes' => 'Auto-matched from local websites inventory.',
                 ];
             })
@@ -361,6 +352,10 @@ class BootstrapWebProperties extends Command
                 'deployment_branch' => $repoOverride['deployment_branch'] ?? null,
                 'framework' => $repoOverride['framework'] ?? null,
                 'is_primary' => (bool) ($repoOverride['is_primary'] ?? true),
+                'is_controller' => (bool) ($repoOverride['is_controller'] ?? false),
+                'deployment_provider' => $repoOverride['deployment_provider'] ?? null,
+                'deployment_project_name' => $repoOverride['deployment_project_name'] ?? null,
+                'deployment_project_id' => $repoOverride['deployment_project_id'] ?? null,
                 'notes' => $repoOverride['notes'] ?? 'Mapped from bootstrap override.',
             ];
         }
@@ -412,15 +407,65 @@ class BootstrapWebProperties extends Command
         return is_array($override) ? $override : [];
     }
 
-    private function shouldAttachRepository(WebProperty $property, string $repoName): bool
+    /**
+     * @param  array<string, mixed>  $repository
+     */
+    private function syncRepositoryLink(WebProperty $property, array $repository, bool $dryRun): bool
     {
+        if (! is_string($repository['repo_name'] ?? null)) {
+            return false;
+        }
+
         if (! $property->exists) {
             return true;
         }
 
-        return ! $property->repositories()
-            ->where('repo_name', $repoName)
-            ->exists();
+        $existingRepository = $property->repositories()
+            ->where('repo_name', $repository['repo_name'])
+            ->first();
+
+        if (! $existingRepository instanceof PropertyRepository) {
+            if ($dryRun) {
+                $this->line(sprintf(
+                    '  [dry-run] would attach repo %s to %s',
+                    $repository['repo_name'],
+                    $property->slug
+                ));
+            } else {
+                PropertyRepository::create([
+                    'web_property_id' => $property->id,
+                    ...$repository,
+                ]);
+            }
+
+            return true;
+        }
+
+        $fillableKeys = (new PropertyRepository)->getFillable();
+
+        $changedAttributes = collect($repository)
+            ->only($fillableKeys)
+            ->filter(fn ($value, $key) => $existingRepository->getAttribute($key) !== $value)
+            ->all();
+
+        if ($changedAttributes === []) {
+            return false;
+        }
+
+        if ($dryRun) {
+            $this->line(sprintf(
+                '  [dry-run] would refresh repo %s on %s',
+                $repository['repo_name'],
+                $property->slug
+            ));
+
+            return true;
+        }
+
+        $existingRepository->fill($changedAttributes);
+        $existingRepository->save();
+
+        return true;
     }
 
     private function shouldAttachAnalytics(WebProperty $property, string $provider, string $externalId): bool

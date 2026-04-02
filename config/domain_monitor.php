@@ -458,9 +458,13 @@ return [
                 'name' => 'Moving Again Car Transport',
                 'property_type' => 'website',
                 'repository' => [
-                    'repo_name' => 'ma-car-transport-astro',
+                    'repo_name' => 'moveroo/ma-catrans-program',
+                    'repo_provider' => 'github',
+                    'repo_url' => 'https://github.com/moveroo/ma-catrans-program',
                     'local_path' => '/Users/jasonhill/Projects/websites/ma-car-transport-astro',
                     'framework' => 'Astro',
+                    'is_controller' => true,
+                    'deployment_provider' => 'vercel',
                 ],
                 'analytics_sources' => [
                     [

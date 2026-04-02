@@ -39,7 +39,7 @@ class DashboardIssueQueueService
             ->with([
                 'platform',
                 'webProperties:id,slug,name,property_type,status',
-                'webProperties.repositories:id,web_property_id,repo_name,local_path,is_primary',
+                'webProperties.repositories:id,web_property_id,repo_name,repo_url,local_path,framework,repo_provider,deployment_provider,deployment_project_name,deployment_project_id,is_primary,is_controller',
                 'webProperties.latestSeoBaselineForProperty',
             ])
             ->withLatestCheckStatuses()
@@ -493,6 +493,11 @@ class DashboardIssueQueueService
         $item['execution_surface'] = $executionReadiness['execution_surface'];
         $item['fleet_managed'] = $executionReadiness['fleet_managed'];
         $item['controller_repo'] = $executionReadiness['controller_repo'];
+        $item['controller_repo_url'] = $executionReadiness['controller_repo_url'];
+        $item['controller_local_path'] = $executionReadiness['controller_local_path'];
+        $item['deployment_provider'] = $executionReadiness['deployment_provider'];
+        $item['deployment_project_name'] = $executionReadiness['deployment_project_name'];
+        $item['deployment_project_id'] = $executionReadiness['deployment_project_id'];
 
         return $item;
     }
@@ -529,9 +534,13 @@ class DashboardIssueQueueService
             return 'missing_repository';
         }
 
-        $hasControllerPath = $repositories->contains(
-            fn ($repository): bool => is_string($repository->local_path) && trim($repository->local_path) !== ''
-        );
+        $controllerRepository = $this->controllerRepositoryForProperty($property);
+
+        if (! $controllerRepository instanceof PropertyRepository) {
+            return 'missing_repository';
+        }
+
+        $hasControllerPath = $this->repositoryHasControllerPath($controllerRepository);
 
         return $hasControllerPath ? 'controlled' : 'missing_local_path';
     }
@@ -551,20 +560,25 @@ class DashboardIssueQueueService
      *   control_state:string,
      *   execution_surface:string|null,
      *   fleet_managed:bool,
-     *   controller_repo:string|null
+     *   controller_repo:string|null,
+     *   controller_repo_url:string|null,
+     *   controller_local_path:string|null,
+     *   deployment_provider:string|null,
+     *   deployment_project_name:string|null,
+     *   deployment_project_id:string|null
      * }
      */
     private function executionReadinessForQueue(?WebProperty $property, string $coverageStatus, string $platformProfile): array
     {
         $controllerRepository = $this->controllerRepositoryForProperty($property);
-        $controllerRepo = $controllerRepository?->repo_name;
+        $controllerRepositorySummary = $this->controllerRepositorySummary($controllerRepository);
 
         if ($coverageStatus === 'not_required') {
             return [
                 'control_state' => 'not_applicable',
                 'execution_surface' => null,
                 'fleet_managed' => false,
-                'controller_repo' => $controllerRepo,
+                ...$controllerRepositorySummary,
             ];
         }
 
@@ -573,7 +587,7 @@ class DashboardIssueQueueService
                 'control_state' => 'uncontrolled',
                 'execution_surface' => null,
                 'fleet_managed' => false,
-                'controller_repo' => $controllerRepo,
+                ...$controllerRepositorySummary,
             ];
         }
 
@@ -586,7 +600,7 @@ class DashboardIssueQueueService
                 'fleet_wordpress_controlled',
                 'astro_repo_controlled',
             ], true),
-            'controller_repo' => $controllerRepo,
+            ...$controllerRepositorySummary,
         ];
     }
 
@@ -600,12 +614,43 @@ class DashboardIssueQueueService
             ? $property->getRelation('repositories')
             : $property->repositories()->get();
         $orderedRepositories = $repositories
+            ->sortByDesc(fn (PropertyRepository $repository) => $repository->is_controller)
             ->sortByDesc(fn (PropertyRepository $repository) => $repository->is_primary)
             ->values();
+
+        $explicitController = $orderedRepositories->first(
+            fn (PropertyRepository $repository) => $repository->is_controller
+        );
+
+        if ($explicitController instanceof PropertyRepository) {
+            return $explicitController;
+        }
 
         return $orderedRepositories->first(
             fn (PropertyRepository $repository) => $this->repositoryHasControllerPath($repository)
         ) ?? $orderedRepositories->first();
+    }
+
+    /**
+     * @return array{
+     *   controller_repo:string|null,
+     *   controller_repo_url:string|null,
+     *   controller_local_path:string|null,
+     *   deployment_provider:string|null,
+     *   deployment_project_name:string|null,
+     *   deployment_project_id:string|null
+     * }
+     */
+    private function controllerRepositorySummary(?PropertyRepository $repository): array
+    {
+        return [
+            'controller_repo' => $repository?->repo_name,
+            'controller_repo_url' => $repository?->repo_url,
+            'controller_local_path' => $repository?->local_path,
+            'deployment_provider' => $repository?->deployment_provider,
+            'deployment_project_name' => $repository?->deployment_project_name,
+            'deployment_project_id' => $repository?->deployment_project_id,
+        ];
     }
 
     private function repositoryHasControllerPath(PropertyRepository $repository): bool

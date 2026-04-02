@@ -8,6 +8,7 @@ use App\Models\PropertyRepository;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
@@ -20,13 +21,15 @@ class BootstrapWebPropertiesCommandTest extends TestCase
         $websitesRoot = storage_path('framework/testing/websites');
         File::deleteDirectory($websitesRoot);
         File::ensureDirectoryExists($websitesRoot.'/moveroo-website-astro');
+        $packageJson = json_encode([
+            'dependencies' => [
+                'astro' => '^5.0.0',
+            ],
+        ], JSON_PRETTY_PRINT);
+        $this->assertIsString($packageJson);
         File::put(
             $websitesRoot.'/moveroo-website-astro/package.json',
-            json_encode([
-                'dependencies' => [
-                    'astro' => '^5.0.0',
-                ],
-            ], JSON_PRETTY_PRINT)
+            $packageJson
         );
 
         config()->set('domain_monitor.web_property_bootstrap', [
@@ -65,8 +68,7 @@ class BootstrapWebPropertiesCommandTest extends TestCase
             'dns_config_name' => 'Parked',
         ]);
 
-        $this->artisan('web-properties:bootstrap')
-            ->assertSuccessful();
+        $this->assertSame(0, Artisan::call('web-properties:bootstrap'));
 
         $this->assertDatabaseCount('web_properties', 2);
         $this->assertDatabaseCount('web_property_domains', 2);
@@ -95,5 +97,136 @@ class BootstrapWebPropertiesCommandTest extends TestCase
 
         $moverooLink = WebPropertyDomain::query()->where('web_property_id', $moverooProperty->id)->firstOrFail();
         $this->assertSame($moveroo->id, $moverooLink->domain_id);
+    }
+
+    public function test_it_refreshes_existing_repository_metadata_from_bootstrap_overrides(): void
+    {
+        config()->set('domain_monitor.web_property_bootstrap', [
+            'websites_root' => storage_path('framework/testing/websites'),
+            'overrides' => [
+                'cartransport.movingagain.com.au' => [
+                    'slug' => 'ma-car-transport',
+                    'name' => 'Moving Again Car Transport',
+                    'property_type' => 'website',
+                    'repository' => [
+                        'repo_name' => 'moveroo/ma-catrans-program',
+                        'repo_provider' => 'github',
+                        'repo_url' => 'https://github.com/moveroo/ma-catrans-program',
+                        'local_path' => '/Users/jasonhill/Projects/websites/ma-car-transport-astro',
+                        'framework' => 'Astro',
+                        'is_controller' => true,
+                        'deployment_provider' => 'vercel',
+                    ],
+                ],
+            ],
+        ]);
+
+        $domain = Domain::factory()->create([
+            'domain' => 'cartransport.movingagain.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'ma-car-transport',
+            'name' => 'Moving Again Car Transport',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => 'moveroo/ma-catrans-program',
+            'repo_provider' => 'github',
+            'repo_url' => 'https://github.com/iamjasonhill/cartransport-astro',
+            'local_path' => '/Users/jasonhill/Projects/websites/cartransport-new-astro',
+            'framework' => 'Astro',
+            'is_primary' => true,
+            'is_controller' => false,
+        ]);
+
+        $this->assertSame(0, Artisan::call('web-properties:bootstrap', ['--refresh-links' => true]));
+
+        $repository = PropertyRepository::query()
+            ->where('web_property_id', $property->id)
+            ->where('repo_name', 'moveroo/ma-catrans-program')
+            ->firstOrFail();
+
+        $this->assertSame('https://github.com/moveroo/ma-catrans-program', $repository->repo_url);
+        $this->assertSame('/Users/jasonhill/Projects/websites/ma-car-transport-astro', $repository->local_path);
+        $this->assertTrue($repository->is_controller);
+        $this->assertSame('vercel', $repository->deployment_provider);
+    }
+
+    public function test_refresh_links_does_not_count_non_fillable_repository_keys_as_changes(): void
+    {
+        $websitesRoot = storage_path('framework/testing/websites');
+        File::deleteDirectory($websitesRoot);
+        File::ensureDirectoryExists($websitesRoot.'/example-astro');
+        $packageJson = json_encode([
+            'dependencies' => [
+                'astro' => '^5.0.0',
+            ],
+        ], JSON_PRETTY_PRINT);
+        $this->assertIsString($packageJson);
+        File::put($websitesRoot.'/example-astro/package.json', $packageJson);
+
+        config()->set('domain_monitor.web_property_bootstrap', [
+            'websites_root' => $websitesRoot,
+            'overrides' => [],
+        ]);
+
+        $domain = Domain::factory()->create([
+            'domain' => 'example-astro.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'example-astro-com-au',
+            'name' => 'Example Astro',
+            'property_type' => 'marketing_site',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => 'example-astro',
+            'repo_provider' => 'local_only',
+            'local_path' => $websitesRoot.'/example-astro',
+            'framework' => 'Astro',
+            'is_primary' => true,
+            'is_controller' => false,
+        ]);
+
+        $command = $this->app->make(\App\Console\Commands\BootstrapWebProperties::class);
+        $method = new \ReflectionMethod($command, 'syncRepositoryLink');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($command, $property, [
+            'repo_name' => 'example-astro',
+            'repo_provider' => 'local_only',
+            'local_path' => $websitesRoot.'/example-astro',
+            'framework' => 'Astro',
+            'is_primary' => true,
+            'is_controller' => false,
+            'match_key' => 'example-astro',
+        ], false);
+
+        $this->assertFalse($result);
     }
 }
