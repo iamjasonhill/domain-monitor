@@ -15,6 +15,10 @@ class WebPropertiesList extends Component
 {
     use WithPagination;
 
+    private const DEFAULT_PER_PAGE = 20;
+
+    private const FLEET_PER_PAGE = 30;
+
     #[Locked]
     public bool $fleetFocusMode = false;
 
@@ -166,7 +170,9 @@ class WebPropertiesList extends Component
             $query->orderBy('name');
         }
 
-        $properties = $query->paginate(20);
+        $properties = $query->paginate(
+            $this->fleetFocusMode ? self::FLEET_PER_PAGE : self::DEFAULT_PER_PAGE
+        );
 
         return view('livewire.web-properties-list', [
             'properties' => $properties,
