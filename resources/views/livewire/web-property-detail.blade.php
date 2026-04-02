@@ -241,22 +241,22 @@
                         <div class="mt-4 grid grid-cols-1 gap-4">
                             <div>
                                 <label for="target_household_quote_url" class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Household Quote</label>
-                                <input id="target_household_quote_url" type="url" wire:model.defer="targetHouseholdQuoteUrl" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="https://..." />
+                                <input id="target_household_quote_url" type="url" wire:model="targetHouseholdQuoteUrl" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="https://..." />
                                 @error('targetHouseholdQuoteUrl') <div class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
                             </div>
                             <div>
                                 <label for="target_household_booking_url" class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Household Booking</label>
-                                <input id="target_household_booking_url" type="url" wire:model.defer="targetHouseholdBookingUrl" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="https://..." />
+                                <input id="target_household_booking_url" type="url" wire:model="targetHouseholdBookingUrl" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="https://..." />
                                 @error('targetHouseholdBookingUrl') <div class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
                             </div>
                             <div>
                                 <label for="target_vehicle_quote_url" class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Vehicle Quote</label>
-                                <input id="target_vehicle_quote_url" type="url" wire:model.defer="targetVehicleQuoteUrl" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="https://..." />
+                                <input id="target_vehicle_quote_url" type="url" wire:model="targetVehicleQuoteUrl" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="https://..." />
                                 @error('targetVehicleQuoteUrl') <div class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
                             </div>
                             <div>
                                 <label for="target_vehicle_booking_url" class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Vehicle Booking</label>
-                                <input id="target_vehicle_booking_url" type="url" wire:model.defer="targetVehicleBookingUrl" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="https://..." />
+                                <input id="target_vehicle_booking_url" type="url" wire:model="targetVehicleBookingUrl" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="https://..." />
                                 @error('targetVehicleBookingUrl') <div class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
                             </div>
                         </div>

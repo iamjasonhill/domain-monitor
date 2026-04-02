@@ -138,7 +138,7 @@ class PropertyConversionLinkScanner
         $scan = $this->scanForProperty($property);
         $persistedScan = $this->mergeWithExisting($property, $scan);
 
-        $property->forceFill($persistedScan)->save();
+        $property->fill($persistedScan)->save();
 
         return $persistedScan;
     }
