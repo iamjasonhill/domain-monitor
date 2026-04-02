@@ -412,7 +412,11 @@ class BootstrapWebProperties extends Command
      */
     private function syncRepositoryLink(WebProperty $property, array $repository, bool $dryRun): bool
     {
-        if (! $property->exists || ! is_string($repository['repo_name'] ?? null)) {
+        if (! is_string($repository['repo_name'] ?? null)) {
+            return false;
+        }
+
+        if (! $property->exists) {
             return true;
         }
 
