@@ -2,14 +2,14 @@
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
             <div class="p-5">
-                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Properties</dt>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ $fleetFocusMode ? 'Fleet Properties' : 'Total Properties' }}</dt>
                 <dd class="mt-2 text-3xl font-semibold text-gray-900 dark:text-gray-100">{{ $this->stats['total'] }}</dd>
             </div>
         </div>
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
             <div class="p-5">
-                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Multi-Domain</dt>
-                <dd class="mt-2 text-3xl font-semibold text-gray-900 dark:text-gray-100">{{ $this->stats['multi_domain'] }}</dd>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ $fleetFocusMode ? 'Priority Set' : 'Multi-Domain' }}</dt>
+                <dd class="mt-2 text-3xl font-semibold text-gray-900 dark:text-gray-100">{{ $fleetFocusMode ? $this->stats['prioritized'] : $this->stats['multi_domain'] }}</dd>
             </div>
         </div>
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
@@ -35,7 +35,7 @@
                         wire:model.live.debounce.300ms="search"
                         type="text"
                         class="mt-1 block w-full"
-                        placeholder="Search property name, slug, domain, or repo..."
+                        placeholder="{{ $fleetFocusMode ? 'Search fleet property, domain, or repo...' : 'Search property name, slug, domain, or repo...' }}"
                     />
                 </div>
 
@@ -64,11 +64,13 @@
             </div>
 
             <div class="mt-4 flex flex-wrap gap-4">
-                <label class="flex items-center">
-                    <input type="checkbox" wire:model.live="reviewQueue"
-                        class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-xs focus:ring-blue-500">
-                    <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Review Queue</span>
-                </label>
+                @unless($fleetFocusMode)
+                    <label class="flex items-center">
+                        <input type="checkbox" wire:model.live="reviewQueue"
+                            class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-xs focus:ring-blue-500">
+                        <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Review Queue</span>
+                    </label>
+                @endunless
                 <label class="flex items-center">
                     <input type="checkbox" wire:model.live="multiDomainOnly"
                         class="rounded border-gray-300 dark:border-gray-700 text-blue-600 shadow-xs focus:ring-blue-500">
@@ -85,6 +87,13 @@
                     <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Missing Analytics Link</span>
                 </label>
             </div>
+
+            @if($fleetFocusMode)
+                <div class="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-200">
+                    Fleet membership comes from the primary domain tag <span class="font-semibold">{{ config('domain_monitor.fleet_focus.tag_name') }}</span>.
+                    Use the Fleet Priority column below to set your manual work order for these properties.
+                </div>
+            @endif
 
             <div class="mt-4">
                 <button wire:click="clearFilters"
@@ -120,6 +129,9 @@
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead class="bg-gray-50 dark:bg-gray-700/50">
                         <tr>
+                            @if($fleetFocusMode)
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fleet Priority</th>
+                            @endif
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Property</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Primary Domain</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Coverage</th>
@@ -134,6 +146,18 @@
                                 $isReviewCandidate = $property->property_domains_count > 1 || $property->repositories_count === 0 || $property->analytics_sources_count === 0;
                             @endphp
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/25">
+                                @if($fleetFocusMode)
+                                    <td class="px-6 py-4 align-top">
+                                        <input
+                                            type="number"
+                                            wire:change="updatePropertyPriority('{{ $property->id }}', $event.target.value)"
+                                            value="{{ $property->priority ?? '' }}"
+                                            class="w-24 rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                            min="0"
+                                            placeholder="—"
+                                        />
+                                    </td>
+                                @endif
                                 <td class="px-6 py-4 align-top">
                                     <div class="flex items-start gap-3">
                                         <div class="mt-1">

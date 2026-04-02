@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -373,6 +374,70 @@ class WebProperty extends Model
             ->all();
     }
 
+    public function isFleetFocus(): bool
+    {
+        $tagName = (string) config('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+        if ($tagName === '') {
+            return false;
+        }
+
+        $primaryDomain = $this->primaryDomainModel();
+
+        foreach ($this->orderedDomainLinks() as $link) {
+            $domain = $link->domain;
+
+            if (! $domain instanceof Domain) {
+                continue;
+            }
+
+            $isPrimaryOrCanonical = $link->is_canonical || ($primaryDomain instanceof Domain && $domain->is($primaryDomain));
+
+            if (! $isPrimaryOrCanonical) {
+                continue;
+            }
+
+            $tags = $domain->relationLoaded('tags')
+                ? $domain->tags
+                : $domain->tags()->get();
+
+            if ($tags->contains(fn (DomainTag $tag): bool => $tag->name === $tagName)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  Builder<WebProperty>  $query
+     */
+    public function scopeFleetFocus(Builder $query, bool $value = true): void
+    {
+        $tagName = (string) config('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+
+        if ($tagName === '') {
+            return;
+        }
+
+        $callback = function (Builder $builder) use ($tagName): void {
+            $builder
+                ->whereHas('primaryDomain.tags', fn (Builder $tagQuery) => $tagQuery->where('name', $tagName))
+                ->orWhereHas('propertyDomains', function (Builder $linkQuery) use ($tagName): void {
+                    $linkQuery
+                        ->where('is_canonical', true)
+                        ->whereHas('domain.tags', fn (Builder $tagQuery) => $tagQuery->where('name', $tagName));
+                });
+        };
+
+        if ($value) {
+            $query->where($callback);
+
+            return;
+        }
+
+        $query->whereNot($callback);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -480,6 +545,8 @@ class WebProperty extends Model
             'target_platform' => $this->target_platform,
             'owner' => $this->owner,
             'priority' => $this->priority,
+            'fleet_priority' => $this->priority,
+            'is_fleet_focus' => $this->isFleetFocus(),
             'notes' => $this->notes,
             'domains' => $this->domainSummaries(),
             'repositories' => $this->repositorySummaries(),

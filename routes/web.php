@@ -32,6 +32,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return view('web-properties.index');
     })->name('web-properties.index');
 
+    Route::get('/fleet-properties', function () {
+        return view('web-properties.fleet');
+    })->name('web-properties.fleet');
+
     Route::get('/matomo-coverage', function () {
         return view('matomo-coverage.index');
     })->name('matomo-coverage.index');

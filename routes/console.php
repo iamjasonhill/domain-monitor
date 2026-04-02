@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Domain;
+use App\Models\DomainTag;
 use App\Models\WebProperty;
 use App\Services\ManualSearchConsoleEvidenceImporter;
 use App\Services\SearchConsoleApiBundleCollector;
@@ -14,6 +16,88 @@ use Illuminate\Support\Facades\Schedule;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+Artisan::command('fleet:sync-focus-domains {--dry-run : Only report the changes that would be made}', function () {
+    $tagName = (string) config('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+    /** @var array<int, string> $domainNames */
+    $domainNames = array_values(array_filter(
+        (array) config('domain_monitor.fleet_focus.domains', []),
+        fn (mixed $domain): bool => is_string($domain) && trim($domain) !== ''
+    ));
+    $dryRun = (bool) $this->option('dry-run');
+
+    if ($tagName === '' || $domainNames === []) {
+        $this->warn('Fleet focus tag configuration is empty.');
+
+        return Command::INVALID;
+    }
+
+    $tag = DomainTag::withTrashed()->firstOrCreate(
+        ['name' => $tagName],
+        [
+            'priority' => 95,
+            'color' => '#2563EB',
+            'description' => 'Fleet-managed live domains used for the dedicated Fleet working set view.',
+        ]
+    );
+
+    if ($tag->trashed()) {
+        $tag->restore();
+    }
+
+    $domains = Domain::query()
+        ->whereIn('domain', $domainNames)
+        ->get()
+        ->keyBy('domain');
+
+    $missingDomains = collect($domainNames)
+        ->reject(fn (string $domain) => $domains->has($domain))
+        ->values();
+
+    $attachIds = $domains
+        ->reject(fn (Domain $domain) => $domain->tags()->where('domain_tags.id', $tag->id)->exists())
+        ->pluck('id')
+        ->values();
+
+    if ($dryRun) {
+        $this->info(sprintf(
+            'Would attach [%d] domains to [%s]. Missing [%d] configured domains.',
+            $attachIds->count(),
+            $tagName,
+            $missingDomains->count()
+        ));
+
+        if ($attachIds->isNotEmpty()) {
+            $this->line('Attach: '.implode(', ', $domains->whereIn('id', $attachIds)->keys()->all()));
+        }
+
+        if ($missingDomains->isNotEmpty()) {
+            $this->warn('Missing: '.implode(', ', $missingDomains->all()));
+        }
+
+        return Command::SUCCESS;
+    }
+
+    foreach ($attachIds as $domainId) {
+        $domain = $domains->firstWhere('id', $domainId);
+
+        if ($domain instanceof Domain) {
+            $domain->tags()->syncWithoutDetaching([$tag->id]);
+        }
+    }
+
+    $this->info(sprintf(
+        'Fleet focus sync complete. Attached [%d] domains to [%s].',
+        $attachIds->count(),
+        $tagName
+    ));
+
+    if ($missingDomains->isNotEmpty()) {
+        $this->warn('Configured domains not found: '.implode(', ', $missingDomains->all()));
+    }
+
+    return Command::SUCCESS;
+})->purpose('Attach the configured Fleet focus tag to the current Fleet domain list.');
 
 Artisan::command('analytics:import-search-console-evidence {property : Web property slug} {path : Path to the Google Search Console page indexing export ZIP} {--captured-by= : Optional captured_by value}', function (ManualSearchConsoleEvidenceImporter $importer) {
     $propertyArgument = $this->argument('property');
