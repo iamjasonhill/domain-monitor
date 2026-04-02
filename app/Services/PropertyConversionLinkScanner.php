@@ -138,11 +138,9 @@ class PropertyConversionLinkScanner
     public function persistForProperty(WebProperty $property): array
     {
         $scan = $this->scanForProperty($property);
-        $persistedScan = $this->mergeWithExisting($property, $scan);
+        $property->fill($scan)->save();
 
-        $property->fill($persistedScan)->save();
-
-        return $persistedScan;
+        return $scan;
     }
 
     private function homepageUrlForProperty(WebProperty $property): ?string
@@ -170,38 +168,6 @@ class PropertyConversionLinkScanner
         }
 
         return null;
-    }
-
-    /**
-     * @param  array{
-     *   current_household_quote_url: string|null,
-     *   current_household_booking_url: string|null,
-     *   current_vehicle_quote_url: string|null,
-     *   current_vehicle_booking_url: string|null,
-     *   conversion_links_scanned_at: \Illuminate\Support\Carbon
-     * }  $scan
-     * @return array{
-     *   current_household_quote_url: string|null,
-     *   current_household_booking_url: string|null,
-     *   current_vehicle_quote_url: string|null,
-     *   current_vehicle_booking_url: string|null,
-     *   conversion_links_scanned_at: \Illuminate\Support\Carbon
-     * }
-     */
-    private function mergeWithExisting(WebProperty $property, array $scan): array
-    {
-        foreach ([
-            'current_household_quote_url',
-            'current_household_booking_url',
-            'current_vehicle_quote_url',
-            'current_vehicle_booking_url',
-        ] as $field) {
-            if ($scan[$field] === null && is_string($property->{$field}) && $property->{$field} !== '') {
-                $scan[$field] = $property->{$field};
-            }
-        }
-
-        return $scan;
     }
 
     private function isAllowedScanUrl(string $url, WebProperty $property): bool

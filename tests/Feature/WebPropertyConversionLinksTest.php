@@ -286,7 +286,7 @@ class WebPropertyConversionLinksTest extends TestCase
         $this->assertSame('https://mymovehub.backloadingremovals.com.au/booking/create', $property->current_household_booking_url);
     }
 
-    public function test_fleet_scan_conversion_links_keeps_previous_values_when_a_bucket_is_missing(): void
+    public function test_fleet_scan_conversion_links_clears_previous_values_when_a_bucket_is_missing(): void
     {
         config()->set('domain_monitor.fleet_focus.tag_name', 'fleet.live');
 
@@ -337,7 +337,7 @@ class WebPropertyConversionLinksTest extends TestCase
         $property->refresh();
 
         $this->assertSame('https://removalistquotes.movingagain.com.au/quote/household', $property->current_household_quote_url);
-        $this->assertSame('https://cartransport.movingagain.com.au/quote', $property->current_vehicle_quote_url);
+        $this->assertNull($property->current_vehicle_quote_url);
     }
 
     public function test_fleet_scan_conversion_links_does_not_treat_facebook_as_a_booking_link(): void
