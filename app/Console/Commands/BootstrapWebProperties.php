@@ -271,12 +271,13 @@ class BootstrapWebProperties extends Command
             ->map(function (string $path): array {
                 $repoName = basename($path);
                 $packageJson = json_decode((string) File::get($path.'/package.json'), true);
+                $repositoryRemote = $this->detectRepositoryRemote($path, is_array($packageJson) ? $packageJson : []);
 
                 return [
                     'match_key' => $this->normalizeRepoKey($repoName),
                     'repo_name' => $repoName,
-                    'repo_provider' => 'local_only',
-                    'repo_url' => null,
+                    'repo_provider' => $repositoryRemote['repo_provider'],
+                    'repo_url' => $repositoryRemote['repo_url'],
                     'local_path' => $path,
                     'default_branch' => null,
                     'deployment_branch' => null,
@@ -293,6 +294,117 @@ class BootstrapWebProperties extends Command
             ->groupBy('match_key')
             ->map(fn (Collection $items) => $items->values()->all())
             ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $packageJson
+     * @return array{repo_provider:string, repo_url:string|null}
+     */
+    private function detectRepositoryRemote(string $path, array $packageJson): array
+    {
+        $packageRepository = $packageJson['repository'] ?? null;
+        $packageRepositoryUrl = is_string($packageRepository)
+            ? $packageRepository
+            : (is_array($packageRepository) ? ($packageRepository['url'] ?? null) : null);
+
+        $normalizedPackageUrl = $this->normalizeRepositoryUrl(is_string($packageRepositoryUrl) ? $packageRepositoryUrl : null);
+        if (is_string($normalizedPackageUrl)) {
+            return [
+                'repo_provider' => $this->repositoryProviderForUrl($normalizedPackageUrl),
+                'repo_url' => $normalizedPackageUrl,
+            ];
+        }
+
+        $gitConfigPath = $path.'/.git/config';
+        if (! File::exists($gitConfigPath)) {
+            return [
+                'repo_provider' => 'local_only',
+                'repo_url' => null,
+            ];
+        }
+
+        $gitConfig = (string) File::get($gitConfigPath);
+        $originSection = preg_split('/^\s*\[remote "origin"\]\s*$/m', $gitConfig, 2)[1] ?? null;
+        if (! is_string($originSection)) {
+            return [
+                'repo_provider' => 'local_only',
+                'repo_url' => null,
+            ];
+        }
+
+        $originBlock = preg_split('/^\s*\[/', $originSection, 2)[0] ?? $originSection;
+        if (! preg_match('/^\s*url\s*=\s*(.+)\s*$/m', $originBlock, $matches)) {
+            return [
+                'repo_provider' => 'local_only',
+                'repo_url' => null,
+            ];
+        }
+
+        $normalizedGitUrl = $this->normalizeRepositoryUrl(trim($matches[1]));
+
+        return [
+            'repo_provider' => is_string($normalizedGitUrl)
+                ? $this->repositoryProviderForUrl($normalizedGitUrl)
+                : 'local_only',
+            'repo_url' => $normalizedGitUrl,
+        ];
+    }
+
+    private function normalizeRepositoryUrl(?string $repositoryUrl): ?string
+    {
+        if (! is_string($repositoryUrl)) {
+            return null;
+        }
+
+        $normalized = trim($repositoryUrl);
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $normalized = preg_replace('/^git\\+/', '', $normalized) ?? $normalized;
+
+        if (preg_match('/^git@github\\.com:(.+?)(?:\\.git)?$/', $normalized, $matches)) {
+            return 'https://github.com/'.$matches[1];
+        }
+
+        if (preg_match('/^github:(.+?)(?:\\.git)?$/', $normalized, $matches)) {
+            return 'https://github.com/'.$matches[1];
+        }
+
+        if (preg_match('/^https?:\\/\\//', $normalized) !== 1) {
+            return null;
+        }
+
+        $parts = parse_url($normalized);
+        if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'], $parts['path'])) {
+            return null;
+        }
+
+        if (! $this->isPublicRepositoryHost($parts['host'])) {
+            return null;
+        }
+
+        $path = preg_replace('/\\.git$/', '', $parts['path']) ?? $parts['path'];
+
+        return sprintf('%s://%s%s', $parts['scheme'], $parts['host'], $path);
+    }
+
+    private function isPublicRepositoryHost(string $host): bool
+    {
+        return in_array($host, ['github.com', 'gitlab.com', 'bitbucket.org'], true);
+    }
+
+    private function repositoryProviderForUrl(string $repositoryUrl): string
+    {
+        $host = parse_url($repositoryUrl, PHP_URL_HOST);
+
+        return match ($host) {
+            'github.com' => 'github',
+            'gitlab.com' => 'gitlab',
+            'bitbucket.org' => 'bitbucket',
+            default => 'git',
+        };
     }
 
     private function normalizeRepoKey(string $repoName): string
