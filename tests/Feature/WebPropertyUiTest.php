@@ -135,6 +135,8 @@ class WebPropertyUiTest extends TestCase
         $response->assertSee('Car transport by Moving Again');
         $response->assertSee('not detected');
         $response->assertSee('No Matomo snippet detected.');
+        $response->assertSee('Conversion Links');
+        $response->assertSee('Target Links');
         $response->assertSee('Automation Checklist');
         $response->assertSee('Needs Matomo');
     }
