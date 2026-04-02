@@ -126,7 +126,7 @@ class WebPropertyController extends Controller
                     ->where('capture_method', '!=', 'gsc_drilldown_zip'),
             ])
             ->with([
-                'primaryDomain',
+                'primaryDomain.tags',
                 'repositories',
                 'analyticsSources',
                 'analyticsSources.latestInstallAudit',
@@ -156,6 +156,10 @@ class WebPropertyController extends Controller
     private function applyFleetFocusFilter(Builder $query, array $validated): void
     {
         if (! array_key_exists('fleet_focus', $validated)) {
+            return;
+        }
+
+        if ($validated['fleet_focus'] === null) {
             return;
         }
 
