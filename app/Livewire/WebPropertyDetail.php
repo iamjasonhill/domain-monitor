@@ -109,20 +109,22 @@ class WebPropertyDetail extends Component
             return;
         }
 
-        abort_unless(auth()->check(), 403);
+        $this->authorizePropertyMutation();
+
+        $normalizedTargets = [
+            'targetHouseholdQuoteUrl' => $this->normalizeTargetUrl($this->targetHouseholdQuoteUrl),
+            'targetHouseholdBookingUrl' => $this->normalizeTargetUrl($this->targetHouseholdBookingUrl),
+            'targetVehicleQuoteUrl' => $this->normalizeTargetUrl($this->targetVehicleQuoteUrl),
+            'targetVehicleBookingUrl' => $this->normalizeTargetUrl($this->targetVehicleBookingUrl),
+        ];
 
         $validated = Validator::make(
+            $normalizedTargets,
             [
-                'targetHouseholdQuoteUrl' => $this->targetHouseholdQuoteUrl,
-                'targetHouseholdBookingUrl' => $this->targetHouseholdBookingUrl,
-                'targetVehicleQuoteUrl' => $this->targetVehicleQuoteUrl,
-                'targetVehicleBookingUrl' => $this->targetVehicleBookingUrl,
-            ],
-            [
-                'targetHouseholdQuoteUrl' => ['nullable', 'url', 'max:2048'],
-                'targetHouseholdBookingUrl' => ['nullable', 'url', 'max:2048'],
-                'targetVehicleQuoteUrl' => ['nullable', 'url', 'max:2048'],
-                'targetVehicleBookingUrl' => ['nullable', 'url', 'max:2048'],
+                'targetHouseholdQuoteUrl' => ['nullable', 'url', 'max:2048', 'regex:/^https?:\\/\\//i'],
+                'targetHouseholdBookingUrl' => ['nullable', 'url', 'max:2048', 'regex:/^https?:\\/\\//i'],
+                'targetVehicleQuoteUrl' => ['nullable', 'url', 'max:2048', 'regex:/^https?:\\/\\//i'],
+                'targetVehicleBookingUrl' => ['nullable', 'url', 'max:2048', 'regex:/^https?:\\/\\//i'],
             ]
         )->validate();
 
@@ -146,7 +148,7 @@ class WebPropertyDetail extends Component
             return;
         }
 
-        abort_unless(auth()->check(), 403);
+        $this->authorizePropertyMutation();
 
         try {
             $scanner->persistForProperty($this->property);
@@ -161,5 +163,37 @@ class WebPropertyDetail extends Component
     public function render(): \Illuminate\View\View
     {
         return view('livewire.web-property-detail');
+    }
+
+    private function normalizeTargetUrl(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        return $trimmed === '' ? null : $trimmed;
+    }
+
+    private function authorizePropertyMutation(): void
+    {
+        $user = auth()->user();
+
+        abort_unless($user !== null, 403);
+
+        if (app()->environment(['local', 'testing'])) {
+            return;
+        }
+
+        $allowedEmails = array_filter(array_map(
+            static fn (mixed $email): string => mb_strtolower(trim((string) $email)),
+            (array) config('domain_monitor.property_mutation_emails', config('horizon.allowed_emails', []))
+        ));
+
+        abort_unless(
+            in_array(mb_strtolower((string) $user->email), $allowedEmails, true),
+            403
+        );
     }
 }

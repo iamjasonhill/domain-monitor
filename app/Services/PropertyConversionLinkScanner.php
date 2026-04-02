@@ -33,6 +33,10 @@ class PropertyConversionLinkScanner
             throw new \RuntimeException('Property does not have a scannable production URL or primary domain.');
         }
 
+        if (! $this->isAllowedScanUrl($homepageUrl, $property)) {
+            throw new \RuntimeException('Property homepage URL is not allowed for conversion-link scanning.');
+        }
+
         $response = $this->http
             ->timeout(15)
             ->withHeaders([
@@ -76,17 +80,6 @@ class PropertyConversionLinkScanner
             /** @var DOMElement $node */
             foreach ($nodes as $node) {
                 $anchors[] = $node;
-            }
-        }
-
-        if ($anchors === []) {
-            $fallbackNodes = $xpath->query('//body//a[@href]');
-
-            if ($fallbackNodes !== false) {
-                /** @var DOMElement $node */
-                foreach ($fallbackNodes as $node) {
-                    $anchors[] = $node;
-                }
             }
         }
 
@@ -143,27 +136,129 @@ class PropertyConversionLinkScanner
     public function persistForProperty(WebProperty $property): array
     {
         $scan = $this->scanForProperty($property);
+        $persistedScan = $this->mergeWithExisting($property, $scan);
 
-        $property->forceFill($scan)->save();
+        $property->forceFill($persistedScan)->save();
 
-        return $scan;
+        return $persistedScan;
     }
 
     private function homepageUrlForProperty(WebProperty $property): ?string
     {
+        $domain = $property->primaryDomainName();
+
+        if (is_string($domain) && $domain !== '') {
+            return 'https://'.$domain;
+        }
+
         $url = $property->production_url;
 
         if (is_string($url) && $url !== '') {
-            return rtrim($url, '/');
+            $parts = parse_url($url);
+
+            if (is_array($parts) && isset($parts['scheme'], $parts['host'])) {
+                $homepageUrl = $parts['scheme'].'://'.$parts['host'];
+
+                if (isset($parts['port'])) {
+                    $homepageUrl .= ':'.$parts['port'];
+                }
+
+                return $homepageUrl;
+            }
         }
 
-        $domain = $property->primaryDomainName();
+        return null;
+    }
 
-        if (! is_string($domain) || $domain === '') {
-            return null;
+    /**
+     * @param  array{
+     *   current_household_quote_url: string|null,
+     *   current_household_booking_url: string|null,
+     *   current_vehicle_quote_url: string|null,
+     *   current_vehicle_booking_url: string|null,
+     *   conversion_links_scanned_at: \Illuminate\Support\Carbon
+     * }  $scan
+     * @return array{
+     *   current_household_quote_url: string|null,
+     *   current_household_booking_url: string|null,
+     *   current_vehicle_quote_url: string|null,
+     *   current_vehicle_booking_url: string|null,
+     *   conversion_links_scanned_at: \Illuminate\Support\Carbon
+     * }
+     */
+    private function mergeWithExisting(WebProperty $property, array $scan): array
+    {
+        foreach ([
+            'current_household_quote_url',
+            'current_household_booking_url',
+            'current_vehicle_quote_url',
+            'current_vehicle_booking_url',
+        ] as $field) {
+            if ($scan[$field] === null && is_string($property->{$field}) && $property->{$field} !== '') {
+                $scan[$field] = $property->{$field};
+            }
         }
 
-        return 'https://'.$domain;
+        return $scan;
+    }
+
+    private function isAllowedScanUrl(string $url, WebProperty $property): bool
+    {
+        $parts = parse_url($url);
+
+        if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'])) {
+            return false;
+        }
+
+        $scheme = Str::lower((string) $parts['scheme']);
+        $host = Str::lower((string) $parts['host']);
+
+        if (! in_array($scheme, ['http', 'https'], true)) {
+            return false;
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP) !== false) {
+            return filter_var(
+                $host,
+                FILTER_VALIDATE_IP,
+                FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+            ) !== false;
+        }
+
+        if (! str_contains($host, '.') || Str::endsWith($host, ['.local', '.internal'])) {
+            return false;
+        }
+
+        return in_array($host, $this->allowedHostsForProperty($property), true);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function allowedHostsForProperty(WebProperty $property): array
+    {
+        $hosts = [];
+
+        $primaryDomain = $property->primaryDomainName();
+        if (is_string($primaryDomain) && $primaryDomain !== '') {
+            $hosts[] = Str::lower($primaryDomain);
+        }
+
+        foreach ($property->orderedDomainLinks() as $link) {
+            if (is_string($link->domain?->domain) && $link->domain->domain !== '') {
+                $hosts[] = Str::lower($link->domain->domain);
+            }
+        }
+
+        if (is_string($property->production_url) && $property->production_url !== '') {
+            $productionHost = parse_url($property->production_url, PHP_URL_HOST);
+
+            if (is_string($productionHost) && $productionHost !== '') {
+                $hosts[] = Str::lower($productionHost);
+            }
+        }
+
+        return array_values(array_unique($hosts));
     }
 
     private function normalizeUrl(string $href, string $baseUrl): ?string

@@ -128,11 +128,9 @@ Artisan::command('fleet:scan-conversion-links {propertySlug? : Optional web prop
 
     foreach ($properties as $property) {
         try {
-            $scan = $scanner->scanForProperty($property);
-
-            if (! $dryRun) {
-                $property->forceFill($scan)->save();
-            }
+            $scan = $dryRun
+                ? $scanner->scanForProperty($property)
+                : $scanner->persistForProperty($property);
 
             $this->info(sprintf(
                 '[%s] household quote=%s | household booking=%s | vehicle quote=%s | vehicle booking=%s',
