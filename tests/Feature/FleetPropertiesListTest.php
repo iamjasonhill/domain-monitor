@@ -247,6 +247,7 @@ class FleetPropertiesListTest extends TestCase
                 'slug' => sprintf('fleet-site-%02d', $index),
                 'name' => sprintf('Fleet Site %02d', $index),
                 'primary_domain_id' => $domain->id,
+                'priority' => null,
             ]);
 
             WebPropertyDomain::create([
