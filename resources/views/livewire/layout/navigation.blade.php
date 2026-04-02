@@ -39,6 +39,9 @@ new class extends Component
                     <x-nav-link :href="route('web-properties.index')" :active="request()->routeIs('web-properties.*')" wire:navigate>
                         {{ __('Web Properties') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('web-properties.fleet')" :active="request()->routeIs('web-properties.fleet')" wire:navigate>
+                        {{ __('Fleet') }}
+                    </x-nav-link>
                     <x-nav-link :href="route('matomo-coverage.index')" :active="request()->routeIs('matomo-coverage.*')" wire:navigate>
                         {{ __('Matomo Coverage') }}
                     </x-nav-link>
@@ -120,6 +123,9 @@ new class extends Component
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('web-properties.index')" :active="request()->routeIs('web-properties.*')" wire:navigate>
                 {{ __('Web Properties') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('web-properties.fleet')" :active="request()->routeIs('web-properties.fleet')" wire:navigate>
+                {{ __('Fleet') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('matomo-coverage.index')" :active="request()->routeIs('matomo-coverage.*')" wire:navigate>
                 {{ __('Matomo Coverage') }}
