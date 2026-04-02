@@ -99,6 +99,200 @@ class BootstrapWebPropertiesCommandTest extends TestCase
         $this->assertSame($moveroo->id, $moverooLink->domain_id);
     }
 
+    public function test_it_discovers_repo_url_from_package_json_for_auto_matched_repo(): void
+    {
+        $websitesRoot = storage_path('framework/testing/websites');
+        File::deleteDirectory($websitesRoot);
+        File::ensureDirectoryExists($websitesRoot.'/example-astro');
+        $packageJson = json_encode([
+            'dependencies' => [
+                'astro' => '^5.0.0',
+            ],
+            'repository' => 'git+https://github.com/moveroo/example-astro.git',
+        ], JSON_PRETTY_PRINT);
+        $this->assertIsString($packageJson);
+        File::put($websitesRoot.'/example-astro/package.json', $packageJson);
+
+        config()->set('domain_monitor.web_property_bootstrap', [
+            'websites_root' => $websitesRoot,
+            'overrides' => [],
+        ]);
+
+        $domain = Domain::factory()->create([
+            'domain' => 'example.com.au',
+            'is_active' => true,
+            'dns_config_name' => 'DNS Hosting',
+        ]);
+
+        $this->assertSame(0, Artisan::call('web-properties:bootstrap'));
+
+        $property = WebProperty::query()->where('primary_domain_id', $domain->id)->firstOrFail();
+        $repository = PropertyRepository::query()->where('web_property_id', $property->id)->firstOrFail();
+
+        $this->assertSame('https://github.com/moveroo/example-astro', $repository->repo_url);
+        $this->assertSame('github', $repository->repo_provider);
+    }
+
+    public function test_it_discovers_repo_url_from_git_origin_when_package_json_has_no_repository(): void
+    {
+        $websitesRoot = storage_path('framework/testing/websites');
+        File::deleteDirectory($websitesRoot);
+        File::ensureDirectoryExists($websitesRoot.'/origin-only-astro/.git');
+        $packageJson = json_encode([
+            'dependencies' => [
+                'astro' => '^5.0.0',
+            ],
+        ], JSON_PRETTY_PRINT);
+        $this->assertIsString($packageJson);
+        File::put($websitesRoot.'/origin-only-astro/package.json', $packageJson);
+        File::put(
+            $websitesRoot.'/origin-only-astro/.git/config',
+            "[remote \"origin\"]\n\turl = git@github.com:moveroo/origin-only-astro.git\n"
+        );
+
+        config()->set('domain_monitor.web_property_bootstrap', [
+            'websites_root' => $websitesRoot,
+            'overrides' => [],
+        ]);
+
+        $domain = Domain::factory()->create([
+            'domain' => 'origin-only.com.au',
+            'is_active' => true,
+            'dns_config_name' => 'DNS Hosting',
+        ]);
+
+        $this->assertSame(0, Artisan::call('web-properties:bootstrap'));
+
+        $property = WebProperty::query()->where('primary_domain_id', $domain->id)->firstOrFail();
+        $repository = PropertyRepository::query()->where('web_property_id', $property->id)->firstOrFail();
+
+        $this->assertSame('https://github.com/moveroo/origin-only-astro', $repository->repo_url);
+        $this->assertSame('github', $repository->repo_provider);
+    }
+
+    public function test_it_discovers_private_repository_hosts_when_package_json_declares_them(): void
+    {
+        $websitesRoot = storage_path('framework/testing/websites');
+        File::deleteDirectory($websitesRoot);
+        File::ensureDirectoryExists($websitesRoot.'/private-origin-astro');
+        $packageJson = json_encode([
+            'dependencies' => [
+                'astro' => '^5.0.0',
+            ],
+            'repository' => 'https://git.internal.example.com/moveroo/private-origin-astro.git',
+        ], JSON_PRETTY_PRINT);
+        $this->assertIsString($packageJson);
+        File::put($websitesRoot.'/private-origin-astro/package.json', $packageJson);
+
+        config()->set('domain_monitor.web_property_bootstrap', [
+            'websites_root' => $websitesRoot,
+            'overrides' => [],
+        ]);
+
+        $domain = Domain::factory()->create([
+            'domain' => 'private-origin.com.au',
+            'is_active' => true,
+            'dns_config_name' => 'DNS Hosting',
+        ]);
+
+        $this->assertSame(0, Artisan::call('web-properties:bootstrap'));
+
+        $property = WebProperty::query()->where('primary_domain_id', $domain->id)->firstOrFail();
+        $repository = PropertyRepository::query()->where('web_property_id', $property->id)->firstOrFail();
+
+        $this->assertSame('https://git.internal.example.com/moveroo/private-origin-astro', $repository->repo_url);
+        $this->assertSame('git', $repository->repo_provider);
+    }
+
+    public function test_it_discovers_repo_url_from_realistic_git_origin_config(): void
+    {
+        $websitesRoot = storage_path('framework/testing/websites');
+        File::deleteDirectory($websitesRoot);
+        File::ensureDirectoryExists($websitesRoot.'/realistic-origin-astro/.git');
+        $packageJson = json_encode([
+            'dependencies' => [
+                'astro' => '^5.0.0',
+            ],
+        ], JSON_PRETTY_PRINT);
+        $this->assertIsString($packageJson);
+        File::put($websitesRoot.'/realistic-origin-astro/package.json', $packageJson);
+        File::put(
+            $websitesRoot.'/realistic-origin-astro/.git/config',
+            implode("\n", [
+                '[core]',
+                "\trepositoryformatversion = 0",
+                '[remote "origin"]',
+                "\turl = git@github.com:moveroo/realistic-origin-astro.git",
+                "\tfetch = +refs/heads/*:refs/remotes/origin/*",
+                '[branch "main"]',
+                "\tremote = origin",
+                "\tmerge = refs/heads/main",
+                '',
+            ])
+        );
+
+        config()->set('domain_monitor.web_property_bootstrap', [
+            'websites_root' => $websitesRoot,
+            'overrides' => [],
+        ]);
+
+        $domain = Domain::factory()->create([
+            'domain' => 'realistic-origin.com.au',
+            'is_active' => true,
+            'dns_config_name' => 'DNS Hosting',
+        ]);
+
+        $this->assertSame(0, Artisan::call('web-properties:bootstrap'));
+
+        $property = WebProperty::query()->where('primary_domain_id', $domain->id)->firstOrFail();
+        $repository = PropertyRepository::query()->where('web_property_id', $property->id)->firstOrFail();
+
+        $this->assertSame('https://github.com/moveroo/realistic-origin-astro', $repository->repo_url);
+        $this->assertSame('github', $repository->repo_provider);
+    }
+
+    public function test_it_discovers_private_repository_hosts_from_git_origin(): void
+    {
+        $websitesRoot = storage_path('framework/testing/websites');
+        File::deleteDirectory($websitesRoot);
+        File::ensureDirectoryExists($websitesRoot.'/private-git-origin-astro/.git');
+        $packageJson = json_encode([
+            'dependencies' => [
+                'astro' => '^5.0.0',
+            ],
+        ], JSON_PRETTY_PRINT);
+        $this->assertIsString($packageJson);
+        File::put($websitesRoot.'/private-git-origin-astro/package.json', $packageJson);
+        File::put(
+            $websitesRoot.'/private-git-origin-astro/.git/config',
+            implode("\n", [
+                '[remote "origin"]',
+                "\turl = git@git.internal.example.com:moveroo/private-git-origin-astro.git",
+                "\tfetch = +refs/heads/*:refs/remotes/origin/*",
+                '',
+            ])
+        );
+
+        config()->set('domain_monitor.web_property_bootstrap', [
+            'websites_root' => $websitesRoot,
+            'overrides' => [],
+        ]);
+
+        $domain = Domain::factory()->create([
+            'domain' => 'private-git-origin.com.au',
+            'is_active' => true,
+            'dns_config_name' => 'DNS Hosting',
+        ]);
+
+        $this->assertSame(0, Artisan::call('web-properties:bootstrap'));
+
+        $property = WebProperty::query()->where('primary_domain_id', $domain->id)->firstOrFail();
+        $repository = PropertyRepository::query()->where('web_property_id', $property->id)->firstOrFail();
+
+        $this->assertSame('https://git.internal.example.com/moveroo/private-git-origin-astro', $repository->repo_url);
+        $this->assertSame('git', $repository->repo_provider);
+    }
+
     public function test_it_refreshes_existing_repository_metadata_from_bootstrap_overrides(): void
     {
         config()->set('domain_monitor.web_property_bootstrap', [
