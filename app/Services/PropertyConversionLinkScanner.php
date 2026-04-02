@@ -297,14 +297,14 @@ class PropertyConversionLinkScanner
     {
         $haystack = Str::lower(trim($text.' '.$href));
 
-        if (! Str::contains($haystack, ['quote', 'book', 'booking'])) {
+        if (! $this->containsWholeWord($haystack, ['quote', 'book', 'booking'])) {
             return ['bucket' => null, 'score' => 0];
         }
 
-        $isBooking = Str::contains($haystack, ['book', 'booking']);
-        $isQuote = Str::contains($haystack, ['quote']);
-        $isVehicle = Str::contains($haystack, ['vehicle', 'car', 'transport']);
-        $isHousehold = Str::contains($haystack, ['move', 'moving', 'removal', 'removalist', 'household', 'furniture', 'backloading']);
+        $isBooking = $this->containsWholeWord($haystack, ['book', 'booking']);
+        $isQuote = $this->containsWholeWord($haystack, ['quote']);
+        $isVehicle = $this->containsWholeWord($haystack, ['vehicle', 'car', 'transport']);
+        $isHousehold = $this->containsWholeWord($haystack, ['move', 'moving', 'removal', 'removalist', 'household', 'furniture', 'backloading']);
 
         $score = 0;
         $score += $isBooking ? 40 : 0;
@@ -329,5 +329,23 @@ class PropertyConversionLinkScanner
         }
 
         return ['bucket' => null, 'score' => 0];
+    }
+
+    /**
+     * @param  array<int, string>  $terms
+     */
+    private function containsWholeWord(string $haystack, array $terms): bool
+    {
+        foreach ($terms as $term) {
+            if ($term === '') {
+                continue;
+            }
+
+            if (preg_match('/(?<![a-z0-9])'.preg_quote(Str::lower($term), '/').'(?![a-z0-9])/i', $haystack) === 1) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
