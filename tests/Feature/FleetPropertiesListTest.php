@@ -224,4 +224,48 @@ class FleetPropertiesListTest extends TestCase
         Livewire::test(WebPropertiesList::class, ['fleetFocusMode' => true])
             ->set('fleetFocusMode', false);
     }
+
+    public function test_fleet_view_uses_thirty_items_per_page(): void
+    {
+        config()->set('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+
+        $fleetTag = DomainTag::firstOrCreate(
+            ['name' => 'fleet.live'],
+            [
+                'priority' => 95,
+                'color' => '#2563EB',
+            ]
+        );
+
+        for ($index = 1; $index <= 31; $index++) {
+            $domain = Domain::factory()->create([
+                'domain' => sprintf('fleet-%02d.example.com', $index),
+                'is_active' => true,
+            ]);
+
+            $property = WebProperty::factory()->create([
+                'slug' => sprintf('fleet-site-%02d', $index),
+                'name' => sprintf('Fleet Site %02d', $index),
+                'primary_domain_id' => $domain->id,
+            ]);
+
+            WebPropertyDomain::create([
+                'web_property_id' => $property->id,
+                'domain_id' => $domain->id,
+                'usage_type' => 'primary',
+                'is_canonical' => true,
+            ]);
+
+            $domain->tags()->syncWithoutDetaching([$fleetTag->id]);
+        }
+
+        Livewire::test(WebPropertiesList::class, ['fleetFocusMode' => true])
+            ->assertSee('Fleet Site 01')
+            ->assertSee('Fleet Site 30')
+            ->assertSee('Showing')
+            ->assertSee('1')
+            ->assertSee('30')
+            ->assertSee('31')
+            ->assertSee('results');
+    }
 }

@@ -36,7 +36,7 @@ new class extends Component
                     <x-nav-link :href="route('domains.index')" :active="request()->routeIs('domains.*')" wire:navigate>
                         {{ __('Domains') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('web-properties.index')" :active="request()->routeIs('web-properties.*')" wire:navigate>
+                    <x-nav-link :href="route('web-properties.index')" :active="request()->routeIs('web-properties.*') && ! request()->routeIs('web-properties.fleet')" wire:navigate>
                         {{ __('Web Properties') }}
                     </x-nav-link>
                     <x-nav-link :href="route('web-properties.fleet')" :active="request()->routeIs('web-properties.fleet')" wire:navigate>
@@ -121,7 +121,7 @@ new class extends Component
             <x-responsive-nav-link :href="route('domains.index')" :active="request()->routeIs('domains.*')" wire:navigate>
                 {{ __('Domains') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('web-properties.index')" :active="request()->routeIs('web-properties.*')" wire:navigate>
+            <x-responsive-nav-link :href="route('web-properties.index')" :active="request()->routeIs('web-properties.*') && ! request()->routeIs('web-properties.fleet')" wire:navigate>
                 {{ __('Web Properties') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('web-properties.fleet')" :active="request()->routeIs('web-properties.fleet')" wire:navigate>
