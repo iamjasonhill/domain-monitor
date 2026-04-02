@@ -323,6 +323,57 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.fleet_priority', 21);
     }
 
+    public function test_web_properties_summary_keeps_fleet_flag_true_when_primary_domain_tag_has_no_pivot_link(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        config()->set('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+
+        $fleetTag = DomainTag::firstOrCreate(
+            ['name' => 'fleet.live'],
+            [
+                'priority' => 95,
+                'color' => '#2563EB',
+            ]
+        );
+
+        $primaryDomain = Domain::factory()->create([
+            'domain' => 'primary-only-fleet.example.com',
+            'is_active' => true,
+        ]);
+
+        $canonicalDomain = Domain::factory()->create([
+            'domain' => 'canonical-no-tag.example.com',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'primary-only-fleet-site',
+            'name' => 'Primary Only Fleet Site',
+            'primary_domain_id' => $primaryDomain->id,
+            'priority' => 17,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $canonicalDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        $primaryDomain->tags()->syncWithoutDetaching([$fleetTag->id]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/web-properties-summary?fleet_focus=1');
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(1, 'web_properties')
+            ->assertJsonPath('web_properties.0.slug', 'primary-only-fleet-site')
+            ->assertJsonPath('web_properties.0.is_fleet_focus', true)
+            ->assertJsonPath('web_properties.0.fleet_priority', 17);
+    }
+
     public function test_web_properties_summary_prefers_any_controller_repo_with_local_path(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');

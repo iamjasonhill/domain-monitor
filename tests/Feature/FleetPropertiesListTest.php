@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -214,5 +215,13 @@ class FleetPropertiesListTest extends TestCase
             ->assertForbidden();
 
         $this->assertSame(5, $property->fresh()->priority);
+    }
+
+    public function test_fleet_view_does_not_allow_client_updates_to_fleet_mode(): void
+    {
+        $this->expectException(CannotUpdateLockedPropertyException::class);
+
+        Livewire::test(WebPropertiesList::class, ['fleetFocusMode' => true])
+            ->set('fleetFocusMode', false);
     }
 }

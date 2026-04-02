@@ -381,31 +381,18 @@ class WebProperty extends Model
             return false;
         }
 
-        $primaryDomain = $this->primaryDomainModel();
+        $primaryDomain = $this->relationLoaded('primaryDomain')
+            ? $this->primaryDomain
+            : $this->primaryDomain()->with('tags')->first();
 
-        foreach ($this->orderedDomainLinks() as $link) {
-            $domain = $link->domain;
-
-            if (! $domain instanceof Domain) {
-                continue;
-            }
-
-            $isPrimaryOrCanonical = $link->is_canonical || ($primaryDomain instanceof Domain && $domain->is($primaryDomain));
-
-            if (! $isPrimaryOrCanonical) {
-                continue;
-            }
-
-            $tags = $domain->relationLoaded('tags')
-                ? $domain->tags
-                : $domain->tags()->get();
-
-            if ($tags->contains(fn (DomainTag $tag): bool => $tag->name === $tagName)) {
-                return true;
-            }
+        if ($this->domainHasFleetFocusTag($primaryDomain, $tagName)) {
+            return true;
         }
 
-        return false;
+        return $this->orderedDomainLinks()->contains(function (WebPropertyDomain $link) use ($tagName): bool {
+            return $link->is_canonical
+                && $this->domainHasFleetFocusTag($link->domain, $tagName);
+        });
     }
 
     /**
@@ -436,6 +423,19 @@ class WebProperty extends Model
         }
 
         $query->whereNot($callback);
+    }
+
+    private function domainHasFleetFocusTag(?Domain $domain, string $tagName): bool
+    {
+        if (! $domain instanceof Domain) {
+            return false;
+        }
+
+        $tags = $domain->relationLoaded('tags')
+            ? $domain->tags
+            : $domain->tags()->get();
+
+        return $tags->contains(fn (DomainTag $tag): bool => $tag->name === $tagName);
     }
 
     /**
@@ -545,6 +545,7 @@ class WebProperty extends Model
             'target_platform' => $this->target_platform,
             'owner' => $this->owner,
             'priority' => $this->priority,
+            // Fleet consumers use a stable, explicitly named alias for manual work ordering.
             'fleet_priority' => $this->priority,
             'is_fleet_focus' => $this->isFleetFocus(),
             'notes' => $this->notes,

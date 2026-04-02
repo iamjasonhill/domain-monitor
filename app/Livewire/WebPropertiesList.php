@@ -6,6 +6,7 @@ use App\Models\WebProperty;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -14,6 +15,7 @@ class WebPropertiesList extends Component
 {
     use WithPagination;
 
+    #[Locked]
     public bool $fleetFocusMode = false;
 
     #[Url(as: 'search', history: true, keep: false)]
