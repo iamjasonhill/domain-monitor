@@ -68,9 +68,10 @@ class PropertyConversionLinkScanner
     {
         $dom = new DOMDocument;
 
-        libxml_use_internal_errors(true);
+        $previousInternalErrors = libxml_use_internal_errors(true);
         $dom->loadHTML($html);
         libxml_clear_errors();
+        libxml_use_internal_errors($previousInternalErrors);
 
         $xpath = new DOMXPath($dom);
         $nodes = $xpath->query('//nav//a[@href] | //header//a[@href]');
