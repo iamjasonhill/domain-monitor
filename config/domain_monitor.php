@@ -3,6 +3,47 @@
 return [
     /*
     |--------------------------------------------------------------------------
+    | Fleet Focus
+    |--------------------------------------------------------------------------
+    |
+    | Manual grouping for the current Fleet working set. Membership lives on
+    | the primary/canonical domain tag so it can be managed with the existing
+    | domain tag system, while property priority remains per web property.
+    |
+    */
+    'fleet_focus' => [
+        'tag_name' => env('DOMAIN_MONITOR_FLEET_FOCUS_TAG', 'fleet.live'),
+        'domains' => [
+            'allianceremovals.com.au',
+            'backloading-au.com.au',
+            'backloading-services.com.au',
+            'backloadingremovals.com.au',
+            'beauy.com.au',
+            'cartransport.au',
+            'cartransportaus.com.au',
+            'cartransportwithpersonalitems.com.au',
+            'discountbackloading.com.au',
+            'interstate-car-transport.com.au',
+            'interstate-removals.com.au',
+            'interstatecarcarriers.com.au',
+            'movemycar.com.au',
+            'mover.com.au',
+            'moveroo.com.au',
+            'movingagain.com.au',
+            'movingcars.com.au',
+            'movinginsurance.com.au',
+            'perthinterstateremovalists.com.au',
+            'removalist.net',
+            'removalsinterstate.com.au',
+            'supercheapcartransport.com.au',
+            'transportnondrivablecars.com.au',
+            'vehicle.net.au',
+            'wemove.com.au',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Domain Monitor UI Windows
     |--------------------------------------------------------------------------
     |

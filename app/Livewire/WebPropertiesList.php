@@ -4,7 +4,9 @@ namespace App\Livewire;
 
 use App\Models\WebProperty;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -12,6 +14,9 @@ use Livewire\WithPagination;
 class WebPropertiesList extends Component
 {
     use WithPagination;
+
+    #[Locked]
+    public bool $fleetFocusMode = false;
 
     #[Url(as: 'search', history: true, keep: false)]
     public string $search = '';
@@ -107,19 +112,61 @@ class WebPropertiesList extends Component
     {
         $query = $this->baseQuery();
 
+        if ($this->fleetFocusMode) {
+            $this->applyFleetFocusFilter($query);
+        }
+
         return [
             'total' => (clone $query)->count(),
             'multi_domain' => (clone $query)->has('propertyDomains', '>', 1)->count(),
             'missing_repositories' => (clone $query)->doesntHave('repositories')->count(),
             'missing_analytics' => (clone $query)->doesntHave('analyticsSources')->count(),
+            'prioritized' => (clone $query)->whereNotNull('priority')->count(),
         ];
+    }
+
+    public function updatePropertyPriority(string $propertyId, mixed $newPriority): void
+    {
+        abort_unless(auth()->check() && $this->fleetFocusMode, 403);
+
+        $priority = $newPriority;
+
+        if (is_string($priority)) {
+            $priority = trim($priority);
+            $priority = $priority === '' ? null : $priority;
+        }
+
+        Validator::make(
+            ['priority' => $priority],
+            ['priority' => 'nullable|integer|min:0|max:255']
+        )->validate();
+
+        $property = WebProperty::query()
+            ->fleetFocus()
+            ->whereKey($propertyId)
+            ->first();
+
+        abort_unless($property instanceof WebProperty, 403);
+
+        $property->update(['priority' => is_null($priority) ? null : (int) $priority]);
+
+        $this->resetPage();
     }
 
     public function render(): \Illuminate\View\View
     {
-        $properties = $this->filteredQuery()
-            ->orderBy('name')
-            ->paginate(20);
+        $query = $this->filteredQuery();
+
+        if ($this->fleetFocusMode) {
+            $query
+                ->orderByRaw('CASE WHEN priority IS NULL THEN 1 ELSE 0 END')
+                ->orderByDesc('priority')
+                ->orderBy('name');
+        } else {
+            $query->orderBy('name');
+        }
+
+        $properties = $query->paginate(20);
 
         return view('livewire.web-properties-list', [
             'properties' => $properties,
@@ -132,6 +179,10 @@ class WebPropertiesList extends Component
     private function filteredQuery(): Builder
     {
         $query = $this->baseQuery();
+
+        if ($this->fleetFocusMode) {
+            $this->applyFleetFocusFilter($query);
+        }
 
         if ($this->filterStatus) {
             $query->where('status', $this->filterStatus);
@@ -195,6 +246,20 @@ class WebPropertiesList extends Component
         }
 
         return $query;
+    }
+
+    /**
+     * @param  Builder<WebProperty>  $query
+     */
+    private function applyFleetFocusFilter(Builder $query): void
+    {
+        $tagName = (string) config('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+
+        if ($tagName === '') {
+            return;
+        }
+
+        $query->fleetFocus();
     }
 
     /**

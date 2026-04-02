@@ -6,6 +6,7 @@ use App\Models\AnalyticsInstallAudit;
 use App\Models\Domain;
 use App\Models\DomainAlert;
 use App\Models\DomainCheck;
+use App\Models\DomainTag;
 use App\Models\PropertyAnalyticsSource;
 use App\Models\PropertyRepository;
 use App\Models\SearchConsoleIssueSnapshot;
@@ -36,6 +37,15 @@ class WebPropertyApiTest extends TestCase
             'hosting_provider' => 'Vercel',
         ]);
 
+        $fleetTag = DomainTag::firstOrCreate(
+            ['name' => 'fleet.live'],
+            [
+                'priority' => 95,
+                'color' => '#2563EB',
+                'description' => 'Fleet-managed live domains.',
+            ]
+        );
+
         $property = WebProperty::factory()->create([
             'slug' => 'moveroo-website',
             'name' => 'Moveroo Website',
@@ -59,6 +69,8 @@ class WebPropertyApiTest extends TestCase
             'usage_type' => 'redirect',
             'is_canonical' => false,
         ]);
+
+        $primaryDomain->tags()->syncWithoutDetaching([$fleetTag->id]);
 
         PropertyRepository::create([
             'web_property_id' => $property->id,
@@ -163,6 +175,8 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.control_state', 'controlled')
             ->assertJsonPath('web_properties.0.execution_surface', 'astro_repo_controlled')
             ->assertJsonPath('web_properties.0.fleet_managed', true)
+            ->assertJsonPath('web_properties.0.is_fleet_focus', true)
+            ->assertJsonPath('web_properties.0.fleet_priority', $property->priority)
             ->assertJsonPath('web_properties.0.controller_repo', 'moveroo/moveroo-website-astro')
             ->assertJsonPath('web_properties.0.controller_repo_url', 'https://github.com/moveroo/moveroo-website-astro')
             ->assertJsonPath('web_properties.0.controller_local_path', '/Users/jasonhill/Projects/websites/moveroo-website-astro')
@@ -176,6 +190,248 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.api_snapshot_count', 0)
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.latest_api_captured_at', null)
             ->assertJsonPath('web_properties.0.health_summary.active_alerts_count', 1);
+    }
+
+    public function test_web_properties_summary_can_filter_to_fleet_focus_properties(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        config()->set('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+
+        $fleetTag = DomainTag::firstOrCreate(
+            ['name' => 'fleet.live'],
+            [
+                'priority' => 95,
+                'color' => '#2563EB',
+            ]
+        );
+
+        $fleetDomain = Domain::factory()->create([
+            'domain' => 'fleet-focus.example.com',
+            'is_active' => true,
+        ]);
+
+        $otherDomain = Domain::factory()->create([
+            'domain' => 'non-fleet.example.com',
+            'is_active' => true,
+        ]);
+
+        $fleetProperty = WebProperty::factory()->create([
+            'slug' => 'fleet-focus-site',
+            'name' => 'Fleet Focus Site',
+            'primary_domain_id' => $fleetDomain->id,
+            'priority' => 42,
+        ]);
+
+        $otherProperty = WebProperty::factory()->create([
+            'slug' => 'non-fleet-site',
+            'name' => 'Non Fleet Site',
+            'primary_domain_id' => $otherDomain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $fleetProperty->id,
+            'domain_id' => $fleetDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $otherProperty->id,
+            'domain_id' => $otherDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        $fleetDomain->tags()->syncWithoutDetaching([$fleetTag->id]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/web-properties-summary?fleet_focus=1');
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(1, 'web_properties')
+            ->assertJsonPath('web_properties.0.slug', 'fleet-focus-site')
+            ->assertJsonPath('web_properties.0.is_fleet_focus', true)
+            ->assertJsonPath('web_properties.0.fleet_priority', 42);
+
+        $indexResponse = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/web-properties?fleet_focus=1');
+
+        $indexResponse
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.slug', 'fleet-focus-site');
+    }
+
+    public function test_web_properties_summary_ignores_empty_fleet_focus_filter(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        config()->set('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+
+        $fleetTag = DomainTag::firstOrCreate(
+            ['name' => 'fleet.live'],
+            [
+                'priority' => 95,
+                'color' => '#2563EB',
+            ]
+        );
+
+        $fleetDomain = Domain::factory()->create([
+            'domain' => 'fleet-empty-filter.example.com',
+            'is_active' => true,
+        ]);
+
+        $otherDomain = Domain::factory()->create([
+            'domain' => 'other-empty-filter.example.com',
+            'is_active' => true,
+        ]);
+
+        $fleetProperty = WebProperty::factory()->create([
+            'slug' => 'fleet-empty-filter-site',
+            'name' => 'Fleet Empty Filter Site',
+            'primary_domain_id' => $fleetDomain->id,
+        ]);
+
+        $otherProperty = WebProperty::factory()->create([
+            'slug' => 'other-empty-filter-site',
+            'name' => 'Other Empty Filter Site',
+            'primary_domain_id' => $otherDomain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $fleetProperty->id,
+            'domain_id' => $fleetDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $otherProperty->id,
+            'domain_id' => $otherDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        $fleetDomain->tags()->syncWithoutDetaching([$fleetTag->id]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/web-properties-summary?fleet_focus=');
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(2, 'web_properties');
+    }
+
+    public function test_web_properties_summary_keeps_fleet_flag_true_for_canonical_tagged_domain_when_primary_domain_drifts(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        config()->set('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+
+        $fleetTag = DomainTag::firstOrCreate(
+            ['name' => 'fleet.live'],
+            [
+                'priority' => 95,
+                'color' => '#2563EB',
+            ]
+        );
+
+        $stalePrimaryDomain = Domain::factory()->create([
+            'domain' => 'stale-primary.example.com',
+            'is_active' => true,
+        ]);
+
+        $canonicalDomain = Domain::factory()->create([
+            'domain' => 'canonical-fleet.example.com',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'canonical-fleet-site',
+            'name' => 'Canonical Fleet Site',
+            'primary_domain_id' => $stalePrimaryDomain->id,
+            'priority' => 21,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $stalePrimaryDomain->id,
+            'usage_type' => 'alias',
+            'is_canonical' => false,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $canonicalDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        $canonicalDomain->tags()->syncWithoutDetaching([$fleetTag->id]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/web-properties-summary?fleet_focus=1');
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(1, 'web_properties')
+            ->assertJsonPath('web_properties.0.slug', 'canonical-fleet-site')
+            ->assertJsonPath('web_properties.0.is_fleet_focus', true)
+            ->assertJsonPath('web_properties.0.fleet_priority', 21);
+    }
+
+    public function test_web_properties_summary_keeps_fleet_flag_true_when_primary_domain_tag_has_no_pivot_link(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        config()->set('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+
+        $fleetTag = DomainTag::firstOrCreate(
+            ['name' => 'fleet.live'],
+            [
+                'priority' => 95,
+                'color' => '#2563EB',
+            ]
+        );
+
+        $primaryDomain = Domain::factory()->create([
+            'domain' => 'primary-only-fleet.example.com',
+            'is_active' => true,
+        ]);
+
+        $canonicalDomain = Domain::factory()->create([
+            'domain' => 'canonical-no-tag.example.com',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'primary-only-fleet-site',
+            'name' => 'Primary Only Fleet Site',
+            'primary_domain_id' => $primaryDomain->id,
+            'priority' => 17,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $canonicalDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        $primaryDomain->tags()->syncWithoutDetaching([$fleetTag->id]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/web-properties-summary?fleet_focus=1');
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(1, 'web_properties')
+            ->assertJsonPath('web_properties.0.slug', 'primary-only-fleet-site')
+            ->assertJsonPath('web_properties.0.is_fleet_focus', true)
+            ->assertJsonPath('web_properties.0.fleet_priority', 17);
     }
 
     public function test_web_properties_summary_prefers_any_controller_repo_with_local_path(): void

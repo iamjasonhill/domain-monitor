@@ -9,6 +9,12 @@
                     Review grouped sites, alias domains, repositories, and analytics bindings before we refine the registry further.
                 </p>
             </div>
+            <a
+                href="{{ route('web-properties.fleet') }}"
+                class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700"
+            >
+                Fleet View
+            </a>
         </div>
     </x-slot>
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -373,6 +374,70 @@ class WebProperty extends Model
             ->all();
     }
 
+    public function isFleetFocus(): bool
+    {
+        $tagName = (string) config('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+        if ($tagName === '') {
+            return false;
+        }
+
+        $primaryDomain = $this->relationLoaded('primaryDomain')
+            ? $this->primaryDomain
+            : $this->primaryDomain()->with('tags')->first();
+
+        if ($this->domainHasFleetFocusTag($primaryDomain, $tagName)) {
+            return true;
+        }
+
+        return $this->orderedDomainLinks()->contains(function (WebPropertyDomain $link) use ($tagName): bool {
+            return $link->is_canonical
+                && $this->domainHasFleetFocusTag($link->domain, $tagName);
+        });
+    }
+
+    /**
+     * @param  Builder<WebProperty>  $query
+     */
+    public function scopeFleetFocus(Builder $query, bool $value = true): void
+    {
+        $tagName = (string) config('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+
+        if ($tagName === '') {
+            return;
+        }
+
+        $callback = function (Builder $builder) use ($tagName): void {
+            $builder
+                ->whereHas('primaryDomain.tags', fn (Builder $tagQuery) => $tagQuery->where('name', $tagName))
+                ->orWhereHas('propertyDomains', function (Builder $linkQuery) use ($tagName): void {
+                    $linkQuery
+                        ->where('is_canonical', true)
+                        ->whereHas('domain.tags', fn (Builder $tagQuery) => $tagQuery->where('name', $tagName));
+                });
+        };
+
+        if ($value) {
+            $query->where($callback);
+
+            return;
+        }
+
+        $query->whereNot($callback);
+    }
+
+    private function domainHasFleetFocusTag(?Domain $domain, string $tagName): bool
+    {
+        if (! $domain instanceof Domain) {
+            return false;
+        }
+
+        $tags = $domain->relationLoaded('tags')
+            ? $domain->tags
+            : $domain->tags()->get();
+
+        return $tags->contains(fn (DomainTag $tag): bool => $tag->name === $tagName);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -480,6 +545,9 @@ class WebProperty extends Model
             'target_platform' => $this->target_platform,
             'owner' => $this->owner,
             'priority' => $this->priority,
+            // Fleet consumers use a stable, explicitly named alias for manual work ordering.
+            'fleet_priority' => $this->priority,
+            'is_fleet_focus' => $this->isFleetFocus(),
             'notes' => $this->notes,
             'domains' => $this->domainSummaries(),
             'repositories' => $this->repositorySummaries(),

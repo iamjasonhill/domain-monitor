@@ -23,12 +23,15 @@ class WebPropertyController extends Controller
         $validated = $request->validate([
             'status' => 'nullable|in:active,planned,paused,archived',
             'property_type' => 'nullable|string|max:50',
+            'fleet_focus' => 'nullable|boolean',
             'per_page' => 'nullable|integer|min:1',
         ]);
 
         $perPage = min((int) ($validated['per_page'] ?? self::DEFAULT_PER_PAGE), self::MAX_PER_PAGE);
 
         $query = $this->baseQuery()->orderBy('name');
+
+        $this->applyFleetFocusFilter($query, $validated);
 
         if (isset($validated['status'])) {
             $query->where('status', $validated['status']);
@@ -56,9 +59,16 @@ class WebPropertyController extends Controller
         return new WebPropertyResource($property);
     }
 
-    public function summary(): JsonResponse
+    public function summary(Request $request): JsonResponse
     {
-        $properties = $this->baseQuery()->orderBy('name')->get();
+        $validated = $request->validate([
+            'fleet_focus' => 'nullable|boolean',
+        ]);
+
+        $query = $this->baseQuery()->orderBy('name');
+        $this->applyFleetFocusFilter($query, $validated);
+
+        $properties = $query->get();
 
         return response()->json([
             'source_system' => 'domain-monitor',
@@ -116,7 +126,7 @@ class WebPropertyController extends Controller
                     ->where('capture_method', '!=', 'gsc_drilldown_zip'),
             ])
             ->with([
-                'primaryDomain',
+                'primaryDomain.tags',
                 'repositories',
                 'analyticsSources',
                 'analyticsSources.latestInstallAudit',
@@ -137,5 +147,34 @@ class WebPropertyController extends Controller
         return $this->baseQuery()
             ->where('slug', $slug)
             ->first();
+    }
+
+    /**
+     * @param  Builder<WebProperty>  $query
+     * @param  array<string, mixed>  $validated
+     */
+    private function applyFleetFocusFilter(Builder $query, array $validated): void
+    {
+        if (! array_key_exists('fleet_focus', $validated)) {
+            return;
+        }
+
+        if ($validated['fleet_focus'] === null) {
+            return;
+        }
+
+        $tagName = (string) config('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+
+        if ($tagName === '') {
+            return;
+        }
+
+        if ((bool) $validated['fleet_focus']) {
+            $query->fleetFocus();
+
+            return;
+        }
+
+        $query->fleetFocus(false);
     }
 }
