@@ -364,12 +364,16 @@ class BootstrapWebProperties extends Command
 
         $normalized = preg_replace('/^git\\+/', '', $normalized) ?? $normalized;
 
-        if (preg_match('/^git@github\\.com:(.+?)(?:\\.git)?$/', $normalized, $matches)) {
-            return 'https://github.com/'.$matches[1];
+        if (preg_match('/^[^@\\s]+@([^:\\/\\s]+):(.+?)(?:\\.git)?$/', $normalized, $matches)) {
+            return sprintf('https://%s/%s', $matches[1], $matches[2]);
         }
 
         if (preg_match('/^github:(.+?)(?:\\.git)?$/', $normalized, $matches)) {
             return 'https://github.com/'.$matches[1];
+        }
+
+        if (preg_match('/^ssh:\\/\\/[^@\\s]+@([^\\/\\s:]+)(?::\\d+)?\\/(.+?)(?:\\.git)?$/', $normalized, $matches)) {
+            return sprintf('https://%s/%s', $matches[1], $matches[2]);
         }
 
         if (preg_match('/^https?:\\/\\//', $normalized) !== 1) {
@@ -381,18 +385,9 @@ class BootstrapWebProperties extends Command
             return null;
         }
 
-        if (! $this->isPublicRepositoryHost($parts['host'])) {
-            return null;
-        }
-
         $path = preg_replace('/\\.git$/', '', $parts['path']) ?? $parts['path'];
 
         return sprintf('%s://%s%s', $parts['scheme'], $parts['host'], $path);
-    }
-
-    private function isPublicRepositoryHost(string $host): bool
-    {
-        return in_array($host, ['github.com', 'gitlab.com', 'bitbucket.org'], true);
     }
 
     private function repositoryProviderForUrl(string $repositoryUrl): string
