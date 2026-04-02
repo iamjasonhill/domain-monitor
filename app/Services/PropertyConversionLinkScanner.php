@@ -7,7 +7,6 @@ use DOMDocument;
 use DOMElement;
 use DOMXPath;
 use Illuminate\Http\Client\Factory as HttpFactory;
-use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Str;
 
 class PropertyConversionLinkScanner
@@ -46,8 +45,11 @@ class PropertyConversionLinkScanner
             ])
             ->get($homepageUrl);
 
-        if ($response->failed()) {
-            throw new RequestException($response);
+        if (! $response->successful()) {
+            throw new \RuntimeException(sprintf(
+                'Homepage URL returned non-success HTTP status [%d].',
+                $response->status()
+            ));
         }
 
         $anchors = $this->extractAnchors($response->body(), $homepageUrl);

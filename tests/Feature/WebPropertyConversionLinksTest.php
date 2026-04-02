@@ -340,6 +340,55 @@ class WebPropertyConversionLinksTest extends TestCase
         $this->assertNull($property->current_vehicle_quote_url);
     }
 
+    public function test_fleet_scan_conversion_links_does_not_clear_existing_values_when_homepage_redirects(): void
+    {
+        config()->set('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+
+        $tag = DomainTag::firstOrCreate(
+            ['name' => 'fleet.live'],
+            [
+                'priority' => 95,
+                'color' => '#2563EB',
+            ]
+        );
+
+        $domain = Domain::factory()->create([
+            'domain' => 'moveroo.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'moveroo-website',
+            'name' => 'Moveroo Website',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://moveroo.com.au',
+            'current_household_quote_url' => 'https://removalists.moveroo.com.au/quote/household',
+            'current_household_booking_url' => 'https://removalists.moveroo.com.au/booking/create',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        $domain->tags()->syncWithoutDetaching([$tag->id]);
+
+        Http::fake([
+            'https://moveroo.com.au' => Http::response('', 302, [
+                'Location' => 'https://www.moveroo.com.au',
+            ]),
+        ]);
+
+        $this->assertSame(1, Artisan::call('fleet:scan-conversion-links', ['propertySlug' => 'moveroo-website']));
+
+        $property->refresh();
+
+        $this->assertSame('https://removalists.moveroo.com.au/quote/household', $property->current_household_quote_url);
+        $this->assertSame('https://removalists.moveroo.com.au/booking/create', $property->current_household_booking_url);
+    }
+
     public function test_fleet_scan_conversion_links_does_not_treat_facebook_as_a_booking_link(): void
     {
         config()->set('domain_monitor.fleet_focus.tag_name', 'fleet.live');
