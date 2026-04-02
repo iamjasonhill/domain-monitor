@@ -256,6 +256,10 @@ class WebProperty extends Model
             'deployment_branch' => $repository->deployment_branch,
             'framework' => $repository->framework,
             'is_primary' => $repository->is_primary,
+            'is_controller' => $repository->is_controller,
+            'deployment_provider' => $repository->deployment_provider,
+            'deployment_project_name' => $repository->deployment_project_name,
+            'deployment_project_id' => $repository->deployment_project_id,
             'notes' => $repository->notes,
         ])->values()->all();
     }
@@ -264,8 +268,17 @@ class WebProperty extends Model
     {
         $repositories = $this->relationLoaded('repositories') ? $this->repositories : $this->repositories()->get();
         $orderedRepositories = $repositories
+            ->sortByDesc(fn (PropertyRepository $repository) => $repository->is_controller)
             ->sortByDesc(fn (PropertyRepository $repository) => $repository->is_primary)
             ->values();
+
+        $explicitController = $orderedRepositories->first(
+            fn (PropertyRepository $repository) => $repository->is_controller
+        );
+
+        if ($explicitController instanceof PropertyRepository) {
+            return $explicitController;
+        }
 
         return $orderedRepositories->first(
             fn (PropertyRepository $repository) => $this->repositoryHasControllerPath($repository)
@@ -277,21 +290,26 @@ class WebProperty extends Model
      *   control_state:string,
      *   execution_surface:string|null,
      *   fleet_managed:bool,
-     *   controller_repo:string|null
+     *   controller_repo:string|null,
+     *   controller_repo_url:string|null,
+     *   controller_local_path:string|null,
+     *   deployment_provider:string|null,
+     *   deployment_project_name:string|null,
+     *   deployment_project_id:string|null
      * }
      */
     public function executionReadinessSummary(): array
     {
         $eligibility = $this->coverageEligibility();
         $controllerRepository = $this->controllerRepository();
-        $controllerRepo = $controllerRepository?->repo_name;
+        $controllerRepositorySummary = $this->controllerRepositorySummary($controllerRepository);
 
         if (! $eligibility['eligible']) {
             return [
                 'control_state' => 'not_applicable',
                 'execution_surface' => null,
                 'fleet_managed' => false,
-                'controller_repo' => $controllerRepo,
+                ...$controllerRepositorySummary,
             ];
         }
 
@@ -300,7 +318,7 @@ class WebProperty extends Model
                 'control_state' => 'uncontrolled',
                 'execution_surface' => null,
                 'fleet_managed' => false,
-                'controller_repo' => $controllerRepo,
+                ...$controllerRepositorySummary,
             ];
         }
 
@@ -313,7 +331,7 @@ class WebProperty extends Model
                 'fleet_wordpress_controlled',
                 'astro_repo_controlled',
             ], true),
-            'controller_repo' => $controllerRepo,
+            ...$controllerRepositorySummary,
         ];
     }
 
@@ -473,6 +491,11 @@ class WebProperty extends Model
             'execution_surface' => $executionReadiness['execution_surface'],
             'fleet_managed' => $executionReadiness['fleet_managed'],
             'controller_repo' => $executionReadiness['controller_repo'],
+            'controller_repo_url' => $executionReadiness['controller_repo_url'],
+            'controller_local_path' => $executionReadiness['controller_local_path'],
+            'deployment_provider' => $executionReadiness['deployment_provider'],
+            'deployment_project_name' => $executionReadiness['deployment_project_name'],
+            'deployment_project_id' => $executionReadiness['deployment_project_id'],
             'gsc_evidence_summary' => $this->gscEvidenceSummary(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
@@ -1070,6 +1093,28 @@ class WebProperty extends Model
     private function repositoryHasControllerPath(PropertyRepository $repository): bool
     {
         return is_string($repository->local_path) && trim($repository->local_path) !== '';
+    }
+
+    /**
+     * @return array{
+     *   controller_repo:string|null,
+     *   controller_repo_url:string|null,
+     *   controller_local_path:string|null,
+     *   deployment_provider:string|null,
+     *   deployment_project_name:string|null,
+     *   deployment_project_id:string|null
+     * }
+     */
+    private function controllerRepositorySummary(?PropertyRepository $repository): array
+    {
+        return [
+            'controller_repo' => $repository?->repo_name,
+            'controller_repo_url' => $repository?->repo_url,
+            'controller_local_path' => $repository?->local_path,
+            'deployment_provider' => $repository?->deployment_provider,
+            'deployment_project_name' => $repository?->deployment_project_name,
+            'deployment_project_id' => $repository?->deployment_project_id,
+        ];
     }
 
     private function executionSurfaceForRepository(PropertyRepository $repository): string

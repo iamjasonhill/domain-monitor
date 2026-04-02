@@ -241,11 +241,16 @@ class DetectedIssueApiTest extends TestCase
 
         PropertyRepository::create([
             'web_property_id' => $headersProperty->id,
-            'repo_name' => 'headers-issue-site',
-            'repo_provider' => 'local_only',
+            'repo_name' => 'moveroo/headers-issue-site',
+            'repo_provider' => 'github',
+            'repo_url' => 'https://github.com/moveroo/headers-issue-site',
             'local_path' => '/Users/jasonhill/Projects/websites/headers-issue-site',
             'framework' => 'Astro',
             'is_primary' => true,
+            'is_controller' => true,
+            'deployment_provider' => 'vercel',
+            'deployment_project_name' => 'headers-issue-site',
+            'deployment_project_id' => 'prj_headers123',
         ]);
 
         DomainCheck::factory()->create([
@@ -297,6 +302,7 @@ class DetectedIssueApiTest extends TestCase
         $this->assertSame('fleet_wordpress_controlled', $redirectIssue['execution_surface']);
         $this->assertTrue($redirectIssue['fleet_managed']);
         $this->assertSame('_wp-house', $redirectIssue['controller_repo']);
+        $this->assertNull($redirectIssue['controller_repo_url']);
         $this->assertSame(['Search Console reports page with redirect (7 URLs)'], $redirectIssue['evidence']['primary_reasons']);
         $this->assertSame(
             ['https://redirect-issue.example.com/', 'http://redirect-issue.example.com/'],
@@ -333,7 +339,8 @@ class DetectedIssueApiTest extends TestCase
         $this->assertSame('controlled', $headersIssue['control_state']);
         $this->assertSame('astro_repo_controlled', $headersIssue['execution_surface']);
         $this->assertTrue($headersIssue['fleet_managed']);
-        $this->assertSame('headers-issue-site', $headersIssue['controller_repo']);
+        $this->assertSame('moveroo/headers-issue-site', $headersIssue['controller_repo']);
+        $this->assertSame('https://github.com/moveroo/headers-issue-site', $headersIssue['controller_repo_url']);
 
         $detailResponse = $this->withHeaders([
             'Authorization' => 'Bearer test-api-key',
@@ -519,5 +526,78 @@ class DetectedIssueApiTest extends TestCase
         $this->assertNull($issue['execution_surface']);
         $this->assertFalse($issue['fleet_managed']);
         $this->assertSame('_wp-house', $issue['controller_repo']);
+        $this->assertNull($issue['controller_repo_url']);
+    }
+
+    public function test_issues_endpoint_prefers_explicit_controller_repo_and_requires_its_local_path(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'cartransport.movingagain.com.au',
+            'is_active' => true,
+            'platform' => 'Astro',
+            'hosting_provider' => 'Vercel',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'ma-car-transport',
+            'name' => 'Moving Again Car Transport',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => 'cartransport-new-astro',
+            'repo_provider' => 'github',
+            'repo_url' => 'https://github.com/iamjasonhill/cartransport-astro',
+            'local_path' => '/Users/jasonhill/Projects/websites/cartransport-new-astro',
+            'framework' => 'Astro',
+            'is_primary' => true,
+            'deployment_provider' => 'vercel',
+            'deployment_project_id' => 'prj_old123',
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => 'moveroo/ma-catrans-program',
+            'repo_provider' => 'github',
+            'repo_url' => 'https://github.com/moveroo/ma-catrans-program',
+            'local_path' => null,
+            'framework' => 'Astro',
+            'is_controller' => true,
+            'deployment_provider' => 'vercel',
+            'deployment_project_name' => 'ma-catrans-program',
+        ]);
+
+        DomainCheck::factory()->create([
+            'domain_id' => $domain->id,
+            'check_type' => 'security_headers',
+            'status' => 'warn',
+        ]);
+
+        /** @var array<int, array<string, mixed>> $issues */
+        $issues = $this->withHeaders(['Authorization' => 'Bearer test-api-key'])
+            ->getJson('/api/issues')
+            ->assertOk()
+            ->json('issues');
+
+        $issue = collect($issues)->firstWhere('property_slug', 'ma-car-transport');
+
+        $this->assertNotNull($issue);
+        $this->assertSame('moveroo/ma-catrans-program', $issue['controller_repo']);
+        $this->assertSame('https://github.com/moveroo/ma-catrans-program', $issue['controller_repo_url']);
+        $this->assertSame('uncontrolled', $issue['control_state']);
+        $this->assertNull($issue['execution_surface']);
+        $this->assertFalse($issue['fleet_managed']);
     }
 }

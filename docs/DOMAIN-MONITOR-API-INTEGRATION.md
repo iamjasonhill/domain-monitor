@@ -56,6 +56,18 @@ Purpose:
 - authoritative property identity
 - linked domains, repositories, analytics sources
 - current health summary
+- controller authority and deployment-readiness metadata for managed surfaces
+
+Selected property fields now include:
+- `control_state`
+- `execution_surface`
+- `fleet_managed`
+- `controller_repo`
+- `controller_repo_url`
+- `controller_local_path`
+- `deployment_provider`
+- `deployment_project_name`
+- `deployment_project_id`
 
 ### Normalized Issues
 
@@ -82,6 +94,11 @@ Core fields:
 - `detected_at`
 - `rollout_scope`
 - `control_id`
+- `control_state`
+- `execution_surface`
+- `fleet_managed`
+- `controller_repo`
+- `controller_repo_url`
 - `platform_profile`
 - `host_profile`
 - `control_profile`

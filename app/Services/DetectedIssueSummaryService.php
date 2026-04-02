@@ -126,6 +126,7 @@ class DetectedIssueSummaryService
                 'execution_surface' => is_string($item['execution_surface'] ?? null) ? $item['execution_surface'] : null,
                 'fleet_managed' => (bool) ($item['fleet_managed'] ?? false),
                 'controller_repo' => is_string($item['controller_repo'] ?? null) ? $item['controller_repo'] : null,
+                'controller_repo_url' => is_string($item['controller_repo_url'] ?? null) ? $item['controller_repo_url'] : null,
                 'evidence' => [
                     'primary_reasons' => [$issueEntry['reason']],
                     'secondary_reasons' => array_values(array_filter(

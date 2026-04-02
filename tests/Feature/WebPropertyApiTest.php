@@ -62,11 +62,16 @@ class WebPropertyApiTest extends TestCase
 
         PropertyRepository::create([
             'web_property_id' => $property->id,
-            'repo_name' => 'moveroo-website-astro',
-            'repo_provider' => 'local_only',
+            'repo_name' => 'moveroo/moveroo-website-astro',
+            'repo_provider' => 'github',
+            'repo_url' => 'https://github.com/moveroo/moveroo-website-astro',
             'local_path' => '/Users/jasonhill/Projects/websites/moveroo-website-astro',
             'framework' => 'Astro',
             'is_primary' => true,
+            'is_controller' => true,
+            'deployment_provider' => 'vercel',
+            'deployment_project_name' => 'moveroo-website',
+            'deployment_project_id' => 'prj_moveroo123',
         ]);
 
         PropertyAnalyticsSource::create([
@@ -149,7 +154,7 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('contract_version', 1)
             ->assertJsonPath('web_properties.0.slug', 'moveroo-website')
             ->assertJsonPath('web_properties.0.primary_domain', 'moveroo.com.au')
-            ->assertJsonPath('web_properties.0.repositories.0.repo_name', 'moveroo-website-astro')
+            ->assertJsonPath('web_properties.0.repositories.0.repo_name', 'moveroo/moveroo-website-astro')
             ->assertJsonPath('web_properties.0.analytics_sources.0.external_id', '6')
             ->assertJsonPath('web_properties.0.analytics_sources.0.install_audit.install_verdict', 'installed_match')
             ->assertJsonPath('web_properties.0.health_summary.checks.uptime', 'ok')
@@ -158,7 +163,12 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.control_state', 'controlled')
             ->assertJsonPath('web_properties.0.execution_surface', 'astro_repo_controlled')
             ->assertJsonPath('web_properties.0.fleet_managed', true)
-            ->assertJsonPath('web_properties.0.controller_repo', 'moveroo-website-astro')
+            ->assertJsonPath('web_properties.0.controller_repo', 'moveroo/moveroo-website-astro')
+            ->assertJsonPath('web_properties.0.controller_repo_url', 'https://github.com/moveroo/moveroo-website-astro')
+            ->assertJsonPath('web_properties.0.controller_local_path', '/Users/jasonhill/Projects/websites/moveroo-website-astro')
+            ->assertJsonPath('web_properties.0.deployment_provider', 'vercel')
+            ->assertJsonPath('web_properties.0.deployment_project_name', 'moveroo-website')
+            ->assertJsonPath('web_properties.0.deployment_project_id', 'prj_moveroo123')
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.has_issue_detail', false)
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.issue_detail_snapshot_count', 0)
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.latest_issue_detail_captured_at', null)
@@ -222,6 +232,71 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.execution_surface', 'fleet_wordpress_controlled')
             ->assertJsonPath('web_properties.0.fleet_managed', true)
             ->assertJsonPath('web_properties.0.controller_repo', '_wp-house');
+    }
+
+    public function test_web_properties_summary_prefers_explicit_controller_repo_for_astro_surface(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'cartransport.movingagain.com.au',
+            'platform' => 'Astro',
+            'hosting_provider' => 'Vercel',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'cartransport-movingagain-com-au',
+            'name' => 'Car Transport Moving Again',
+            'property_type' => 'marketing_site',
+            'status' => 'active',
+            'platform' => 'Astro',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => 'cartransport-new-astro',
+            'repo_provider' => 'github',
+            'repo_url' => 'https://github.com/iamjasonhill/cartransport-astro',
+            'local_path' => '/Users/jasonhill/Projects/websites/cartransport-new-astro',
+            'framework' => 'Astro',
+            'is_primary' => true,
+            'deployment_provider' => 'vercel',
+            'deployment_project_id' => 'prj_gbL0tfky9oasyIcDr1GWj8eYOyeR',
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => 'moveroo/ma-catrans-program',
+            'repo_provider' => 'github',
+            'repo_url' => 'https://github.com/moveroo/ma-catrans-program',
+            'local_path' => '/Users/jasonhill/Projects/websites/ma-car-transport-astro',
+            'framework' => 'Astro',
+            'is_primary' => false,
+            'is_controller' => true,
+            'deployment_provider' => 'vercel',
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/web-properties-summary');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('web_properties.0.slug', 'cartransport-movingagain-com-au')
+            ->assertJsonPath('web_properties.0.controller_repo', 'moveroo/ma-catrans-program')
+            ->assertJsonPath('web_properties.0.controller_repo_url', 'https://github.com/moveroo/ma-catrans-program')
+            ->assertJsonPath('web_properties.0.controller_local_path', '/Users/jasonhill/Projects/websites/ma-car-transport-astro')
+            ->assertJsonPath('web_properties.0.deployment_provider', 'vercel')
+            ->assertJsonPath('web_properties.0.execution_surface', 'astro_repo_controlled')
+            ->assertJsonPath('web_properties.0.fleet_managed', true);
     }
 
     public function test_web_properties_summary_surfaces_property_level_gsc_issue_detail_coverage(): void
