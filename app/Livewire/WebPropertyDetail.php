@@ -118,6 +118,8 @@ class WebPropertyDetail extends Component
             'targetVehicleBookingUrl' => $this->normalizeTargetUrl($this->targetVehicleBookingUrl),
         ];
 
+        $this->resetValidation();
+
         $validated = Validator::make(
             $normalizedTargets,
             [

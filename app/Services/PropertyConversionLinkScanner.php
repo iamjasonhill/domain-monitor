@@ -39,6 +39,7 @@ class PropertyConversionLinkScanner
 
         $response = $this->http
             ->timeout(15)
+            ->withoutRedirecting()
             ->withHeaders([
                 'Accept' => 'text/html,application/xhtml+xml',
                 'User-Agent' => 'DomainMonitorConversionLinkScanner/1.0 (+https://monitor.again.com.au)',
