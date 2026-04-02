@@ -437,7 +437,10 @@ class BootstrapWebProperties extends Command
             return true;
         }
 
+        $fillableKeys = (new PropertyRepository)->getFillable();
+
         $changedAttributes = collect($repository)
+            ->only($fillableKeys)
             ->filter(fn ($value, $key) => $existingRepository->getAttribute($key) !== $value)
             ->all();
 

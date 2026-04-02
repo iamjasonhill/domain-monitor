@@ -8,8 +8,8 @@ use App\Models\PropertyRepository;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
-use Illuminate\Testing\PendingCommand;
 use Tests\TestCase;
 
 class BootstrapWebPropertiesCommandTest extends TestCase
@@ -68,9 +68,7 @@ class BootstrapWebPropertiesCommandTest extends TestCase
             'dns_config_name' => 'Parked',
         ]);
 
-        $command = $this->artisan('web-properties:bootstrap');
-        $this->assertInstanceOf(PendingCommand::class, $command);
-        $command->assertSuccessful();
+        $this->assertSame(0, Artisan::call('web-properties:bootstrap'));
 
         $this->assertDatabaseCount('web_properties', 2);
         $this->assertDatabaseCount('web_property_domains', 2);
@@ -154,9 +152,7 @@ class BootstrapWebPropertiesCommandTest extends TestCase
             'is_controller' => false,
         ]);
 
-        $command = $this->artisan('web-properties:bootstrap', ['--refresh-links' => true]);
-        $this->assertInstanceOf(PendingCommand::class, $command);
-        $command->assertSuccessful();
+        $this->assertSame(0, Artisan::call('web-properties:bootstrap', ['--refresh-links' => true]));
 
         $repository = PropertyRepository::query()
             ->where('web_property_id', $property->id)
@@ -167,5 +163,70 @@ class BootstrapWebPropertiesCommandTest extends TestCase
         $this->assertSame('/Users/jasonhill/Projects/websites/ma-car-transport-astro', $repository->local_path);
         $this->assertTrue($repository->is_controller);
         $this->assertSame('vercel', $repository->deployment_provider);
+    }
+
+    public function test_refresh_links_does_not_count_non_fillable_repository_keys_as_changes(): void
+    {
+        $websitesRoot = storage_path('framework/testing/websites');
+        File::deleteDirectory($websitesRoot);
+        File::ensureDirectoryExists($websitesRoot.'/example-astro');
+        $packageJson = json_encode([
+            'dependencies' => [
+                'astro' => '^5.0.0',
+            ],
+        ], JSON_PRETTY_PRINT);
+        $this->assertIsString($packageJson);
+        File::put($websitesRoot.'/example-astro/package.json', $packageJson);
+
+        config()->set('domain_monitor.web_property_bootstrap', [
+            'websites_root' => $websitesRoot,
+            'overrides' => [],
+        ]);
+
+        $domain = Domain::factory()->create([
+            'domain' => 'example-astro.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'example-astro-com-au',
+            'name' => 'Example Astro',
+            'property_type' => 'marketing_site',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => 'example-astro',
+            'repo_provider' => 'local_only',
+            'local_path' => $websitesRoot.'/example-astro',
+            'framework' => 'Astro',
+            'is_primary' => true,
+            'is_controller' => false,
+        ]);
+
+        $command = $this->app->make(\App\Console\Commands\BootstrapWebProperties::class);
+        $method = new \ReflectionMethod($command, 'syncRepositoryLink');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($command, $property, [
+            'repo_name' => 'example-astro',
+            'repo_provider' => 'local_only',
+            'local_path' => $websitesRoot.'/example-astro',
+            'framework' => 'Astro',
+            'is_primary' => true,
+            'is_controller' => false,
+            'match_key' => 'example-astro',
+        ], false);
+
+        $this->assertFalse($result);
     }
 }
