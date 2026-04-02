@@ -443,6 +443,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'is_active' => true,
             'platform' => 'Astro',
             'hosting_provider' => 'Vercel',
+            'expires_at' => null,
         ]);
 
         $blockedProperty = WebProperty::factory()->create([
@@ -503,6 +504,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'is_active' => true,
             'platform' => 'Astro',
             'hosting_provider' => 'Vercel',
+            'expires_at' => null,
         ]);
 
         $canonicalProperty = WebProperty::factory()->create([
