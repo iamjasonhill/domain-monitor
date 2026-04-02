@@ -6,6 +6,7 @@
             $repositories = $property->repositories;
             $analyticsSources = $property->analyticsSources;
             $tags = collect($property->tagSummaries());
+            $conversionLinks = $property->conversionLinkSummary();
             $automationCoverage = $property->automationCoverageSummary();
             $automationChecks = [
                 [
@@ -164,6 +165,101 @@
                                 </span>
                             @endforeach
                         @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
+            <div class="p-6">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                        <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Conversion Links</h4>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            Current URLs are scanned from the live site navigation. Target URLs are the future state Fleet should migrate toward once the new quote and booking surfaces are ready.
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                            @if($conversionLinks['scanned_at'])
+                                Last scanned {{ \Illuminate\Support\Carbon::parse($conversionLinks['scanned_at'])->format('Y-m-d H:i') }}
+                            @else
+                                Not scanned yet
+                            @endif
+                        </div>
+                        <button
+                            type="button"
+                            wire:click="refreshCurrentConversionLinks"
+                            wire:loading.attr="disabled"
+                            wire:target="refreshCurrentConversionLinks"
+                            class="inline-flex items-center justify-center rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white"
+                        >
+                            Refresh Current Links
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                        <h5 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Current Live Links</h5>
+                        <div class="mt-4 space-y-4 text-sm">
+                            @foreach([
+                                'Household Quote' => $conversionLinks['current']['household_quote'],
+                                'Household Booking' => $conversionLinks['current']['household_booking'],
+                                'Vehicle Quote' => $conversionLinks['current']['vehicle_quote'],
+                                'Vehicle Booking' => $conversionLinks['current']['vehicle_booking'],
+                            ] as $label => $url)
+                                <div>
+                                    <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $label }}</div>
+                                    @if($url)
+                                        <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" class="mt-1 block break-all font-medium text-blue-600 hover:underline dark:text-blue-400">
+                                            {{ $url }}
+                                        </a>
+                                    @else
+                                        <div class="mt-1 text-gray-500 dark:text-gray-400">Not detected</div>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                        <div class="flex items-center justify-between gap-3">
+                            <h5 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Target Links</h5>
+                            <button
+                                type="button"
+                                wire:click="saveConversionTargets"
+                                wire:loading.attr="disabled"
+                                wire:target="saveConversionTargets"
+                                class="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                Save Targets
+                            </button>
+                        </div>
+
+                        <div class="mt-4 grid grid-cols-1 gap-4">
+                            <div>
+                                <label for="target_household_quote_url" class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Household Quote</label>
+                                <input id="target_household_quote_url" type="url" wire:model.defer="targetHouseholdQuoteUrl" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="https://..." />
+                                @error('targetHouseholdQuoteUrl') <div class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
+                            </div>
+                            <div>
+                                <label for="target_household_booking_url" class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Household Booking</label>
+                                <input id="target_household_booking_url" type="url" wire:model.defer="targetHouseholdBookingUrl" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="https://..." />
+                                @error('targetHouseholdBookingUrl') <div class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
+                            </div>
+                            <div>
+                                <label for="target_vehicle_quote_url" class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Vehicle Quote</label>
+                                <input id="target_vehicle_quote_url" type="url" wire:model.defer="targetVehicleQuoteUrl" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="https://..." />
+                                @error('targetVehicleQuoteUrl') <div class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
+                            </div>
+                            <div>
+                                <label for="target_vehicle_booking_url" class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Vehicle Booking</label>
+                                <input id="target_vehicle_booking_url" type="url" wire:model.defer="targetVehicleBookingUrl" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="https://..." />
+                                @error('targetVehicleBookingUrl') <div class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

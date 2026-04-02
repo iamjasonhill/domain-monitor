@@ -54,6 +54,12 @@ class WebPropertyApiTest extends TestCase
             'platform' => 'Astro',
             'primary_domain_id' => $primaryDomain->id,
             'production_url' => 'https://moveroo.com.au',
+            'current_household_quote_url' => 'https://removalists.moveroo.com.au/quote/household',
+            'current_household_booking_url' => 'https://removalists.moveroo.com.au/booking/create',
+            'current_vehicle_quote_url' => 'https://cars.moveroo.com.au/quote/v2',
+            'target_household_quote_url' => 'https://quote.moveroo.com.au/household',
+            'target_vehicle_quote_url' => 'https://quote.moveroo.com.au/vehicle',
+            'conversion_links_scanned_at' => now(),
         ]);
 
         WebPropertyDomain::create([
@@ -183,6 +189,12 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.deployment_provider', 'vercel')
             ->assertJsonPath('web_properties.0.deployment_project_name', 'moveroo-website')
             ->assertJsonPath('web_properties.0.deployment_project_id', 'prj_moveroo123')
+            ->assertJsonPath('web_properties.0.conversion_links.current.household_quote', 'https://removalists.moveroo.com.au/quote/household')
+            ->assertJsonPath('web_properties.0.conversion_links.current.household_booking', 'https://removalists.moveroo.com.au/booking/create')
+            ->assertJsonPath('web_properties.0.conversion_links.current.vehicle_quote', 'https://cars.moveroo.com.au/quote/v2')
+            ->assertJsonPath('web_properties.0.conversion_links.current.vehicle_booking', null)
+            ->assertJsonPath('web_properties.0.conversion_links.target.household_quote', 'https://quote.moveroo.com.au/household')
+            ->assertJsonPath('web_properties.0.conversion_links.target.vehicle_quote', 'https://quote.moveroo.com.au/vehicle')
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.has_issue_detail', false)
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.issue_detail_snapshot_count', 0)
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.latest_issue_detail_captured_at', null)

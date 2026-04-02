@@ -26,6 +26,15 @@ use Illuminate\Support\Str;
  * @property string|null $owner
  * @property int|null $priority
  * @property string|null $notes
+ * @property string|null $current_household_quote_url
+ * @property string|null $current_household_booking_url
+ * @property string|null $current_vehicle_quote_url
+ * @property string|null $current_vehicle_booking_url
+ * @property string|null $target_household_quote_url
+ * @property string|null $target_household_booking_url
+ * @property string|null $target_vehicle_quote_url
+ * @property string|null $target_vehicle_booking_url
+ * @property \Illuminate\Support\Carbon|null $conversion_links_scanned_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  *
@@ -53,12 +62,22 @@ class WebProperty extends Model
         'owner',
         'priority',
         'notes',
+        'current_household_quote_url',
+        'current_household_booking_url',
+        'current_vehicle_quote_url',
+        'current_vehicle_booking_url',
+        'target_household_quote_url',
+        'target_household_booking_url',
+        'target_vehicle_quote_url',
+        'target_vehicle_booking_url',
+        'conversion_links_scanned_at',
     ];
 
     protected function casts(): array
     {
         return [
             'priority' => 'integer',
+            'conversion_links_scanned_at' => 'datetime',
         ];
     }
 
@@ -527,6 +546,42 @@ class WebProperty extends Model
     }
 
     /**
+     * @return array{
+     *   current: array{
+     *     household_quote: string|null,
+     *     household_booking: string|null,
+     *     vehicle_quote: string|null,
+     *     vehicle_booking: string|null
+     *   },
+     *   target: array{
+     *     household_quote: string|null,
+     *     household_booking: string|null,
+     *     vehicle_quote: string|null,
+     *     vehicle_booking: string|null
+     *   },
+     *   scanned_at: string|null
+     * }
+     */
+    public function conversionLinkSummary(): array
+    {
+        return [
+            'current' => [
+                'household_quote' => $this->current_household_quote_url,
+                'household_booking' => $this->current_household_booking_url,
+                'vehicle_quote' => $this->current_vehicle_quote_url,
+                'vehicle_booking' => $this->current_vehicle_booking_url,
+            ],
+            'target' => [
+                'household_quote' => $this->target_household_quote_url,
+                'household_booking' => $this->target_household_booking_url,
+                'vehicle_quote' => $this->target_vehicle_quote_url,
+                'vehicle_booking' => $this->target_vehicle_booking_url,
+            ],
+            'scanned_at' => $this->conversion_links_scanned_at?->toIso8601String(),
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function brainSummary(): array
@@ -564,6 +619,7 @@ class WebProperty extends Model
             'deployment_provider' => $executionReadiness['deployment_provider'],
             'deployment_project_name' => $executionReadiness['deployment_project_name'],
             'deployment_project_id' => $executionReadiness['deployment_project_id'],
+            'conversion_links' => $this->conversionLinkSummary(),
             'gsc_evidence_summary' => $this->gscEvidenceSummary(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

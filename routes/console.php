@@ -4,6 +4,7 @@ use App\Models\Domain;
 use App\Models\DomainTag;
 use App\Models\WebProperty;
 use App\Services\ManualSearchConsoleEvidenceImporter;
+use App\Services\PropertyConversionLinkScanner;
 use App\Services\SearchConsoleApiBundleCollector;
 use App\Services\SearchConsoleApiBundleImporter;
 use App\Services\SearchConsoleApiEnrichmentRefresher;
@@ -98,6 +99,65 @@ Artisan::command('fleet:sync-focus-domains {--dry-run : Only report the changes 
 
     return Command::SUCCESS;
 })->purpose('Attach the configured Fleet focus tag to the current Fleet domain list.');
+
+Artisan::command('fleet:scan-conversion-links {propertySlug? : Optional web property slug} {--dry-run : Report the links without persisting them}', function (PropertyConversionLinkScanner $scanner) {
+    $propertySlug = $this->argument('propertySlug');
+    $dryRun = (bool) $this->option('dry-run');
+
+    $query = WebProperty::query()
+        ->with(['primaryDomain', 'propertyDomains.domain']);
+
+    if (is_string($propertySlug) && $propertySlug !== '') {
+        $query->where('slug', $propertySlug);
+    } else {
+        $query->fleetFocus();
+    }
+
+    $properties = $query
+        ->orderBy('name')
+        ->get();
+
+    if ($properties->isEmpty()) {
+        $this->warn('No web properties matched the conversion-link scan scope.');
+
+        return Command::INVALID;
+    }
+
+    $scanned = 0;
+    $failed = 0;
+
+    foreach ($properties as $property) {
+        try {
+            $scan = $scanner->scanForProperty($property);
+
+            if (! $dryRun) {
+                $property->forceFill($scan)->save();
+            }
+
+            $this->info(sprintf(
+                '[%s] household quote=%s | household booking=%s | vehicle quote=%s | vehicle booking=%s',
+                $property->slug,
+                $scan['current_household_quote_url'] ?? 'n/a',
+                $scan['current_household_booking_url'] ?? 'n/a',
+                $scan['current_vehicle_quote_url'] ?? 'n/a',
+                $scan['current_vehicle_booking_url'] ?? 'n/a'
+            ));
+            $scanned++;
+        } catch (\Throwable $exception) {
+            $this->warn(sprintf('[%s] scan failed: %s', $property->slug, $exception->getMessage()));
+            $failed++;
+        }
+    }
+
+    $this->line(sprintf(
+        'Conversion link scan complete. Scanned [%d], failed [%d]%s.',
+        $scanned,
+        $failed,
+        $dryRun ? ' (dry run)' : ''
+    ));
+
+    return $failed > 0 ? Command::FAILURE : Command::SUCCESS;
+})->purpose('Scan live homepage navigation for current quote and booking links on Fleet properties.');
 
 Artisan::command('analytics:import-search-console-evidence {property : Web property slug} {path : Path to the Google Search Console page indexing export ZIP} {--captured-by= : Optional captured_by value}', function (ManualSearchConsoleEvidenceImporter $importer) {
     $propertyArgument = $this->argument('property');
