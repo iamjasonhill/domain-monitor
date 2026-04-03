@@ -303,6 +303,111 @@ class DetectedIssueVerificationApiTest extends TestCase
             ->assertJsonPath('should_fix.0.secondary_reasons.0', 'Broken links need review');
     }
 
+    public function test_dashboard_priority_queue_hides_suppressed_search_console_reasons_using_issue_capture_timestamps(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $property = $this->makeSearchConsoleProperty('queue-sync.example.com', now(), 6);
+
+        DomainSeoBaseline::query()
+            ->where('web_property_id', $property->id)
+            ->update([
+                'blocked_by_robots' => 1,
+                'raw_payload' => [
+                    'issues' => [
+                        ['label' => 'Page with redirect', 'count' => 6],
+                        ['label' => 'Blocked by robots.txt', 'count' => 1],
+                    ],
+                ],
+            ]);
+
+        DomainCheck::factory()->create([
+            'domain_id' => $property->primary_domain_id,
+            'check_type' => 'security_headers',
+            'status' => 'warn',
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $property->primary_domain_id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'source_issue_label' => 'Page with redirect',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:queue-sync.example.com',
+            'captured_at' => now()->subDays(2),
+            'captured_by' => 'test',
+            'affected_url_count' => 6,
+            'sample_urls' => [
+                'https://queue-sync.example.com/',
+            ],
+            'examples' => [
+                ['url' => 'https://queue-sync.example.com/', 'last_crawled' => now()->subDays(3)->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://queue-sync.example.com/',
+                ],
+            ],
+            'raw_payload' => ['source' => 'drilldown'],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $property->primary_domain_id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'blocked_by_robots_in_indexing',
+            'source_issue_label' => 'Blocked by robots.txt',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:queue-sync.example.com',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => [
+                'https://queue-sync.example.com/wp-admin/',
+            ],
+            'examples' => [
+                ['url' => 'https://queue-sync.example.com/wp-admin/', 'last_crawled' => now()->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://queue-sync.example.com/wp-admin/',
+                ],
+            ],
+            'raw_payload' => ['source' => 'drilldown'],
+        ]);
+
+        $issueId = app(\App\Services\DetectedIssueIdentityService::class)
+            ->makeIssueId($property->primary_domain_id, $property->slug, 'page_with_redirect_in_sitemap');
+
+        DetectedIssueVerification::create([
+            'issue_id' => $issueId,
+            'property_slug' => $property->slug,
+            'domain' => $property->primaryDomainName(),
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'status' => 'verified_fixed_pending_recrawl',
+            'hidden_until' => now()->addDays(14),
+            'verification_source' => 'fleet-control',
+            'verification_notes' => ['Verified live'],
+            'verified_at' => now()->subDay(),
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/dashboard/priority-queue')
+            ->assertOk();
+
+        /** @var array<int, array<string, mixed>> $mustFixPayload */
+        $mustFixPayload = $response->json('must_fix') ?? [];
+        /** @var array<string, mixed>|null $queueItem */
+        $queueItem = collect($mustFixPayload)
+            ->first(fn (array $item): bool => ($item['domain'] ?? null) === 'queue-sync.example.com');
+
+        $this->assertIsArray($queueItem);
+        $this->assertSame(['Search Console reports blocked by robots.txt (1 URLs)'], $queueItem['primary_reasons']);
+        $this->assertSame(['Security headers need review'], $queueItem['secondary_reasons']);
+    }
+
     public function test_suppressed_supplemental_issue_is_hidden_from_collection_feed_but_still_available_by_issue_id(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');

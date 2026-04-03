@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AnalyticsInstallAudit;
+use App\Models\DetectedIssueVerification;
 use App\Models\Domain;
 use App\Models\DomainSeoBaseline;
 use App\Models\PropertyAnalyticsSource;
@@ -300,5 +301,179 @@ class WebPropertyUiTest extends TestCase
         $response->assertSee('https://checklist.example.au/');
         $response->assertSee('https://checklist.example.au/new-page/');
         $response->assertDontSee('1970-01-01');
+    }
+
+    public function test_web_property_detail_hides_suppressed_search_console_issue_summaries(): void
+    {
+        $user = User::factory()->create();
+        $domain = Domain::factory()->create([
+            'domain' => 'suppressed-summary.example.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'suppressed-summary-site',
+            'name' => 'Suppressed Summary Site',
+            'property_type' => 'marketing_site',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'source_issue_label' => 'Page with redirect',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:suppressed-summary.example.au',
+            'captured_at' => now()->subDays(2),
+            'captured_by' => 'test',
+            'affected_url_count' => 17,
+            'sample_urls' => ['https://suppressed-summary.example.au/'],
+            'examples' => [
+                ['url' => 'https://suppressed-summary.example.au/', 'last_crawled' => now()->subDays(3)->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => ['https://suppressed-summary.example.au/'],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'blocked_by_robots_in_indexing',
+            'source_issue_label' => 'Blocked by robots.txt',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:suppressed-summary.example.au',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => ['https://suppressed-summary.example.au/wp-admin/'],
+            'examples' => [
+                ['url' => 'https://suppressed-summary.example.au/wp-admin/', 'last_crawled' => now()->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => ['https://suppressed-summary.example.au/wp-admin/'],
+            ],
+        ]);
+
+        $issueId = app(\App\Services\DetectedIssueIdentityService::class)
+            ->makeIssueId($domain->id, $property->slug, 'page_with_redirect_in_sitemap');
+
+        DetectedIssueVerification::create([
+            'issue_id' => $issueId,
+            'property_slug' => $property->slug,
+            'domain' => $domain->domain,
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'status' => 'verified_fixed_pending_recrawl',
+            'hidden_until' => now()->addDays(14),
+            'verification_source' => 'fleet-control',
+            'verification_notes' => ['Verified live'],
+            'verified_at' => now()->subDay(),
+        ]);
+
+        $response = $this->actingAs($user)->get('/web-properties/suppressed-summary-site');
+
+        $response->assertOk();
+        $response->assertDontSee('Page with redirect');
+        $response->assertDontSee('17 affected URLs');
+        $response->assertSee('Blocked by robots.txt');
+        $response->assertSee('1 affected URLs');
+    }
+
+    public function test_web_property_detail_hides_suppressed_search_console_issue_summaries_when_primary_domain_id_is_missing(): void
+    {
+        $user = User::factory()->create();
+        $domain = Domain::factory()->create([
+            'domain' => 'suppressed-summary-fallback.example.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'suppressed-summary-fallback-site',
+            'name' => 'Suppressed Summary Fallback Site',
+            'property_type' => 'marketing_site',
+            'status' => 'active',
+            'primary_domain_id' => null,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'source_issue_label' => 'Page with redirect',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:suppressed-summary-fallback.example.au',
+            'captured_at' => now()->subDays(2),
+            'captured_by' => 'test',
+            'affected_url_count' => 4,
+            'sample_urls' => ['https://suppressed-summary-fallback.example.au/'],
+            'examples' => [
+                ['url' => 'https://suppressed-summary-fallback.example.au/', 'last_crawled' => now()->subDays(3)->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => ['https://suppressed-summary-fallback.example.au/'],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'blocked_by_robots_in_indexing',
+            'source_issue_label' => 'Blocked by robots.txt',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:suppressed-summary-fallback.example.au',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => ['https://suppressed-summary-fallback.example.au/wp-admin/'],
+            'examples' => [
+                ['url' => 'https://suppressed-summary-fallback.example.au/wp-admin/', 'last_crawled' => now()->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => ['https://suppressed-summary-fallback.example.au/wp-admin/'],
+            ],
+        ]);
+
+        $issueId = app(\App\Services\DetectedIssueIdentityService::class)
+            ->makeIssueId($domain->id, $property->slug, 'page_with_redirect_in_sitemap');
+
+        DetectedIssueVerification::create([
+            'issue_id' => $issueId,
+            'property_slug' => $property->slug,
+            'domain' => $domain->domain,
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'status' => 'verified_fixed_pending_recrawl',
+            'hidden_until' => now()->addDays(14),
+            'verification_source' => 'fleet-control',
+            'verification_notes' => ['Verified live'],
+            'verified_at' => now()->subDay(),
+        ]);
+
+        $response = $this->actingAs($user)->get('/web-properties/suppressed-summary-fallback-site');
+
+        $response->assertOk();
+        $response->assertDontSee('Page with redirect');
+        $response->assertDontSee('4 affected URLs');
+        $response->assertSee('Blocked by robots.txt');
+        $response->assertSee('1 affected URLs');
     }
 }

@@ -9,6 +9,11 @@ use Illuminate\Support\Collection;
 
 class SearchConsoleIssueEvidenceService
 {
+    public function __construct(
+        private readonly DetectedIssueIdentityService $issueIdentityService,
+        private readonly DetectedIssueVerificationService $issueVerificationService,
+    ) {}
+
     /**
      * @param  array<int, array<string, mixed>>  $items
      * @return array<string, array<string, array<string, mixed>>>
@@ -55,15 +60,51 @@ class SearchConsoleIssueEvidenceService
         $propertyEvidence = $context['evidence'][$property->slug] ?? [];
         $baseline = $property->latestPropertySeoBaselineRecord();
         $snapshots = $context['snapshots'][$property->id] ?? [];
+        $issueDomainId = $this->issueDomainIdForProperty($property);
+        $issueIds = [];
+
+        foreach (array_keys($propertyEvidence) as $issueClass) {
+            if ($issueClass === '' || ! is_string($issueDomainId) || $issueDomainId === '') {
+                continue;
+            }
+
+            $issueIds[$issueClass] = $this->issueIdentityService->makeIssueId(
+                $issueDomainId,
+                $property->slug,
+                $issueClass
+            );
+        }
+
+        $verificationMap = $this->issueVerificationService->latestMapForIssueIds(array_values($issueIds));
 
         return collect($propertyEvidence)
-            ->map(function (array $evidence, string $issueClass) use ($baseline, $snapshots): array {
+            ->map(function (array $evidence, string $issueClass) use ($baseline, $snapshots, $property, $issueIds, $verificationMap): ?array {
                 $catalogEntry = config('domain_monitor.search_console_issue_catalog.'.$issueClass, []);
                 $detailSnapshot = $snapshots[$issueClass]['detail'] ?? null;
                 $apiSnapshot = $snapshots[$issueClass]['api'] ?? null;
                 $count = is_numeric($evidence['affected_url_count'] ?? null) ? (int) $evidence['affected_url_count'] : null;
                 $examples = is_array($evidence['examples'] ?? null) ? $evidence['examples'] : [];
                 $summaryCount = $count ?? $baseline?->issueCount($issueClass);
+
+                $issueId = $issueIds[$issueClass] ?? null;
+                $verification = is_string($issueId) ? ($verificationMap[$issueId] ?? null) : null;
+                $issueContext = [
+                    'issue_id' => $issueId,
+                    'property_slug' => $property->slug,
+                    'domain' => $property->primaryDomainName(),
+                    'issue_class' => $issueClass,
+                    'detected_at' => $evidence['captured_at'] ?? null,
+                    'evidence' => array_filter([
+                        'captured_at' => is_string($evidence['captured_at'] ?? null) ? $evidence['captured_at'] : null,
+                        'api_captured_at' => is_string($evidence['api_captured_at'] ?? null) ? $evidence['api_captured_at'] : null,
+                    ]),
+                ];
+
+                if (is_string($issueId)
+                    && $verification instanceof \App\Models\DetectedIssueVerification
+                    && $this->issueVerificationService->isCurrentlySuppressed($issueContext, $verification)) {
+                    return null;
+                }
 
                 return [
                     'issue_class' => $issueClass,
@@ -81,9 +122,30 @@ class SearchConsoleIssueEvidenceService
                     'api_snapshot_id' => $apiSnapshot?->id,
                 ];
             })
+            ->filter(fn (mixed $summary): bool => is_array($summary))
             ->sortByDesc(fn (array $summary): int => (int) ($summary['affected_url_count'] ?? 0))
             ->values()
             ->all();
+    }
+
+    private function issueDomainIdForProperty(WebProperty $property): ?string
+    {
+        $candidates = [
+            $property->primary_domain_id,
+            $property->primaryDomain?->id,
+            $property->propertyDomains
+                ->firstWhere('is_canonical', true)?->domain_id,
+            $property->propertyDomains
+                ->firstWhere('usage_type', 'primary')?->domain_id,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && $candidate !== '') {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     /**

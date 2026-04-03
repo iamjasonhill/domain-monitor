@@ -178,9 +178,6 @@ class DetectedIssueSummaryService
         $domain = is_string($item['domain'] ?? null) ? $item['domain'] : null;
         $propertySlug = is_string($item['web_property_slug'] ?? null) ? $item['web_property_slug'] : null;
         $evidenceKey = $propertySlug ?: $domainId;
-        $detectedAt = is_string($item['updated_at_iso'] ?? null) && $item['updated_at_iso'] !== ''
-            ? $item['updated_at_iso']
-            : now()->toIso8601String();
         $queueIssueEntries = $this->normalizedIssueEntries($item, $severity);
         $issueEntries = array_merge(
             $queueIssueEntries,
@@ -213,7 +210,7 @@ class DetectedIssueSummaryService
                 'severity' => $issueEntry['severity'],
                 'detector' => 'domain_monitor.priority_queue',
                 'status' => 'open',
-                'detected_at' => $detectedAt,
+                'detected_at' => $this->issueDetectedAt($issueClass, $item, $issueEvidence[$evidenceKey][$issueClass] ?? []),
                 'rollout_scope' => $issueEntry['rollout_scope'],
                 'control_id' => $issueEntry['control_id'],
                 'platform_profile' => is_string($item['platform_profile'] ?? null) ? $item['platform_profile'] : null,
@@ -439,6 +436,27 @@ class DetectedIssueSummaryService
         return is_string($platformProfile)
             ? data_get(config('domain_monitor.priority_queue_standards'), 'platform_profiles.'.$platformProfile.'.baseline_surface')
             : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @param  array<string, mixed>  $issueEvidence
+     */
+    private function issueDetectedAt(string $issueClass, array $item, array $issueEvidence): string
+    {
+        if (array_key_exists($issueClass, config('domain_monitor.search_console_issue_catalog', []))) {
+            foreach (['api_captured_at', 'captured_at'] as $key) {
+                if (is_string($issueEvidence[$key] ?? null) && $issueEvidence[$key] !== '') {
+                    return $issueEvidence[$key];
+                }
+            }
+        }
+
+        if (is_string($item['updated_at_iso'] ?? null) && $item['updated_at_iso'] !== '') {
+            return $item['updated_at_iso'];
+        }
+
+        return now()->toIso8601String();
     }
 
     /**
