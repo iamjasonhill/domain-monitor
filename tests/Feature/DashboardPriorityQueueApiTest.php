@@ -33,6 +33,9 @@ class DashboardPriorityQueueApiTest extends TestCase
             'property_type' => 'website',
             'status' => 'active',
             'primary_domain_id' => $mustFixDomain->id,
+            'target_household_quote_url' => 'https://quote.must-fix.example.com/household',
+            'target_moveroo_subdomain_url' => 'https://must-fix.moveroo.com.au',
+            'target_contact_us_page_url' => 'https://must-fix.example.com/contact-us',
         ]);
 
         WebPropertyDomain::create([
@@ -218,6 +221,9 @@ class DashboardPriorityQueueApiTest extends TestCase
             ->assertJsonPath('must_fix.0.issue_family', 'health.http')
             ->assertJsonPath('must_fix.0.control_id', 'transport.http_health')
             ->assertJsonPath('must_fix.0.platform_profile', 'wordpress_legacy_unmanaged')
+            ->assertJsonPath('must_fix.0.conversion_links.target.household_quote', 'https://quote.must-fix.example.com/household')
+            ->assertJsonPath('must_fix.0.conversion_links.target.moveroo_subdomain', 'https://must-fix.moveroo.com.au')
+            ->assertJsonPath('must_fix.0.conversion_links.target.contact_us_page', 'https://must-fix.example.com/contact-us')
             ->assertJsonPath('must_fix.0.rollout_scope', 'domain_only')
             ->assertJsonPath('must_fix.0.is_standard_gap', false);
 

@@ -33,6 +33,9 @@ class DetectedIssueApiTest extends TestCase
             'property_type' => 'website',
             'status' => 'active',
             'primary_domain_id' => $redirectDomain->id,
+            'target_household_quote_url' => 'https://quote.redirect-issue.example.com/household',
+            'target_moveroo_subdomain_url' => 'https://redirect-issue.moveroo.com.au',
+            'target_contact_us_page_url' => 'https://redirect-issue.example.com/contact-us',
         ]);
 
         WebPropertyDomain::create([
@@ -303,6 +306,9 @@ class DetectedIssueApiTest extends TestCase
         $this->assertTrue($redirectIssue['fleet_managed']);
         $this->assertSame('_wp-house', $redirectIssue['controller_repo']);
         $this->assertNull($redirectIssue['controller_repo_url']);
+        $this->assertSame('https://quote.redirect-issue.example.com/household', data_get($redirectIssue, 'conversion_links.target.household_quote'));
+        $this->assertSame('https://redirect-issue.moveroo.com.au', data_get($redirectIssue, 'conversion_links.target.moveroo_subdomain'));
+        $this->assertSame('https://redirect-issue.example.com/contact-us', data_get($redirectIssue, 'conversion_links.target.contact_us_page'));
         $this->assertSame(['Search Console reports page with redirect (7 URLs)'], $redirectIssue['evidence']['primary_reasons']);
         $this->assertSame(
             ['https://redirect-issue.example.com/', 'http://redirect-issue.example.com/'],
@@ -350,6 +356,8 @@ class DetectedIssueApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('issue_id', $redirectIssue['issue_id'])
             ->assertJsonPath('issue_class', 'page_with_redirect_in_sitemap')
+            ->assertJsonPath('conversion_links.target.moveroo_subdomain', 'https://redirect-issue.moveroo.com.au')
+            ->assertJsonPath('conversion_links.target.contact_us_page', 'https://redirect-issue.example.com/contact-us')
             ->assertJsonPath('evidence.source_domain_id', $redirectDomain->id)
             ->assertJsonPath('evidence.examples.0.url', 'https://redirect-issue.example.com/');
     }

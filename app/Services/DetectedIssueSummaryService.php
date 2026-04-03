@@ -97,17 +97,34 @@ class DetectedIssueSummaryService
         }
 
         $propertyName = null;
+        $conversionLinks = null;
         $platformProfile = null;
         $baselineSurface = null;
 
         if (is_string($verification->property_slug) && $verification->property_slug !== '') {
             $property = WebProperty::query()
-                ->select(['slug', 'name', 'property_type'])
+                ->select([
+                    'slug',
+                    'name',
+                    'property_type',
+                    'current_household_quote_url',
+                    'current_household_booking_url',
+                    'current_vehicle_quote_url',
+                    'current_vehicle_booking_url',
+                    'target_household_quote_url',
+                    'target_household_booking_url',
+                    'target_vehicle_quote_url',
+                    'target_vehicle_booking_url',
+                    'target_moveroo_subdomain_url',
+                    'target_contact_us_page_url',
+                    'conversion_links_scanned_at',
+                ])
                 ->where('slug', $verification->property_slug)
                 ->first();
 
             if ($property instanceof WebProperty) {
                 $propertyName = $property->name;
+                $conversionLinks = $property->conversionLinkSummary();
             }
         }
 
@@ -138,6 +155,7 @@ class DetectedIssueSummaryService
             'fleet_managed' => false,
             'controller_repo' => null,
             'controller_repo_url' => null,
+            'conversion_links' => $conversionLinks,
             'evidence' => [
                 'primary_reasons' => [],
                 'secondary_reasons' => [],
@@ -221,6 +239,7 @@ class DetectedIssueSummaryService
                 'fleet_managed' => (bool) ($item['fleet_managed'] ?? false),
                 'controller_repo' => is_string($item['controller_repo'] ?? null) ? $item['controller_repo'] : null,
                 'controller_repo_url' => is_string($item['controller_repo_url'] ?? null) ? $item['controller_repo_url'] : null,
+                'conversion_links' => is_array($item['conversion_links'] ?? null) ? $item['conversion_links'] : null,
                 'evidence' => [
                     'primary_reasons' => [$issueEntry['reason']],
                     'secondary_reasons' => array_values(array_filter(
