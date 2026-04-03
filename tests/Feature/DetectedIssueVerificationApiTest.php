@@ -93,6 +93,8 @@ class DetectedIssueVerificationApiTest extends TestCase
             'property_type' => 'marketing_site',
             'status' => 'active',
             'primary_domain_id' => $domain->id,
+            'target_moveroo_subdomain_url' => 'https://suppressed-broken-links.moveroo.com.au',
+            'target_contact_us_page_url' => 'https://suppressed-broken-links.example.com/contact-us',
         ]);
 
         WebPropertyDomain::create([
@@ -162,6 +164,8 @@ class DetectedIssueVerificationApiTest extends TestCase
         ])->getJson('/api/issues/'.urlencode($issue['issue_id']))
             ->assertOk()
             ->assertJsonPath('status', 'verified_fixed_pending_recrawl')
+            ->assertJsonPath('conversion_links.target.moveroo_subdomain', 'https://suppressed-broken-links.moveroo.com.au')
+            ->assertJsonPath('conversion_links.target.contact_us_page', 'https://suppressed-broken-links.example.com/contact-us')
             ->assertJsonPath('evidence.broken_links.0.url', 'https://suppressed-broken-links.example.com/missing/')
             ->assertJsonPath('evidence.broken_links.0.found_on', 'https://suppressed-broken-links.example.com/start-here/');
     }
