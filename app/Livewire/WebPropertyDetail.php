@@ -33,6 +33,10 @@ class WebPropertyDetail extends Component
 
     public ?string $targetVehicleBookingUrl = null;
 
+    public ?string $targetMoverooSubdomainUrl = null;
+
+    public ?string $targetContactUsPageUrl = null;
+
     public function mount(): void
     {
         $this->loadProperty();
@@ -67,6 +71,8 @@ class WebPropertyDetail extends Component
         $this->targetHouseholdBookingUrl = $this->property->target_household_booking_url;
         $this->targetVehicleQuoteUrl = $this->property->target_vehicle_quote_url;
         $this->targetVehicleBookingUrl = $this->property->target_vehicle_booking_url;
+        $this->targetMoverooSubdomainUrl = $this->property->target_moveroo_subdomain_url;
+        $this->targetContactUsPageUrl = $this->property->target_contact_us_page_url;
     }
 
     public function importIssueDetail(SearchConsoleIssueSnapshotImporter $importer): void
@@ -116,6 +122,8 @@ class WebPropertyDetail extends Component
             'targetHouseholdBookingUrl' => $this->normalizeTargetUrl($this->targetHouseholdBookingUrl),
             'targetVehicleQuoteUrl' => $this->normalizeTargetUrl($this->targetVehicleQuoteUrl),
             'targetVehicleBookingUrl' => $this->normalizeTargetUrl($this->targetVehicleBookingUrl),
+            'targetMoverooSubdomainUrl' => $this->normalizeTargetUrl($this->targetMoverooSubdomainUrl),
+            'targetContactUsPageUrl' => $this->normalizeTargetUrl($this->targetContactUsPageUrl),
         ];
 
         $this->resetValidation();
@@ -127,6 +135,8 @@ class WebPropertyDetail extends Component
                 'targetHouseholdBookingUrl' => ['nullable', 'url', 'max:2048', 'regex:/^https?:\\/\\//i'],
                 'targetVehicleQuoteUrl' => ['nullable', 'url', 'max:2048', 'regex:/^https?:\\/\\//i'],
                 'targetVehicleBookingUrl' => ['nullable', 'url', 'max:2048', 'regex:/^https?:\\/\\//i'],
+                'targetMoverooSubdomainUrl' => ['nullable', 'url', 'max:2048', 'regex:/^https?:\\/\\//i'],
+                'targetContactUsPageUrl' => ['nullable', 'url', 'max:2048', 'regex:/^https?:\\/\\//i'],
             ]
         )->validate();
 
@@ -135,6 +145,8 @@ class WebPropertyDetail extends Component
             'target_household_booking_url' => $validated['targetHouseholdBookingUrl'],
             'target_vehicle_quote_url' => $validated['targetVehicleQuoteUrl'],
             'target_vehicle_booking_url' => $validated['targetVehicleBookingUrl'],
+            'target_moveroo_subdomain_url' => $validated['targetMoverooSubdomainUrl'],
+            'target_contact_us_page_url' => $validated['targetContactUsPageUrl'],
         ]);
 
         $this->loadProperty();
