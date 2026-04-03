@@ -34,6 +34,7 @@ class BrokenLinkHealthCheckServiceTest extends TestCase
         $this->assertFalse($result['is_valid']);
         $this->assertSame(1, $result['broken_links_count']);
         $this->assertSame('https://example.com/bad', $result['broken_links'][0]['url']);
+        $this->assertSame('https://example.com', $result['broken_links'][0]['found_on']);
     }
 
     public function test_it_marks_broken_link_check_as_unverified_when_crawl_fails(): void

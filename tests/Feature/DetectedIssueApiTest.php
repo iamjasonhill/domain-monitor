@@ -455,6 +455,128 @@ class DetectedIssueApiTest extends TestCase
         $this->assertCount(2, $issues->pluck('issue_id')->unique());
     }
 
+    public function test_issues_endpoint_includes_broken_link_source_pages(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'broken-links.example.com',
+            'is_active' => true,
+            'platform' => 'Astro',
+            'hosting_provider' => 'Vercel',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'broken-links-site',
+            'name' => 'Broken Links Site',
+            'property_type' => 'marketing_site',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => 'moveroo/broken-links-site',
+            'repo_provider' => 'github',
+            'repo_url' => 'https://github.com/moveroo/broken-links-site',
+            'local_path' => '/Users/jasonhill/Projects/websites/broken-links-site',
+            'framework' => 'Astro',
+            'is_primary' => true,
+            'is_controller' => true,
+            'deployment_provider' => 'vercel',
+            'deployment_project_name' => 'broken-links-site',
+            'deployment_project_id' => 'prj_brokenlinks123',
+        ]);
+
+        DomainCheck::factory()->create([
+            'domain_id' => $domain->id,
+            'check_type' => 'broken_links',
+            'status' => 'warn',
+            'created_at' => now()->subHour(),
+            'payload' => [
+                'broken_links_count' => 1,
+                'pages_scanned' => 4,
+                'broken_links' => [
+                    [
+                        'url' => 'https://broken-links.example.com/old-result/',
+                        'status' => 404,
+                        'found_on' => 'https://broken-links.example.com/old-page/',
+                    ],
+                ],
+            ],
+        ]);
+
+        DomainCheck::factory()->create([
+            'domain_id' => $domain->id,
+            'check_type' => 'broken_links',
+            'status' => 'fail',
+            'created_at' => now(),
+            'payload' => [
+                'broken_links_count' => 2,
+                'pages_scanned' => 12,
+                'broken_links' => [
+                    [
+                        'url' => 'https://broken-links.example.com/missing-page/?token=secret',
+                        'status' => 404,
+                        'found_on' => 'https://broken-links.example.com/services/?preview=1',
+                    ],
+                    [
+                        'url' => 'https://broken-links.example.com/old-booking/?session=abc',
+                        'status' => 410,
+                        'found_on' => 'https://broken-links.example.com/contact/',
+                    ],
+                ],
+            ],
+        ]);
+
+        /** @var array<int, array<string, mixed>> $issues */
+        $issues = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues')
+            ->assertOk()
+            ->assertJsonPath('stats.open', 1)
+            ->json('issues');
+
+        /** @var array<string, mixed>|null $brokenLinksIssue */
+        $brokenLinksIssue = collect($issues)->firstWhere('issue_class', 'seo.broken_links');
+
+        $this->assertIsArray($brokenLinksIssue);
+        $this->assertSame('broken-links-site', $brokenLinksIssue['property_slug']);
+        $this->assertSame(2, data_get($brokenLinksIssue, 'evidence.broken_links_count'));
+        $this->assertSame(12, data_get($brokenLinksIssue, 'evidence.pages_scanned'));
+        $this->assertSame(
+            'https://broken-links.example.com/missing-page/',
+            data_get($brokenLinksIssue, 'evidence.broken_links.0.url')
+        );
+        $this->assertSame(
+            404,
+            data_get($brokenLinksIssue, 'evidence.broken_links.0.status')
+        );
+        $this->assertSame(
+            'https://broken-links.example.com/services/',
+            data_get($brokenLinksIssue, 'evidence.broken_links.0.found_on')
+        );
+
+        $detailResponse = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues/'.urlencode((string) $brokenLinksIssue['issue_id']))
+            ->assertOk()
+            ->assertJsonPath('evidence.broken_links.1.url', 'https://broken-links.example.com/old-booking/')
+            ->assertJsonPath('evidence.broken_links.1.found_on', 'https://broken-links.example.com/contact/');
+
+        $this->assertSame(
+            ['https://broken-links.example.com/missing-page/', 'https://broken-links.example.com/old-booking/'],
+            array_column($detailResponse->json('evidence.broken_links') ?? [], 'url')
+        );
+    }
+
     public function test_issues_endpoint_reports_uncontrolled_when_no_controller_path_exists(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');

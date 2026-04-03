@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Domain;
+use App\Models\DomainCheck;
 use App\Models\WebProperty;
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Collection;
 
 class DetectedIssueSummaryService
@@ -20,12 +23,16 @@ class DetectedIssueSummaryService
     public function snapshot(): array
     {
         $queueSnapshot = $this->queueService->snapshot();
-        $issueEvidence = $this->issueEvidenceService->evidenceMapForQueueItems([
+        $queueItems = [
             ...($queueSnapshot['must_fix'] ?? []),
             ...($queueSnapshot['should_fix'] ?? []),
+        ];
+        $issueEvidence = $this->issueEvidenceService->evidenceMapForQueueItems([
+            ...$queueItems,
         ]);
-        $issues = $this->flattenIssues($queueSnapshot['must_fix'] ?? [], 'must_fix', $issueEvidence)
-            ->concat($this->flattenIssues($queueSnapshot['should_fix'] ?? [], 'should_fix', $issueEvidence))
+        $brokenLinksEvidence = $this->brokenLinksEvidenceMapForQueueItems($queueItems);
+        $issues = $this->flattenIssues($queueSnapshot['must_fix'] ?? [], 'must_fix', $issueEvidence, $brokenLinksEvidence)
+            ->concat($this->flattenIssues($queueSnapshot['should_fix'] ?? [], 'should_fix', $issueEvidence, $brokenLinksEvidence))
             ->pipe(function (Collection $issues): Collection {
                 $issueIds = $issues
                     ->pluck('issue_id')
@@ -107,6 +114,9 @@ class DetectedIssueSummaryService
         $issueClass = is_string($verification->issue_class) ? $verification->issue_class : 'unclassified';
         $controlId = $this->controlIdForIssueClass($issueClass);
         $configuredRolloutScope = $this->configuredRolloutScopeForControl($controlId);
+        $brokenLinksEvidence = $issueClass === 'seo.broken_links'
+            ? $this->brokenLinksEvidenceForDomainName($verification->domain)
+            : [];
 
         return $this->issueVerificationService->annotateIssue([
             'issue_id' => $issueId,
@@ -138,6 +148,7 @@ class DetectedIssueSummaryService
                 'property_match_confidence' => $propertyName !== null ? 'high' : 'none',
                 'baseline_surface' => $configuredRolloutScope === 'domain_only' ? null : $baselineSurface,
                 'source_domain_id' => null,
+                ...$brokenLinksEvidence,
             ],
         ], $verification);
     }
@@ -145,21 +156,23 @@ class DetectedIssueSummaryService
     /**
      * @param  array<int, array<string, mixed>>  $items
      * @param  array<string, array<string, array<string, mixed>>>  $issueEvidence
+     * @param  array<string, array<string, mixed>>  $brokenLinksEvidence
      * @return Collection<int, array<string, mixed>>
      */
-    private function flattenIssues(array $items, string $severity, array $issueEvidence): Collection
+    private function flattenIssues(array $items, string $severity, array $issueEvidence, array $brokenLinksEvidence): Collection
     {
         return collect($items)
-            ->flatMap(fn (array $item): array => $this->makeIssues($item, $severity, $issueEvidence))
+            ->flatMap(fn (array $item): array => $this->makeIssues($item, $severity, $issueEvidence, $brokenLinksEvidence))
             ->values();
     }
 
     /**
      * @param  array<string, mixed>  $item
      * @param  array<string, array<string, array<string, mixed>>>  $issueEvidence
+     * @param  array<string, array<string, mixed>>  $brokenLinksEvidence
      * @return array<int, array<string, mixed>>
      */
-    private function makeIssues(array $item, string $severity, array $issueEvidence): array
+    private function makeIssues(array $item, string $severity, array $issueEvidence, array $brokenLinksEvidence): array
     {
         $domainId = (string) ($item['id'] ?? '');
         $domain = is_string($item['domain'] ?? null) ? $item['domain'] : null;
@@ -227,6 +240,7 @@ class DetectedIssueSummaryService
                     'property_match_confidence' => is_string($item['property_match_confidence'] ?? null) ? $item['property_match_confidence'] : null,
                     'baseline_surface' => $issueEntry['baseline_surface'],
                     'source_domain_id' => $domainId,
+                    ...($brokenLinksEvidence[$issueId] ?? []),
                     ...($issueEvidence[$evidenceKey][$issueClass] ?? []),
                 ],
             ];
@@ -425,5 +439,207 @@ class DetectedIssueSummaryService
         return is_string($platformProfile)
             ? data_get(config('domain_monitor.priority_queue_standards'), 'platform_profiles.'.$platformProfile.'.baseline_surface')
             : null;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array<string, array<string, mixed>>
+     */
+    private function brokenLinksEvidenceMapForQueueItems(array $items): array
+    {
+        $issueToDomainMap = [];
+
+        foreach ($items as $item) {
+            $domain = is_string($item['domain'] ?? null) ? $item['domain'] : null;
+            $domainId = (string) ($item['id'] ?? '');
+            $propertySlug = is_string($item['web_property_slug'] ?? null) ? $item['web_property_slug'] : null;
+
+            if ($domain === null || $domainId === '') {
+                continue;
+            }
+
+            foreach ((array) ($item['issue_entries'] ?? []) as $entry) {
+                $issueClass = is_string($entry['issue_family'] ?? null) ? $entry['issue_family'] : null;
+
+                if ($issueClass !== 'seo.broken_links') {
+                    continue;
+                }
+
+                $issueId = $this->issueIdentityService->makeIssueId($domainId, $propertySlug, $issueClass);
+                $issueToDomainMap[$issueId] = $domain;
+            }
+        }
+
+        if ($issueToDomainMap === []) {
+            return [];
+        }
+
+        $evidenceByDomain = $this->brokenLinksEvidenceByDomainName(array_values(array_unique(array_values($issueToDomainMap))));
+        $evidenceByIssueId = [];
+
+        foreach ($issueToDomainMap as $issueId => $domainName) {
+            if (isset($evidenceByDomain[$domainName])) {
+                $evidenceByIssueId[$issueId] = $evidenceByDomain[$domainName];
+            }
+        }
+
+        return $evidenceByIssueId;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function brokenLinksEvidenceForDomainName(?string $domainName): array
+    {
+        if (! is_string($domainName) || $domainName === '') {
+            return [];
+        }
+
+        return $this->brokenLinksEvidenceByDomainName([$domainName])[$domainName] ?? [];
+    }
+
+    /**
+     * @param  array<int, string>  $domainNames
+     * @return array<string, array<string, mixed>>
+     */
+    private function brokenLinksEvidenceByDomainName(array $domainNames): array
+    {
+        if ($domainNames === []) {
+            return [];
+        }
+
+        $domains = Domain::query()
+            ->select(['id', 'domain'])
+            ->whereIn('domain', $domainNames)
+            ->get();
+
+        if ($domains->isEmpty()) {
+            return [];
+        }
+
+        /** @var array<string, string> $domainNamesById */
+        $domainNamesById = $domains->pluck('domain', 'id')->all();
+        $checks = $this->latestBrokenLinksChecksForDomainIds(array_keys($domainNamesById));
+        $evidence = [];
+
+        foreach ($checks as $domainId => $check) {
+            $domainName = $domainNamesById[$domainId] ?? null;
+
+            if (! is_string($domainName)) {
+                continue;
+            }
+
+            $normalized = $this->normalizeBrokenLinksEvidence($check->payload);
+
+            if ($normalized !== null) {
+                $evidence[$domainName] = $normalized;
+            }
+        }
+
+        return $evidence;
+    }
+
+    /**
+     * @param  array<int, string>  $domainIds
+     * @return Collection<string, DomainCheck>
+     */
+    private function latestBrokenLinksChecksForDomainIds(array $domainIds): Collection
+    {
+        if ($domainIds === []) {
+            return collect();
+        }
+
+        $latestCheckTimestamps = DomainCheck::query()
+            ->selectRaw('domain_id, MAX(created_at) as latest_created_at')
+            ->where('check_type', 'broken_links')
+            ->whereIn('domain_id', $domainIds)
+            ->groupBy('domain_id');
+
+        /** @var Collection<string, DomainCheck> $checks */
+        $checks = DomainCheck::query()
+            ->from('domain_checks as checks')
+            ->joinSub($latestCheckTimestamps, 'latest_checks', function (JoinClause $join): void {
+                $join->on('checks.domain_id', '=', 'latest_checks.domain_id')
+                    ->on('checks.created_at', '=', 'latest_checks.latest_created_at');
+            })
+            ->where('checks.check_type', 'broken_links')
+            ->get(['checks.id', 'checks.domain_id', 'checks.payload', 'checks.created_at'])
+            ->unique('domain_id')
+            ->keyBy('domain_id');
+
+        return $checks;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $payload
+     * @return array<string, mixed>|null
+     */
+    private function normalizeBrokenLinksEvidence(?array $payload): ?array
+    {
+        if (! is_array($payload)) {
+            return null;
+        }
+
+        $payloadBrokenLinks = $payload['broken_links'] ?? null;
+
+        if (! is_array($payloadBrokenLinks)) {
+            return null;
+        }
+
+        $brokenLinks = collect($payloadBrokenLinks)
+            ->filter(fn (mixed $entry): bool => is_array($entry))
+            ->map(function (array $entry): ?array {
+                $url = $this->sanitizeEvidenceUrl($entry['url'] ?? null);
+                $status = is_numeric($entry['status'] ?? null) ? (int) $entry['status'] : null;
+                $foundOn = $this->sanitizeEvidenceUrl($entry['found_on'] ?? null);
+
+                if ($url === null || $status === null || $foundOn === null) {
+                    return null;
+                }
+
+                return [
+                    'url' => $url,
+                    'status' => $status,
+                    'found_on' => $foundOn,
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($brokenLinks === []) {
+            return null;
+        }
+
+        return [
+            'broken_links_count' => count($brokenLinks),
+            'pages_scanned' => is_numeric($payload['pages_scanned'] ?? null)
+                ? (int) $payload['pages_scanned']
+                : null,
+            'broken_links' => $brokenLinks,
+        ];
+    }
+
+    private function sanitizeEvidenceUrl(mixed $value): ?string
+    {
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        $parts = parse_url($value);
+
+        if ($parts === false || ! isset($parts['scheme'], $parts['host'])) {
+            return preg_replace('/[?#].*$/', '', $value);
+        }
+
+        $sanitized = $parts['scheme'].'://'.$parts['host'];
+
+        if (isset($parts['port'])) {
+            $sanitized .= ':'.$parts['port'];
+        }
+
+        $sanitized .= $parts['path'] ?? '';
+
+        return $sanitized;
     }
 }
