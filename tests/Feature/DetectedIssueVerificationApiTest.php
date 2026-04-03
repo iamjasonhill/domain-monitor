@@ -75,6 +75,97 @@ class DetectedIssueVerificationApiTest extends TestCase
             ->assertJsonPath('verification.verification_source', 'fleet-control');
     }
 
+    public function test_suppressed_broken_link_issue_detail_keeps_source_page_evidence(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        config()->set('services.domain_monitor.fleet_control_api_key', 'fleet-token');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'suppressed-broken-links.example.com',
+            'is_active' => true,
+            'platform' => 'Astro',
+            'hosting_provider' => 'Vercel',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'suppressed-broken-links-site',
+            'name' => 'Suppressed Broken Links Site',
+            'property_type' => 'marketing_site',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => 'moveroo/suppressed-broken-links-site',
+            'repo_provider' => 'github',
+            'repo_url' => 'https://github.com/moveroo/suppressed-broken-links-site',
+            'local_path' => '/Users/jasonhill/Projects/websites/suppressed-broken-links-site',
+            'framework' => 'Astro',
+            'is_primary' => true,
+            'is_controller' => true,
+            'deployment_provider' => 'vercel',
+            'deployment_project_name' => 'suppressed-broken-links-site',
+            'deployment_project_id' => 'prj_suppressedbrokenlinks123',
+        ]);
+
+        DomainCheck::factory()->create([
+            'domain_id' => $domain->id,
+            'check_type' => 'broken_links',
+            'status' => 'warn',
+            'payload' => [
+                'broken_links_count' => 1,
+                'pages_scanned' => 3,
+                'broken_links' => [
+                    [
+                        'url' => 'https://suppressed-broken-links.example.com/missing/?token=abc',
+                        'status' => 404,
+                        'found_on' => 'https://suppressed-broken-links.example.com/start-here/?preview=1',
+                    ],
+                ],
+            ],
+        ]);
+
+        /** @var array<int, array<string, mixed>> $issues */
+        $issues = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues')
+            ->assertOk()
+            ->json('issues');
+
+        $issue = collect($issues)->firstWhere('issue_class', 'seo.broken_links');
+
+        $this->assertNotNull($issue);
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer fleet-token',
+        ])->postJson('/api/issues/'.urlencode($issue['issue_id']).'/verification', [
+            'status' => 'verified_fixed_pending_recrawl',
+            'verification_notes' => ['Verified and awaiting recrawl'],
+        ])->assertCreated();
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues')
+            ->assertOk()
+            ->assertJsonCount(0, 'issues');
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues/'.urlencode($issue['issue_id']))
+            ->assertOk()
+            ->assertJsonPath('status', 'verified_fixed_pending_recrawl')
+            ->assertJsonPath('evidence.broken_links.0.url', 'https://suppressed-broken-links.example.com/missing/')
+            ->assertJsonPath('evidence.broken_links.0.found_on', 'https://suppressed-broken-links.example.com/start-here/');
+    }
+
     public function test_verified_pending_recrawl_issue_resurfaces_when_newer_search_console_capture_exists(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
