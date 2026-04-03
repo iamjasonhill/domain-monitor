@@ -34,6 +34,8 @@ use Illuminate\Support\Str;
  * @property string|null $target_household_booking_url
  * @property string|null $target_vehicle_quote_url
  * @property string|null $target_vehicle_booking_url
+ * @property string|null $target_moveroo_subdomain_url
+ * @property string|null $target_contact_us_page_url
  * @property \Illuminate\Support\Carbon|null $conversion_links_scanned_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -70,6 +72,8 @@ class WebProperty extends Model
         'target_household_booking_url',
         'target_vehicle_quote_url',
         'target_vehicle_booking_url',
+        'target_moveroo_subdomain_url',
+        'target_contact_us_page_url',
         'conversion_links_scanned_at',
     ];
 
@@ -580,7 +584,9 @@ class WebProperty extends Model
      *     household_quote: string|null,
      *     household_booking: string|null,
      *     vehicle_quote: string|null,
-     *     vehicle_booking: string|null
+     *     vehicle_booking: string|null,
+     *     moveroo_subdomain: string|null,
+     *     contact_us_page: string|null
      *   },
      *   scanned_at: string|null
      * }
@@ -599,6 +605,8 @@ class WebProperty extends Model
                 'household_booking' => $this->target_household_booking_url,
                 'vehicle_quote' => $this->target_vehicle_quote_url,
                 'vehicle_booking' => $this->target_vehicle_booking_url,
+                'moveroo_subdomain' => $this->target_moveroo_subdomain_url,
+                'contact_us_page' => $this->target_contact_us_page_url,
             ],
             'scanned_at' => $this->conversion_links_scanned_at?->toIso8601String(),
         ];

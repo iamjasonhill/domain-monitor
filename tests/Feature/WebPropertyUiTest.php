@@ -138,6 +138,8 @@ class WebPropertyUiTest extends TestCase
         $response->assertSee('No Matomo snippet detected.');
         $response->assertSee('Conversion Links');
         $response->assertSee('Target Links');
+        $response->assertSee('Moveroo Subdomain');
+        $response->assertSee('Contact Us Page');
         $response->assertSee('Automation Checklist');
         $response->assertSee('Needs Matomo');
     }

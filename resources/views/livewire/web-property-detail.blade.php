@@ -176,7 +176,7 @@
                     <div>
                         <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Conversion Links</h4>
                         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                            Current URLs are scanned from the live site navigation. Target URLs are the future state Fleet should migrate toward once the new quote and booking surfaces are ready.
+                            Current URLs are scanned from the live site navigation. Target URLs are the admin-maintained source of truth Fleet should migrate toward for quote, booking, and fixed destination links.
                         </p>
                     </div>
 
@@ -258,6 +258,16 @@
                                 <label for="target_vehicle_booking_url" class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Vehicle Booking</label>
                                 <input id="target_vehicle_booking_url" type="url" wire:model="targetVehicleBookingUrl" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="https://..." />
                                 @error('targetVehicleBookingUrl') <div class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
+                            </div>
+                            <div>
+                                <label for="target_moveroo_subdomain_url" class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Moveroo Subdomain</label>
+                                <input id="target_moveroo_subdomain_url" type="url" wire:model="targetMoverooSubdomainUrl" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="https://..." />
+                                @error('targetMoverooSubdomainUrl') <div class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
+                            </div>
+                            <div>
+                                <label for="target_contact_us_page_url" class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Contact Us Page</label>
+                                <input id="target_contact_us_page_url" type="url" wire:model="targetContactUsPageUrl" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="https://..." />
+                                @error('targetContactUsPageUrl') <div class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
                             </div>
                         </div>
                     </div>

@@ -59,6 +59,8 @@ class WebPropertyApiTest extends TestCase
             'current_vehicle_quote_url' => 'https://cars.moveroo.com.au/quote/v2',
             'target_household_quote_url' => 'https://quote.moveroo.com.au/household',
             'target_vehicle_quote_url' => 'https://quote.moveroo.com.au/vehicle',
+            'target_moveroo_subdomain_url' => 'https://wemove.moveroo.com.au',
+            'target_contact_us_page_url' => 'https://moveroo.com.au/contact-us',
             'conversion_links_scanned_at' => now(),
         ]);
 
@@ -195,6 +197,8 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.conversion_links.current.vehicle_booking', null)
             ->assertJsonPath('web_properties.0.conversion_links.target.household_quote', 'https://quote.moveroo.com.au/household')
             ->assertJsonPath('web_properties.0.conversion_links.target.vehicle_quote', 'https://quote.moveroo.com.au/vehicle')
+            ->assertJsonPath('web_properties.0.conversion_links.target.moveroo_subdomain', 'https://wemove.moveroo.com.au')
+            ->assertJsonPath('web_properties.0.conversion_links.target.contact_us_page', 'https://moveroo.com.au/contact-us')
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.has_issue_detail', false)
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.issue_detail_snapshot_count', 0)
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.latest_issue_detail_captured_at', null)

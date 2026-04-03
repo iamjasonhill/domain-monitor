@@ -45,6 +45,8 @@ class WebPropertyConversionLinksTest extends TestCase
             ->set('targetHouseholdBookingUrl', 'https://quote.moveroo.com.au/booking')
             ->set('targetVehicleQuoteUrl', 'https://quote.moveroo.com.au/vehicle')
             ->set('targetVehicleBookingUrl', 'https://quote.moveroo.com.au/vehicle-booking')
+            ->set('targetMoverooSubdomainUrl', 'https://wemove.moveroo.com.au')
+            ->set('targetContactUsPageUrl', 'https://moveroo.com.au/contact-us')
             ->call('saveConversionTargets')
             ->assertHasNoErrors();
 
@@ -54,6 +56,8 @@ class WebPropertyConversionLinksTest extends TestCase
         $this->assertSame('https://quote.moveroo.com.au/booking', $property->target_household_booking_url);
         $this->assertSame('https://quote.moveroo.com.au/vehicle', $property->target_vehicle_quote_url);
         $this->assertSame('https://quote.moveroo.com.au/vehicle-booking', $property->target_vehicle_booking_url);
+        $this->assertSame('https://wemove.moveroo.com.au', $property->target_moveroo_subdomain_url);
+        $this->assertSame('https://moveroo.com.au/contact-us', $property->target_contact_us_page_url);
     }
 
     public function test_property_detail_can_clear_target_conversion_links(): void
@@ -167,6 +171,7 @@ class WebPropertyConversionLinksTest extends TestCase
             Livewire::actingAs($user)
                 ->test(WebPropertyDetail::class, ['propertySlug' => 'moveroo-website'])
                 ->set('targetHouseholdQuoteUrl', 'https://quote.moveroo.com.au/household')
+                ->set('targetMoverooSubdomainUrl', 'https://wemove.moveroo.com.au')
                 ->call('saveConversionTargets')
                 ->assertForbidden();
         } finally {
