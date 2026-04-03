@@ -41,6 +41,15 @@ class IntegrationMetaController extends Controller
                     'purpose' => 'detected issue detail',
                 ],
                 [
+                    'path' => '/api/issues/{issue_id}/verification',
+                    'source_system' => 'domain-monitor-issues',
+                    'contract_version' => 1,
+                    'purpose' => 'issue verification writeback for queue suppression and pending recrawl',
+                    'method' => 'POST',
+                    'accepted_tokens' => ['FLEET_CONTROL_API_KEY'],
+                    'optional' => true,
+                ],
+                [
                     'path' => '/api/dashboard/priority-queue',
                     'source_system' => 'domain-monitor-priority-queue',
                     'contract_version' => 2,

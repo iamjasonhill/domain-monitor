@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'api-key' => \App\Http\Middleware\AuthenticateApiKey::class,
+            'fleet-control-api-key' => \App\Http\Middleware\RequireFleetControlApiKey::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

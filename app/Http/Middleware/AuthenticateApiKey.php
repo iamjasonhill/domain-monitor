@@ -27,16 +27,16 @@ class AuthenticateApiKey
 
         $token = substr($authHeader, 7); // Remove 'Bearer ' prefix
 
-        // Get allowed API keys from config
-        // These are the keys that external services (Brain, Website Ops) use to authenticate
         $allowedKeys = [
-            config('services.domain_monitor.brain_api_key'),
-            config('services.domain_monitor.ops_api_key'),
-            config('services.domain_monitor.fleet_control_api_key'),
+            'brain' => config('services.domain_monitor.brain_api_key'),
+            'ops' => config('services.domain_monitor.ops_api_key'),
+            'fleet_control' => config('services.domain_monitor.fleet_control_api_key'),
         ];
 
-        // Filter out empty values
-        $allowedKeys = array_filter($allowedKeys);
+        $allowedKeys = array_filter(
+            $allowedKeys,
+            static fn (mixed $allowedKey): bool => is_string($allowedKey) && $allowedKey !== ''
+        );
 
         if (empty($allowedKeys)) {
             Log::warning('API key authentication attempted but no API keys configured');
@@ -47,16 +47,16 @@ class AuthenticateApiKey
             ], 500);
         }
 
-        $isAuthenticated = false;
-        foreach ($allowedKeys as $allowedKey) {
-            if (is_string($allowedKey) && hash_equals($allowedKey, $token)) {
-                $isAuthenticated = true;
+        $authenticatedClient = null;
+        foreach ($allowedKeys as $client => $allowedKey) {
+            if (hash_equals($allowedKey, $token)) {
+                $authenticatedClient = $client;
                 break;
             }
         }
 
         // Check if the provided token matches any allowed key
-        if (! $isAuthenticated) {
+        if ($authenticatedClient === null) {
             Log::warning('Invalid API key authentication attempt', [
                 'ip' => $request->ip(),
                 'path' => $request->path(),
@@ -72,7 +72,10 @@ class AuthenticateApiKey
         Log::debug('API key authentication successful', [
             'ip' => $request->ip(),
             'path' => $request->path(),
+            'client' => $authenticatedClient,
         ]);
+
+        $request->attributes->set('authenticated_api_client', $authenticatedClient);
 
         return $next($request);
     }

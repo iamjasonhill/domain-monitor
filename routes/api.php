@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\DashboardPriorityQueueController;
 use App\Http\Controllers\Api\DeploymentController;
 use App\Http\Controllers\Api\DetectedIssueController;
+use App\Http\Controllers\Api\DetectedIssueVerificationController;
 use App\Http\Controllers\Api\DomainController;
 use App\Http\Controllers\Api\IntegrationMetaController;
 use App\Http\Controllers\Api\TagController;
@@ -38,6 +39,8 @@ Route::middleware(['api-key'])->group(function () {
     Route::get('/dashboard/priority-queue', DashboardPriorityQueueController::class);
     Route::get('/issues', [DetectedIssueController::class, 'index']);
     Route::get('/issues/{issueId}', [DetectedIssueController::class, 'show']);
+    Route::post('/issues/{issueId}/verification', [DetectedIssueVerificationController::class, 'store'])
+        ->middleware('fleet-control-api-key');
 
     // Tags
     Route::get('/tags', [TagController::class, 'index']);

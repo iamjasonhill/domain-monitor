@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\WebProperty;
 use Illuminate\Support\Collection;
 
 class DetectedIssueSummaryService
@@ -9,6 +10,8 @@ class DetectedIssueSummaryService
     public function __construct(
         private readonly DashboardIssueQueueService $queueService,
         private readonly SearchConsoleIssueEvidenceService $issueEvidenceService,
+        private readonly DetectedIssueIdentityService $issueIdentityService,
+        private readonly DetectedIssueVerificationService $issueVerificationService,
     ) {}
 
     /**
@@ -23,6 +26,19 @@ class DetectedIssueSummaryService
         ]);
         $issues = $this->flattenIssues($queueSnapshot['must_fix'] ?? [], 'must_fix', $issueEvidence)
             ->concat($this->flattenIssues($queueSnapshot['should_fix'] ?? [], 'should_fix', $issueEvidence))
+            ->pipe(function (Collection $issues): Collection {
+                $issueIds = $issues
+                    ->pluck('issue_id')
+                    ->filter(fn (mixed $issueId): bool => is_string($issueId) && $issueId !== '')
+                    ->values()
+                    ->all();
+                $verificationMap = $this->issueVerificationService->latestMapForIssueIds($issueIds);
+
+                return $issues->map(fn (array $issue): array => $this->issueVerificationService->annotateIssue(
+                    $issue,
+                    $verificationMap[$issue['issue_id']] ?? null
+                ));
+            })
             ->values();
         $mustFix = $issues->where('severity', 'must_fix')->values();
         $shouldFix = $issues->where('severity', 'should_fix')->values();
@@ -53,7 +69,75 @@ class DetectedIssueSummaryService
         /** @var array<string, mixed>|null $issue */
         $issue = collect($issues)->firstWhere('issue_id', $issueId);
 
-        return $issue;
+        if (is_array($issue)) {
+            return $issue;
+        }
+
+        return $this->issueFromStoredVerification($issueId);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function issueFromStoredVerification(string $issueId): ?array
+    {
+        $verification = $this->issueVerificationService->latestForIssueId($issueId);
+
+        if ($verification === null) {
+            return null;
+        }
+
+        $propertyName = null;
+        $platformProfile = null;
+        $baselineSurface = null;
+
+        if (is_string($verification->property_slug) && $verification->property_slug !== '') {
+            $property = WebProperty::query()
+                ->select(['slug', 'name', 'property_type'])
+                ->where('slug', $verification->property_slug)
+                ->first();
+
+            if ($property instanceof WebProperty) {
+                $propertyName = $property->name;
+            }
+        }
+
+        $issueClass = is_string($verification->issue_class) ? $verification->issue_class : 'unclassified';
+        $controlId = $this->controlIdForIssueClass($issueClass);
+        $configuredRolloutScope = $this->configuredRolloutScopeForControl($controlId);
+
+        return $this->issueVerificationService->annotateIssue([
+            'issue_id' => $issueId,
+            'property_slug' => $verification->property_slug,
+            'property_name' => $propertyName,
+            'domain' => $verification->domain,
+            'issue_class' => $issueClass,
+            'severity' => $this->defaultSeverityForIssueClass($issueClass),
+            'detector' => 'domain_monitor.priority_queue',
+            'status' => 'open',
+            'detected_at' => $verification->verified_at->toIso8601String(),
+            'rollout_scope' => $configuredRolloutScope ?? 'domain_only',
+            'control_id' => $controlId,
+            'platform_profile' => $platformProfile,
+            'host_profile' => null,
+            'control_profile' => null,
+            'control_state' => null,
+            'execution_surface' => null,
+            'fleet_managed' => false,
+            'controller_repo' => null,
+            'controller_repo_url' => null,
+            'evidence' => [
+                'primary_reasons' => [],
+                'secondary_reasons' => [],
+                'related_issue_classes' => [$issueClass],
+                'coverage_required' => false,
+                'coverage_status' => null,
+                'coverage_gap' => false,
+                'property_match_confidence' => $propertyName !== null ? 'high' : 'none',
+                'baseline_surface' => $configuredRolloutScope === 'domain_only' ? null : $baselineSurface,
+                'source_domain_id' => null,
+            ],
+        ], $verification);
     }
 
     /**
@@ -96,15 +180,13 @@ class DetectedIssueSummaryService
 
         foreach ($issueEntries as $issueEntry) {
             $issueClass = $issueEntry['issue_class'];
-            $issueIdentity = [
-                'source_domain_id' => $domainId,
-                'property_slug' => $propertySlug,
-                'issue_class' => $issueClass,
-            ];
             $issueId = sprintf(
-                'dm:%s:%s',
-                $domainId !== '' ? $domainId : 'unknown',
-                substr(sha1(json_encode($issueIdentity, JSON_THROW_ON_ERROR)), 0, 16)
+                '%s',
+                $this->issueIdentityService->makeIssueId(
+                    $domainId,
+                    $propertySlug,
+                    $issueClass
+                )
             );
 
             $issues[] = [
