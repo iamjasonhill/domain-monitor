@@ -12,6 +12,11 @@ use Illuminate\Support\Str;
 
 class DashboardIssueQueueService
 {
+    public function __construct(
+        private readonly DetectedIssueIdentityService $issueIdentityService,
+        private readonly DetectedIssueVerificationService $issueVerificationService,
+    ) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -54,6 +59,9 @@ class DashboardIssueQueueService
             ->get();
 
         [$mustFixDomains, $shouldFixDomains] = $this->buildIssueQueues($domains);
+        [$mustFixDomains, $shouldFixDomains] = $this->applyIssueVerificationQueues(
+            $mustFixDomains->concat($shouldFixDomains)
+        );
 
         $stats['must_fix'] = $mustFixDomains->count();
         $stats['should_fix'] = $shouldFixDomains->count();
@@ -68,6 +76,209 @@ class DashboardIssueQueueService
             'should_fix' => $shouldFixDomains->all(),
             'derived' => $this->buildDerivedSummary($mustFixDomains, $shouldFixDomains),
         ];
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $items
+     * @return array{0: Collection<int, array<string, mixed>>, 1: Collection<int, array<string, mixed>>}
+     */
+    private function applyIssueVerificationQueues(Collection $items): array
+    {
+        if ($items->isEmpty()) {
+            return [collect(), collect()];
+        }
+
+        $issueIds = [];
+
+        foreach ($items as $item) {
+            $domainId = (string) ($item['id'] ?? '');
+            $propertySlug = is_string($item['web_property_slug'] ?? null) ? $item['web_property_slug'] : null;
+
+            foreach ((array) ($item['issue_entries'] ?? []) as $entry) {
+                $issueFamily = is_string($entry['issue_family'] ?? null) ? $entry['issue_family'] : null;
+
+                if ($issueFamily === null) {
+                    continue;
+                }
+
+                $issueIds[] = $this->issueIdentityService->makeIssueId($domainId, $propertySlug, $issueFamily);
+            }
+        }
+
+        $verificationMap = $this->issueVerificationService->latestMapForIssueIds($issueIds);
+        $mustFix = collect();
+        $shouldFix = collect();
+        $sorter = fn (array $left, array $right): int => ($right['primary_reason_count'] <=> $left['primary_reason_count'])
+            ?: ($right['secondary_reason_count'] <=> $left['secondary_reason_count'])
+            ?: (strtotime($right['updated_at_iso']) <=> strtotime($left['updated_at_iso']));
+
+        foreach ($items as $item) {
+            $filteredItem = $this->filterVerifiedIssueEntries($item, $verificationMap);
+
+            if ($filteredItem === null) {
+                continue;
+            }
+
+            $queueBucket = is_string($filteredItem['queue_bucket'] ?? null) ? $filteredItem['queue_bucket'] : 'must_fix';
+            unset($filteredItem['queue_bucket']);
+
+            if ($queueBucket === 'must_fix') {
+                if ((int) $filteredItem['primary_reason_count'] > 0) {
+                    $mustFix->push($filteredItem);
+
+                    continue;
+                }
+
+                if ((int) $filteredItem['secondary_reason_count'] > 0) {
+                    $shouldFix->push($filteredItem);
+                }
+
+                continue;
+            }
+
+            if ((int) $filteredItem['primary_reason_count'] > 0 || (int) $filteredItem['secondary_reason_count'] > 0) {
+                $shouldFix->push($filteredItem);
+            }
+        }
+
+        return [
+            $mustFix->sort($sorter)->values(),
+            $shouldFix->sort($sorter)->values(),
+        ];
+    }
+
+    /**
+     * @param  array<string, \App\Models\DetectedIssueVerification>  $verificationMap
+     * @param  array<string, mixed>  $item
+     * @return array<string, mixed>|null
+     */
+    private function filterVerifiedIssueEntries(array $item, array $verificationMap): ?array
+    {
+        $domainId = (string) ($item['id'] ?? '');
+        $propertySlug = is_string($item['web_property_slug'] ?? null) ? $item['web_property_slug'] : null;
+        $visiblePrimaryRecords = [];
+        $visibleSecondaryRecords = [];
+
+        foreach ((array) ($item['primary_issue_records'] ?? []) as $record) {
+            if ($this->shouldKeepVerifiedRecord($record, $item, $domainId, $propertySlug, $verificationMap)) {
+                $visiblePrimaryRecords[] = $record;
+            }
+        }
+
+        foreach ((array) ($item['secondary_issue_records'] ?? []) as $record) {
+            if ($this->shouldKeepVerifiedRecord($record, $item, $domainId, $propertySlug, $verificationMap)) {
+                $visibleSecondaryRecords[] = $record;
+            }
+        }
+
+        $visibleRecordKeys = array_flip(array_map(
+            fn (array $record): string => $this->issueRecordKey($record),
+            array_merge($visiblePrimaryRecords, $visibleSecondaryRecords)
+        ));
+        $visibleEntries = array_values(array_filter(
+            (array) ($item['issue_entries'] ?? []),
+            fn (array $entry): bool => isset($visibleRecordKeys[$this->issueRecordKey($entry)])
+        ));
+
+        if ($visibleEntries === []) {
+            return null;
+        }
+
+        if ($visiblePrimaryRecords === [] && $visibleSecondaryRecords === []) {
+            return null;
+        }
+
+        $canonicalIssue = $visibleEntries[0] ?? null;
+
+        $item['primary_issue_records'] = $visiblePrimaryRecords;
+        $item['secondary_issue_records'] = $visibleSecondaryRecords;
+        $item['issue_entries'] = $visibleEntries;
+        $item['primary_reasons'] = array_map(
+            static fn (array $record): string => $record['reason'],
+            $visiblePrimaryRecords
+        );
+        $item['secondary_reasons'] = array_map(
+            static fn (array $record): string => $record['reason'],
+            $visibleSecondaryRecords
+        );
+        $item['primary_reason_count'] = count($visiblePrimaryRecords);
+        $item['secondary_reason_count'] = count($visibleSecondaryRecords);
+        $item['issue_family'] = is_array($canonicalIssue) ? $canonicalIssue['issue_family'] : null;
+        $item['control_id'] = is_array($canonicalIssue) ? $canonicalIssue['control_id'] : null;
+        $item['rollout_scope'] = is_array($canonicalIssue) ? $canonicalIssue['rollout_scope'] : 'domain_only';
+        $item['baseline_surface'] = is_array($canonicalIssue) ? $canonicalIssue['baseline_surface'] : null;
+        $item['issue_families'] = array_unique(array_map(
+            static fn (array $entry): string => $entry['issue_family'],
+            $visibleEntries
+        ));
+        $item['primary_issue_families'] = array_unique(array_map(
+            static fn (array $record): string => $record['issue_family'],
+            $visiblePrimaryRecords
+        ));
+        $item['secondary_issue_families'] = array_unique(array_map(
+            static fn (array $record): string => $record['issue_family'],
+            $visibleSecondaryRecords
+        ));
+        $item['is_standard_gap'] = ($item['rollout_scope'] ?? 'domain_only') === 'fleet';
+        unset($item['baseline_captured_at']);
+
+        return $item;
+    }
+
+    /**
+     * @param  array<string, mixed>  $record
+     * @param  array<string, mixed>  $item
+     * @param  array<string, \App\Models\DetectedIssueVerification>  $verificationMap
+     */
+    private function shouldKeepVerifiedRecord(
+        array $record,
+        array $item,
+        string $domainId,
+        ?string $propertySlug,
+        array $verificationMap
+    ): bool {
+        $issueFamily = is_string($record['issue_family'] ?? null) ? $record['issue_family'] : null;
+
+        if ($issueFamily === null) {
+            return false;
+        }
+
+        $issueId = $this->issueIdentityService->makeIssueId($domainId, $propertySlug, $issueFamily);
+        $verification = $verificationMap[$issueId] ?? null;
+        $issue = [
+            'issue_id' => $issueId,
+            'detected_at' => is_string($item['updated_at_iso'] ?? null) ? $item['updated_at_iso'] : null,
+            'evidence' => [
+                'captured_at' => $this->queueIssueObservedAt($item, $issueFamily),
+            ],
+        ];
+
+        return ! ($verification instanceof \App\Models\DetectedIssueVerification
+            && $this->issueVerificationService->isCurrentlySuppressed($issue, $verification));
+    }
+
+    /**
+     * @param  array<string, mixed>  $record
+     */
+    private function issueRecordKey(array $record): string
+    {
+        $issueFamily = is_string($record['issue_family'] ?? null) ? $record['issue_family'] : null;
+        $reason = is_string($record['reason'] ?? null) ? $record['reason'] : '';
+        $severity = is_string($record['severity'] ?? null) ? $record['severity'] : '';
+
+        return sprintf('%s|%s|%s', $issueFamily, $severity, $reason);
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function queueIssueObservedAt(array $item, string $issueFamily): ?string
+    {
+        if (array_key_exists($issueFamily, config('domain_monitor.search_console_issue_catalog', []))) {
+            return is_string($item['baseline_captured_at'] ?? null) ? $item['baseline_captured_at'] : null;
+        }
+
+        return is_string($item['updated_at_iso'] ?? null) ? $item['updated_at_iso'] : null;
     }
 
     /**
@@ -97,6 +308,7 @@ class DashboardIssueQueueService
                     $domain,
                     $property,
                     $coverageStatus,
+                    'must_fix',
                     $mustFixReasons,
                     $shouldFixReasons,
                     $mustFixIssueRecords,
@@ -111,6 +323,7 @@ class DashboardIssueQueueService
                     $domain,
                     $property,
                     $coverageStatus,
+                    'should_fix',
                     $shouldFixReasons,
                     [],
                     $shouldFixIssueRecords,
@@ -331,11 +544,14 @@ class DashboardIssueQueueService
         Domain $domain,
         ?WebProperty $property,
         string $coverageStatus,
+        string $queueBucket,
         array $primaryReasons,
         array $secondaryReasons = [],
         array $primaryIssueRecords = [],
         array $secondaryIssueRecords = []
     ): array {
+        $baseline = $property?->latestPropertySeoBaselineRecord();
+
         return $this->enrichQueueItem($domain, $property, [
             'id' => $domain->id,
             'domain' => $domain->domain,
@@ -351,11 +567,13 @@ class DashboardIssueQueueService
             'secondary_reason_count' => count($secondaryReasons),
             'primary_issue_records' => $primaryIssueRecords,
             'secondary_issue_records' => $secondaryIssueRecords,
+            'queue_bucket' => $queueBucket,
             'coverage_required' => $this->requiresControlCoverage($domain, $property),
             'coverage_status' => $coverageStatus,
             'coverage_gap' => in_array($coverageStatus, ['missing_property', 'missing_repository', 'missing_local_path'], true),
             'updated_at_human' => $domain->updated_at?->diffForHumans(),
             'updated_at_iso' => $domain->updated_at?->toIso8601String() ?? now()->toIso8601String(),
+            'baseline_captured_at' => $baseline?->captured_at?->toIso8601String(),
         ]);
     }
 
