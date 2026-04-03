@@ -600,4 +600,81 @@ class DetectedIssueApiTest extends TestCase
         $this->assertNull($issue['execution_surface']);
         $this->assertFalse($issue['fleet_managed']);
     }
+
+    public function test_issues_endpoint_can_mark_allowlisted_repository_controlled_property_as_fleet_managed(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        config()->set('domain_monitor.fleet_focus.repository_controlled_domains', [
+            'transportnondrivablecars.com.au',
+        ]);
+
+        $domain = Domain::factory()->create([
+            'domain' => 'transportnondrivablecars.com.au',
+            'is_active' => true,
+            'platform' => 'Custom PHP',
+            'hosting_provider' => 'Synergy Wholesale PTY',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'transportnondrivablecars-com-au',
+            'name' => 'transportnondrivablecars.com.au',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => 'transportnondrivablecars-com-au-php',
+            'repo_provider' => 'github',
+            'repo_url' => 'https://github.com/iamjasonhill/transportnondrivablecars-com-au-php',
+            'local_path' => '/Users/jasonhill/Projects/websites/transportnondrivablecars-com-au-php',
+            'framework' => 'Custom PHP',
+            'is_primary' => true,
+            'is_controller' => true,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'baseline_type' => 'search_console',
+            'source_provider' => 'matomo',
+            'captured_at' => now(),
+            'matomo_site_id' => '2',
+            'search_console_property_uri' => 'sc-domain:transportnondrivablecars.com.au',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_api',
+            'clicks' => 10,
+            'impressions' => 100,
+            'ctr' => 0.1,
+            'average_position' => 12.3,
+            'indexed_pages' => 20,
+            'not_indexed_pages' => 5,
+            'pages_with_redirect' => 3,
+            'raw_payload' => ['issues' => [['label' => 'Page with redirect', 'count' => 3]]],
+        ]);
+
+        /** @var array<int, array<string, mixed>> $issues */
+        $issues = $this->withHeaders(['Authorization' => 'Bearer test-api-key'])
+            ->getJson('/api/issues')
+            ->assertOk()
+            ->json('issues');
+
+        $issue = collect($issues)->firstWhere('property_slug', 'transportnondrivablecars-com-au');
+
+        $this->assertNotNull($issue);
+        $this->assertSame('controlled', $issue['control_state']);
+        $this->assertSame('repository_controlled', $issue['execution_surface']);
+        $this->assertTrue($issue['fleet_managed']);
+        $this->assertSame('transportnondrivablecars-com-au-php', $issue['controller_repo']);
+    }
 }

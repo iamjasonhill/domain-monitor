@@ -596,10 +596,7 @@ class DashboardIssueQueueService
         return [
             'control_state' => 'controlled',
             'execution_surface' => $executionSurface,
-            'fleet_managed' => in_array($executionSurface, [
-                'fleet_wordpress_controlled',
-                'astro_repo_controlled',
-            ], true),
+            'fleet_managed' => $property?->isFleetManagedExecutionSurface($executionSurface) ?? false,
             ...$controllerRepositorySummary,
         ];
     }

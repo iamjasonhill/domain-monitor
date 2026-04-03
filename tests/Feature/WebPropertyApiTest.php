@@ -567,6 +567,58 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.fleet_managed', true);
     }
 
+    public function test_web_properties_summary_can_mark_allowlisted_repository_controlled_property_as_fleet_managed(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        config()->set('domain_monitor.fleet_focus.repository_controlled_domains', [
+            'transportnondrivablecars.com.au',
+        ]);
+
+        $domain = Domain::factory()->create([
+            'domain' => 'transportnondrivablecars.com.au',
+            'platform' => 'Custom PHP',
+            'hosting_provider' => 'Synergy Wholesale PTY',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'transportnondrivablecars-com-au',
+            'name' => 'transportnondrivablecars.com.au',
+            'property_type' => 'website',
+            'status' => 'active',
+            'platform' => 'Custom PHP',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => 'transportnondrivablecars-com-au-php',
+            'repo_provider' => 'github',
+            'repo_url' => 'https://github.com/iamjasonhill/transportnondrivablecars-com-au-php',
+            'local_path' => '/Users/jasonhill/Projects/websites/transportnondrivablecars-com-au-php',
+            'framework' => 'Custom PHP',
+            'is_primary' => true,
+            'is_controller' => true,
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/web-properties-summary');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('web_properties.0.slug', 'transportnondrivablecars-com-au')
+            ->assertJsonPath('web_properties.0.execution_surface', 'repository_controlled')
+            ->assertJsonPath('web_properties.0.fleet_managed', true)
+            ->assertJsonPath('web_properties.0.controller_repo', 'transportnondrivablecars-com-au-php');
+    }
+
     public function test_web_properties_summary_surfaces_property_level_gsc_issue_detail_coverage(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
