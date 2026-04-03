@@ -40,6 +40,9 @@ return [
             'vehicle.net.au',
             'wemove.com.au',
         ],
+        'repository_controlled_domains' => [
+            'transportnondrivablecars.com.au',
+        ],
     ],
 
     /*

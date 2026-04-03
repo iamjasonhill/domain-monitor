@@ -347,12 +347,35 @@ class WebProperty extends Model
         return [
             'control_state' => 'controlled',
             'execution_surface' => $executionSurface,
-            'fleet_managed' => in_array($executionSurface, [
-                'fleet_wordpress_controlled',
-                'astro_repo_controlled',
-            ], true),
+            'fleet_managed' => $this->isFleetManagedExecutionSurface($executionSurface),
             ...$controllerRepositorySummary,
         ];
+    }
+
+    public function isFleetManagedExecutionSurface(?string $executionSurface): bool
+    {
+        if (! is_string($executionSurface) || $executionSurface === '') {
+            return false;
+        }
+
+        if (in_array($executionSurface, ['fleet_wordpress_controlled', 'astro_repo_controlled'], true)) {
+            return true;
+        }
+
+        if ($executionSurface !== 'repository_controlled') {
+            return false;
+        }
+
+        $domain = $this->primaryDomainName();
+        $configuredAllowlist = config('domain_monitor.fleet_focus.repository_controlled_domains', []);
+        $allowlist = is_array($configuredAllowlist)
+            ? array_values(array_map(
+                static fn (string $value): string => strtolower($value),
+                array_filter($configuredAllowlist, static fn (mixed $value): bool => is_string($value) && $value !== '')
+            ))
+            : [];
+
+        return is_string($domain) && in_array(strtolower($domain), $allowlist, true);
     }
 
     /**
