@@ -37,7 +37,9 @@ class DetectedIssueSummaryService
                 return $issues->map(fn (array $issue): array => $this->issueVerificationService->annotateIssue(
                     $issue,
                     $verificationMap[$issue['issue_id']] ?? null
-                ));
+                ))->reject(
+                    fn (array $issue): bool => (bool) data_get($issue, 'verification.is_currently_suppressed', false)
+                )->values();
             })
             ->values();
         $mustFix = $issues->where('severity', 'must_fix')->values();

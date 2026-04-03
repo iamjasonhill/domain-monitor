@@ -7,6 +7,7 @@ use App\Models\Domain;
 use App\Models\DomainCheck;
 use App\Models\DomainSeoBaseline;
 use App\Models\PropertyRepository;
+use App\Models\SearchConsoleIssueSnapshot;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -209,6 +210,85 @@ class DetectedIssueVerificationApiTest extends TestCase
             ->assertJsonPath('should_fix.0.primary_reason_count', 0)
             ->assertJsonPath('should_fix.0.secondary_reason_count', 1)
             ->assertJsonPath('should_fix.0.secondary_reasons.0', 'Broken links need review');
+    }
+
+    public function test_suppressed_supplemental_issue_is_hidden_from_collection_feed_but_still_available_by_issue_id(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        config()->set('services.domain_monitor.fleet_control_api_key', 'fleet-token');
+
+        $property = $this->makeSearchConsoleProperty('supplemental-hide.example.com', now()->subHour(), 0);
+
+        DomainCheck::factory()->create([
+            'domain_id' => $property->primary_domain_id,
+            'check_type' => 'broken_links',
+            'status' => 'warn',
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $property->primary_domain_id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'google_chose_different_canonical',
+            'source_issue_label' => 'Google chose different canonical than user',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:supplemental-hide.example.com',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 2,
+            'sample_urls' => [
+                'https://supplemental-hide.example.com/example-page/',
+            ],
+            'examples' => [
+                ['url' => 'https://supplemental-hide.example.com/example-page/', 'last_crawled' => now()->subDay()->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://supplemental-hide.example.com/example-page/',
+                ],
+            ],
+            'raw_payload' => ['source' => 'drilldown'],
+        ]);
+
+        /** @var array<int, array<string, mixed>> $issues */
+        $issues = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues')
+            ->assertOk()
+            ->json('issues');
+
+        $supplementalIssue = collect($issues)->firstWhere('issue_class', 'google_chose_different_canonical');
+
+        $this->assertNotNull($supplementalIssue);
+        $this->assertSame($property->slug, $supplementalIssue['property_slug']);
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer fleet-token',
+        ])->postJson('/api/issues/'.urlencode($supplementalIssue['issue_id']).'/verification', [
+            'status' => 'verified_fixed_pending_recrawl',
+            'verification_notes' => [
+                'Fleet verified live canonical behavior is fixed',
+            ],
+        ])->assertCreated();
+
+        /** @var array<int, array<string, mixed>> $issuesAfterVerification */
+        $issuesAfterVerification = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues')
+            ->assertOk()
+            ->json('issues');
+
+        $this->assertFalse(collect($issuesAfterVerification)->contains(
+            fn (array $issue): bool => $issue['issue_id'] === $supplementalIssue['issue_id']
+        ));
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues/'.urlencode($supplementalIssue['issue_id']))
+            ->assertOk()
+            ->assertJsonPath('issue_id', $supplementalIssue['issue_id'])
+            ->assertJsonPath('status', 'verified_fixed_pending_recrawl')
+            ->assertJsonPath('verification.is_currently_suppressed', true);
     }
 
     private function makeSearchConsoleProperty(string $domainName, \Illuminate\Support\Carbon $capturedAt, int $pagesWithRedirect): WebProperty
