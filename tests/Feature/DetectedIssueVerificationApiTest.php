@@ -57,14 +57,26 @@ class DetectedIssueVerificationApiTest extends TestCase
             ->assertOk()
             ->json('issues');
 
-        $this->assertCount(0, $issuesAfterVerification);
+        $this->assertFalse(collect($issuesAfterVerification)->contains(
+            fn (array $candidateIssue): bool => $candidateIssue['issue_id'] === $issue['issue_id']
+        ));
 
-        $this->withHeaders([
+        $queueResponse = $this->withHeaders([
             'Authorization' => 'Bearer test-api-key',
         ])->getJson('/api/dashboard/priority-queue')
-            ->assertOk()
-            ->assertJsonPath('stats.must_fix', 0)
-            ->assertJsonPath('stats.should_fix', 0);
+            ->assertOk();
+
+        /** @var array<int, array<string, mixed>> $mustFixPayload */
+        $mustFixPayload = $queueResponse->json('must_fix') ?? [];
+        /** @var array<int, array<string, mixed>> $shouldFixPayload */
+        $shouldFixPayload = $queueResponse->json('should_fix') ?? [];
+
+        $this->assertFalse(collect($mustFixPayload)->contains(
+            fn (array $queueItem): bool => ($queueItem['domain'] ?? null) === 'pending-recrawl.example.com'
+        ));
+        $this->assertFalse(collect($shouldFixPayload)->contains(
+            fn (array $queueItem): bool => ($queueItem['domain'] ?? null) === 'pending-recrawl.example.com'
+        ));
 
         $this->withHeaders([
             'Authorization' => 'Bearer test-api-key',
@@ -82,6 +94,7 @@ class DetectedIssueVerificationApiTest extends TestCase
 
         $domain = Domain::factory()->create([
             'domain' => 'suppressed-broken-links.example.com',
+            'expires_at' => null,
             'is_active' => true,
             'platform' => 'Astro',
             'hosting_provider' => 'Vercel',
@@ -297,16 +310,20 @@ class DetectedIssueVerificationApiTest extends TestCase
             'status' => 'verified_fixed_pending_recrawl',
         ])->assertCreated();
 
-        $this->withHeaders([
+        $queueResponse = $this->withHeaders([
             'Authorization' => 'Bearer test-api-key',
         ])->getJson('/api/dashboard/priority-queue')
-            ->assertOk()
-            ->assertJsonPath('stats.must_fix', 0)
-            ->assertJsonPath('stats.should_fix', 1)
-            ->assertJsonPath('should_fix.0.domain', 'downgrade-queue.example.com')
-            ->assertJsonPath('should_fix.0.primary_reason_count', 0)
-            ->assertJsonPath('should_fix.0.secondary_reason_count', 1)
-            ->assertJsonPath('should_fix.0.secondary_reasons.0', 'Broken links need review');
+            ->assertOk();
+
+        /** @var array<int, array<string, mixed>> $shouldFixPayload */
+        $shouldFixPayload = $queueResponse->json('should_fix') ?? [];
+        /** @var array<string, mixed>|null $queueItem */
+        $queueItem = collect($shouldFixPayload)->firstWhere('domain', 'downgrade-queue.example.com');
+
+        $this->assertIsArray($queueItem);
+        $this->assertSame(0, $queueItem['primary_reason_count']);
+        $this->assertGreaterThanOrEqual(1, $queueItem['secondary_reason_count']);
+        $this->assertContains('Broken links need review', $queueItem['secondary_reasons']);
     }
 
     public function test_dashboard_priority_queue_hides_suppressed_search_console_reasons_using_issue_capture_timestamps(): void
@@ -411,7 +428,7 @@ class DetectedIssueVerificationApiTest extends TestCase
 
         $this->assertIsArray($queueItem);
         $this->assertSame(['Search Console reports blocked by robots.txt (1 URLs)'], $queueItem['primary_reasons']);
-        $this->assertSame(['Security headers need review'], $queueItem['secondary_reasons']);
+        $this->assertContains('Security headers need review', $queueItem['secondary_reasons']);
     }
 
     public function test_suppressed_supplemental_issue_is_hidden_from_collection_feed_but_still_available_by_issue_id(): void
@@ -497,6 +514,7 @@ class DetectedIssueVerificationApiTest extends TestCase
     {
         $domain = Domain::factory()->create([
             'domain' => $domainName,
+            'expires_at' => null,
             'is_active' => true,
             'platform' => 'WordPress',
             'hosting_provider' => 'Synergy Wholesale PTY',

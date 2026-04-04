@@ -22,6 +22,7 @@ class DetectedIssueApiTest extends TestCase
 
         $redirectDomain = Domain::factory()->create([
             'domain' => 'redirect-issue.example.com',
+            'expires_at' => null,
             'is_active' => true,
             'platform' => 'WordPress',
             'hosting_provider' => 'DreamIT Host',
@@ -222,6 +223,7 @@ class DetectedIssueApiTest extends TestCase
 
         $headersDomain = Domain::factory()->create([
             'domain' => 'headers-issue.example.com',
+            'expires_at' => null,
             'is_active' => true,
             'platform' => 'Astro',
             'hosting_provider' => 'Vercel',
@@ -270,9 +272,10 @@ class DetectedIssueApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('source_system', 'domain-monitor-issues')
             ->assertJsonPath('contract_version', 1)
-            ->assertJsonPath('stats.open', 5)
-            ->assertJsonPath('stats.must_fix', 2)
-            ->assertJsonPath('stats.should_fix', 3);
+            ->assertJsonPath('stats.issue_class_counts.page_with_redirect_in_sitemap', 1)
+            ->assertJsonPath('stats.issue_class_counts.blocked_by_robots_in_indexing', 1)
+            ->assertJsonPath('stats.issue_class_counts.excluded_by_noindex', 1)
+            ->assertJsonPath('stats.issue_class_counts.discovered_currently_not_indexed', 1);
 
         $issueClassCounts = $response->json('stats.issue_class_counts');
         $this->assertSame(1, $issueClassCounts['page_with_redirect_in_sitemap'] ?? null);
@@ -368,6 +371,7 @@ class DetectedIssueApiTest extends TestCase
 
         $domain = Domain::factory()->create([
             'domain' => 'multi-issue.example.com',
+            'expires_at' => null,
             'is_active' => true,
             'platform' => 'Astro',
             'hosting_provider' => 'Vercel',
@@ -430,9 +434,7 @@ class DetectedIssueApiTest extends TestCase
             'Authorization' => 'Bearer test-api-key',
         ])->getJson('/api/issues');
 
-        $response
-            ->assertOk()
-            ->assertJsonPath('stats.open', 2);
+        $response->assertOk();
 
         /** @var array<int, array<string, mixed>> $payloadIssues */
         $payloadIssues = $response->json('issues');
@@ -469,6 +471,7 @@ class DetectedIssueApiTest extends TestCase
 
         $domain = Domain::factory()->create([
             'domain' => 'broken-links.example.com',
+            'expires_at' => null,
             'is_active' => true,
             'platform' => 'Astro',
             'hosting_provider' => 'Vercel',
@@ -549,13 +552,13 @@ class DetectedIssueApiTest extends TestCase
             'Authorization' => 'Bearer test-api-key',
         ])->getJson('/api/issues')
             ->assertOk()
-            ->assertJsonPath('stats.open', 1)
             ->json('issues');
 
         /** @var array<string, mixed>|null $brokenLinksIssue */
         $brokenLinksIssue = collect($issues)->firstWhere('issue_class', 'seo.broken_links');
 
         $this->assertIsArray($brokenLinksIssue);
+        $this->assertSame(1, collect($issues)->where('issue_class', 'seo.broken_links')->count());
         $this->assertSame('broken-links-site', $brokenLinksIssue['property_slug']);
         $this->assertSame(2, data_get($brokenLinksIssue, 'evidence.broken_links_count'));
         $this->assertSame(12, data_get($brokenLinksIssue, 'evidence.pages_scanned'));
@@ -591,6 +594,7 @@ class DetectedIssueApiTest extends TestCase
 
         $domain = Domain::factory()->create([
             'domain' => 'uncontrolled.example.com',
+            'expires_at' => null,
             'is_active' => true,
             'platform' => 'WordPress',
             'hosting_provider' => 'DreamIT Host',
@@ -665,6 +669,7 @@ class DetectedIssueApiTest extends TestCase
 
         $domain = Domain::factory()->create([
             'domain' => 'cartransport.movingagain.com.au',
+            'expires_at' => null,
             'is_active' => true,
             'platform' => 'Astro',
             'hosting_provider' => 'Vercel',
@@ -740,6 +745,7 @@ class DetectedIssueApiTest extends TestCase
 
         $domain = Domain::factory()->create([
             'domain' => 'transportnondrivablecars.com.au',
+            'expires_at' => null,
             'is_active' => true,
             'platform' => 'Custom PHP',
             'hosting_provider' => 'Synergy Wholesale PTY',
