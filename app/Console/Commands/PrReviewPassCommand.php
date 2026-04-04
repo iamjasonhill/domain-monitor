@@ -253,11 +253,17 @@ class PrReviewPassCommand extends Command
 
         if ($failingCount > 0) {
             $this->warn("Status checks currently failing: {$failingCount}");
-        } elseif ($pendingCount > 0) {
+        }
+
+        if ($pendingCount > 0) {
             $this->warn("Status checks still pending: {$pendingCount}");
-        } elseif ($attentionCount > 0) {
+        }
+
+        if ($attentionCount > 0) {
             $this->warn("Status checks need attention: {$attentionCount}");
-        } else {
+        }
+
+        if ($failingCount === 0 && $pendingCount === 0 && $attentionCount === 0) {
             $this->info('Status checks are green.');
         }
     }
@@ -442,7 +448,7 @@ GRAPHQL;
         $summary = preg_replace('/`([^`]*)`/', '$1', $summary) ?? $summary;
         $summary = preg_replace('/!\[[^\]]*\]\([^)]*\)/', '', $summary) ?? $summary;
         $summary = preg_replace('/\[(.*?)\]\([^)]*\)/', '$1', $summary) ?? $summary;
-        $summary = preg_replace('/[#>*_|-]+/', ' ', $summary) ?? $summary;
+        $summary = preg_replace('/[#>*_|]+/', ' ', $summary) ?? $summary;
         $summary = preg_replace('/\s+/', ' ', $summary) ?? $summary;
         $summary = trim($summary);
 

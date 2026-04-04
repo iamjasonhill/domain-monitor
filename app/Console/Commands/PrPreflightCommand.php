@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Process\ProcessResult;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Str;
 use Throwable;
 
 class PrPreflightCommand extends Command
@@ -84,8 +85,76 @@ class PrPreflightCommand extends Command
     private function runCliCommand(array $command): ProcessResult
     {
         return Process::path(base_path())
+            ->env($this->environmentForCommand($command))
             ->timeout(self::PROCESS_TIMEOUT_SECONDS)
             ->run($command);
+    }
+
+    /**
+     * @param  array<int, string>  $command
+     * @return array<string, false>
+     */
+    private function environmentForCommand(array $command): array
+    {
+        if (! $this->isArtisanCommand($command)) {
+            return [];
+        }
+
+        $keys = collect([
+            ...$this->environmentKeysFromFile(base_path('.env')),
+            ...$this->environmentKeysFromFile(base_path('.env.testing')),
+        ])
+            ->unique()
+            ->values()
+            ->all();
+
+        /** @var array<string, false> $environment */
+        $environment = array_fill_keys($keys, false);
+
+        return $environment;
+    }
+
+    /**
+     * @param  array<int, string>  $command
+     */
+    private function isArtisanCommand(array $command): bool
+    {
+        if (count($command) < 2) {
+            return false;
+        }
+
+        return Str::startsWith(basename($command[0]), 'php')
+            && $command[1] === 'artisan';
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function environmentKeysFromFile(string $path): array
+    {
+        if (! is_file($path)) {
+            return [];
+        }
+
+        $keys = [];
+
+        foreach (file($path, FILE_IGNORE_NEW_LINES) ?: [] as $line) {
+            $line = trim($line);
+
+            if ($line === '' || str_starts_with($line, '#')) {
+                continue;
+            }
+
+            if (str_starts_with($line, 'export ')) {
+                $line = substr($line, 7);
+            }
+
+            if (preg_match('/^([A-Z0-9_]+)=/', $line, $matches) === 1) {
+                $keys[] = $matches[1];
+            }
+        }
+
+        return array_values(array_unique($keys));
     }
 
     private function writeProcessOutput(ProcessResult $result): void

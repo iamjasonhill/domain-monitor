@@ -306,4 +306,126 @@ class PrReviewPassCommandTest extends TestCase
             ->expectsOutputToContain('Status checks need attention: 1')
             ->assertSuccessful();
     }
+
+    public function test_it_reports_failing_and_pending_checks_together(): void
+    {
+        Process::preventStrayProcesses();
+        Process::fake(function (PendingProcess $process) {
+            if ($process->command === ['git', 'branch', '--show-current']) {
+                return Process::result('codex/add-pr-helper-commands');
+            }
+
+            if ($process->command === ['git', 'remote', 'get-url', 'origin']) {
+                return Process::result('https://github.com/example/repo.git');
+            }
+
+            if ($process->command === ['gh', 'pr', 'view', '--json', 'number,title,url,mergeable,reviewDecision,statusCheckRollup,latestReviews,comments,state,isDraft,headRefName,baseRefName']) {
+                return Process::result(json_encode([
+                    'number' => 105,
+                    'title' => 'Mixed check states',
+                    'url' => 'https://github.com/example/repo/pull/105',
+                    'mergeable' => 'MERGEABLE',
+                    'reviewDecision' => '',
+                    'state' => 'OPEN',
+                    'isDraft' => false,
+                    'headRefName' => 'codex/add-pr-helper-commands',
+                    'baseRefName' => 'main',
+                    'statusCheckRollup' => [
+                        [
+                            '__typename' => 'CheckRun',
+                            'workflowName' => 'CI',
+                            'name' => 'php',
+                            'conclusion' => 'FAILURE',
+                            'status' => 'COMPLETED',
+                        ],
+                        [
+                            '__typename' => 'StatusContext',
+                            'context' => 'Devin Review',
+                            'state' => 'PENDING',
+                        ],
+                    ],
+                    'latestReviews' => [],
+                    'comments' => [],
+                ], JSON_THROW_ON_ERROR));
+            }
+
+            if ($process->command[0] === 'gh' && $process->command[1] === 'api' && $process->command[2] === 'graphql') {
+                return Process::result(json_encode([
+                    'data' => [
+                        'repository' => [
+                            'pullRequest' => [
+                                'reviewThreads' => [
+                                    'nodes' => [],
+                                ],
+                            ],
+                        ],
+                    ],
+                ], JSON_THROW_ON_ERROR));
+            }
+
+            return Process::result('', 'unexpected command', 1);
+        });
+
+        $this->artisan('pr:review-pass')
+            ->expectsOutputToContain('Status checks currently failing: 1')
+            ->expectsOutputToContain('Status checks still pending: 1')
+            ->assertSuccessful();
+    }
+
+    public function test_it_preserves_hyphenated_text_in_review_summaries(): void
+    {
+        Process::preventStrayProcesses();
+        Process::fake(function (PendingProcess $process) {
+            if ($process->command === ['git', 'branch', '--show-current']) {
+                return Process::result('codex/add-pr-helper-commands');
+            }
+
+            if ($process->command === ['git', 'remote', 'get-url', 'origin']) {
+                return Process::result('https://github.com/example/repo.git');
+            }
+
+            if ($process->command === ['gh', 'pr', 'view', '--json', 'number,title,url,mergeable,reviewDecision,statusCheckRollup,latestReviews,comments,state,isDraft,headRefName,baseRefName']) {
+                return Process::result(json_encode([
+                    'number' => 106,
+                    'title' => 'Hyphenated summary text',
+                    'url' => 'https://github.com/example/repo/pull/106',
+                    'mergeable' => 'MERGEABLE',
+                    'reviewDecision' => '',
+                    'state' => 'OPEN',
+                    'isDraft' => false,
+                    'headRefName' => 'codex/add-pr-helper-commands',
+                    'baseRefName' => 'main',
+                    'statusCheckRollup' => [],
+                    'latestReviews' => [],
+                    'comments' => [
+                        [
+                            'author' => ['login' => 'greptile-apps'],
+                            'body' => 'Keep non-null intact.',
+                            'createdAt' => '2026-04-05T00:00:00Z',
+                        ],
+                    ],
+                ], JSON_THROW_ON_ERROR));
+            }
+
+            if ($process->command[0] === 'gh' && $process->command[1] === 'api' && $process->command[2] === 'graphql') {
+                return Process::result(json_encode([
+                    'data' => [
+                        'repository' => [
+                            'pullRequest' => [
+                                'reviewThreads' => [
+                                    'nodes' => [],
+                                ],
+                            ],
+                        ],
+                    ],
+                ], JSON_THROW_ON_ERROR));
+            }
+
+            return Process::result('', 'unexpected command', 1);
+        });
+
+        $this->artisan('pr:review-pass')
+            ->expectsOutputToContain('non-null')
+            ->assertSuccessful();
+    }
 }

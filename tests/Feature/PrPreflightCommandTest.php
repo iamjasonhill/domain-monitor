@@ -38,6 +38,12 @@ class PrPreflightCommandTest extends TestCase
         Process::assertRanTimes(function (PendingProcess $process): bool {
             return $process->command === [PHP_BINARY, 'artisan', 'test'];
         });
+
+        Process::assertRan(function (PendingProcess $process): bool {
+            return $process->command === [PHP_BINARY, 'artisan', 'test']
+                && ($process->environment['APP_ENV'] ?? null) === false
+                && ($process->environment['DB_CONNECTION'] ?? null) === false;
+        });
     }
 
     public function test_it_honors_skip_flags(): void
@@ -64,6 +70,29 @@ class PrPreflightCommandTest extends TestCase
 
         Process::assertNotRan(function (PendingProcess $process): bool {
             return $process->command === [PHP_BINARY, 'artisan', 'config:clear', '--ansi'];
+        });
+    }
+
+    public function test_it_only_sanitizes_artisan_subprocess_environment(): void
+    {
+        Process::preventStrayProcesses();
+        Process::fake(function () {
+            return Process::result('ok');
+        });
+
+        $this->artisan('pr:preflight', [
+            '--skip-config-clear' => true,
+            '--skip-tests' => true,
+        ])->assertSuccessful();
+
+        Process::assertRan(function (PendingProcess $process): bool {
+            return $process->command === ['./vendor/bin/pint', '--dirty']
+                && $process->environment === [];
+        });
+
+        Process::assertRan(function (PendingProcess $process): bool {
+            return $process->command === ['./vendor/bin/phpstan', 'analyse', '--memory-limit=2G']
+                && $process->environment === [];
         });
     }
 
