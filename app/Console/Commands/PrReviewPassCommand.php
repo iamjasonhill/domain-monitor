@@ -98,7 +98,7 @@ class PrReviewPassCommand extends Command
              *   title:string,
              *   url:string,
              *   mergeable:string,
-             *   reviewDecision:string,
+             *   reviewDecision:?string,
              *   state:string,
              *   isDraft:bool,
              *   headRefName:string,
@@ -131,7 +131,7 @@ class PrReviewPassCommand extends Command
             $this->sanitizeConsoleText($pullRequest['state']),
             $pullRequest['isDraft'] ? 'yes' : 'no',
             $this->sanitizeConsoleText($pullRequest['mergeable']),
-            $pullRequest['reviewDecision'] !== '' ? $this->sanitizeConsoleText($pullRequest['reviewDecision']) : 'none'
+            filled($pullRequest['reviewDecision']) ? $this->sanitizeConsoleText((string) $pullRequest['reviewDecision']) : 'none'
         ));
 
         $statusRows = $this->statusRows(collect($pullRequest['statusCheckRollup']));

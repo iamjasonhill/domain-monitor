@@ -192,6 +192,57 @@ class PrReviewPassCommandTest extends TestCase
             ->assertSuccessful();
     }
 
+    public function test_it_treats_null_review_decision_as_none(): void
+    {
+        Process::preventStrayProcesses();
+        Process::fake(function (PendingProcess $process) {
+            if ($process->command === ['git', 'branch', '--show-current']) {
+                return Process::result('codex/add-pr-helper-commands');
+            }
+
+            if ($process->command === ['git', 'remote', 'get-url', 'origin']) {
+                return Process::result('https://github.com/example/repo.git');
+            }
+
+            if ($process->command === ['gh', 'pr', 'view', '--json', 'number,title,url,mergeable,reviewDecision,statusCheckRollup,latestReviews,comments,state,isDraft,headRefName,baseRefName']) {
+                return Process::result(json_encode([
+                    'number' => 107,
+                    'title' => 'Null review decision',
+                    'url' => 'https://github.com/example/repo/pull/107',
+                    'mergeable' => 'MERGEABLE',
+                    'reviewDecision' => null,
+                    'state' => 'OPEN',
+                    'isDraft' => false,
+                    'headRefName' => 'codex/add-pr-helper-commands',
+                    'baseRefName' => 'main',
+                    'statusCheckRollup' => [],
+                    'latestReviews' => [],
+                    'comments' => [],
+                ], JSON_THROW_ON_ERROR));
+            }
+
+            if ($process->command[0] === 'gh' && $process->command[1] === 'api' && $process->command[2] === 'graphql') {
+                return Process::result(json_encode([
+                    'data' => [
+                        'repository' => [
+                            'pullRequest' => [
+                                'reviewThreads' => [
+                                    'nodes' => [],
+                                ],
+                            ],
+                        ],
+                    ],
+                ], JSON_THROW_ON_ERROR));
+            }
+
+            return Process::result('', 'unexpected command', 1);
+        });
+
+        $this->artisan('pr:review-pass')
+            ->expectsOutputToContain('Review Decision: none')
+            ->assertSuccessful();
+    }
+
     public function test_it_sanitizes_github_text_before_rendering_it(): void
     {
         Process::preventStrayProcesses();
