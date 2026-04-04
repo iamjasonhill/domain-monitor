@@ -12,6 +12,8 @@ use Throwable;
 
 class PrReviewPassCommand extends Command
 {
+    private const REVIEW_THREAD_PAGE_SIZE = 50;
+
     protected $signature = 'pr:review-pass
                             {--with-preflight : Run pr:preflight before fetching PR status}
                             {--comments=5 : Number of recent top-level PR comments to show}';
@@ -319,79 +321,11 @@ class PrReviewPassCommand extends Command
             return collect();
         }
 
-        $query = <<<'GRAPHQL'
-query($owner: String!, $name: String!, $number: Int!) {
-  repository(owner: $owner, name: $name) {
-    pullRequest(number: $number) {
-      reviewThreads(first: 50) {
-        nodes {
-          isResolved
-          isOutdated
-          comments(first: 10) {
-            nodes {
-              author {
-                login
-              }
-              body
-              path
-              createdAt
-            }
-          }
-        }
-      }
-    }
-  }
-}
-GRAPHQL;
+        $threads = $this->reviewThreads($repository, $pullRequestNumber);
 
-        try {
-            $result = $this->runGithubCommand([
-                'gh',
-                'api',
-                'graphql',
-                '-f',
-                "query={$query}",
-                '-F',
-                "owner={$repository['owner']}",
-                '-F',
-                "name={$repository['name']}",
-                '-F',
-                "number={$pullRequestNumber}",
-            ]);
-        } catch (Throwable $exception) {
-            $this->warn($exception->getMessage());
-
+        if ($threads->isEmpty()) {
             return collect();
         }
-
-        if ($result->failed()) {
-            $this->writeErrorResult($result);
-
-            return collect();
-        }
-
-        try {
-            /** @var array{
-             *   data?: array{
-             *     repository?: array{
-             *       pullRequest?: array{
-             *         reviewThreads?: array{
-             *           nodes?: array<int, array<string, mixed>>
-             *         }
-             *       }
-             *     }
-             *   }
-             * } $payload
-             */
-            $payload = json_decode($result->output(), true, 512, JSON_THROW_ON_ERROR);
-        } catch (JsonException) {
-            return collect();
-        }
-
-        /** @var array<int, array<string, mixed>> $threadNodes */
-        $threadNodes = (array) data_get($payload, 'data.repository.pullRequest.reviewThreads.nodes', []);
-
-        $threads = collect($threadNodes);
 
         return $threads
             ->filter(fn (array $thread): bool => ! (bool) ($thread['isResolved'] ?? false) && ! (bool) ($thread['isOutdated'] ?? false))
@@ -408,6 +342,124 @@ GRAPHQL;
                     });
             })
             ->values();
+    }
+
+    /**
+     * @param  array{owner:string,name:string}  $repository
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function reviewThreads(array $repository, int $pullRequestNumber): Collection
+    {
+        $query = sprintf(<<<'GRAPHQL'
+query($owner: String!, $name: String!, $number: Int!, $after: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      reviewThreads(first: %d, after: $after) {
+        nodes {
+          isResolved
+          isOutdated
+          comments(first: 10) {
+            nodes {
+              author {
+                login
+              }
+              body
+              path
+              createdAt
+            }
+          }
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  }
+}
+GRAPHQL, self::REVIEW_THREAD_PAGE_SIZE);
+
+        $threadNodes = [];
+        $cursor = null;
+
+        do {
+            try {
+                $result = $this->runGithubCommand($this->reviewThreadsCommand(
+                    $query,
+                    $repository,
+                    $pullRequestNumber,
+                    $cursor
+                ));
+            } catch (Throwable $exception) {
+                $this->warn($exception->getMessage());
+
+                return collect();
+            }
+
+            if ($result->failed()) {
+                $this->writeErrorResult($result);
+
+                return collect();
+            }
+
+            try {
+                /** @var array{
+                 *   data?: array{
+                 *     repository?: array{
+                 *       pullRequest?: array{
+                 *         reviewThreads?: array{
+                 *           nodes?: array<int, array<string, mixed>>,
+                 *           pageInfo?: array{
+                 *             hasNextPage?: bool,
+                 *             endCursor?: ?string
+                 *           }
+                 *         }
+                 *       }
+                 *     }
+                 *   }
+                 * } $payload
+                 */
+                $payload = json_decode($result->output(), true, 512, JSON_THROW_ON_ERROR);
+            } catch (JsonException) {
+                return collect();
+            }
+
+            $reviewThreads = data_get($payload, 'data.repository.pullRequest.reviewThreads', []);
+            $threadNodes = array_merge($threadNodes, (array) data_get($reviewThreads, 'nodes', []));
+            $hasNextPage = (bool) data_get($reviewThreads, 'pageInfo.hasNextPage', false);
+            $nextCursor = data_get($reviewThreads, 'pageInfo.endCursor');
+            $cursor = is_string($nextCursor) && $nextCursor !== '' ? $nextCursor : null;
+        } while ($hasNextPage && $cursor !== null);
+
+        return collect($threadNodes);
+    }
+
+    /**
+     * @param  array{owner:string,name:string}  $repository
+     * @return array<int, string>
+     */
+    private function reviewThreadsCommand(string $query, array $repository, int $pullRequestNumber, ?string $cursor): array
+    {
+        $command = [
+            'gh',
+            'api',
+            'graphql',
+            '-f',
+            "query={$query}",
+            '-F',
+            "owner={$repository['owner']}",
+            '-F',
+            "name={$repository['name']}",
+            '-F',
+            "number={$pullRequestNumber}",
+        ];
+
+        if ($cursor !== null) {
+            $command[] = '-F';
+            $command[] = "after={$cursor}";
+        }
+
+        return $command;
     }
 
     /**

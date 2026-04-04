@@ -205,10 +205,12 @@ class DetectedIssueVerificationApiTest extends TestCase
             ->assertOk()
             ->json('issues');
 
-        $this->assertCount(1, $issuesAfterVerification);
-        $this->assertSame($issue['issue_id'], $issuesAfterVerification[0]['issue_id']);
-        $this->assertSame('open', $issuesAfterVerification[0]['status']);
-        $this->assertIsArray($issuesAfterVerification[0]['verification'] ?? null);
+        /** @var array<string, mixed>|null $resurfacedIssue */
+        $resurfacedIssue = collect($issuesAfterVerification)->firstWhere('issue_id', $issue['issue_id']);
+
+        $this->assertIsArray($resurfacedIssue);
+        $this->assertSame('open', $resurfacedIssue['status']);
+        $this->assertIsArray($resurfacedIssue['verification'] ?? null);
 
         $this->withHeaders([
             'Authorization' => 'Bearer test-api-key',

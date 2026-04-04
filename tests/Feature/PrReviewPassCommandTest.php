@@ -479,4 +479,114 @@ class PrReviewPassCommandTest extends TestCase
             ->expectsOutputToContain('non-null')
             ->assertSuccessful();
     }
+
+    public function test_it_paginates_inline_review_threads(): void
+    {
+        Process::preventStrayProcesses();
+        $graphqlCalls = 0;
+
+        Process::fake(function (PendingProcess $process) use (&$graphqlCalls) {
+            if ($process->command === ['git', 'branch', '--show-current']) {
+                return Process::result('codex/add-pr-helper-commands');
+            }
+
+            if ($process->command === ['git', 'remote', 'get-url', 'origin']) {
+                return Process::result('https://github.com/example/repo.git');
+            }
+
+            if ($process->command === ['gh', 'pr', 'view', '--json', 'number,title,url,mergeable,reviewDecision,statusCheckRollup,latestReviews,comments,state,isDraft,headRefName,baseRefName']) {
+                return Process::result(json_encode([
+                    'number' => 108,
+                    'title' => 'Paginated inline reviews',
+                    'url' => 'https://github.com/example/repo/pull/108',
+                    'mergeable' => 'MERGEABLE',
+                    'reviewDecision' => '',
+                    'state' => 'OPEN',
+                    'isDraft' => false,
+                    'headRefName' => 'codex/add-pr-helper-commands',
+                    'baseRefName' => 'main',
+                    'statusCheckRollup' => [],
+                    'latestReviews' => [],
+                    'comments' => [],
+                ], JSON_THROW_ON_ERROR));
+            }
+
+            if ($process->command[0] === 'gh' && $process->command[1] === 'api' && $process->command[2] === 'graphql') {
+                $graphqlCalls++;
+
+                if (in_array('after=cursor-1', $process->command, true)) {
+                    return Process::result(json_encode([
+                        'data' => [
+                            'repository' => [
+                                'pullRequest' => [
+                                    'reviewThreads' => [
+                                        'nodes' => [
+                                            [
+                                                'isResolved' => false,
+                                                'isOutdated' => false,
+                                                'comments' => [
+                                                    'nodes' => [
+                                                        [
+                                                            'author' => ['login' => 'greptile-apps'],
+                                                            'body' => 'Second page thread',
+                                                            'path' => 'tests/Feature/PrReviewPassCommandTest.php',
+                                                            'createdAt' => '2026-04-05T00:02:00Z',
+                                                        ],
+                                                    ],
+                                                ],
+                                            ],
+                                        ],
+                                        'pageInfo' => [
+                                            'hasNextPage' => false,
+                                            'endCursor' => null,
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ], JSON_THROW_ON_ERROR));
+                }
+
+                return Process::result(json_encode([
+                    'data' => [
+                        'repository' => [
+                            'pullRequest' => [
+                                'reviewThreads' => [
+                                    'nodes' => [
+                                        [
+                                            'isResolved' => false,
+                                            'isOutdated' => false,
+                                            'comments' => [
+                                                'nodes' => [
+                                                    [
+                                                        'author' => ['login' => 'devin-ai'],
+                                                        'body' => 'First page thread',
+                                                        'path' => 'app/Console/Commands/PrReviewPassCommand.php',
+                                                        'createdAt' => '2026-04-05T00:01:00Z',
+                                                    ],
+                                                ],
+                                            ],
+                                        ],
+                                    ],
+                                    'pageInfo' => [
+                                        'hasNextPage' => true,
+                                        'endCursor' => 'cursor-1',
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ], JSON_THROW_ON_ERROR));
+            }
+
+            return Process::result('', 'unexpected command', 1);
+        });
+
+        $this->artisan('pr:review-pass')
+            ->expectsOutputToContain('First page thread')
+            ->expectsOutputToContain('Second page thread')
+            ->assertSuccessful();
+
+        $this->assertSame(2, $graphqlCalls);
+    }
 }
