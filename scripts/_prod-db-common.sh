@@ -3,14 +3,28 @@
 set -euo pipefail
 
 PROD_SSH_USER="${PROD_SSH_USER:-forge}"
-PROD_SSH_HOST="${PROD_SSH_HOST:-170.64.195.27}"
-PROD_APP_ROOT="${PROD_APP_ROOT:-/home/forge/monitor.again.com.au}"
-PROD_APP_ENV_FILE="${PROD_APP_ENV_FILE:-$PROD_APP_ROOT/.env}"
+PROD_SSH_HOST="${PROD_SSH_HOST:-}"
+PROD_APP_ROOT="${PROD_APP_ROOT:-}"
+PROD_APP_ENV_FILE="${PROD_APP_ENV_FILE:-}"
 
 run_remote_prod_psql() {
     local -a psql_args=("$@")
     local env_file_b64
     local psql_args_b64
+
+    if [ -z "$PROD_SSH_HOST" ]; then
+        echo "Error: Set PROD_SSH_HOST before using the production DB helpers." >&2
+        exit 1
+    fi
+
+    if [ -z "$PROD_APP_ENV_FILE" ]; then
+        if [ -z "$PROD_APP_ROOT" ]; then
+            echo "Error: Set PROD_APP_ROOT or PROD_APP_ENV_FILE before using the production DB helpers." >&2
+            exit 1
+        fi
+
+        PROD_APP_ENV_FILE="$PROD_APP_ROOT/.env"
+    fi
 
     env_file_b64="$(printf '%s' "${PROD_APP_ENV_FILE}" | base64 | tr -d '\n')"
 

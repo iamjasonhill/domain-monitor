@@ -18,10 +18,12 @@ Safety:
   - Read-only is a default session setting, not a hard database permission boundary.
   - For truly enforced read-only access, use a dedicated read-only database role.
 
+Required environment overrides:
+  PROD_SSH_HOST
+
 Optional environment overrides:
   PROD_SSH_USER
-  PROD_SSH_HOST
-  PROD_APP_ROOT
+  PROD_APP_ROOT (or PROD_APP_ENV_FILE)
   PROD_APP_ENV_FILE
 
 Examples:
@@ -44,6 +46,11 @@ fi
 
 if [[ "$normalized_query" =~ $multi_statement_pattern ]]; then
     echo "Error: Multiple SQL statements are not allowed." >&2
+    exit 1
+fi
+
+if [[ "$lowercase_query" == explain\ * ]] && [[ "$lowercase_query" =~ (^|[[:space:][:punct:]])analyze([[:space:][:punct:]]|$) ]]; then
+    echo "Error: EXPLAIN ANALYZE is not allowed because it executes the underlying statement." >&2
     exit 1
 fi
 

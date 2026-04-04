@@ -18,10 +18,12 @@ Safety:
   - Use scripts/prod-db-query.sh for one-off read queries.
   - Re-enable shell access only after provisioning a dedicated read-only role.
 
+Required environment overrides:
+  PROD_SSH_HOST
+
 Optional environment overrides:
   PROD_SSH_USER
-  PROD_SSH_HOST
-  PROD_APP_ROOT
+  PROD_APP_ROOT (or PROD_APP_ENV_FILE)
   PROD_APP_ENV_FILE
 
 Examples:
