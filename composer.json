@@ -62,6 +62,14 @@
         "analyse": [
             "./vendor/bin/phpstan analyse --memory-limit=2G"
         ],
+        "pr:preflight": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php artisan pr:preflight"
+        ],
+        "pr:review-pass": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php artisan pr:review-pass"
+        ],
         "check": [
             "@php artisan config:clear --ansi",
             "./vendor/bin/pint --test",
