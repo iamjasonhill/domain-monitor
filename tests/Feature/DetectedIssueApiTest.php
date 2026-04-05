@@ -857,6 +857,592 @@ class DetectedIssueApiTest extends TestCase
         $this->assertNull(data_get($blockedIssue, 'evidence.expected_exclusion'));
     }
 
+    public function test_issues_endpoint_suppresses_expected_wordpress_system_404_noise_and_retired_author_archives(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $systemDomain = Domain::factory()->create([
+            'domain' => 'system-noise.example.com',
+            'expires_at' => null,
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'DreamIT Host',
+        ]);
+
+        $systemProperty = WebProperty::factory()->create([
+            'slug' => 'system-noise-site',
+            'name' => 'System Noise Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $systemDomain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $systemProperty->id,
+            'domain_id' => $systemDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $systemProperty->id,
+            'repo_name' => 'system-noise-site',
+            'repo_provider' => 'local_only',
+            'local_path' => '/Users/jasonhill/Projects/websites/system-noise-site',
+            'framework' => 'WordPress',
+            'is_primary' => true,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $systemDomain->id,
+            'web_property_id' => $systemProperty->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '301',
+            'search_console_property_uri' => 'sc-domain:system-noise.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_api',
+            'not_found_404' => 2,
+            'raw_payload' => [
+                'issues' => [
+                    ['label' => 'Not found (404)', 'count' => 2],
+                ],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $systemDomain->id,
+            'web_property_id' => $systemProperty->id,
+            'issue_class' => 'not_found_404',
+            'source_issue_label' => 'Not found (404)',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:system-noise.example.com',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 2,
+            'sample_urls' => [
+                'https://system-noise.example.com/wp-content/plugins/revslider/readme.txt',
+                'https://system-noise.example.com/wp-comments-post.php',
+            ],
+            'examples' => [
+                ['url' => 'https://system-noise.example.com/wp-content/plugins/revslider/readme.txt', 'last_crawled' => now()->subDay()->toDateString()],
+                ['url' => 'https://system-noise.example.com/wp-comments-post.php', 'last_crawled' => now()->subDay()->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://system-noise.example.com/wp-content/plugins/revslider/readme.txt',
+                    'https://system-noise.example.com/wp-comments-post.php',
+                ],
+            ],
+        ]);
+
+        $authorDomain = Domain::factory()->create([
+            'domain' => 'author-archive.example.com',
+            'expires_at' => null,
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'DreamIT Host',
+        ]);
+
+        $authorProperty = WebProperty::factory()->create([
+            'slug' => 'author-archive-site',
+            'name' => 'Author Archive Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $authorDomain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $authorProperty->id,
+            'domain_id' => $authorDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $authorProperty->id,
+            'repo_name' => 'author-archive-site',
+            'repo_provider' => 'local_only',
+            'local_path' => '/Users/jasonhill/Projects/websites/author-archive-site',
+            'framework' => 'WordPress',
+            'is_primary' => true,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $authorDomain->id,
+            'web_property_id' => $authorProperty->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '302',
+            'search_console_property_uri' => 'sc-domain:author-archive.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_api',
+            'not_found_404' => 1,
+            'raw_payload' => [
+                'issues' => [
+                    ['label' => 'Not found (404)', 'count' => 1],
+                ],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $authorDomain->id,
+            'web_property_id' => $authorProperty->id,
+            'issue_class' => 'not_found_404',
+            'source_issue_label' => 'Not found (404)',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:author-archive.example.com',
+            'captured_at' => now()->subDay(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => [
+                'https://author-archive.example.com/author/removalist/',
+            ],
+            'examples' => [
+                ['url' => 'https://author-archive.example.com/author/removalist/', 'last_crawled' => now()->subDay()->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://author-archive.example.com/author/removalist/',
+                ],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $authorDomain->id,
+            'web_property_id' => $authorProperty->id,
+            'issue_class' => 'not_found_404',
+            'source_issue_label' => 'Not found (404)',
+            'capture_method' => 'gsc_api',
+            'source_report' => 'search_console_api_bundle',
+            'source_property' => 'sc-domain:author-archive.example.com',
+            'captured_at' => now()->subHours(12),
+            'captured_by' => 'test',
+            'normalized_payload' => [
+                'url_inspection' => [
+                    'inspected_urls' => [
+                        [
+                            'url' => 'https://author-archive.example.com/author/removalist/',
+                            'coverage_state' => 'Not found (404)',
+                            'referring_urls' => [],
+                            'sitemaps' => [],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $authorDomain->id,
+            'web_property_id' => $authorProperty->id,
+            'issue_class' => 'not_found_404',
+            'source_issue_label' => 'Not found (404)',
+            'capture_method' => 'gsc_live_recheck',
+            'source_report' => 'search_console_live_http_recheck',
+            'source_property' => 'sc-domain:author-archive.example.com',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => ['https://author-archive.example.com/author/removalist/'],
+            'normalized_payload' => [
+                'affected_urls' => ['https://author-archive.example.com/author/removalist/'],
+                'live_url_checks' => [
+                    [
+                        'url' => 'https://author-archive.example.com/author/removalist/',
+                        'checked_at' => now()->toIso8601String(),
+                        'final_url' => 'https://author-archive.example.com/',
+                        'final_status' => 200,
+                        'resolved_ok' => true,
+                        'host_changed' => false,
+                    ],
+                ],
+            ],
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues');
+
+        $response->assertOk()
+            ->assertJsonMissingPath('stats.issue_class_counts.not_found_404');
+
+        /** @var array<int, array<string, mixed>> $payloadIssues */
+        $payloadIssues = $response->json('issues') ?? [];
+        $this->assertNull(collect($payloadIssues)->first(function (array $issue): bool {
+            return ($issue['property_slug'] ?? null) === 'system-noise-site'
+                && ($issue['issue_class'] ?? null) === 'not_found_404';
+        }));
+        $this->assertNull(collect($payloadIssues)->first(function (array $issue): bool {
+            return ($issue['property_slug'] ?? null) === 'author-archive-site'
+                && ($issue['issue_class'] ?? null) === 'not_found_404';
+        }));
+
+        $identity = app(\App\Services\DetectedIssueIdentityService::class);
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues/'.urlencode($identity->makeIssueId($systemDomain->id, $systemProperty->slug, 'not_found_404')))
+            ->assertOk()
+            ->assertJsonPath('evidence.expected_exclusion.state', 'expected_wordpress_system_404');
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues/'.urlencode($identity->makeIssueId($authorDomain->id, $authorProperty->slug, 'not_found_404')))
+            ->assertOk()
+            ->assertJsonPath('evidence.expected_exclusion.state', 'retired_wordpress_author_archive');
+    }
+
+    public function test_issues_endpoint_keeps_only_still_failing_404_examples_after_live_rechecks(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'mixed-404.example.com',
+            'expires_at' => null,
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'DreamIT Host',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'mixed-404-site',
+            'name' => 'Mixed 404 Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '303',
+            'search_console_property_uri' => 'sc-domain:mixed-404.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_api',
+            'not_found_404' => 2,
+            'raw_payload' => [
+                'issues' => [
+                    ['label' => 'Not found (404)', 'count' => 2],
+                ],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'not_found_404',
+            'source_issue_label' => 'Not found (404)',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:mixed-404.example.com',
+            'captured_at' => now()->subDay(),
+            'captured_by' => 'test',
+            'affected_url_count' => 2,
+            'sample_urls' => [
+                'https://mixed-404.example.com/fixed-page/',
+                'https://mixed-404.example.com/still-missing/',
+            ],
+            'examples' => [
+                ['url' => 'https://mixed-404.example.com/fixed-page/', 'last_crawled' => now()->subDays(2)->toDateString()],
+                ['url' => 'https://mixed-404.example.com/still-missing/', 'last_crawled' => now()->subDays(2)->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://mixed-404.example.com/fixed-page/',
+                    'https://mixed-404.example.com/still-missing/',
+                ],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'not_found_404',
+            'source_issue_label' => 'Not found (404)',
+            'capture_method' => 'gsc_live_recheck',
+            'source_report' => 'search_console_live_http_recheck',
+            'source_property' => 'sc-domain:mixed-404.example.com',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 2,
+            'sample_urls' => [
+                'https://mixed-404.example.com/fixed-page/',
+                'https://mixed-404.example.com/still-missing/',
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://mixed-404.example.com/fixed-page/',
+                    'https://mixed-404.example.com/still-missing/',
+                ],
+                'live_url_checks' => [
+                    [
+                        'url' => 'https://mixed-404.example.com/fixed-page/',
+                        'checked_at' => now()->toIso8601String(),
+                        'final_url' => 'https://mixed-404.example.com/fixed-page/',
+                        'final_status' => 200,
+                        'resolved_ok' => true,
+                        'host_changed' => false,
+                    ],
+                    [
+                        'url' => 'https://mixed-404.example.com/still-missing/',
+                        'checked_at' => now()->toIso8601String(),
+                        'final_url' => 'https://mixed-404.example.com/still-missing/',
+                        'final_status' => 404,
+                        'resolved_ok' => false,
+                        'host_changed' => false,
+                    ],
+                ],
+            ],
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues');
+
+        $response->assertOk()
+            ->assertJsonPath('stats.issue_class_counts.not_found_404', 1);
+
+        /** @var array<int, array<string, mixed>> $payloadIssues */
+        $payloadIssues = $response->json('issues') ?? [];
+        $issue = collect($payloadIssues)->firstWhere('issue_class', 'not_found_404');
+
+        $this->assertIsArray($issue);
+        $this->assertSame(1, data_get($issue, 'evidence.affected_url_count'));
+        $this->assertSame(
+            ['https://mixed-404.example.com/still-missing/'],
+            data_get($issue, 'evidence.affected_urls')
+        );
+        $this->assertSame(
+            'https://mixed-404.example.com/still-missing/',
+            data_get($issue, 'evidence.examples.0.url')
+        );
+        $this->assertSame(
+            ['https://mixed-404.example.com/still-missing/'],
+            collect((array) data_get($issue, 'evidence.live_url_checks'))
+                ->pluck('url')
+                ->values()
+                ->all()
+        );
+    }
+
+    public function test_issues_endpoint_does_not_treat_wp_json_as_expected_system_404_noise(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'wp-json-404.example.com',
+            'expires_at' => null,
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'DreamIT Host',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'wp-json-404-site',
+            'name' => 'WP JSON 404 Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => 'wp-json-404-site',
+            'repo_provider' => 'local_only',
+            'local_path' => '/Users/jasonhill/Projects/websites/wp-json-404-site',
+            'framework' => 'WordPress',
+            'is_primary' => true,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '304',
+            'search_console_property_uri' => 'sc-domain:wp-json-404.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_api',
+            'not_found_404' => 1,
+            'raw_payload' => [
+                'issues' => [
+                    ['label' => 'Not found (404)', 'count' => 1],
+                ],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'not_found_404',
+            'source_issue_label' => 'Not found (404)',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:wp-json-404.example.com',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => ['https://wp-json-404.example.com/wp-json/'],
+            'examples' => [
+                ['url' => 'https://wp-json-404.example.com/wp-json/', 'last_crawled' => now()->subDay()->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => ['https://wp-json-404.example.com/wp-json/'],
+            ],
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues');
+
+        $response->assertOk()
+            ->assertJsonPath('stats.issue_class_counts.not_found_404', 1);
+
+        /** @var array<int, array<string, mixed>> $payloadIssues */
+        $payloadIssues = $response->json('issues') ?? [];
+        $issue = collect($payloadIssues)->firstWhere('property_slug', 'wp-json-404-site');
+
+        $this->assertIsArray($issue);
+        $this->assertNull(data_get($issue, 'evidence.expected_exclusion'));
+    }
+
+    public function test_issues_endpoint_keeps_legacy_payment_404_active_without_explicit_replacement_target(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'legacy-payment.example.com',
+            'expires_at' => null,
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'DreamIT Host',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'legacy-payment-site',
+            'name' => 'Legacy Payment Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+            'target_moveroo_subdomain_url' => 'https://quotes.legacy-payment.example.com',
+            'legacy_moveroo_endpoint_scan' => [
+                'legacy_payment_endpoint' => [
+                    'classification' => 'legacy_payment_endpoint',
+                    'found_on' => 'https://legacy-payment.example.com/',
+                    'url' => 'https://quotes.legacy-payment.example.com/payments',
+                    'resolved_url' => 'https://quotes.legacy-payment.example.com/contact',
+                    'resolved_status' => 200,
+                    'resolved_host_changed' => false,
+                ],
+            ],
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => 'legacy-payment-site',
+            'repo_provider' => 'local_only',
+            'local_path' => '/Users/jasonhill/Projects/websites/legacy-payment-site',
+            'framework' => 'WordPress',
+            'is_primary' => true,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '305',
+            'search_console_property_uri' => 'sc-domain:legacy-payment.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_api',
+            'not_found_404' => 1,
+            'raw_payload' => [
+                'issues' => [
+                    ['label' => 'Not found (404)', 'count' => 1],
+                ],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'not_found_404',
+            'source_issue_label' => 'Not found (404)',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:legacy-payment.example.com',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => ['https://quotes.legacy-payment.example.com/payments'],
+            'examples' => [
+                ['url' => 'https://quotes.legacy-payment.example.com/payments', 'last_crawled' => now()->subDay()->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => ['https://quotes.legacy-payment.example.com/payments'],
+            ],
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues');
+
+        $response->assertOk()
+            ->assertJsonPath('stats.issue_class_counts.not_found_404', 1);
+
+        /** @var array<int, array<string, mixed>> $payloadIssues */
+        $payloadIssues = $response->json('issues') ?? [];
+        $issue = collect($payloadIssues)->firstWhere('property_slug', 'legacy-payment-site');
+
+        $this->assertIsArray($issue);
+        $this->assertNull(data_get($issue, 'evidence.expected_exclusion'));
+    }
+
     public function test_issues_endpoint_includes_broken_link_source_pages(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');

@@ -251,7 +251,7 @@ class SearchConsoleApiEnrichmentRefresher
                 'gsc_api_last_captured_at' => SearchConsoleIssueSnapshot::query()
                     ->selectRaw('max(captured_at)')
                     ->whereColumn('web_property_id', 'web_properties.id')
-                    ->where('capture_method', '!=', 'gsc_drilldown_zip'),
+                    ->whereIn('capture_method', ['gsc_api', 'gsc_mcp_api']),
             ])
             ->orderBy('name')
             ->get();
@@ -326,7 +326,7 @@ class SearchConsoleApiEnrichmentRefresher
         return $this->normalizeCapturedAt(
             SearchConsoleIssueSnapshot::query()
                 ->where('web_property_id', $property->id)
-                ->where('capture_method', '!=', 'gsc_drilldown_zip')
+                ->whereIn('capture_method', ['gsc_api', 'gsc_mcp_api'])
                 ->max('captured_at')
         );
     }

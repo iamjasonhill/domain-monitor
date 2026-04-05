@@ -114,16 +114,16 @@ class WebPropertyController extends Controller
                 'has_gsc_api_enrichment' => SearchConsoleIssueSnapshot::query()
                     ->selectRaw('1')
                     ->whereColumn('web_property_id', 'web_properties.id')
-                    ->where('capture_method', '!=', 'gsc_drilldown_zip')
+                    ->whereIn('capture_method', ['gsc_api', 'gsc_mcp_api'])
                     ->limit(1),
                 'gsc_api_snapshot_count' => SearchConsoleIssueSnapshot::query()
                     ->selectRaw('count(*)')
                     ->whereColumn('web_property_id', 'web_properties.id')
-                    ->where('capture_method', '!=', 'gsc_drilldown_zip'),
+                    ->whereIn('capture_method', ['gsc_api', 'gsc_mcp_api']),
                 'gsc_api_last_captured_at' => SearchConsoleIssueSnapshot::query()
                     ->selectRaw('max(captured_at)')
                     ->whereColumn('web_property_id', 'web_properties.id')
-                    ->where('capture_method', '!=', 'gsc_drilldown_zip'),
+                    ->whereIn('capture_method', ['gsc_api', 'gsc_mcp_api']),
             ])
             ->with([
                 'primaryDomain.tags',

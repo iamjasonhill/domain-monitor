@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\DetectedIssueVerification;
 use App\Models\Domain;
 use App\Models\DomainCheck;
+use App\Models\DomainSeoBaseline;
 use App\Models\DomainTag;
 use App\Models\PropertyAnalyticsSource;
 use App\Models\PropertyRepository;
@@ -617,6 +618,129 @@ class FleetPropertyContextRefreshTest extends TestCase
         $this->assertStringNotContainsString(
             'https://failed-refresh.example.com/private-path',
             $content
+        );
+    }
+
+    public function test_refresh_runs_live_rechecks_and_prunes_resolved_404_examples_from_active_issues(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        config()->set('services.domain_monitor.fleet_control_api_key', 'fleet-token');
+
+        $property = $this->makeProperty('recheck-404-site', 'recheck-404.example.com');
+
+        DomainSeoBaseline::create([
+            'domain_id' => $property->primary_domain_id,
+            'web_property_id' => $property->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '555',
+            'search_console_property_uri' => 'sc-domain:recheck-404.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_api',
+            'not_found_404' => 2,
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $property->primary_domain_id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'not_found_404',
+            'source_issue_label' => 'Not found (404)',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:recheck-404.example.com',
+            'captured_at' => now()->subDay(),
+            'captured_by' => 'test',
+            'affected_url_count' => 2,
+            'sample_urls' => [
+                'https://recheck-404.example.com/fixed-page/',
+                'https://recheck-404.example.com/missing-page/',
+            ],
+            'examples' => [
+                ['url' => 'https://recheck-404.example.com/fixed-page/', 'last_crawled' => now()->subDays(2)->toDateString()],
+                ['url' => 'https://recheck-404.example.com/missing-page/', 'last_crawled' => now()->subDays(2)->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://recheck-404.example.com/fixed-page/',
+                    'https://recheck-404.example.com/missing-page/',
+                ],
+            ],
+        ]);
+
+        $this->mock(PropertyConversionLinkScanner::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('persistForProperty')
+                ->once()
+                ->andReturn([
+                    'current_household_quote_url' => null,
+                    'current_household_booking_url' => null,
+                    'current_vehicle_quote_url' => null,
+                    'current_vehicle_booking_url' => null,
+                    'conversion_links_scanned_at' => now(),
+                ]);
+        });
+
+        $this->mock(DomainHealthCheckRunner::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('run')
+                ->times(3)
+                ->andReturnUsing(fn (Domain $domain, string $type): array => $this->skippedHealthResult($type));
+        });
+
+        $this->mock(SearchConsoleApiEnrichmentRefresher::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('refreshProperty')
+                ->once()
+                ->andReturn([
+                    'status' => 'skipped',
+                    'captured_at' => null,
+                    'reason' => 'fresh',
+                    'message' => null,
+                ]);
+        });
+
+        Http::fake([
+            'https://recheck-404.example.com/fixed-page/' => Http::response('<html>Fixed</html>', 200),
+            'https://recheck-404.example.com/missing-page/' => Http::response('', 404),
+        ]);
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer fleet-token',
+        ])->postJson('/api/web-properties/recheck-404-site/refresh-fleet-context')
+            ->assertOk()
+            ->assertJsonPath('refreshed.search_console_live_rechecks.status', 'refreshed')
+            ->assertJsonPath('refreshed.search_console_live_rechecks.checked_url_count', 2);
+
+        $this->assertDatabaseHas('search_console_issue_snapshots', [
+            'web_property_id' => $property->id,
+            'issue_class' => 'not_found_404',
+            'capture_method' => 'gsc_live_recheck',
+        ]);
+
+        $issuesResponse = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues');
+
+        $issuesResponse->assertOk()
+            ->assertJsonPath('stats.issue_class_counts.not_found_404', 1);
+
+        /** @var array<int, array<string, mixed>> $payloadIssues */
+        $payloadIssues = $issuesResponse->json('issues') ?? [];
+        $issue = collect($payloadIssues)->firstWhere('issue_class', 'not_found_404');
+
+        $this->assertIsArray($issue);
+        $this->assertSame(1, data_get($issue, 'evidence.affected_url_count'));
+        $this->assertSame(
+            ['https://recheck-404.example.com/missing-page/'],
+            data_get($issue, 'evidence.affected_urls')
+        );
+        $this->assertSame(
+            ['https://recheck-404.example.com/missing-page/'],
+            collect((array) data_get($issue, 'evidence.live_url_checks'))
+                ->pluck('url')
+                ->values()
+                ->all()
         );
     }
 

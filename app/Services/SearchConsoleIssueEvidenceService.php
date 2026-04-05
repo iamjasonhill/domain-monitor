@@ -12,7 +12,7 @@ class SearchConsoleIssueEvidenceService
     public function __construct(
         private readonly DetectedIssueIdentityService $issueIdentityService,
         private readonly DetectedIssueVerificationService $issueVerificationService,
-        private readonly IntentionalSearchConsoleExclusionService $intentionalSearchConsoleExclusionService,
+        private readonly SearchConsoleIssueActionabilityService $issueActionabilityService,
     ) {}
 
     /**
@@ -38,7 +38,15 @@ class SearchConsoleIssueEvidenceService
                 'primaryDomain.latestSeoCheck',
                 'propertyDomains.domain.latestSeoCheck',
             ])
-            ->get(['id', 'slug', 'primary_domain_id']);
+            ->get([
+                'id',
+                'slug',
+                'primary_domain_id',
+                'target_moveroo_subdomain_url',
+                'target_legacy_bookings_replacement_url',
+                'target_legacy_payments_replacement_url',
+                'legacy_moveroo_endpoint_scan',
+            ]);
 
         return $this->evidenceMapForProperties($properties);
     }
@@ -87,7 +95,7 @@ class SearchConsoleIssueEvidenceService
                 $catalogEntry = config('domain_monitor.search_console_issue_catalog.'.$issueClass, []);
                 $detailSnapshot = $snapshots[$issueClass]['detail'] ?? null;
                 $apiSnapshot = $snapshots[$issueClass]['api'] ?? null;
-                $count = is_numeric($evidence['affected_url_count'] ?? null) ? (int) $evidence['affected_url_count'] : null;
+                $count = $this->displayAffectedUrlCount($evidence);
                 $examples = is_array($evidence['examples'] ?? null) ? $evidence['examples'] : [];
                 $summaryCount = $count ?? $baseline?->issueCount($issueClass);
 
@@ -112,6 +120,10 @@ class SearchConsoleIssueEvidenceService
                 }
 
                 if (is_array($evidence['expected_exclusion'] ?? null)) {
+                    return null;
+                }
+
+                if (! $this->issueActionabilityService->isActionable($issueClass, $evidence)) {
                     return null;
                 }
 
@@ -161,7 +173,7 @@ class SearchConsoleIssueEvidenceService
      * @param  Collection<int, WebProperty>  $properties
      * @return array{
      *   evidence: array<string, array<string, array<string, mixed>>>,
-     *   snapshots: array<string, array<string, array{detail:?SearchConsoleIssueSnapshot, api:?SearchConsoleIssueSnapshot}>>
+     *   snapshots: array<string, array<string, array{detail:?SearchConsoleIssueSnapshot, api:?SearchConsoleIssueSnapshot, live:?SearchConsoleIssueSnapshot}>>
      * }
      */
     private function buildPropertyEvidenceContext(Collection $properties): array
@@ -183,19 +195,10 @@ class SearchConsoleIssueEvidenceService
                 $snapshotEvidence = $this->snapshotEvidenceForClass($snapshotEntries[$issueClass] ?? [
                     'detail' => null,
                     'api' => null,
+                    'live' => null,
                 ]);
                 $mergedEvidence = array_replace($baselineEvidence, $snapshotEvidence);
-                $expectedExclusion = $this->intentionalSearchConsoleExclusionService->classify(
-                    $property,
-                    $issueClass,
-                    $mergedEvidence
-                );
-
-                if (is_array($expectedExclusion)) {
-                    $mergedEvidence['expected_exclusion'] = $expectedExclusion;
-                }
-
-                $issueEvidence[$issueClass] = $mergedEvidence;
+                $issueEvidence[$issueClass] = $this->issueActionabilityService->normalize($property, $issueClass, $mergedEvidence);
             }
 
             return [$property->slug => $issueEvidence];
@@ -209,7 +212,7 @@ class SearchConsoleIssueEvidenceService
 
     /**
      * @param  array<int, string>  $propertyIds
-     * @return array<string, array<string, array{detail:?SearchConsoleIssueSnapshot, api:?SearchConsoleIssueSnapshot}>>
+     * @return array<string, array<string, array{detail:?SearchConsoleIssueSnapshot, api:?SearchConsoleIssueSnapshot, live:?SearchConsoleIssueSnapshot}>>
      */
     private function latestSnapshotsForProperties(array $propertyIds): array
     {
@@ -217,7 +220,7 @@ class SearchConsoleIssueEvidenceService
             return [];
         }
 
-        /** @var array<string, array<string, array{detail:?SearchConsoleIssueSnapshot, api:?SearchConsoleIssueSnapshot}>> $grouped */
+        /** @var array<string, array<string, array{detail:?SearchConsoleIssueSnapshot, api:?SearchConsoleIssueSnapshot, live:?SearchConsoleIssueSnapshot}>> $grouped */
         $grouped = [];
 
         SearchConsoleIssueSnapshot::query()
@@ -226,9 +229,13 @@ class SearchConsoleIssueEvidenceService
             ->orderByDesc('created_at')
             ->get()
             ->each(function (SearchConsoleIssueSnapshot $snapshot) use (&$grouped): void {
-                $bucket = $snapshot->capture_method === 'gsc_drilldown_zip' ? 'detail' : 'api';
+                $bucket = match ($snapshot->capture_method) {
+                    'gsc_drilldown_zip' => 'detail',
+                    'gsc_live_recheck' => 'live',
+                    default => 'api',
+                };
                 $grouped[$snapshot->web_property_id] ??= [];
-                $grouped[$snapshot->web_property_id][$snapshot->issue_class] ??= ['detail' => null, 'api' => null];
+                $grouped[$snapshot->web_property_id][$snapshot->issue_class] ??= ['detail' => null, 'api' => null, 'live' => null];
                 $grouped[$snapshot->web_property_id][$snapshot->issue_class][$bucket] ??= $snapshot;
             });
 
@@ -280,7 +287,7 @@ class SearchConsoleIssueEvidenceService
     }
 
     /**
-     * @param  array{detail:?SearchConsoleIssueSnapshot, api:?SearchConsoleIssueSnapshot}  $snapshots
+     * @param  array{detail:?SearchConsoleIssueSnapshot, api:?SearchConsoleIssueSnapshot, live:?SearchConsoleIssueSnapshot}  $snapshots
      * @return array<string, mixed>
      */
     private function snapshotEvidenceForClass(array $snapshots): array
@@ -320,6 +327,32 @@ class SearchConsoleIssueEvidenceService
             }
         }
 
+        if ($snapshots['live'] instanceof SearchConsoleIssueSnapshot) {
+            $liveEvidence = $snapshots['live']->issueEvidence();
+
+            if (array_key_exists('live_url_checks', $liveEvidence)) {
+                $evidence['live_url_checks'] = $liveEvidence['live_url_checks'];
+            }
+
+            if (is_string($liveEvidence['captured_at'] ?? null) && $liveEvidence['captured_at'] !== '') {
+                $evidence['live_captured_at'] = $liveEvidence['captured_at'];
+            }
+        }
+
         return $evidence;
+    }
+
+    /**
+     * @param  array<string, mixed>  $evidence
+     */
+    private function displayAffectedUrlCount(array $evidence): ?int
+    {
+        if (is_numeric($evidence['active_affected_url_count'] ?? null)) {
+            return (int) $evidence['active_affected_url_count'];
+        }
+
+        return is_numeric($evidence['affected_url_count'] ?? null)
+            ? (int) $evidence['affected_url_count']
+            : null;
     }
 }

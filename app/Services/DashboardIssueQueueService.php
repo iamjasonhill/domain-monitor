@@ -16,6 +16,7 @@ class DashboardIssueQueueService
         private readonly DetectedIssueIdentityService $issueIdentityService,
         private readonly DetectedIssueVerificationService $issueVerificationService,
         private readonly SearchConsoleIssueEvidenceService $issueEvidenceService,
+        private readonly SearchConsoleIssueActionabilityService $issueActionabilityService,
     ) {}
 
     /**
@@ -204,6 +205,10 @@ class DashboardIssueQueueService
             return null;
         }
 
+        $visiblePrimaryRecords = $this->refreshSearchConsoleRecordReasons($visiblePrimaryRecords, $propertyIssueEvidence);
+        $visibleSecondaryRecords = $this->refreshSearchConsoleRecordReasons($visibleSecondaryRecords, $propertyIssueEvidence);
+        $visibleEntries = $this->refreshSearchConsoleRecordReasons($visibleEntries, $propertyIssueEvidence);
+
         $canonicalIssue = $visibleEntries[0] ?? null;
 
         $item['primary_issue_records'] = $visiblePrimaryRecords;
@@ -264,15 +269,23 @@ class DashboardIssueQueueService
 
         $issueId = $this->issueIdentityService->makeIssueId($domainId, $propertySlug, $issueFamily);
         $verification = $verificationMap[$issueId] ?? null;
-        $issueEvidenceForRecord = $this->queueIssueEvidence($item, $issueFamily, $propertyIssueEvidence[$issueFamily] ?? []);
+        $propertyEvidenceForRecord = $propertyIssueEvidence[$issueFamily] ?? [];
+        $issueEvidenceForRecord = $this->queueIssueEvidence($item, $issueFamily, $propertyEvidenceForRecord);
         $issue = [
             'issue_id' => $issueId,
             'detected_at' => $this->queueIssueDetectedAt($item, $issueFamily, $issueEvidenceForRecord),
             'evidence' => $issueEvidenceForRecord,
         ];
 
-        if (! $includeExpectedExclusions && array_key_exists('expected_exclusion', $issueEvidenceForRecord)) {
-            return false;
+        if ($this->isSearchConsoleIssueFamily($issueFamily)) {
+            if (! $includeExpectedExclusions && array_key_exists('expected_exclusion', $propertyEvidenceForRecord)) {
+                return false;
+            }
+
+            if (! $this->issueActionabilityService->isActionable($issueFamily, $propertyEvidenceForRecord)
+                && ! ($includeExpectedExclusions && is_array($propertyEvidenceForRecord['expected_exclusion'] ?? null))) {
+                return false;
+            }
         }
 
         return ! ($verification instanceof \App\Models\DetectedIssueVerification
@@ -289,6 +302,34 @@ class DashboardIssueQueueService
         $severity = is_string($record['severity'] ?? null) ? $record['severity'] : '';
 
         return sprintf('%s|%s|%s', $issueFamily, $severity, $reason);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $records
+     * @param  array<string, array<string, mixed>>  $propertyIssueEvidence
+     * @return array<int, array<string, mixed>>
+     */
+    private function refreshSearchConsoleRecordReasons(array $records, array $propertyIssueEvidence): array
+    {
+        return array_map(function (array $record) use ($propertyIssueEvidence): array {
+            $issueFamily = is_string($record['issue_family'] ?? null) ? $record['issue_family'] : null;
+
+            if (! is_string($issueFamily) || ! $this->isSearchConsoleIssueFamily($issueFamily)) {
+                return $record;
+            }
+
+            $record['reason'] = $this->searchConsoleReasonForEvidence(
+                $issueFamily,
+                $propertyIssueEvidence[$issueFamily] ?? []
+            );
+
+            return $record;
+        }, $records);
+    }
+
+    private function isSearchConsoleIssueFamily(string $issueFamily): bool
+    {
+        return is_array(config('domain_monitor.search_console_issue_catalog.'.$issueFamily));
     }
 
     /**
@@ -553,6 +594,26 @@ class DashboardIssueQueueService
             Str::of((string) $label)->lower()->toString(),
             $count
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $issueEvidence
+     */
+    private function searchConsoleReasonForEvidence(string $issueClass, array $issueEvidence): string
+    {
+        $count = is_numeric($issueEvidence['active_affected_url_count'] ?? null)
+            ? (int) $issueEvidence['active_affected_url_count']
+            : (is_numeric($issueEvidence['affected_url_count'] ?? null)
+                ? (int) $issueEvidence['affected_url_count']
+                : null);
+
+        if ($count !== null && $count > 0) {
+            return $this->searchConsoleReason($issueClass, $count);
+        }
+
+        $label = data_get(config('domain_monitor.search_console_issue_catalog.'.$issueClass), 'label', $issueClass);
+
+        return sprintf('Search Console reports %s', Str::of((string) $label)->lower()->toString());
     }
 
     private function searchConsoleSeverity(string $issueClass): string

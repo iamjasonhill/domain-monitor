@@ -428,7 +428,9 @@ class DetectedIssueSummaryService
     private function supplementalIssueReason(string $issueClass, array $evidence): string
     {
         $label = data_get(config('domain_monitor.search_console_issue_catalog.'.$issueClass), 'label', $issueClass);
-        $count = is_numeric($evidence['affected_url_count'] ?? null) ? (int) $evidence['affected_url_count'] : null;
+        $count = is_numeric($evidence['active_affected_url_count'] ?? null)
+            ? (int) $evidence['active_affected_url_count']
+            : (is_numeric($evidence['affected_url_count'] ?? null) ? (int) $evidence['affected_url_count'] : null);
 
         if ($count !== null && $count > 0) {
             return sprintf('Search Console reports %s (%d URLs)', strtolower((string) $label), $count);
