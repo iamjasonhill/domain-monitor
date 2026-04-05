@@ -73,6 +73,12 @@ class WebPropertyUiTest extends TestCase
             'status' => 'active',
             'primary_domain_id' => $primaryDomain->id,
             'production_url' => 'https://movingagain.com.au',
+            'canonical_origin_scheme' => 'https',
+            'canonical_origin_host' => 'movingagain.com.au',
+            'canonical_origin_policy' => 'known',
+            'canonical_origin_enforcement_eligible' => true,
+            'canonical_origin_excluded_subdomains' => ['cartransport.movingagain.com.au'],
+            'canonical_origin_sitemap_policy_known' => true,
             'notes' => 'Review alias grouping before merge.',
         ]);
 
@@ -141,6 +147,10 @@ class WebPropertyUiTest extends TestCase
         $response->assertSee('Target Links');
         $response->assertSee('Moveroo Subdomain');
         $response->assertSee('Contact Us Page');
+        $response->assertSee('Canonical Origin Policy');
+        $response->assertSee('Save Canonical Policy');
+        $response->assertSee('property_only');
+        $response->assertSee('cartransport.movingagain.com.au');
         $response->assertSee('Automation Checklist');
         $response->assertSee('Needs Matomo');
     }

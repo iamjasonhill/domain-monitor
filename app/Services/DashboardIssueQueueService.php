@@ -45,7 +45,8 @@ class DashboardIssueQueueService
             ->where('is_active', true)
             ->with([
                 'platform',
-                'webProperties:id,slug,name,property_type,status,current_household_quote_url,current_household_booking_url,current_vehicle_quote_url,current_vehicle_booking_url,target_household_quote_url,target_household_booking_url,target_vehicle_quote_url,target_vehicle_booking_url,target_moveroo_subdomain_url,target_contact_us_page_url,target_legacy_bookings_replacement_url,target_legacy_payments_replacement_url,conversion_links_scanned_at,legacy_moveroo_endpoint_scan',
+                'webProperties:id,slug,name,property_type,status,production_url,canonical_origin_scheme,canonical_origin_host,canonical_origin_policy,canonical_origin_enforcement_eligible,canonical_origin_excluded_subdomains,canonical_origin_sitemap_policy_known,current_household_quote_url,current_household_booking_url,current_vehicle_quote_url,current_vehicle_booking_url,target_household_quote_url,target_household_booking_url,target_vehicle_quote_url,target_vehicle_booking_url,target_moveroo_subdomain_url,target_contact_us_page_url,target_legacy_bookings_replacement_url,target_legacy_payments_replacement_url,conversion_links_scanned_at,legacy_moveroo_endpoint_scan',
+                'webProperties.propertyDomains.domain:id,domain',
                 'webProperties.repositories:id,web_property_id,repo_name,repo_url,local_path,framework,repo_provider,deployment_provider,deployment_project_name,deployment_project_id,is_primary,is_controller',
                 'webProperties.latestSeoBaselineForProperty',
             ])
@@ -839,6 +840,7 @@ class DashboardIssueQueueService
         $item['deployment_project_name'] = $executionReadiness['deployment_project_name'];
         $item['deployment_project_id'] = $executionReadiness['deployment_project_id'];
         $item['conversion_links'] = $property?->conversionLinkSummary();
+        $item['canonical_origin'] = $property?->canonicalOriginSummary();
 
         return $item;
     }

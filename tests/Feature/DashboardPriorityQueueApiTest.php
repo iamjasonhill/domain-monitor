@@ -34,6 +34,10 @@ class DashboardPriorityQueueApiTest extends TestCase
             'property_type' => 'website',
             'status' => 'active',
             'primary_domain_id' => $mustFixDomain->id,
+            'canonical_origin_scheme' => 'https',
+            'canonical_origin_host' => 'must-fix.example.com',
+            'canonical_origin_policy' => 'known',
+            'canonical_origin_enforcement_eligible' => true,
             'target_household_quote_url' => 'https://quote.must-fix.example.com/household',
             'target_moveroo_subdomain_url' => 'https://must-fix.moveroo.com.au',
             'target_contact_us_page_url' => 'https://must-fix.example.com/contact-us',
@@ -222,6 +226,10 @@ class DashboardPriorityQueueApiTest extends TestCase
             ->assertJsonPath('must_fix.0.issue_family', 'health.http')
             ->assertJsonPath('must_fix.0.control_id', 'transport.http_health')
             ->assertJsonPath('must_fix.0.platform_profile', 'wordpress_legacy_unmanaged')
+            ->assertJsonPath('must_fix.0.canonical_origin.base_url', 'https://must-fix.example.com')
+            ->assertJsonPath('must_fix.0.canonical_origin.policy', 'known')
+            ->assertJsonPath('must_fix.0.canonical_origin.scope', 'property_only')
+            ->assertJsonPath('must_fix.0.canonical_origin.enforcement_eligible', true)
             ->assertJsonPath('must_fix.0.conversion_links.target.household_quote', 'https://quote.must-fix.example.com/household')
             ->assertJsonPath('must_fix.0.conversion_links.target.moveroo_subdomain', 'https://must-fix.moveroo.com.au')
             ->assertJsonPath('must_fix.0.conversion_links.target.contact_us_page', 'https://must-fix.example.com/contact-us')

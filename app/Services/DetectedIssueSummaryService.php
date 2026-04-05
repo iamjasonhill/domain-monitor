@@ -115,15 +115,25 @@ class DetectedIssueSummaryService
 
         $propertyName = null;
         $conversionLinks = null;
+        $canonicalOrigin = null;
         $platformProfile = null;
         $baselineSurface = null;
 
         if (is_string($verification->property_slug) && $verification->property_slug !== '') {
             $property = WebProperty::query()
+                ->with(['propertyDomains.domain:id,domain'])
                 ->select([
+                    'id',
                     'slug',
                     'name',
                     'property_type',
+                    'production_url',
+                    'canonical_origin_scheme',
+                    'canonical_origin_host',
+                    'canonical_origin_policy',
+                    'canonical_origin_enforcement_eligible',
+                    'canonical_origin_excluded_subdomains',
+                    'canonical_origin_sitemap_policy_known',
                     'current_household_quote_url',
                     'current_household_booking_url',
                     'current_vehicle_quote_url',
@@ -145,6 +155,7 @@ class DetectedIssueSummaryService
             if ($property instanceof WebProperty) {
                 $propertyName = $property->name;
                 $conversionLinks = $property->conversionLinkSummary();
+                $canonicalOrigin = $property->canonicalOriginSummary();
             }
         }
 
@@ -176,6 +187,7 @@ class DetectedIssueSummaryService
             'controller_repo' => null,
             'controller_repo_url' => null,
             'conversion_links' => $conversionLinks,
+            'canonical_origin' => $canonicalOrigin,
             'evidence' => [
                 'primary_reasons' => [],
                 'secondary_reasons' => [],
@@ -260,6 +272,7 @@ class DetectedIssueSummaryService
                 'controller_repo' => is_string($item['controller_repo'] ?? null) ? $item['controller_repo'] : null,
                 'controller_repo_url' => is_string($item['controller_repo_url'] ?? null) ? $item['controller_repo_url'] : null,
                 'conversion_links' => is_array($item['conversion_links'] ?? null) ? $item['conversion_links'] : null,
+                'canonical_origin' => is_array($item['canonical_origin'] ?? null) ? $item['canonical_origin'] : null,
                 'evidence' => [
                     'primary_reasons' => [$issueEntry['reason']],
                     'secondary_reasons' => array_values(array_filter(
