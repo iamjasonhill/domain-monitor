@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AnalyticsInstallAudit;
 use App\Models\DetectedIssueVerification;
 use App\Models\Domain;
+use App\Models\DomainCheck;
 use App\Models\DomainSeoBaseline;
 use App\Models\PropertyAnalyticsSource;
 use App\Models\PropertyRepository;
@@ -477,5 +478,94 @@ class WebPropertyUiTest extends TestCase
         $response->assertDontSee('4 affected URLs');
         $response->assertSee('Blocked by robots.txt');
         $response->assertSee('1 affected URLs');
+    }
+
+    public function test_web_property_detail_hides_intentional_admin_login_search_console_noise(): void
+    {
+        $user = User::factory()->create();
+        $domain = Domain::factory()->create([
+            'domain' => 'intentional-admin-ui.example.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'intentional-admin-ui-site',
+            'name' => 'Intentional Admin UI Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        DomainCheck::create([
+            'domain_id' => $domain->id,
+            'check_type' => 'seo',
+            'status' => 'ok',
+            'started_at' => now()->subMinute(),
+            'finished_at' => now(),
+            'duration_ms' => 100,
+            'payload' => [
+                'results' => [
+                    'robots' => [
+                        'url' => 'https://intentional-admin-ui.example.au/robots.txt',
+                        'has_standard_wordpress_admin_rule' => true,
+                        'allow_admin_ajax' => true,
+                    ],
+                ],
+            ],
+            'retry_count' => 0,
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'blocked_by_robots_in_indexing',
+            'source_issue_label' => 'Blocked by robots.txt',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:intentional-admin-ui.example.au',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => ['https://intentional-admin-ui.example.au/wp-admin/'],
+            'examples' => [
+                ['url' => 'https://intentional-admin-ui.example.au/wp-admin/', 'last_crawled' => now()->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => ['https://intentional-admin-ui.example.au/wp-admin/'],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'excluded_by_noindex',
+            'source_issue_label' => "Excluded by 'noindex' tag",
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:intentional-admin-ui.example.au',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => ['https://intentional-admin-ui.example.au/wp-login.php?redirect_to=/wp-admin/'],
+            'examples' => [
+                ['url' => 'https://intentional-admin-ui.example.au/wp-login.php?redirect_to=/wp-admin/', 'last_crawled' => now()->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => ['https://intentional-admin-ui.example.au/wp-login.php?redirect_to=/wp-admin/'],
+            ],
+        ]);
+
+        $response = $this->actingAs($user)->get('/web-properties/intentional-admin-ui-site');
+
+        $response->assertOk();
+        $response->assertDontSee('Blocked by robots.txt');
+        $response->assertDontSee("Excluded by 'noindex' tag");
     }
 }

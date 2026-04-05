@@ -12,6 +12,7 @@ class SearchConsoleIssueEvidenceService
     public function __construct(
         private readonly DetectedIssueIdentityService $issueIdentityService,
         private readonly DetectedIssueVerificationService $issueVerificationService,
+        private readonly IntentionalSearchConsoleExclusionService $intentionalSearchConsoleExclusionService,
     ) {}
 
     /**
@@ -32,8 +33,12 @@ class SearchConsoleIssueEvidenceService
 
         $properties = WebProperty::query()
             ->whereIn('slug', $propertySlugs)
-            ->with('latestSeoBaselineForProperty')
-            ->get(['id', 'slug']);
+            ->with([
+                'latestSeoBaselineForProperty',
+                'primaryDomain.latestSeoCheck',
+                'propertyDomains.domain.latestSeoCheck',
+            ])
+            ->get(['id', 'slug', 'primary_domain_id']);
 
         return $this->evidenceMapForProperties($properties);
     }
@@ -106,6 +111,10 @@ class SearchConsoleIssueEvidenceService
                     return null;
                 }
 
+                if (is_array($evidence['expected_exclusion'] ?? null)) {
+                    return null;
+                }
+
                 return [
                     'issue_class' => $issueClass,
                     'label' => is_string($catalogEntry['label'] ?? null) ? $catalogEntry['label'] : $issueClass,
@@ -175,7 +184,18 @@ class SearchConsoleIssueEvidenceService
                     'detail' => null,
                     'api' => null,
                 ]);
-                $issueEvidence[$issueClass] = array_replace($baselineEvidence, $snapshotEvidence);
+                $mergedEvidence = array_replace($baselineEvidence, $snapshotEvidence);
+                $expectedExclusion = $this->intentionalSearchConsoleExclusionService->classify(
+                    $property,
+                    $issueClass,
+                    $mergedEvidence
+                );
+
+                if (is_array($expectedExclusion)) {
+                    $mergedEvidence['expected_exclusion'] = $expectedExclusion;
+                }
+
+                $issueEvidence[$issueClass] = $mergedEvidence;
             }
 
             return [$property->slug => $issueEvidence];

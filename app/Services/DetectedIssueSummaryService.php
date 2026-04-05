@@ -22,33 +22,9 @@ class DetectedIssueSummaryService
      */
     public function snapshot(): array
     {
-        $queueSnapshot = $this->queueService->snapshot();
-        $queueItems = [
-            ...($queueSnapshot['must_fix'] ?? []),
-            ...($queueSnapshot['should_fix'] ?? []),
-        ];
-        $issueEvidence = $this->issueEvidenceService->evidenceMapForQueueItems([
-            ...$queueItems,
-        ]);
-        $brokenLinksEvidence = $this->brokenLinksEvidenceMapForQueueItems($queueItems);
-        $issues = $this->flattenIssues($queueSnapshot['must_fix'] ?? [], 'must_fix', $issueEvidence, $brokenLinksEvidence)
-            ->concat($this->flattenIssues($queueSnapshot['should_fix'] ?? [], 'should_fix', $issueEvidence, $brokenLinksEvidence))
-            ->pipe(function (Collection $issues): Collection {
-                $issueIds = $issues
-                    ->pluck('issue_id')
-                    ->filter(fn (mixed $issueId): bool => is_string($issueId) && $issueId !== '')
-                    ->values()
-                    ->all();
-                $verificationMap = $this->issueVerificationService->latestMapForIssueIds($issueIds);
-
-                return $issues->map(fn (array $issue): array => $this->issueVerificationService->annotateIssue(
-                    $issue,
-                    $verificationMap[$issue['issue_id']] ?? null
-                ))->reject(
-                    fn (array $issue): bool => (bool) data_get($issue, 'verification.is_currently_suppressed', false)
-                )->values();
-            })
-            ->values();
+        $snapshotData = $this->buildSnapshotData();
+        $queueSnapshot = $snapshotData['queue_snapshot'];
+        $issues = $snapshotData['issues'];
         $mustFix = $issues->where('severity', 'must_fix')->values();
         $shouldFix = $issues->where('severity', 'should_fix')->values();
 
@@ -74,7 +50,7 @@ class DetectedIssueSummaryService
     public function find(string $issueId): ?array
     {
         /** @var array<int, array<string, mixed>> $issues */
-        $issues = $this->snapshot()['issues'] ?? [];
+        $issues = $this->buildSnapshotData(includeSuppressed: true, includeExpectedExclusions: true)['issues']->all();
         /** @var array<string, mixed>|null $issue */
         $issue = collect($issues)->firstWhere('issue_id', $issueId);
 
@@ -83,6 +59,47 @@ class DetectedIssueSummaryService
         }
 
         return $this->issueFromStoredVerification($issueId);
+    }
+
+    /**
+     * @return array{queue_snapshot: array<string, mixed>, issues: Collection<int, array<string, mixed>>}
+     */
+    private function buildSnapshotData(bool $includeSuppressed = false, bool $includeExpectedExclusions = false): array
+    {
+        $queueSnapshot = $this->queueService->snapshot($includeExpectedExclusions);
+        $queueItems = [
+            ...($queueSnapshot['must_fix'] ?? []),
+            ...($queueSnapshot['should_fix'] ?? []),
+        ];
+        $issueEvidence = $this->issueEvidenceService->evidenceMapForQueueItems($queueItems);
+        $brokenLinksEvidence = $this->brokenLinksEvidenceMapForQueueItems($queueItems);
+        $issues = $this->flattenIssues($queueSnapshot['must_fix'] ?? [], 'must_fix', $issueEvidence, $brokenLinksEvidence)
+            ->concat($this->flattenIssues($queueSnapshot['should_fix'] ?? [], 'should_fix', $issueEvidence, $brokenLinksEvidence))
+            ->pipe(function (Collection $issues) use ($includeExpectedExclusions, $includeSuppressed): Collection {
+                $issueIds = $issues
+                    ->pluck('issue_id')
+                    ->filter(fn (mixed $issueId): bool => is_string($issueId) && $issueId !== '')
+                    ->values()
+                    ->all();
+                $verificationMap = $this->issueVerificationService->latestMapForIssueIds($issueIds);
+
+                return $issues
+                    ->map(fn (array $issue): array => $this->issueVerificationService->annotateIssue(
+                        $issue,
+                        $verificationMap[$issue['issue_id']] ?? null
+                    ))
+                    ->reject(fn (array $issue): bool => ! $includeSuppressed
+                        && (bool) data_get($issue, 'verification.is_currently_suppressed', false))
+                    ->reject(fn (array $issue): bool => ! $includeExpectedExclusions
+                        && is_array(data_get($issue, 'evidence.expected_exclusion')))
+                    ->values();
+            })
+            ->values();
+
+        return [
+            'queue_snapshot' => $queueSnapshot,
+            'issues' => $issues,
+        ];
     }
 
     /**
