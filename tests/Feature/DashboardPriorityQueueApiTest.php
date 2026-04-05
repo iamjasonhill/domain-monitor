@@ -671,4 +671,236 @@ class DashboardPriorityQueueApiTest extends TestCase
         $this->assertSame('transport.http_health', $mustFix['control_id']);
         $this->assertContains('blocked_by_robots_in_indexing', $mustFix['issue_families']);
     }
+
+    public function test_priority_queue_hides_intentional_wordpress_admin_robots_exclusion(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'intentional-admin-queue.example.com',
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'DreamIT Host',
+            'expires_at' => null,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'intentional-admin-queue-site',
+            'name' => 'Intentional Admin Queue Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        DomainCheck::create([
+            'domain_id' => $domain->id,
+            'check_type' => 'seo',
+            'status' => 'ok',
+            'started_at' => now()->subMinute(),
+            'finished_at' => now(),
+            'duration_ms' => 100,
+            'payload' => [
+                'results' => [
+                    'robots' => [
+                        'url' => 'https://intentional-admin-queue.example.com/robots.txt',
+                        'has_standard_wordpress_admin_rule' => true,
+                        'allow_admin_ajax' => true,
+                    ],
+                ],
+            ],
+            'retry_count' => 0,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => 'intentional-admin-queue-site',
+            'repo_provider' => 'local_only',
+            'local_path' => '/Users/jasonhill/Projects/websites/intentional-admin-queue-site',
+            'framework' => 'WordPress',
+            'is_primary' => true,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '77',
+            'search_console_property_uri' => 'sc-domain:intentional-admin-queue.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_plus_manual_csv',
+            'clicks' => 0,
+            'impressions' => 0,
+            'ctr' => 0,
+            'average_position' => 0,
+            'indexed_pages' => 10,
+            'not_indexed_pages' => 1,
+            'blocked_by_robots' => 1,
+            'raw_payload' => [
+                'issues' => [
+                    ['label' => 'Blocked by robots.txt', 'count' => 1],
+                ],
+            ],
+        ]);
+
+        \App\Models\SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'blocked_by_robots_in_indexing',
+            'source_issue_label' => 'Blocked by robots.txt',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:intentional-admin-queue.example.com',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => ['https://intentional-admin-queue.example.com/wp-admin/'],
+            'examples' => [
+                ['url' => 'https://intentional-admin-queue.example.com/wp-admin/', 'last_crawled' => now()->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => ['https://intentional-admin-queue.example.com/wp-admin/'],
+            ],
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/dashboard/priority-queue');
+
+        $response->assertOk();
+        /** @var array<int, array<string, mixed>> $mustFixPayload */
+        $mustFixPayload = $response->json('must_fix') ?? [];
+        /** @var array<int, array<string, mixed>> $shouldFixPayload */
+        $shouldFixPayload = $response->json('should_fix') ?? [];
+
+        $this->assertNull(collect($mustFixPayload)->firstWhere('domain', 'intentional-admin-queue.example.com'));
+        $this->assertNull(collect($shouldFixPayload)->firstWhere('domain', 'intentional-admin-queue.example.com'));
+    }
+
+    public function test_priority_queue_keeps_admin_robots_issue_when_stored_seo_check_does_not_confirm_wordpress_rule(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'non-standard-admin-queue.example.com',
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'DreamIT Host',
+            'expires_at' => null,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'non-standard-admin-queue-site',
+            'name' => 'Non Standard Admin Queue Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        DomainCheck::create([
+            'domain_id' => $domain->id,
+            'check_type' => 'seo',
+            'status' => 'ok',
+            'started_at' => now()->subMinute(),
+            'finished_at' => now(),
+            'duration_ms' => 100,
+            'payload' => [
+                'results' => [
+                    'robots' => [
+                        'url' => 'https://non-standard-admin-queue.example.com/robots.txt',
+                        'has_standard_wordpress_admin_rule' => false,
+                        'allow_admin_ajax' => false,
+                    ],
+                ],
+            ],
+            'retry_count' => 0,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => 'non-standard-admin-queue-site',
+            'repo_provider' => 'local_only',
+            'local_path' => '/Users/jasonhill/Projects/websites/non-standard-admin-queue-site',
+            'framework' => 'WordPress',
+            'is_primary' => true,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '78',
+            'search_console_property_uri' => 'sc-domain:non-standard-admin-queue.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_plus_manual_csv',
+            'clicks' => 0,
+            'impressions' => 0,
+            'ctr' => 0,
+            'average_position' => 0,
+            'indexed_pages' => 10,
+            'not_indexed_pages' => 1,
+            'blocked_by_robots' => 1,
+            'raw_payload' => [
+                'issues' => [
+                    ['label' => 'Blocked by robots.txt', 'count' => 1],
+                ],
+            ],
+        ]);
+
+        \App\Models\SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'blocked_by_robots_in_indexing',
+            'source_issue_label' => 'Blocked by robots.txt',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:non-standard-admin-queue.example.com',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => ['https://non-standard-admin-queue.example.com/wp-admin/'],
+            'examples' => [
+                ['url' => 'https://non-standard-admin-queue.example.com/wp-admin/', 'last_crawled' => now()->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => ['https://non-standard-admin-queue.example.com/wp-admin/'],
+            ],
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/dashboard/priority-queue');
+
+        $response->assertOk();
+        /** @var array<int, array<string, mixed>> $mustFixPayload */
+        $mustFixPayload = $response->json('must_fix') ?? [];
+
+        $mustFix = collect($mustFixPayload)->firstWhere('domain', 'non-standard-admin-queue.example.com');
+
+        $this->assertIsArray($mustFix);
+        $this->assertContains('blocked_by_robots_in_indexing', $mustFix['issue_families']);
+    }
 }

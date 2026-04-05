@@ -14,7 +14,15 @@ class SeoHealthCheck
      *     is_valid: bool,
      *     verified: bool,
      *     results: array{
-     *         robots: array{exists: bool, verified: bool, status: int, url: string, error: string|null},
+     *         robots: array{
+     *             exists: bool,
+     *             verified: bool,
+     *             status: int,
+     *             url: string,
+     *             error: string|null,
+     *             has_standard_wordpress_admin_rule: bool,
+     *             allow_admin_ajax: bool
+     *         },
      *         sitemap: array{exists: bool, verified: bool, status: int, url: string, error: string|null}
      *     },
      *     error_message: string|null,
@@ -27,14 +35,10 @@ class SeoHealthCheck
         $baseUrl = $this->normalizeUrl($domain);
 
         try {
-            // Check robots.txt
-            $robotsResult = $this->checkFile($baseUrl, '/robots.txt');
+            $robotsResult = $this->checkRobotsFile($baseUrl);
 
-            // Check sitemap.xml (try common locations if standard one fails, or just standard for now)
-            // For MVP, we just check /sitemap.xml. A more advanced version could parse robots.txt for the sitemap URL.
             $sitemapResult = $this->checkFile($baseUrl, '/sitemap.xml');
 
-            // If sitemap not found at root, try sitemap_index.xml (common in WordPress/Yoast)
             if (! $sitemapResult['exists']) {
                 $altSitemapResult = $this->checkFile($baseUrl, '/sitemap_index.xml');
                 if ($altSitemapResult['exists']) {
@@ -42,8 +46,6 @@ class SeoHealthCheck
                 }
             }
 
-            // Consider valid if robots.txt exists (crucial). Sitemap is important but sometimes named differently.
-            // Let's set is_valid to true if robots.txt exists.
             $isValid = $robotsResult['exists'];
 
             $duration = (int) ((microtime(true) - $startTime) * 1000);
@@ -70,7 +72,15 @@ class SeoHealthCheck
                 'is_valid' => false,
                 'verified' => false,
                 'results' => [
-                    'robots' => ['exists' => false, 'verified' => false, 'status' => 0, 'url' => '', 'error' => 'Check failed'],
+                    'robots' => [
+                        'exists' => false,
+                        'verified' => false,
+                        'status' => 0,
+                        'url' => '',
+                        'error' => 'Check failed',
+                        'has_standard_wordpress_admin_rule' => false,
+                        'allow_admin_ajax' => false,
+                    ],
                     'sitemap' => ['exists' => false, 'verified' => false, 'status' => 0, 'url' => '', 'error' => 'Check failed'],
                 ],
                 'error_message' => 'Exception: '.$e->getMessage(),
@@ -90,6 +100,55 @@ class SeoHealthCheck
         }
 
         return 'https://'.rtrim($domain, '/');
+    }
+
+    /**
+     * @return array{
+     *     exists: bool,
+     *     verified: bool,
+     *     status: int,
+     *     url: string,
+     *     error: string|null,
+     *     has_standard_wordpress_admin_rule: bool,
+     *     allow_admin_ajax: bool
+     * }
+     */
+    private function checkRobotsFile(string $baseUrl): array
+    {
+        $url = $baseUrl.'/robots.txt';
+
+        try {
+            $response = Http::timeout(10)
+                ->withHeaders(['User-Agent' => 'DomainMonitor/1.0'])
+                ->get($url);
+
+            /** @var \Illuminate\Http\Client\Response $response */
+            $status = $response->status();
+            $exists = $response->successful();
+            $body = $exists ? $response->body() : '';
+
+            return [
+                'exists' => $exists,
+                'verified' => true,
+                'status' => $status,
+                'url' => $url,
+                'error' => $exists ? null : "Returned status {$status}",
+                'has_standard_wordpress_admin_rule' => $exists
+                    && preg_match('/^\s*disallow:\s*\/wp-admin\/\s*$/im', $body) === 1,
+                'allow_admin_ajax' => $exists
+                    && preg_match('/^\s*allow:\s*\/wp-admin\/admin-ajax\.php\s*$/im', $body) === 1,
+            ];
+        } catch (Exception $e) {
+            return [
+                'exists' => false,
+                'verified' => false,
+                'status' => 0,
+                'url' => $url,
+                'error' => $e->getMessage(),
+                'has_standard_wordpress_admin_rule' => false,
+                'allow_admin_ajax' => false,
+            ];
+        }
     }
 
     /**

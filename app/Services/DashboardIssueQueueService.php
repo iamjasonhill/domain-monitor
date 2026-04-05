@@ -21,7 +21,7 @@ class DashboardIssueQueueService
     /**
      * @return array<string, mixed>
      */
-    public function snapshot(): array
+    public function snapshot(bool $includeExpectedExclusions = false): array
     {
         $recentFailuresHours = app(DomainMonitorSettings::class)->recentFailuresHours();
 
@@ -66,7 +66,8 @@ class DashboardIssueQueueService
         ]);
         [$mustFixDomains, $shouldFixDomains] = $this->applyIssueVerificationQueues(
             $mustFixDomains->concat($shouldFixDomains),
-            $issueEvidence
+            $issueEvidence,
+            $includeExpectedExclusions
         );
 
         $stats['must_fix'] = $mustFixDomains->count();
@@ -89,7 +90,7 @@ class DashboardIssueQueueService
      * @param  array<string, array<string, array<string, mixed>>>  $issueEvidence
      * @return array{0: Collection<int, array<string, mixed>>, 1: Collection<int, array<string, mixed>>}
      */
-    private function applyIssueVerificationQueues(Collection $items, array $issueEvidence): array
+    private function applyIssueVerificationQueues(Collection $items, array $issueEvidence, bool $includeExpectedExclusions = false): array
     {
         if ($items->isEmpty()) {
             return [collect(), collect()];
@@ -125,7 +126,8 @@ class DashboardIssueQueueService
             $filteredItem = $this->filterVerifiedIssueEntries(
                 $item,
                 $verificationMap,
-                $issueEvidence[$evidenceKey] ?? []
+                $issueEvidence[$evidenceKey] ?? [],
+                $includeExpectedExclusions
             );
 
             if ($filteredItem === null) {
@@ -166,7 +168,7 @@ class DashboardIssueQueueService
      * @param  array<string, mixed>  $item
      * @return array<string, mixed>|null
      */
-    private function filterVerifiedIssueEntries(array $item, array $verificationMap, array $propertyIssueEvidence): ?array
+    private function filterVerifiedIssueEntries(array $item, array $verificationMap, array $propertyIssueEvidence, bool $includeExpectedExclusions = false): ?array
     {
         $domainId = (string) ($item['id'] ?? '');
         $propertySlug = is_string($item['web_property_slug'] ?? null) ? $item['web_property_slug'] : null;
@@ -174,13 +176,13 @@ class DashboardIssueQueueService
         $visibleSecondaryRecords = [];
 
         foreach ((array) ($item['primary_issue_records'] ?? []) as $record) {
-            if ($this->shouldKeepVerifiedRecord($record, $item, $domainId, $propertySlug, $verificationMap, $propertyIssueEvidence)) {
+            if ($this->shouldKeepVerifiedRecord($record, $item, $domainId, $propertySlug, $verificationMap, $propertyIssueEvidence, $includeExpectedExclusions)) {
                 $visiblePrimaryRecords[] = $record;
             }
         }
 
         foreach ((array) ($item['secondary_issue_records'] ?? []) as $record) {
-            if ($this->shouldKeepVerifiedRecord($record, $item, $domainId, $propertySlug, $verificationMap, $propertyIssueEvidence)) {
+            if ($this->shouldKeepVerifiedRecord($record, $item, $domainId, $propertySlug, $verificationMap, $propertyIssueEvidence, $includeExpectedExclusions)) {
                 $visibleSecondaryRecords[] = $record;
             }
         }
@@ -251,7 +253,8 @@ class DashboardIssueQueueService
         string $domainId,
         ?string $propertySlug,
         array $verificationMap,
-        array $propertyIssueEvidence
+        array $propertyIssueEvidence,
+        bool $includeExpectedExclusions = false
     ): bool {
         $issueFamily = is_string($record['issue_family'] ?? null) ? $record['issue_family'] : null;
 
@@ -267,6 +270,10 @@ class DashboardIssueQueueService
             'detected_at' => $this->queueIssueDetectedAt($item, $issueFamily, $issueEvidenceForRecord),
             'evidence' => $issueEvidenceForRecord,
         ];
+
+        if (! $includeExpectedExclusions && array_key_exists('expected_exclusion', $issueEvidenceForRecord)) {
+            return false;
+        }
 
         return ! ($verification instanceof \App\Models\DetectedIssueVerification
             && $this->issueVerificationService->isCurrentlySuppressed($issue, $verification));
@@ -287,7 +294,7 @@ class DashboardIssueQueueService
     /**
      * @param  array<string, mixed>  $item
      * @param  array<string, mixed>  $issueEvidence
-     * @return array<string, string>
+     * @return array<string, mixed>
      */
     private function queueIssueEvidence(array $item, string $issueFamily, array $issueEvidence): array
     {
@@ -302,6 +309,10 @@ class DashboardIssueQueueService
 
             if (is_string($issueEvidence['api_captured_at'] ?? null) && $issueEvidence['api_captured_at'] !== '') {
                 $evidence['api_captured_at'] = $issueEvidence['api_captured_at'];
+            }
+
+            if (is_array($issueEvidence['expected_exclusion'] ?? null)) {
+                $evidence['expected_exclusion'] = $issueEvidence['expected_exclusion'];
             }
 
             return $evidence;

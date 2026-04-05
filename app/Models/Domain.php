@@ -197,6 +197,20 @@ class Domain extends Model
     }
 
     /**
+     * @return HasOne<DomainCheck, $this>
+     */
+    public function latestSeoCheck(): HasOne
+    {
+        return $this->hasOne(DomainCheck::class)
+            ->ofMany([
+                'finished_at' => 'max',
+                'created_at' => 'max',
+            ], function (Builder $query): void {
+                $query->where('check_type', 'seo');
+            });
+    }
+
+    /**
      * @return HasMany<DomainAlert, $this>
      */
     /**

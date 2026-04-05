@@ -492,6 +492,371 @@ class DetectedIssueApiTest extends TestCase
         $this->assertCount(2, $issues->pluck('issue_id')->unique());
     }
 
+    public function test_issues_endpoint_hides_intentional_wordpress_admin_exclusions_but_detail_remains_available(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'intentional-admin.example.com',
+            'expires_at' => null,
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'DreamIT Host',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'intentional-admin-site',
+            'name' => 'Intentional Admin Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        DomainCheck::create([
+            'domain_id' => $domain->id,
+            'check_type' => 'seo',
+            'status' => 'ok',
+            'started_at' => now()->subMinute(),
+            'finished_at' => now(),
+            'duration_ms' => 100,
+            'payload' => [
+                'results' => [
+                    'robots' => [
+                        'url' => 'https://intentional-admin.example.com/robots.txt',
+                        'has_standard_wordpress_admin_rule' => true,
+                        'allow_admin_ajax' => true,
+                    ],
+                ],
+            ],
+            'retry_count' => 0,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '42',
+            'search_console_property_uri' => 'sc-domain:intentional-admin.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_api',
+            'blocked_by_robots' => 1,
+            'raw_payload' => [
+                'issues' => [
+                    ['label' => 'Blocked by robots.txt', 'count' => 1],
+                ],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'blocked_by_robots_in_indexing',
+            'source_issue_label' => 'Blocked by robots.txt',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:intentional-admin.example.com',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => [
+                'https://intentional-admin.example.com/wp-admin/',
+            ],
+            'examples' => [
+                ['url' => 'https://intentional-admin.example.com/wp-admin/', 'last_crawled' => now()->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://intentional-admin.example.com/wp-admin/',
+                ],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'excluded_by_noindex',
+            'source_issue_label' => "Excluded by 'noindex' tag",
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:intentional-admin.example.com',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => [
+                'https://intentional-admin.example.com/wp-login.php?redirect_to=/wp-admin/',
+            ],
+            'examples' => [
+                ['url' => 'https://intentional-admin.example.com/wp-login.php?redirect_to=/wp-admin/', 'last_crawled' => now()->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://intentional-admin.example.com/wp-login.php?redirect_to=/wp-admin/',
+                ],
+            ],
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues');
+
+        $response
+            ->assertOk()
+            ->assertJsonMissingPath('stats.issue_class_counts.blocked_by_robots_in_indexing')
+            ->assertJsonMissingPath('stats.issue_class_counts.excluded_by_noindex');
+
+        /** @var array<int, array<string, mixed>> $payloadIssues */
+        $payloadIssues = $response->json('issues') ?? [];
+        $issues = collect($payloadIssues);
+
+        $this->assertNull($issues->firstWhere('issue_class', 'blocked_by_robots_in_indexing'));
+        $this->assertNull($issues->firstWhere('issue_class', 'excluded_by_noindex'));
+
+        $identity = app(\App\Services\DetectedIssueIdentityService::class);
+        $blockedIssueId = $identity->makeIssueId($domain->id, $property->slug, 'blocked_by_robots_in_indexing');
+        $noindexIssueId = $identity->makeIssueId($domain->id, $property->slug, 'excluded_by_noindex');
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues/'.urlencode($blockedIssueId))
+            ->assertOk()
+            ->assertJsonPath('issue_class', 'blocked_by_robots_in_indexing')
+            ->assertJsonPath('evidence.expected_exclusion.state', 'expected_robots_exclusion')
+            ->assertJsonPath('evidence.expected_exclusion.code', 'intentional_admin_exclusion')
+            ->assertJsonPath('evidence.expected_exclusion.robots.disallow_wp_admin', true);
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues/'.urlencode($noindexIssueId))
+            ->assertOk()
+            ->assertJsonPath('issue_class', 'excluded_by_noindex')
+            ->assertJsonPath('evidence.expected_exclusion.state', 'expected_noindex_exclusion')
+            ->assertJsonPath('evidence.expected_exclusion.code', 'intentional_admin_exclusion');
+    }
+
+    public function test_issues_endpoint_keeps_admin_issue_visible_when_examples_are_truncated(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'truncated-admin.example.com',
+            'expires_at' => null,
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'DreamIT Host',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'truncated-admin-site',
+            'name' => 'Truncated Admin Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        DomainCheck::create([
+            'domain_id' => $domain->id,
+            'check_type' => 'seo',
+            'status' => 'ok',
+            'started_at' => now()->subMinute(),
+            'finished_at' => now(),
+            'duration_ms' => 100,
+            'payload' => [
+                'results' => [
+                    'robots' => [
+                        'url' => 'https://truncated-admin.example.com/robots.txt',
+                        'has_standard_wordpress_admin_rule' => true,
+                        'allow_admin_ajax' => true,
+                    ],
+                ],
+            ],
+            'retry_count' => 0,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '84',
+            'search_console_property_uri' => 'sc-domain:truncated-admin.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_api',
+            'blocked_by_robots' => 2,
+            'raw_payload' => [
+                'issues' => [
+                    ['label' => 'Blocked by robots.txt', 'count' => 2],
+                ],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'blocked_by_robots_in_indexing',
+            'source_issue_label' => 'Blocked by robots.txt',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:truncated-admin.example.com',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 2,
+            'sample_urls' => [
+                'https://truncated-admin.example.com/wp-admin/',
+            ],
+            'examples' => [
+                ['url' => 'https://truncated-admin.example.com/wp-admin/', 'last_crawled' => now()->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://truncated-admin.example.com/wp-admin/',
+                ],
+            ],
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues');
+
+        $response->assertOk()
+            ->assertJsonPath('stats.issue_class_counts.blocked_by_robots_in_indexing', 1);
+
+        /** @var array<int, array<string, mixed>> $payloadIssues */
+        $payloadIssues = $response->json('issues') ?? [];
+        $blockedIssue = collect($payloadIssues)->firstWhere('issue_class', 'blocked_by_robots_in_indexing');
+
+        $this->assertIsArray($blockedIssue);
+        $this->assertNull(data_get($blockedIssue, 'evidence.expected_exclusion'));
+    }
+
+    public function test_issues_endpoint_keeps_admin_issue_visible_when_urls_are_on_a_non_property_host(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'canonical-admin.example.com',
+            'expires_at' => null,
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'DreamIT Host',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'canonical-admin-site',
+            'name' => 'Canonical Admin Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        DomainCheck::create([
+            'domain_id' => $domain->id,
+            'check_type' => 'seo',
+            'status' => 'ok',
+            'started_at' => now()->subMinute(),
+            'finished_at' => now(),
+            'duration_ms' => 100,
+            'payload' => [
+                'results' => [
+                    'robots' => [
+                        'url' => 'https://canonical-admin.example.com/robots.txt',
+                        'has_standard_wordpress_admin_rule' => true,
+                        'allow_admin_ajax' => true,
+                    ],
+                ],
+            ],
+            'retry_count' => 0,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '85',
+            'search_console_property_uri' => 'sc-domain:canonical-admin.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_api',
+            'blocked_by_robots' => 1,
+            'raw_payload' => [
+                'issues' => [
+                    ['label' => 'Blocked by robots.txt', 'count' => 1],
+                ],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'blocked_by_robots_in_indexing',
+            'source_issue_label' => 'Blocked by robots.txt',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:canonical-admin.example.com',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => [
+                'https://staging.canonical-admin.example.com/wp-admin/',
+            ],
+            'examples' => [
+                ['url' => 'https://staging.canonical-admin.example.com/wp-admin/', 'last_crawled' => now()->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://staging.canonical-admin.example.com/wp-admin/',
+                ],
+            ],
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues');
+
+        $response->assertOk()
+            ->assertJsonPath('stats.issue_class_counts.blocked_by_robots_in_indexing', 1);
+
+        /** @var array<int, array<string, mixed>> $payloadIssues */
+        $payloadIssues = $response->json('issues') ?? [];
+        $blockedIssue = collect($payloadIssues)->firstWhere('issue_class', 'blocked_by_robots_in_indexing');
+
+        $this->assertIsArray($blockedIssue);
+        $this->assertNull(data_get($blockedIssue, 'evidence.expected_exclusion'));
+    }
+
     public function test_issues_endpoint_includes_broken_link_source_pages(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
