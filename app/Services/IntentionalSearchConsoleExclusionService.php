@@ -42,6 +42,10 @@ class IntentionalSearchConsoleExclusionService
      */
     private function classifyBlockedByRobotsIssue(Domain $domain, array $candidateUrls): ?array
     {
+        if (! $this->allUrlsAreWordPressAdminPaths($candidateUrls)) {
+            return null;
+        }
+
         $robotsInspection = $this->inspectStoredSeoRobotsState($domain);
 
         if (! is_array($robotsInspection) || ($robotsInspection['has_standard_wordpress_admin_rule'] ?? false) !== true) {
@@ -126,7 +130,8 @@ class IntentionalSearchConsoleExclusionService
         $candidateUrlCount = count($candidateUrls);
 
         if ($exactExampleCount !== null && $affectedUrlCount !== null) {
-            return $exactExampleCount >= $affectedUrlCount;
+            return $candidateUrlCount >= $exactExampleCount
+                && $candidateUrlCount >= $affectedUrlCount;
         }
 
         if ($exactExampleCount !== null) {
@@ -154,13 +159,38 @@ class IntentionalSearchConsoleExclusionService
         return true;
     }
 
+    /**
+     * @param  array<int, string>  $candidateUrls
+     */
+    private function allUrlsAreWordPressAdminPaths(array $candidateUrls): bool
+    {
+        foreach ($candidateUrls as $url) {
+            if (! $this->isWordPressAdminPath($url)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private function isIntentionalUtilityPath(string $url): bool
     {
         $path = Str::lower((string) parse_url($url, PHP_URL_PATH));
 
+        if ($this->isWordPressAdminPath($url)) {
+            return true;
+        }
+
         if ($path === '/wp-login.php') {
             return true;
         }
+
+        return false;
+    }
+
+    private function isWordPressAdminPath(string $url): bool
+    {
+        $path = Str::lower((string) parse_url($url, PHP_URL_PATH));
 
         return in_array($path, ['/wp-admin', '/wp-admin/'], true)
             || Str::startsWith($path, '/wp-admin/');
