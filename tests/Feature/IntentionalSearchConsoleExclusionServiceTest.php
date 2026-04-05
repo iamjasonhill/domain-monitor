@@ -75,6 +75,88 @@ class IntentionalSearchConsoleExclusionServiceTest extends TestCase
         $this->assertNull($classification);
     }
 
+    public function test_it_uses_the_latest_seo_check_when_multiple_records_exist(): void
+    {
+        $domainName = 'service-latest-admin.example.com';
+        $domain = Domain::factory()->create([
+            'domain' => $domainName,
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'DreamIT Host',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => str($domainName)->replace('.', '-')->toString(),
+            'name' => 'Intentional Search Console Exclusion Test',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        DomainCheck::create([
+            'domain_id' => $domain->id,
+            'check_type' => 'seo',
+            'status' => 'ok',
+            'started_at' => now()->subMinutes(10),
+            'finished_at' => now()->subMinutes(9),
+            'duration_ms' => 100,
+            'payload' => [
+                'results' => [
+                    'robots' => [
+                        'url' => sprintf('https://%s/robots.txt', $domainName),
+                        'has_standard_wordpress_admin_rule' => false,
+                        'allow_admin_ajax' => false,
+                    ],
+                ],
+            ],
+            'retry_count' => 0,
+        ]);
+
+        DomainCheck::create([
+            'domain_id' => $domain->id,
+            'check_type' => 'seo',
+            'status' => 'ok',
+            'started_at' => now()->subMinute(),
+            'finished_at' => now(),
+            'duration_ms' => 100,
+            'payload' => [
+                'results' => [
+                    'robots' => [
+                        'url' => sprintf('https://%s/robots.txt', $domainName),
+                        'has_standard_wordpress_admin_rule' => true,
+                        'allow_admin_ajax' => true,
+                    ],
+                ],
+            ],
+            'retry_count' => 0,
+        ]);
+
+        $property = $property->fresh(['primaryDomain.latestSeoCheck', 'propertyDomains.domain.latestSeoCheck']);
+
+        $classification = app(IntentionalSearchConsoleExclusionService::class)->classify(
+            $property,
+            'blocked_by_robots_in_indexing',
+            [
+                'affected_urls' => [sprintf('https://%s/wp-admin/', $domainName)],
+                'affected_url_count' => 1,
+                'exact_example_count' => 1,
+                'examples' => [
+                    ['url' => sprintf('https://%s/wp-admin/', $domainName)],
+                ],
+            ]
+        );
+
+        $this->assertIsArray($classification);
+        $this->assertSame('expected_robots_exclusion', $classification['state']);
+    }
+
     private function makePropertyWithSeoRobotsRule(string $domainName): WebProperty
     {
         $domain = Domain::factory()->create([
