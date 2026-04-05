@@ -568,4 +568,104 @@ class WebPropertyUiTest extends TestCase
         $response->assertDontSee('Blocked by robots.txt');
         $response->assertDontSee("Excluded by 'noindex' tag");
     }
+
+    public function test_web_property_detail_shows_only_surviving_404_examples_after_live_rechecks(): void
+    {
+        $user = User::factory()->create();
+        $domain = Domain::factory()->create([
+            'domain' => 'ui-filtered-404.example.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'ui-filtered-404-site',
+            'name' => 'UI Filtered 404 Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'not_found_404',
+            'source_issue_label' => 'Not found (404)',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:ui-filtered-404.example.au',
+            'captured_at' => now()->subDay(),
+            'captured_by' => 'test',
+            'affected_url_count' => 2,
+            'sample_urls' => [
+                'https://ui-filtered-404.example.au/fixed-page/',
+                'https://ui-filtered-404.example.au/still-missing/',
+            ],
+            'examples' => [
+                ['url' => 'https://ui-filtered-404.example.au/fixed-page/', 'last_crawled' => now()->subDays(2)->toDateString()],
+                ['url' => 'https://ui-filtered-404.example.au/still-missing/', 'last_crawled' => now()->subDays(2)->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://ui-filtered-404.example.au/fixed-page/',
+                    'https://ui-filtered-404.example.au/still-missing/',
+                ],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'not_found_404',
+            'source_issue_label' => 'Not found (404)',
+            'capture_method' => 'gsc_live_recheck',
+            'source_report' => 'search_console_live_http_recheck',
+            'source_property' => 'sc-domain:ui-filtered-404.example.au',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 2,
+            'sample_urls' => [
+                'https://ui-filtered-404.example.au/fixed-page/',
+                'https://ui-filtered-404.example.au/still-missing/',
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://ui-filtered-404.example.au/fixed-page/',
+                    'https://ui-filtered-404.example.au/still-missing/',
+                ],
+                'live_url_checks' => [
+                    [
+                        'url' => 'https://ui-filtered-404.example.au/fixed-page/',
+                        'checked_at' => now()->toIso8601String(),
+                        'final_url' => 'https://ui-filtered-404.example.au/fixed-page/',
+                        'final_status' => 200,
+                        'resolved_ok' => true,
+                        'host_changed' => false,
+                    ],
+                    [
+                        'url' => 'https://ui-filtered-404.example.au/still-missing/',
+                        'checked_at' => now()->toIso8601String(),
+                        'final_url' => 'https://ui-filtered-404.example.au/still-missing/',
+                        'final_status' => 404,
+                        'resolved_ok' => false,
+                        'host_changed' => false,
+                    ],
+                ],
+            ],
+        ]);
+
+        $response = $this->actingAs($user)->get('/web-properties/ui-filtered-404-site');
+
+        $response->assertOk();
+        $response->assertSee('Not found (404)');
+        $response->assertSee('1 affected URLs');
+        $response->assertSee('https://ui-filtered-404.example.au/still-missing/');
+        $response->assertDontSee('https://ui-filtered-404.example.au/fixed-page/');
+    }
 }

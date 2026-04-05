@@ -13,6 +13,7 @@ class FleetPropertyContextRefreshService
         private readonly PropertyConversionLinkScanner $conversionLinkScanner,
         private readonly DomainHealthCheckRunner $domainHealthCheckRunner,
         private readonly SearchConsoleApiEnrichmentRefresher $searchConsoleApiEnrichmentRefresher,
+        private readonly SearchConsoleIssueLiveRecheckService $searchConsoleIssueLiveRecheckService,
     ) {}
 
     /**
@@ -47,6 +48,10 @@ class FleetPropertyContextRefreshService
             capturedBy: 'fleet_context_refresh',
             force: $forceSearchConsoleApiEnrichment,
         );
+        $searchConsoleLiveRechecks = $this->searchConsoleIssueLiveRecheckService->refreshProperty(
+            $property,
+            'fleet_context_refresh'
+        );
 
         $steps = [
             'conversion_links' => $conversionLinks,
@@ -54,6 +59,7 @@ class FleetPropertyContextRefreshService
             'security_headers' => $securityHeaders,
             'seo' => $seo,
             'search_console_api_enrichment' => $searchConsole,
+            'search_console_live_rechecks' => $searchConsoleLiveRechecks,
         ];
 
         $success = collect($steps)->every(
@@ -158,7 +164,8 @@ class FleetPropertyContextRefreshService
      *     broken_links: array{status:'skipped',checked_at:null,reason:string},
      *     security_headers: array{status:'skipped',checked_at:null,reason:string},
      *     seo: array{status:'skipped',checked_at:null,reason:string},
-     *     search_console_api_enrichment: array{status:'skipped',captured_at:null,reason:'ineligible',message:string}
+     *     search_console_api_enrichment: array{status:'skipped',captured_at:null,reason:'ineligible',message:string},
+     *     search_console_live_rechecks: array{status:'skipped',captured_at:null,checked_url_count:0,reason:string}
      *   }
      * }
      */
@@ -196,6 +203,12 @@ class FleetPropertyContextRefreshService
                     'captured_at' => null,
                     'reason' => 'ineligible',
                     'message' => 'Property is not eligible for Fleet context refresh.',
+                ],
+                'search_console_live_rechecks' => [
+                    'status' => 'skipped',
+                    'captured_at' => null,
+                    'checked_url_count' => 0,
+                    'reason' => $reason,
                 ],
             ],
         ];
