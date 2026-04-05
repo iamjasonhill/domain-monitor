@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\SearchConsoleIssueSnapshot;
 use App\Models\WebProperty;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -50,6 +51,17 @@ class SearchConsoleIssueLiveRecheckService
                 ];
             }
 
+            $primaryDomain = $property->primaryDomainModel();
+
+            if (! $primaryDomain instanceof \App\Models\Domain) {
+                return [
+                    'status' => 'skipped',
+                    'captured_at' => null,
+                    'checked_url_count' => 0,
+                    'reason' => 'missing',
+                ];
+            }
+
             $checks = [];
             $deadline = microtime(true) + self::TOTAL_BUDGET_SECONDS;
 
@@ -62,57 +74,49 @@ class SearchConsoleIssueLiveRecheckService
             }
 
             $capturedAt = now();
-            $primaryDomain = $property->primaryDomainModel();
 
-            if (! $primaryDomain instanceof \App\Models\Domain) {
-                return [
-                    'status' => 'skipped',
-                    'captured_at' => null,
-                    'checked_url_count' => 0,
-                    'reason' => 'missing',
-                ];
-            }
+            DB::transaction(function () use ($property, $primaryDomain, $sourceSnapshot, $capturedAt, $capturedBy, $checks): void {
+                SearchConsoleIssueSnapshot::query()
+                    ->where('web_property_id', $property->id)
+                    ->where('issue_class', self::ISSUE_CLASS)
+                    ->where('capture_method', 'gsc_live_recheck')
+                    ->delete();
 
-            SearchConsoleIssueSnapshot::query()
-                ->where('web_property_id', $property->id)
-                ->where('issue_class', self::ISSUE_CLASS)
-                ->where('capture_method', 'gsc_live_recheck')
-                ->delete();
-
-            SearchConsoleIssueSnapshot::query()->create([
-                'domain_id' => $primaryDomain->id,
-                'web_property_id' => $property->id,
-                'property_analytics_source_id' => null,
-                'issue_class' => self::ISSUE_CLASS,
-                'source_issue_label' => data_get(config('domain_monitor.search_console_issue_catalog.'.self::ISSUE_CLASS), 'label'),
-                'capture_method' => 'gsc_live_recheck',
-                'source_report' => 'search_console_live_http_recheck',
-                'source_property' => $property->searchConsolePropertyUri(),
-                'artifact_path' => null,
-                'captured_at' => $capturedAt,
-                'captured_by' => $capturedBy ?: 'fleet_context_refresh',
-                'first_detected_at' => $sourceSnapshot->first_detected_at,
-                'last_updated_at' => $sourceSnapshot->last_updated_at,
-                'property_scope' => $sourceSnapshot->property_scope,
-                'affected_url_count' => count($checks),
-                'sample_urls' => array_slice(array_map(
-                    static fn (array $check): string => (string) $check['url'],
-                    $checks
-                ), 0, 10),
-                'examples' => $sourceSnapshot->examples,
-                'chart_points' => null,
-                'normalized_payload' => [
-                    'affected_urls' => array_map(
+                SearchConsoleIssueSnapshot::query()->create([
+                    'domain_id' => $primaryDomain->id,
+                    'web_property_id' => $property->id,
+                    'property_analytics_source_id' => null,
+                    'issue_class' => self::ISSUE_CLASS,
+                    'source_issue_label' => data_get(config('domain_monitor.search_console_issue_catalog.'.self::ISSUE_CLASS), 'label'),
+                    'capture_method' => 'gsc_live_recheck',
+                    'source_report' => 'search_console_live_http_recheck',
+                    'source_property' => $property->searchConsolePropertyUri(),
+                    'artifact_path' => null,
+                    'captured_at' => $capturedAt,
+                    'captured_by' => $capturedBy ?: 'fleet_context_refresh',
+                    'first_detected_at' => $sourceSnapshot->first_detected_at,
+                    'last_updated_at' => $sourceSnapshot->last_updated_at,
+                    'property_scope' => $sourceSnapshot->property_scope,
+                    'affected_url_count' => count($checks),
+                    'sample_urls' => array_slice(array_map(
                         static fn (array $check): string => (string) $check['url'],
                         $checks
-                    ),
-                    'live_url_checks' => $checks,
-                ],
-                'raw_payload' => [
-                    'source_snapshot_id' => $sourceSnapshot->id,
-                    'live_url_checks' => $checks,
-                ],
-            ]);
+                    ), 0, 10),
+                    'examples' => $sourceSnapshot->examples,
+                    'chart_points' => null,
+                    'normalized_payload' => [
+                        'affected_urls' => array_map(
+                            static fn (array $check): string => (string) $check['url'],
+                            $checks
+                        ),
+                        'live_url_checks' => $checks,
+                    ],
+                    'raw_payload' => [
+                        'source_snapshot_id' => $sourceSnapshot->id,
+                        'live_url_checks' => $checks,
+                    ],
+                ]);
+            });
 
             return [
                 'status' => 'refreshed',

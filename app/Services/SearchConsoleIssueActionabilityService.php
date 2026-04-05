@@ -395,7 +395,7 @@ class SearchConsoleIssueActionabilityService
             return null;
         }
 
-        $normalizedUrl = Str::lower((string) $parts['scheme']).'://'.$parts['host'];
+        $normalizedUrl = Str::lower((string) $parts['scheme']).'://'.Str::lower((string) $parts['host']);
 
         if (isset($parts['port'])) {
             $normalizedUrl .= ':'.$parts['port'];

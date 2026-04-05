@@ -38,7 +38,15 @@ class SearchConsoleIssueEvidenceService
                 'primaryDomain.latestSeoCheck',
                 'propertyDomains.domain.latestSeoCheck',
             ])
-            ->get(['id', 'slug', 'primary_domain_id']);
+            ->get([
+                'id',
+                'slug',
+                'primary_domain_id',
+                'target_moveroo_subdomain_url',
+                'target_legacy_bookings_replacement_url',
+                'target_legacy_payments_replacement_url',
+                'legacy_moveroo_endpoint_scan',
+            ]);
 
         return $this->evidenceMapForProperties($properties);
     }

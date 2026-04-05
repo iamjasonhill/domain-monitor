@@ -1045,4 +1045,115 @@ class DashboardPriorityQueueApiTest extends TestCase
         $this->assertContains('Search Console reports not found (404) (1 URLs)', $queueItem['primary_reasons']);
         $this->assertSame('Search Console reports not found (404) (1 URLs)', data_get($queueItem, 'issue_entries.0.reason'));
     }
+
+    public function test_priority_queue_suppresses_resolved_legacy_payment_404_when_queue_evidence_uses_slim_property_select(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'resolved-legacy-queue.example.com',
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'DreamIT Host',
+            'expires_at' => null,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'resolved-legacy-queue-site',
+            'name' => 'Resolved Legacy Queue Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+            'target_moveroo_subdomain_url' => 'https://quotes.resolved-legacy-queue.example.com',
+            'target_legacy_payments_replacement_url' => 'https://quotes.resolved-legacy-queue.example.com/contact',
+            'legacy_moveroo_endpoint_scan' => [
+                'legacy_payment_endpoint' => [
+                    'classification' => 'legacy_payment_endpoint',
+                    'found_on' => 'https://resolved-legacy-queue.example.com/',
+                    'url' => 'https://quotes.resolved-legacy-queue.example.com/payments',
+                    'resolved_url' => 'https://quotes.resolved-legacy-queue.example.com/contact',
+                    'resolved_status' => 200,
+                    'resolved_host_changed' => false,
+                ],
+            ],
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => 'resolved-legacy-queue-site',
+            'repo_provider' => 'local_only',
+            'local_path' => '/Users/jasonhill/Projects/websites/resolved-legacy-queue-site',
+            'framework' => 'WordPress',
+            'is_primary' => true,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '610',
+            'search_console_property_uri' => 'sc-domain:resolved-legacy-queue.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_api',
+            'not_found_404' => 1,
+            'raw_payload' => [
+                'issues' => [
+                    ['label' => 'Not found (404)', 'count' => 1],
+                ],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'not_found_404',
+            'source_issue_label' => 'Not found (404)',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:resolved-legacy-queue.example.com',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => [
+                'https://quotes.resolved-legacy-queue.example.com/payments',
+            ],
+            'examples' => [
+                ['url' => 'https://quotes.resolved-legacy-queue.example.com/payments', 'last_crawled' => now()->subDays(1)->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://quotes.resolved-legacy-queue.example.com/payments',
+                ],
+            ],
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/dashboard/priority-queue');
+
+        $response->assertOk();
+
+        /** @var array<int, array<string, mixed>> $mustFixPayload */
+        $mustFixPayload = $response->json('must_fix') ?? [];
+        /** @var array<int, array<string, mixed>> $shouldFixPayload */
+        $shouldFixPayload = $response->json('should_fix') ?? [];
+        $queueItem = collect([...$mustFixPayload, ...$shouldFixPayload])->first(function (array $item): bool {
+            return ($item['property_slug'] ?? null) === 'resolved-legacy-queue-site'
+                && ($item['issue_family'] ?? null) === 'search_console.not_found_404';
+        });
+
+        $this->assertNull($queueItem);
+    }
 }
