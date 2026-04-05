@@ -7,6 +7,7 @@
             $analyticsSources = $property->analyticsSources;
             $tags = collect($property->tagSummaries());
             $conversionLinks = $property->conversionLinkSummary();
+            $canonicalOrigin = $property->canonicalOriginSummary();
             $automationCoverage = $property->automationCoverageSummary();
             $automationChecks = [
                 [
@@ -165,6 +166,130 @@
                                 </span>
                             @endforeach
                         @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
+            <div class="p-6">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                        <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Canonical Origin Policy</h4>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            This defines the one public origin Fleet may normalize within for this property only. It does not authorize apex normalization across unrelated subdomains.
+                        </p>
+                    </div>
+
+                    <button
+                        type="button"
+                        wire:click="saveCanonicalOriginPolicy"
+                        wire:loading.attr="disabled"
+                        wire:target="saveCanonicalOriginPolicy"
+                        class="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        Save Canonical Policy
+                    </button>
+                </div>
+
+                <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                        <h5 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Current Contract</h5>
+                        <div class="mt-4 space-y-4 text-sm">
+                            @foreach([
+                                'Scheme' => $canonicalOrigin['scheme'],
+                                'Host' => $canonicalOrigin['host'],
+                                'Base URL' => $canonicalOrigin['base_url'],
+                                'Policy' => $canonicalOrigin['policy'],
+                                'Scope' => $canonicalOrigin['scope'],
+                                'Enforcement Eligible' => $canonicalOrigin['enforcement_eligible'] ? 'Yes' : 'No',
+                                'Sitemap Policy Known' => $canonicalOrigin['sitemap_policy_known'] ? 'Yes' : 'No',
+                            ] as $label => $value)
+                                <div>
+                                    <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $label }}</div>
+                                    <div class="mt-1 break-all font-medium text-gray-900 dark:text-gray-100">{{ $value ?: 'Not set' }}</div>
+                                </div>
+                            @endforeach
+
+                            <div class="border-t border-gray-200 pt-4 dark:border-gray-700">
+                                <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Owned Subdomains</div>
+                                @if(($canonicalOrigin['owned_subdomains'] ?? []) !== [])
+                                    <div class="mt-2 space-y-1">
+                                        @foreach($canonicalOrigin['owned_subdomains'] as $host)
+                                            <div class="break-all text-gray-900 dark:text-gray-100">{{ $host }}</div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <div class="mt-1 text-gray-500 dark:text-gray-400">None declared on this property</div>
+                                @endif
+                            </div>
+
+                            <div class="border-t border-gray-200 pt-4 dark:border-gray-700">
+                                <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Excluded Subdomains</div>
+                                @if(($canonicalOrigin['excluded_subdomains'] ?? []) !== [])
+                                    <div class="mt-2 space-y-1">
+                                        @foreach($canonicalOrigin['excluded_subdomains'] as $host)
+                                            <div class="break-all text-gray-900 dark:text-gray-100">{{ $host }}</div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <div class="mt-1 text-gray-500 dark:text-gray-400">No excluded subdomains configured</div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                        <h5 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Declared Policy</h5>
+
+                        <div class="mt-4 grid grid-cols-1 gap-4">
+                            <div>
+                                <label for="canonical_origin_policy" class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Policy</label>
+                                <select id="canonical_origin_policy" wire:model="canonicalOriginPolicy" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                                    <option value="unknown">Unknown</option>
+                                    <option value="known">Known</option>
+                                </select>
+                                @error('canonicalOriginPolicy') <div class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
+                            </div>
+                            <div>
+                                <label for="canonical_origin_scheme" class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Scheme</label>
+                                <select id="canonical_origin_scheme" wire:model="canonicalOriginScheme" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                                    <option value="">Not set</option>
+                                    <option value="https">https</option>
+                                    <option value="http">http</option>
+                                </select>
+                                @error('canonicalOriginScheme') <div class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
+                            </div>
+                            <div>
+                                <label for="canonical_origin_host" class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Host</label>
+                                <input id="canonical_origin_host" type="text" wire:model="canonicalOriginHost" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="movingagain.com.au" />
+                                @error('canonicalOriginHost') <div class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
+                            </div>
+                            <div>
+                                <label for="canonical_origin_excluded_subdomains" class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Excluded Subdomains</label>
+                                <textarea id="canonical_origin_excluded_subdomains" wire:model="canonicalOriginExcludedSubdomainsText" rows="4" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="cartransport.movingagain.com.au&#10;quotes.movingagain.com.au"></textarea>
+                                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">One hostname per line. These stay outside canonical-origin normalization for this property.</div>
+                                @error('canonicalOriginExcludedSubdomains') <div class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
+                                @error('canonicalOriginExcludedSubdomains.*') <div class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
+                            </div>
+                            <label class="inline-flex items-start gap-3">
+                                <input type="checkbox" wire:model="canonicalOriginEnforcementEligible" class="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900" />
+                                <span>
+                                    <span class="block text-sm font-medium text-gray-900 dark:text-gray-100">Canonical origin enforcement eligible</span>
+                                    <span class="block text-xs text-gray-500 dark:text-gray-400">Only enable when this property has a known canonical public origin and Fleet may safely normalize within it.</span>
+                                </span>
+                            </label>
+                            @error('canonicalOriginEnforcementEligible') <div class="text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
+
+                            <label class="inline-flex items-start gap-3">
+                                <input type="checkbox" wire:model="canonicalOriginSitemapPolicyKnown" class="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900" />
+                                <span>
+                                    <span class="block text-sm font-medium text-gray-900 dark:text-gray-100">Sitemap policy known</span>
+                                    <span class="block text-xs text-gray-500 dark:text-gray-400">Mark this once the property’s sitemap host policy is known well enough for automated normalization work.</span>
+                                </span>
+                            </label>
+                            @error('canonicalOriginSitemapPolicyKnown') <div class="text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
+                        </div>
                     </div>
                 </div>
             </div>

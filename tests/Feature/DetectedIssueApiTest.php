@@ -34,6 +34,12 @@ class DetectedIssueApiTest extends TestCase
             'property_type' => 'website',
             'status' => 'active',
             'primary_domain_id' => $redirectDomain->id,
+            'canonical_origin_scheme' => 'https',
+            'canonical_origin_host' => 'redirect-issue.example.com',
+            'canonical_origin_policy' => 'known',
+            'canonical_origin_enforcement_eligible' => true,
+            'canonical_origin_excluded_subdomains' => ['cartransport.redirect-issue.example.com'],
+            'canonical_origin_sitemap_policy_known' => true,
             'target_household_quote_url' => 'https://quote.redirect-issue.example.com/household',
             'target_moveroo_subdomain_url' => 'https://redirect-issue.moveroo.com.au',
             'target_contact_us_page_url' => 'https://redirect-issue.example.com/contact-us',
@@ -64,6 +70,21 @@ class DetectedIssueApiTest extends TestCase
             'domain_id' => $redirectDomain->id,
             'usage_type' => 'primary',
             'is_canonical' => true,
+        ]);
+
+        $redirectSubdomain = Domain::factory()->create([
+            'domain' => 'quotes.redirect-issue.example.com',
+            'expires_at' => null,
+            'is_active' => false,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'DreamIT Host',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $redirectProperty->id,
+            'domain_id' => $redirectSubdomain->id,
+            'usage_type' => 'subdomain',
+            'is_canonical' => false,
         ]);
 
         PropertyRepository::create([
@@ -337,6 +358,21 @@ class DetectedIssueApiTest extends TestCase
         $this->assertSame('https://redirect-issue.moveroo.com.au/bookings', data_get($redirectIssue, 'conversion_links.legacy_endpoints.legacy_booking_endpoint.url'));
         $this->assertSame('https://removalist.net/booking/create', data_get($redirectIssue, 'conversion_links.legacy_endpoints.legacy_booking_endpoint.resolved_url'));
         $this->assertTrue((bool) data_get($redirectIssue, 'conversion_links.legacy_endpoints.legacy_booking_endpoint.resolved_host_changed'));
+        $this->assertSame('https', data_get($redirectIssue, 'canonical_origin.scheme'));
+        $this->assertSame('redirect-issue.example.com', data_get($redirectIssue, 'canonical_origin.host'));
+        $this->assertSame('https://redirect-issue.example.com', data_get($redirectIssue, 'canonical_origin.base_url'));
+        $this->assertSame('known', data_get($redirectIssue, 'canonical_origin.policy'));
+        $this->assertSame('property_only', data_get($redirectIssue, 'canonical_origin.scope'));
+        $this->assertTrue((bool) data_get($redirectIssue, 'canonical_origin.enforcement_eligible'));
+        $this->assertSame(
+            ['quotes.redirect-issue.example.com'],
+            data_get($redirectIssue, 'canonical_origin.owned_subdomains')
+        );
+        $this->assertSame(
+            ['cartransport.redirect-issue.example.com'],
+            data_get($redirectIssue, 'canonical_origin.excluded_subdomains')
+        );
+        $this->assertTrue((bool) data_get($redirectIssue, 'canonical_origin.sitemap_policy_known'));
         $this->assertSame(['Search Console reports page with redirect (7 URLs)'], $redirectIssue['evidence']['primary_reasons']);
         $this->assertSame(
             ['https://redirect-issue.example.com/', 'http://redirect-issue.example.com/'],
@@ -385,6 +421,8 @@ class DetectedIssueApiTest extends TestCase
             ->assertJsonPath('issue_id', $redirectIssue['issue_id'])
             ->assertJsonPath('issue_class', 'page_with_redirect_in_sitemap')
             ->assertJsonPath('conversion_links.target.moveroo_subdomain', 'https://redirect-issue.moveroo.com.au')
+            ->assertJsonPath('canonical_origin.host', 'redirect-issue.example.com')
+            ->assertJsonPath('canonical_origin.enforcement_eligible', true)
             ->assertJsonPath('conversion_links.target.contact_us_page', 'https://redirect-issue.example.com/contact-us')
             ->assertJsonPath('conversion_links.target.legacy_bookings_replacement', 'https://removalist.net/booking/create')
             ->assertJsonPath('conversion_links.legacy_endpoints.legacy_payment_endpoint.resolved_url', 'https://redirect-issue.moveroo.com.au/contact')

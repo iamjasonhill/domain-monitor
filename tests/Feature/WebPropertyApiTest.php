@@ -54,6 +54,12 @@ class WebPropertyApiTest extends TestCase
             'platform' => 'Astro',
             'primary_domain_id' => $primaryDomain->id,
             'production_url' => 'https://moveroo.com.au',
+            'canonical_origin_scheme' => 'https',
+            'canonical_origin_host' => 'moveroo.com.au',
+            'canonical_origin_policy' => 'known',
+            'canonical_origin_enforcement_eligible' => true,
+            'canonical_origin_excluded_subdomains' => ['cartransport.moveroo.com.au'],
+            'canonical_origin_sitemap_policy_known' => true,
             'current_household_quote_url' => 'https://removalists.moveroo.com.au/quote/household',
             'current_household_booking_url' => 'https://removalists.moveroo.com.au/booking/create',
             'current_vehicle_quote_url' => 'https://cars.moveroo.com.au/quote/v2',
@@ -95,6 +101,19 @@ class WebPropertyApiTest extends TestCase
             'web_property_id' => $property->id,
             'domain_id' => $redirectDomain->id,
             'usage_type' => 'redirect',
+            'is_canonical' => false,
+        ]);
+
+        $ownedSubdomain = Domain::factory()->create([
+            'domain' => 'quotes.moveroo.com.au',
+            'platform' => 'Astro',
+            'hosting_provider' => 'Vercel',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $ownedSubdomain->id,
+            'usage_type' => 'subdomain',
             'is_canonical' => false,
         ]);
 
@@ -194,6 +213,14 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('contract_version', 1)
             ->assertJsonPath('web_properties.0.slug', 'moveroo-website')
             ->assertJsonPath('web_properties.0.primary_domain', 'moveroo.com.au')
+            ->assertJsonPath('web_properties.0.canonical_origin.scheme', 'https')
+            ->assertJsonPath('web_properties.0.canonical_origin.host', 'moveroo.com.au')
+            ->assertJsonPath('web_properties.0.canonical_origin.base_url', 'https://moveroo.com.au')
+            ->assertJsonPath('web_properties.0.canonical_origin.policy', 'known')
+            ->assertJsonPath('web_properties.0.canonical_origin.scope', 'property_only')
+            ->assertJsonPath('web_properties.0.canonical_origin.enforcement_eligible', true)
+            ->assertJsonPath('web_properties.0.canonical_origin.excluded_subdomains.0', 'cartransport.moveroo.com.au')
+            ->assertJsonPath('web_properties.0.canonical_origin.sitemap_policy_known', true)
             ->assertJsonPath('web_properties.0.repositories.0.repo_name', 'moveroo/moveroo-website-astro')
             ->assertJsonPath('web_properties.0.analytics_sources.0.external_id', '6')
             ->assertJsonPath('web_properties.0.analytics_sources.0.install_audit.install_verdict', 'installed_match')
@@ -233,6 +260,12 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.api_snapshot_count', 0)
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.latest_api_captured_at', null)
             ->assertJsonPath('web_properties.0.health_summary.active_alerts_count', 1);
+
+        $ownedSubdomains = $response->json('web_properties.0.canonical_origin.owned_subdomains');
+
+        $this->assertIsArray($ownedSubdomains);
+        $this->assertContains('www.moveroo.com.au', $ownedSubdomains);
+        $this->assertContains('quotes.moveroo.com.au', $ownedSubdomains);
     }
 
     public function test_web_properties_summary_can_filter_to_fleet_focus_properties(): void

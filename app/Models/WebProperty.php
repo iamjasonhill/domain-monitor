@@ -21,6 +21,12 @@ use Illuminate\Support\Str;
  * @property string|null $primary_domain_id
  * @property string|null $production_url
  * @property string|null $staging_url
+ * @property string|null $canonical_origin_scheme
+ * @property string|null $canonical_origin_host
+ * @property string $canonical_origin_policy
+ * @property bool $canonical_origin_enforcement_eligible
+ * @property array<int, string>|null $canonical_origin_excluded_subdomains
+ * @property bool $canonical_origin_sitemap_policy_known
  * @property string|null $platform
  * @property string|null $target_platform
  * @property string|null $owner
@@ -62,6 +68,12 @@ class WebProperty extends Model
         'primary_domain_id',
         'production_url',
         'staging_url',
+        'canonical_origin_scheme',
+        'canonical_origin_host',
+        'canonical_origin_policy',
+        'canonical_origin_enforcement_eligible',
+        'canonical_origin_excluded_subdomains',
+        'canonical_origin_sitemap_policy_known',
         'platform',
         'target_platform',
         'owner',
@@ -87,6 +99,9 @@ class WebProperty extends Model
     {
         return [
             'priority' => 'integer',
+            'canonical_origin_enforcement_eligible' => 'boolean',
+            'canonical_origin_excluded_subdomains' => 'array',
+            'canonical_origin_sitemap_policy_known' => 'boolean',
             'conversion_links_scanned_at' => 'datetime',
             'legacy_moveroo_endpoint_scan' => 'array',
         ];
@@ -638,6 +653,45 @@ class WebProperty extends Model
     }
 
     /**
+     * @return array{
+     *   scheme: string|null,
+     *   host: string|null,
+     *   base_url: string|null,
+     *   policy: 'known'|'unknown',
+     *   scope: 'property_only',
+     *   enforcement_eligible: bool,
+     *   owned_subdomains: array<int, string>,
+     *   excluded_subdomains: array<int, string>,
+     *   sitemap_policy_known: bool
+     * }
+     */
+    public function canonicalOriginSummary(): array
+    {
+        $scheme = $this->canonicalOriginSchemeValue();
+        $host = $this->canonicalOriginHostValue();
+        $baseUrl = $scheme !== null && $host !== null ? $scheme.'://'.$host : null;
+        $policy = $this->canonical_origin_policy === 'known' ? 'known' : 'unknown';
+        $hasExplicitCanonicalOrigin = is_string($this->canonical_origin_scheme)
+            && $this->canonical_origin_scheme !== ''
+            && is_string($this->canonical_origin_host)
+            && $this->canonical_origin_host !== '';
+
+        return [
+            'scheme' => $scheme,
+            'host' => $host,
+            'base_url' => $baseUrl,
+            'policy' => $policy,
+            'scope' => 'property_only',
+            'enforcement_eligible' => (bool) $this->canonical_origin_enforcement_eligible
+                && $policy === 'known'
+                && $hasExplicitCanonicalOrigin,
+            'owned_subdomains' => $this->ownedSubdomainHosts($host),
+            'excluded_subdomains' => $this->normalizedCanonicalOriginSubdomains($this->canonical_origin_excluded_subdomains),
+            'sitemap_policy_known' => (bool) $this->canonical_origin_sitemap_policy_known,
+        ];
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     private function legacyMoverooEndpointSummary(string $classification, ?string $preferredReplacement): ?array
@@ -700,6 +754,7 @@ class WebProperty extends Model
             'primary_domain' => $this->primaryDomainName(),
             'production_url' => $this->production_url,
             'staging_url' => $this->staging_url,
+            'canonical_origin' => $this->canonicalOriginSummary(),
             'platform' => $this->platform,
             'target_platform' => $this->target_platform,
             'owner' => $this->owner,
@@ -727,6 +782,88 @@ class WebProperty extends Model
             'gsc_evidence_summary' => $this->gscEvidenceSummary(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
+    }
+
+    private function canonicalOriginSchemeValue(): ?string
+    {
+        if (is_string($this->canonical_origin_scheme) && $this->canonical_origin_scheme !== '') {
+            return strtolower($this->canonical_origin_scheme);
+        }
+
+        $scheme = parse_url((string) $this->production_url, PHP_URL_SCHEME);
+
+        return is_string($scheme) && $scheme !== '' ? strtolower($scheme) : null;
+    }
+
+    private function canonicalOriginHostValue(): ?string
+    {
+        if (is_string($this->canonical_origin_host) && $this->canonical_origin_host !== '') {
+            return strtolower($this->canonical_origin_host);
+        }
+
+        $host = parse_url((string) $this->production_url, PHP_URL_HOST);
+
+        return is_string($host) && $host !== '' ? strtolower($host) : null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function normalizedCanonicalOriginSubdomains(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        return collect($value)
+            ->map(fn (mixed $host): ?string => $this->normalizeCanonicalOriginHost($host))
+            ->filter(fn (?string $host): bool => is_string($host) && $host !== '')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function ownedSubdomainHosts(?string $canonicalHost): array
+    {
+        if (! is_string($canonicalHost) || $canonicalHost === '') {
+            return [];
+        }
+
+        return $this->orderedDomainLinks()
+            ->map(fn (WebPropertyDomain $link): ?string => $this->normalizeCanonicalOriginHost($link->domain?->domain))
+            ->filter(
+                fn (?string $host): bool => is_string($host)
+                    && $host !== ''
+                    && $host !== $canonicalHost
+                    && Str::endsWith($host, '.'.$canonicalHost)
+            )
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function normalizeCanonicalOriginHost(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        if ($trimmed === '') {
+            return null;
+        }
+
+        if (Str::contains($trimmed, '://')) {
+            $host = parse_url($trimmed, PHP_URL_HOST);
+
+            return is_string($host) && $host !== '' ? strtolower($host) : null;
+        }
+
+        return strtolower(rtrim($trimmed, '.'));
     }
 
     /**

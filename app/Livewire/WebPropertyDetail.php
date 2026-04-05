@@ -41,6 +41,18 @@ class WebPropertyDetail extends Component
 
     public ?string $targetLegacyPaymentsReplacementUrl = null;
 
+    public ?string $canonicalOriginScheme = null;
+
+    public ?string $canonicalOriginHost = null;
+
+    public string $canonicalOriginPolicy = 'unknown';
+
+    public bool $canonicalOriginEnforcementEligible = false;
+
+    public string $canonicalOriginExcludedSubdomainsText = '';
+
+    public bool $canonicalOriginSitemapPolicyKnown = false;
+
     public function mount(): void
     {
         $this->loadProperty();
@@ -79,6 +91,14 @@ class WebPropertyDetail extends Component
         $this->targetContactUsPageUrl = $this->property->target_contact_us_page_url;
         $this->targetLegacyBookingsReplacementUrl = $this->property->target_legacy_bookings_replacement_url;
         $this->targetLegacyPaymentsReplacementUrl = $this->property->target_legacy_payments_replacement_url;
+        $this->canonicalOriginScheme = $this->property->canonical_origin_scheme;
+        $this->canonicalOriginHost = $this->property->canonical_origin_host;
+        $this->canonicalOriginPolicy = $this->property->canonical_origin_policy === 'known' ? 'known' : 'unknown';
+        $this->canonicalOriginEnforcementEligible = (bool) $this->property->canonical_origin_enforcement_eligible;
+        $this->canonicalOriginExcludedSubdomainsText = implode("\n", $this->normalizedCanonicalOriginSubdomains(
+            $this->property->canonical_origin_excluded_subdomains
+        ));
+        $this->canonicalOriginSitemapPolicyKnown = (bool) $this->property->canonical_origin_sitemap_policy_known;
     }
 
     public function importIssueDetail(SearchConsoleIssueSnapshotImporter $importer): void
@@ -166,6 +186,117 @@ class WebPropertyDetail extends Component
         session()->flash('message', 'Target conversion links updated.');
     }
 
+    public function saveCanonicalOriginPolicy(): void
+    {
+        if (! $this->property instanceof WebProperty) {
+            session()->flash('error', 'Property not found.');
+
+            return;
+        }
+
+        $this->authorizePropertyMutation();
+
+        $normalizedScheme = $this->normalizeCanonicalOriginScheme($this->canonicalOriginScheme);
+        $normalizedHost = $this->normalizeCanonicalOriginHost($this->canonicalOriginHost);
+        $normalizedExcludedSubdomains = $this->normalizedCanonicalOriginSubdomains(
+            $this->canonicalOriginExcludedSubdomainsText
+        );
+        $declaredHosts = $this->declaredCanonicalOriginHosts();
+
+        $this->resetValidation();
+
+        $validator = Validator::make(
+            [
+                'canonicalOriginScheme' => $normalizedScheme,
+                'canonicalOriginHost' => $normalizedHost,
+                'canonicalOriginPolicy' => $this->canonicalOriginPolicy,
+                'canonicalOriginEnforcementEligible' => $this->canonicalOriginEnforcementEligible,
+                'canonicalOriginExcludedSubdomains' => $normalizedExcludedSubdomains,
+                'canonicalOriginSitemapPolicyKnown' => $this->canonicalOriginSitemapPolicyKnown,
+            ],
+            [
+                'canonicalOriginScheme' => ['nullable', 'in:http,https'],
+                'canonicalOriginHost' => ['nullable', 'string', 'max:255', 'regex:/^(?=.{1,255}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\\.([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))*$/i'],
+                'canonicalOriginPolicy' => ['required', 'in:known,unknown'],
+                'canonicalOriginEnforcementEligible' => ['boolean'],
+                'canonicalOriginExcludedSubdomains' => ['array'],
+                'canonicalOriginExcludedSubdomains.*' => ['string', 'max:255', 'regex:/^(?=.{1,255}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\\.([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))*$/i'],
+                'canonicalOriginSitemapPolicyKnown' => ['boolean'],
+            ],
+            [
+                'canonicalOriginScheme.in' => 'Canonical origin scheme must be http or https.',
+                'canonicalOriginHost.regex' => 'Canonical origin host must be a valid hostname.',
+                'canonicalOriginPolicy.in' => 'Canonical origin policy must be known or unknown.',
+                'canonicalOriginExcludedSubdomains.*.regex' => 'Excluded subdomains must be valid hostnames.',
+            ]
+        );
+
+        $validator->after(function ($validator) use ($normalizedScheme, $normalizedHost, $normalizedExcludedSubdomains, $declaredHosts): void {
+            if (($normalizedScheme === null) !== ($normalizedHost === null)) {
+                $validator->errors()->add(
+                    'canonicalOriginHost',
+                    'Canonical origin scheme and host must be provided together.'
+                );
+            }
+
+            if ($this->canonicalOriginPolicy === 'known' && ($normalizedScheme === null || $normalizedHost === null)) {
+                $validator->errors()->add(
+                    'canonicalOriginHost',
+                    'Known canonical origin policy requires both scheme and host.'
+                );
+            }
+
+            if ($this->canonicalOriginEnforcementEligible && $this->canonicalOriginPolicy !== 'known') {
+                $validator->errors()->add(
+                    'canonicalOriginEnforcementEligible',
+                    'Canonical origin enforcement can only be enabled when policy is known.'
+                );
+            }
+
+            if ($normalizedHost !== null && ! in_array($normalizedHost, $declaredHosts, true)) {
+                $validator->errors()->add(
+                    'canonicalOriginHost',
+                    'Canonical origin host must belong to this property’s declared domain surface.'
+                );
+            }
+
+            if ($normalizedHost === null && $normalizedExcludedSubdomains !== []) {
+                $validator->errors()->add(
+                    'canonicalOriginExcludedSubdomains',
+                    'Excluded subdomains require a canonical origin host.'
+                );
+            }
+
+            if ($normalizedHost !== null) {
+                foreach ($normalizedExcludedSubdomains as $excludedHost) {
+                    if ($excludedHost === $normalizedHost || ! str_ends_with($excludedHost, '.'.$normalizedHost)) {
+                        $validator->errors()->add(
+                            'canonicalOriginExcludedSubdomains',
+                            'Excluded subdomains must be strict subdomains of the canonical origin host.'
+                        );
+
+                        break;
+                    }
+                }
+            }
+        });
+
+        $validated = $validator->validate();
+
+        $this->property->update([
+            'canonical_origin_scheme' => $validated['canonicalOriginScheme'],
+            'canonical_origin_host' => $validated['canonicalOriginHost'],
+            'canonical_origin_policy' => $validated['canonicalOriginPolicy'],
+            'canonical_origin_enforcement_eligible' => (bool) $validated['canonicalOriginEnforcementEligible'],
+            'canonical_origin_excluded_subdomains' => $validated['canonicalOriginExcludedSubdomains'],
+            'canonical_origin_sitemap_policy_known' => (bool) $validated['canonicalOriginSitemapPolicyKnown'],
+        ]);
+
+        $this->loadProperty();
+
+        session()->flash('message', 'Canonical origin policy updated.');
+    }
+
     public function refreshCurrentConversionLinks(PropertyConversionLinkScanner $scanner): void
     {
         if (! $this->property instanceof WebProperty) {
@@ -200,6 +331,83 @@ class WebPropertyDetail extends Component
         $trimmed = trim($value);
 
         return $trimmed === '' ? null : $trimmed;
+    }
+
+    private function normalizeCanonicalOriginScheme(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $trimmed = strtolower(trim($value));
+
+        return $trimmed === '' ? null : $trimmed;
+    }
+
+    private function normalizeCanonicalOriginHost(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        if ($trimmed === '') {
+            return null;
+        }
+
+        if (str_contains($trimmed, '://')) {
+            $host = parse_url($trimmed, PHP_URL_HOST);
+
+            return is_string($host) && $host !== '' ? strtolower(rtrim($host, '.')) : null;
+        }
+
+        return strtolower(rtrim($trimmed, '.'));
+    }
+
+    /**
+     * @param  array<int, string>|string|null  $value
+     * @return array<int, string>
+     */
+    private function normalizedCanonicalOriginSubdomains(array|string|null $value): array
+    {
+        $entries = match (true) {
+            is_array($value) => $value,
+            is_string($value) => preg_split('/[\r\n,]+/', $value) ?: [],
+            default => [],
+        };
+
+        return collect($entries)
+            ->map(fn (string $entry): ?string => $this->normalizeCanonicalOriginHost($entry))
+            ->filter(fn (?string $host): bool => is_string($host) && $host !== '')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function declaredCanonicalOriginHosts(): array
+    {
+        if (! $this->property instanceof WebProperty) {
+            return [];
+        }
+
+        $this->property->loadMissing(['primaryDomain', 'propertyDomains.domain']);
+        $productionUrlHost = parse_url((string) $this->property->production_url, PHP_URL_HOST);
+
+        return collect([
+            $this->normalizeCanonicalOriginHost($this->property->primaryDomain?->domain),
+            $this->normalizeCanonicalOriginHost(is_string($productionUrlHost) ? $productionUrlHost : null),
+            ...$this->property->propertyDomains
+                ->map(fn ($link): ?string => $this->normalizeCanonicalOriginHost($link->domain?->domain))
+                ->all(),
+        ])
+            ->filter(fn (?string $host): bool => is_string($host) && $host !== '')
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private function authorizePropertyMutation(): void
