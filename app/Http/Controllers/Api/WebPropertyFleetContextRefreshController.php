@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\RefreshFleetPropertyContextRequest;
 use App\Services\FleetPropertyContextRefreshService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 
 class WebPropertyFleetContextRefreshController extends Controller
@@ -20,7 +21,7 @@ class WebPropertyFleetContextRefreshController extends Controller
                 (bool) $request->boolean('force_search_console_api_enrichment'),
                 $request->integer('search_console_stale_days') ?: null,
             );
-        } catch (\RuntimeException $exception) {
+        } catch (ModelNotFoundException $exception) {
             return response()->json([
                 'success' => false,
                 'error' => 'Web property not found.',

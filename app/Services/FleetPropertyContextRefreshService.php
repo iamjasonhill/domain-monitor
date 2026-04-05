@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Domain;
 use App\Models\WebProperty;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
 
 class FleetPropertyContextRefreshService
@@ -74,7 +75,7 @@ class FleetPropertyContextRefreshService
             ->first();
 
         if (! $property instanceof WebProperty) {
-            throw new \RuntimeException("Web property [{$slug}] was not found.");
+            throw (new ModelNotFoundException)->setModel(WebProperty::class, [$slug]);
         }
 
         return $this->hydrateProperty($property);

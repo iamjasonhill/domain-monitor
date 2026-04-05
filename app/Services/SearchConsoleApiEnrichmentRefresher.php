@@ -334,7 +334,7 @@ class SearchConsoleApiEnrichmentRefresher
     /**
      * @return array{
      *   eligible: bool,
-     *   reason: 'missing'|'ineligible',
+     *   reason: 'missing'|'ineligible'|null,
      *   message: string
      * }
      */
@@ -370,7 +370,7 @@ class SearchConsoleApiEnrichmentRefresher
 
         return [
             'eligible' => true,
-            'reason' => 'missing',
+            'reason' => null,
             'message' => '',
         ];
     }
