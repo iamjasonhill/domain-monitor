@@ -202,12 +202,9 @@ class Domain extends Model
     public function latestSeoCheck(): HasOne
     {
         return $this->hasOne(DomainCheck::class)
-            ->ofMany([
-                'finished_at' => 'max',
-                'created_at' => 'max',
-            ], function (Builder $query): void {
-                $query->where('check_type', 'seo');
-            });
+            ->where('check_type', 'seo')
+            ->orderByDesc('finished_at')
+            ->orderByDesc('created_at');
     }
 
     /**
