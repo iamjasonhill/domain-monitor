@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\DomainController;
 use App\Http\Controllers\Api\IntegrationMetaController;
 use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\WebPropertyController;
+use App\Http\Controllers\Api\WebPropertyFleetContextRefreshController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -35,6 +36,8 @@ Route::middleware(['api-key'])->group(function () {
     Route::get('/web-properties', [WebPropertyController::class, 'index']);
     Route::get('/web-properties-summary', [WebPropertyController::class, 'summary']);
     Route::get('/web-properties/{slug}', [WebPropertyController::class, 'show']);
+    Route::post('/web-properties/{slug}/refresh-fleet-context', WebPropertyFleetContextRefreshController::class)
+        ->middleware('fleet-control-api-key');
     Route::get('/web-properties/{slug}/health-summary', [WebPropertyController::class, 'healthSummary']);
     Route::get('/dashboard/priority-queue', DashboardPriorityQueueController::class);
     Route::get('/issues', [DetectedIssueController::class, 'index']);
