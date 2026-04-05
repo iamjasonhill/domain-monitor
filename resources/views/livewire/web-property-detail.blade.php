@@ -221,6 +221,37 @@
                                     @endif
                                 </div>
                             @endforeach
+
+                            <div class="border-t border-gray-200 pt-4 dark:border-gray-700">
+                                <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Legacy Moveroo Endpoint Drift</div>
+                                <div class="mt-3 space-y-4">
+                                    @foreach([
+                                        'Legacy /bookings' => $conversionLinks['legacy_endpoints']['legacy_booking_endpoint'] ?? null,
+                                        'Legacy /payments' => $conversionLinks['legacy_endpoints']['legacy_payment_endpoint'] ?? null,
+                                    ] as $label => $endpoint)
+                                        <div>
+                                            <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $label }}</div>
+                                            @if($endpoint)
+                                                <div class="mt-1 break-all text-gray-900 dark:text-gray-100">{{ $endpoint['url'] }}</div>
+                                                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                                    Found on {{ $endpoint['found_on'] ?? 'n/a' }}
+                                                </div>
+                                                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                                    Resolves to {{ $endpoint['resolved_url'] ?? 'unknown' }} @if(isset($endpoint['resolved_status'])) (HTTP {{ $endpoint['resolved_status'] }}) @endif
+                                                </div>
+                                                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                                    Host changed: {{ array_key_exists('resolved_host_changed', $endpoint) ? ($endpoint['resolved_host_changed'] ? 'Yes' : 'No') : 'Unknown' }}
+                                                </div>
+                                                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                                    Preferred replacement: {{ $endpoint['preferred_replacement'] ?? 'Manual review' }}
+                                                </div>
+                                            @else
+                                                <div class="mt-1 text-gray-500 dark:text-gray-400">Not detected</div>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -268,6 +299,16 @@
                                 <label for="target_contact_us_page_url" class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Contact Us Page</label>
                                 <input id="target_contact_us_page_url" type="url" wire:model="targetContactUsPageUrl" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="https://..." />
                                 @error('targetContactUsPageUrl') <div class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
+                            </div>
+                            <div>
+                                <label for="target_legacy_bookings_replacement_url" class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Legacy /bookings Replacement</label>
+                                <input id="target_legacy_bookings_replacement_url" type="url" wire:model="targetLegacyBookingsReplacementUrl" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="https://..." />
+                                @error('targetLegacyBookingsReplacementUrl') <div class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
+                            </div>
+                            <div>
+                                <label for="target_legacy_payments_replacement_url" class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Legacy /payments Replacement</label>
+                                <input id="target_legacy_payments_replacement_url" type="url" wire:model="targetLegacyPaymentsReplacementUrl" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-blue-500 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100" placeholder="https://..." />
+                                @error('targetLegacyPaymentsReplacementUrl') <div class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</div> @enderror
                             </div>
                         </div>
                     </div>

@@ -11,6 +11,10 @@ use Illuminate\Support\Str;
 
 class PropertyConversionLinkScanner
 {
+    private const LEGACY_ENDPOINT_PROBE_REDIRECT_LIMIT = 3;
+
+    private const LEGACY_ENDPOINT_PROBE_TIMEOUT_SECONDS = 5;
+
     public function __construct(
         private readonly HttpFactory $http,
     ) {}
@@ -21,7 +25,11 @@ class PropertyConversionLinkScanner
      *   current_household_booking_url: string|null,
      *   current_vehicle_quote_url: string|null,
      *   current_vehicle_booking_url: string|null,
-     *   conversion_links_scanned_at: \Illuminate\Support\Carbon
+     *   conversion_links_scanned_at: \Illuminate\Support\Carbon,
+     *   legacy_moveroo_endpoint_scan: array{
+     *     legacy_booking_endpoint: array<string, mixed>|null,
+     *     legacy_payment_endpoint: array<string, mixed>|null
+     *   }
      * }
      */
     public function scanForProperty(WebProperty $property): array
@@ -60,6 +68,7 @@ class PropertyConversionLinkScanner
             'current_vehicle_quote_url' => $this->pickLink($anchors, 'vehicle_quote'),
             'current_vehicle_booking_url' => $this->pickLink($anchors, 'vehicle_booking'),
             'conversion_links_scanned_at' => now(),
+            'legacy_moveroo_endpoint_scan' => $this->scanLegacyMoverooEndpoints($anchors, $homepageUrl, $property),
         ];
     }
 
@@ -111,7 +120,7 @@ class PropertyConversionLinkScanner
                     'score' => $classification['score'],
                 ];
             })
-            ->filter(fn (?array $anchor): bool => is_array($anchor) && $anchor['bucket'] !== null)
+            ->filter(fn (?array $anchor): bool => is_array($anchor))
             ->values()
             ->all();
     }
@@ -134,7 +143,11 @@ class PropertyConversionLinkScanner
      *   current_household_booking_url: string|null,
      *   current_vehicle_quote_url: string|null,
      *   current_vehicle_booking_url: string|null,
-     *   conversion_links_scanned_at: \Illuminate\Support\Carbon
+     *   conversion_links_scanned_at: \Illuminate\Support\Carbon,
+     *   legacy_moveroo_endpoint_scan: array{
+     *     legacy_booking_endpoint: array<string, mixed>|null,
+     *     legacy_payment_endpoint: array<string, mixed>|null
+     *   }
      * }
      */
     public function persistForProperty(WebProperty $property): array
@@ -258,6 +271,252 @@ class PropertyConversionLinkScanner
         }
 
         return $prefix.'/'.ltrim($href, '/');
+    }
+
+    /**
+     * @param  array<int, array{href: string, text: string, bucket: string|null, score: int}>  $anchors
+     * @return array{
+     *   legacy_booking_endpoint: array<string, mixed>|null,
+     *   legacy_payment_endpoint: array<string, mixed>|null
+     * }
+     */
+    private function scanLegacyMoverooEndpoints(array $anchors, string $homepageUrl, WebProperty $property): array
+    {
+        $previousMatches = is_array($property->legacy_moveroo_endpoint_scan)
+            ? $property->legacy_moveroo_endpoint_scan
+            : [];
+
+        /** @var array{legacy_booking_endpoint: array<string, mixed>|null, legacy_payment_endpoint: array<string, mixed>|null} $matches */
+        $matches = [
+            'legacy_booking_endpoint' => null,
+            'legacy_payment_endpoint' => null,
+        ];
+
+        foreach ($anchors as $anchor) {
+            $classification = $this->legacyMoverooEndpointClassification($anchor['href'], $property);
+
+            if ($classification === null || $matches[$classification] !== null) {
+                continue;
+            }
+
+            $resolution = $this->resolveLegacyEndpoint($anchor['href']);
+            $resolution = $this->mergePreviousLegacyResolution(
+                $resolution,
+                $previousMatches[$classification] ?? null,
+                $anchor['href'],
+            );
+
+            $matches[$classification] = [
+                'classification' => $classification,
+                'found_on' => $homepageUrl,
+                'url' => $anchor['href'],
+                'resolved_url' => $resolution['resolved_url'],
+                'resolved_status' => $resolution['resolved_status'],
+                'resolved_host_changed' => $resolution['resolved_host_changed'],
+            ];
+        }
+
+        return [
+            'legacy_booking_endpoint' => $matches['legacy_booking_endpoint'],
+            'legacy_payment_endpoint' => $matches['legacy_payment_endpoint'],
+        ];
+    }
+
+    private function legacyMoverooEndpointClassification(string $url, WebProperty $property): ?string
+    {
+        $parts = parse_url($url);
+
+        if (! is_array($parts) || ! isset($parts['host'])) {
+            return null;
+        }
+
+        $path = '/'.trim((string) ($parts['path'] ?? '/'), '/');
+        $normalizedPath = Str::lower(rtrim($path, '/'));
+        $host = Str::lower((string) $parts['host']);
+
+        $classification = match ($normalizedPath) {
+            '/bookings' => 'legacy_booking_endpoint',
+            '/payments' => 'legacy_payment_endpoint',
+            default => null,
+        };
+
+        if ($classification === null) {
+            return null;
+        }
+
+        if ($host === $this->targetMoverooHost($property)) {
+            return $classification;
+        }
+
+        return null;
+    }
+
+    private function targetMoverooHost(WebProperty $property): ?string
+    {
+        if (! is_string($property->target_moveroo_subdomain_url) || $property->target_moveroo_subdomain_url === '') {
+            return null;
+        }
+
+        $targetMoverooHost = parse_url($property->target_moveroo_subdomain_url, PHP_URL_HOST);
+
+        return is_string($targetMoverooHost) && $targetMoverooHost !== ''
+            ? Str::lower($targetMoverooHost)
+            : null;
+    }
+
+    /**
+     * @return array{
+     *   resolved_url: string|null,
+     *   resolved_status: int|null,
+     *   resolved_host_changed: bool|null
+     * }
+     */
+    private function resolveLegacyEndpoint(string $url): array
+    {
+        $originalHost = parse_url($url, PHP_URL_HOST);
+        $currentUrl = $url;
+        $redirectsRemaining = self::LEGACY_ENDPOINT_PROBE_REDIRECT_LIMIT;
+
+        while ($redirectsRemaining >= 0) {
+            if (! $this->isSafeLegacyEndpointProbeUrl($currentUrl)) {
+                return $this->failedLegacyEndpointResolution();
+            }
+
+            try {
+                $response = $this->http
+                    ->timeout(self::LEGACY_ENDPOINT_PROBE_TIMEOUT_SECONDS)
+                    ->withoutRedirecting()
+                    ->withHeaders([
+                        'Accept' => 'text/html,application/xhtml+xml',
+                        'User-Agent' => 'DomainMonitorConversionLinkScanner/1.0 (+https://monitor.again.com.au)',
+                    ])
+                    ->get($currentUrl);
+            } catch (\Throwable) {
+                return $this->failedLegacyEndpointResolution();
+            }
+
+            $status = $response->status();
+            $location = $response->header('Location');
+
+            if ($status >= 300 && $status < 400 && $location !== '' && $redirectsRemaining > 0) {
+                $nextUrl = $this->normalizeUrl($location, $currentUrl);
+
+                if ($nextUrl === null || ! $this->isSafeLegacyEndpointProbeUrl($nextUrl)) {
+                    return $this->failedLegacyEndpointResolution($status);
+                }
+
+                $currentUrl = $nextUrl;
+                $redirectsRemaining--;
+
+                continue;
+            }
+
+            $resolvedUrl = $this->sanitizeResolvedUrl($currentUrl);
+            $resolvedHost = $resolvedUrl !== null
+                ? parse_url($resolvedUrl, PHP_URL_HOST)
+                : parse_url($currentUrl, PHP_URL_HOST);
+
+            return [
+                'resolved_url' => $resolvedUrl,
+                'resolved_status' => $status,
+                'resolved_host_changed' => is_string($originalHost) && is_string($resolvedHost)
+                    ? Str::lower($originalHost) !== Str::lower($resolvedHost)
+                    : null,
+            ];
+        }
+
+        return [
+            'resolved_url' => $this->sanitizeResolvedUrl($currentUrl),
+            'resolved_status' => null,
+            'resolved_host_changed' => null,
+        ];
+    }
+
+    /**
+     * @param  array{resolved_url: string|null, resolved_status: int|null, resolved_host_changed: bool|null}  $resolution
+     * @return array{resolved_url: string|null, resolved_status: int|null, resolved_host_changed: bool|null}
+     */
+    private function mergePreviousLegacyResolution(array $resolution, mixed $previousEntry, string $url): array
+    {
+        if ($resolution['resolved_status'] !== null || ! is_array($previousEntry)) {
+            return $resolution;
+        }
+
+        $previousUrl = is_string($previousEntry['url'] ?? null) ? $previousEntry['url'] : null;
+
+        if ($previousUrl !== $url) {
+            return $resolution;
+        }
+
+        return [
+            'resolved_url' => is_string($previousEntry['resolved_url'] ?? null)
+                ? $this->sanitizeResolvedUrl($previousEntry['resolved_url'])
+                : null,
+            'resolved_status' => is_numeric($previousEntry['resolved_status'] ?? null)
+                ? (int) $previousEntry['resolved_status']
+                : null,
+            'resolved_host_changed' => is_bool($previousEntry['resolved_host_changed'] ?? null)
+                ? $previousEntry['resolved_host_changed']
+                : null,
+        ];
+    }
+
+    private function isSafeLegacyEndpointProbeUrl(string $url): bool
+    {
+        $parts = parse_url($url);
+
+        if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'])) {
+            return false;
+        }
+
+        $scheme = Str::lower((string) $parts['scheme']);
+        $host = Str::lower((string) $parts['host']);
+
+        if (! in_array($scheme, ['http', 'https'], true)) {
+            return false;
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP) !== false) {
+            return filter_var(
+                $host,
+                FILTER_VALIDATE_IP,
+                FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+            ) !== false;
+        }
+
+        return str_contains($host, '.')
+            && ! Str::endsWith($host, ['.local', '.internal']);
+    }
+
+    private function sanitizeResolvedUrl(string $url): ?string
+    {
+        $parts = parse_url($url);
+
+        if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'])) {
+            return null;
+        }
+
+        $sanitizedUrl = Str::lower((string) $parts['scheme']).'://'.$parts['host'];
+
+        if (isset($parts['port'])) {
+            $sanitizedUrl .= ':'.$parts['port'];
+        }
+
+        $path = (string) ($parts['path'] ?? '/');
+
+        return $sanitizedUrl.($path !== '' ? $path : '/');
+    }
+
+    /**
+     * @return array{resolved_url: string|null, resolved_status: int|null, resolved_host_changed: bool|null}
+     */
+    private function failedLegacyEndpointResolution(?int $status = null): array
+    {
+        return [
+            'resolved_url' => null,
+            'resolved_status' => $status,
+            'resolved_host_changed' => null,
+        ];
     }
 
     /**

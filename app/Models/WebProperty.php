@@ -36,6 +36,9 @@ use Illuminate\Support\Str;
  * @property string|null $target_vehicle_booking_url
  * @property string|null $target_moveroo_subdomain_url
  * @property string|null $target_contact_us_page_url
+ * @property string|null $target_legacy_bookings_replacement_url
+ * @property string|null $target_legacy_payments_replacement_url
+ * @property array<string, mixed>|null $legacy_moveroo_endpoint_scan
  * @property \Illuminate\Support\Carbon|null $conversion_links_scanned_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -74,7 +77,10 @@ class WebProperty extends Model
         'target_vehicle_booking_url',
         'target_moveroo_subdomain_url',
         'target_contact_us_page_url',
+        'target_legacy_bookings_replacement_url',
+        'target_legacy_payments_replacement_url',
         'conversion_links_scanned_at',
+        'legacy_moveroo_endpoint_scan',
     ];
 
     protected function casts(): array
@@ -82,6 +88,7 @@ class WebProperty extends Model
         return [
             'priority' => 'integer',
             'conversion_links_scanned_at' => 'datetime',
+            'legacy_moveroo_endpoint_scan' => 'array',
         ];
     }
 
@@ -586,7 +593,13 @@ class WebProperty extends Model
      *     vehicle_quote: string|null,
      *     vehicle_booking: string|null,
      *     moveroo_subdomain: string|null,
-     *     contact_us_page: string|null
+     *     contact_us_page: string|null,
+     *     legacy_bookings_replacement: string|null,
+     *     legacy_payments_replacement: string|null
+     *   },
+     *   legacy_endpoints: array{
+     *     legacy_booking_endpoint: array<string, mixed>|null,
+     *     legacy_payment_endpoint: array<string, mixed>|null
      *   },
      *   scanned_at: string|null
      * }
@@ -607,9 +620,69 @@ class WebProperty extends Model
                 'vehicle_booking' => $this->target_vehicle_booking_url,
                 'moveroo_subdomain' => $this->target_moveroo_subdomain_url,
                 'contact_us_page' => $this->target_contact_us_page_url,
+                'legacy_bookings_replacement' => $this->target_legacy_bookings_replacement_url,
+                'legacy_payments_replacement' => $this->target_legacy_payments_replacement_url,
+            ],
+            'legacy_endpoints' => [
+                'legacy_booking_endpoint' => $this->legacyMoverooEndpointSummary(
+                    'legacy_booking_endpoint',
+                    $this->target_legacy_bookings_replacement_url,
+                ),
+                'legacy_payment_endpoint' => $this->legacyMoverooEndpointSummary(
+                    'legacy_payment_endpoint',
+                    $this->target_legacy_payments_replacement_url,
+                ),
             ],
             'scanned_at' => $this->conversion_links_scanned_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function legacyMoverooEndpointSummary(string $classification, ?string $preferredReplacement): ?array
+    {
+        $scan = $this->legacy_moveroo_endpoint_scan;
+        $entry = is_array($scan) && is_array($scan[$classification] ?? null)
+            ? $scan[$classification]
+            : null;
+
+        if ($entry === null) {
+            return null;
+        }
+
+        return [
+            'classification' => $classification,
+            'found_on' => is_string($entry['found_on'] ?? null) ? $entry['found_on'] : null,
+            'url' => is_string($entry['url'] ?? null) ? $entry['url'] : null,
+            'resolved_url' => $this->sanitizeLegacyResolvedUrl($entry['resolved_url'] ?? null),
+            'resolved_status' => is_numeric($entry['resolved_status'] ?? null) ? (int) $entry['resolved_status'] : null,
+            'resolved_host_changed' => is_bool($entry['resolved_host_changed'] ?? null) ? $entry['resolved_host_changed'] : null,
+            'preferred_replacement' => $preferredReplacement,
+        ];
+    }
+
+    private function sanitizeLegacyResolvedUrl(mixed $value): ?string
+    {
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        $parts = parse_url($value);
+
+        if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'])) {
+            return null;
+        }
+
+        $sanitizedUrl = strtolower((string) $parts['scheme']).'://'.$parts['host'];
+
+        if (isset($parts['port'])) {
+            $sanitizedUrl .= ':'.$parts['port'];
+        }
+
+        $path = (string) ($parts['path'] ?? '/');
+
+        return $sanitizedUrl.($path !== '' ? $path : '/');
     }
 
     /**

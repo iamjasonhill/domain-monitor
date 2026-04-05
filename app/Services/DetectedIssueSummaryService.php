@@ -117,7 +117,10 @@ class DetectedIssueSummaryService
                     'target_vehicle_booking_url',
                     'target_moveroo_subdomain_url',
                     'target_contact_us_page_url',
+                    'target_legacy_bookings_replacement_url',
+                    'target_legacy_payments_replacement_url',
                     'conversion_links_scanned_at',
+                    'legacy_moveroo_endpoint_scan',
                 ])
                 ->where('slug', $verification->property_slug)
                 ->first();

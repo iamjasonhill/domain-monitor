@@ -37,6 +37,26 @@ class DetectedIssueApiTest extends TestCase
             'target_household_quote_url' => 'https://quote.redirect-issue.example.com/household',
             'target_moveroo_subdomain_url' => 'https://redirect-issue.moveroo.com.au',
             'target_contact_us_page_url' => 'https://redirect-issue.example.com/contact-us',
+            'target_legacy_bookings_replacement_url' => 'https://removalist.net/booking/create',
+            'target_legacy_payments_replacement_url' => 'https://redirect-issue.moveroo.com.au/contact',
+            'legacy_moveroo_endpoint_scan' => [
+                'legacy_booking_endpoint' => [
+                    'classification' => 'legacy_booking_endpoint',
+                    'found_on' => 'https://redirect-issue.example.com',
+                    'url' => 'https://redirect-issue.moveroo.com.au/bookings',
+                    'resolved_url' => 'https://removalist.net/booking/create',
+                    'resolved_status' => 200,
+                    'resolved_host_changed' => true,
+                ],
+                'legacy_payment_endpoint' => [
+                    'classification' => 'legacy_payment_endpoint',
+                    'found_on' => 'https://redirect-issue.example.com',
+                    'url' => 'https://redirect-issue.moveroo.com.au/payments',
+                    'resolved_url' => 'https://redirect-issue.moveroo.com.au/contact',
+                    'resolved_status' => 200,
+                    'resolved_host_changed' => false,
+                ],
+            ],
         ]);
 
         WebPropertyDomain::create([
@@ -312,6 +332,11 @@ class DetectedIssueApiTest extends TestCase
         $this->assertSame('https://quote.redirect-issue.example.com/household', data_get($redirectIssue, 'conversion_links.target.household_quote'));
         $this->assertSame('https://redirect-issue.moveroo.com.au', data_get($redirectIssue, 'conversion_links.target.moveroo_subdomain'));
         $this->assertSame('https://redirect-issue.example.com/contact-us', data_get($redirectIssue, 'conversion_links.target.contact_us_page'));
+        $this->assertSame('https://removalist.net/booking/create', data_get($redirectIssue, 'conversion_links.target.legacy_bookings_replacement'));
+        $this->assertSame('https://redirect-issue.moveroo.com.au/contact', data_get($redirectIssue, 'conversion_links.target.legacy_payments_replacement'));
+        $this->assertSame('https://redirect-issue.moveroo.com.au/bookings', data_get($redirectIssue, 'conversion_links.legacy_endpoints.legacy_booking_endpoint.url'));
+        $this->assertSame('https://removalist.net/booking/create', data_get($redirectIssue, 'conversion_links.legacy_endpoints.legacy_booking_endpoint.resolved_url'));
+        $this->assertTrue((bool) data_get($redirectIssue, 'conversion_links.legacy_endpoints.legacy_booking_endpoint.resolved_host_changed'));
         $this->assertSame(['Search Console reports page with redirect (7 URLs)'], $redirectIssue['evidence']['primary_reasons']);
         $this->assertSame(
             ['https://redirect-issue.example.com/', 'http://redirect-issue.example.com/'],
@@ -361,6 +386,8 @@ class DetectedIssueApiTest extends TestCase
             ->assertJsonPath('issue_class', 'page_with_redirect_in_sitemap')
             ->assertJsonPath('conversion_links.target.moveroo_subdomain', 'https://redirect-issue.moveroo.com.au')
             ->assertJsonPath('conversion_links.target.contact_us_page', 'https://redirect-issue.example.com/contact-us')
+            ->assertJsonPath('conversion_links.target.legacy_bookings_replacement', 'https://removalist.net/booking/create')
+            ->assertJsonPath('conversion_links.legacy_endpoints.legacy_payment_endpoint.resolved_url', 'https://redirect-issue.moveroo.com.au/contact')
             ->assertJsonPath('evidence.source_domain_id', $redirectDomain->id)
             ->assertJsonPath('evidence.examples.0.url', 'https://redirect-issue.example.com/');
     }
