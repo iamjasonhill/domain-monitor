@@ -375,9 +375,9 @@ class PropertyConversionLinkScanner
     {
         $originalHost = parse_url($url, PHP_URL_HOST);
         $currentUrl = $url;
-        $redirectsRemaining = self::LEGACY_ENDPOINT_PROBE_REDIRECT_LIMIT;
+        $lastStatus = null;
 
-        while ($redirectsRemaining >= 0) {
+        for ($attempt = 0; $attempt <= self::LEGACY_ENDPOINT_PROBE_REDIRECT_LIMIT; $attempt++) {
             if (! $this->isSafeLegacyEndpointProbeUrl($currentUrl)) {
                 return $this->failedLegacyEndpointResolution();
             }
@@ -396,9 +396,10 @@ class PropertyConversionLinkScanner
             }
 
             $status = $response->status();
+            $lastStatus = $status;
             $location = $response->header('Location');
 
-            if ($status >= 300 && $status < 400 && $location !== '' && $redirectsRemaining > 0) {
+            if ($status >= 300 && $status < 400 && $location !== '' && $attempt < self::LEGACY_ENDPOINT_PROBE_REDIRECT_LIMIT) {
                 $nextUrl = $this->normalizeUrl($location, $currentUrl);
 
                 if ($nextUrl === null || ! $this->isSafeLegacyEndpointProbeUrl($nextUrl)) {
@@ -406,7 +407,6 @@ class PropertyConversionLinkScanner
                 }
 
                 $currentUrl = $nextUrl;
-                $redirectsRemaining--;
 
                 continue;
             }
@@ -425,11 +425,7 @@ class PropertyConversionLinkScanner
             ];
         }
 
-        return [
-            'resolved_url' => $this->sanitizeResolvedUrl($currentUrl),
-            'resolved_status' => null,
-            'resolved_host_changed' => null,
-        ];
+        return $this->failedLegacyEndpointResolution($lastStatus);
     }
 
     /**
