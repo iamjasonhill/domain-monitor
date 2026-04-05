@@ -166,4 +166,41 @@ class WebPropertyCanonicalOriginTest extends TestCase
         $this->assertSame('unknown', $property->canonical_origin_policy);
         $this->assertFalse($property->canonical_origin_enforcement_eligible);
     }
+
+    public function test_property_detail_rejects_excluded_subdomains_without_a_canonical_host(): void
+    {
+        $user = User::factory()->create();
+        $primaryDomain = Domain::factory()->create([
+            'domain' => 'movingagain.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'movingagain-site',
+            'name' => 'Moving Again',
+            'primary_domain_id' => $primaryDomain->id,
+            'production_url' => 'https://movingagain.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $primaryDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(WebPropertyDetail::class, ['propertySlug' => 'movingagain-site'])
+            ->set('canonicalOriginPolicy', 'unknown')
+            ->set('canonicalOriginScheme', null)
+            ->set('canonicalOriginHost', null)
+            ->set('canonicalOriginExcludedSubdomainsText', 'quotes.movingagain.com.au')
+            ->call('saveCanonicalOriginPolicy')
+            ->assertHasErrors(['canonicalOriginExcludedSubdomains']);
+
+        $property->refresh();
+
+        $this->assertNull($property->canonical_origin_host);
+        $this->assertNull($property->canonical_origin_excluded_subdomains);
+    }
 }

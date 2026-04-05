@@ -260,6 +260,13 @@ class WebPropertyDetail extends Component
                 );
             }
 
+            if ($normalizedHost === null && $normalizedExcludedSubdomains !== []) {
+                $validator->errors()->add(
+                    'canonicalOriginExcludedSubdomains',
+                    'Excluded subdomains require a canonical origin host.'
+                );
+            }
+
             if ($normalizedHost !== null) {
                 foreach ($normalizedExcludedSubdomains as $excludedHost) {
                     if ($excludedHost === $normalizedHost || ! str_ends_with($excludedHost, '.'.$normalizedHost)) {
