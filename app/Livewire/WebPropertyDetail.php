@@ -37,6 +37,10 @@ class WebPropertyDetail extends Component
 
     public ?string $targetContactUsPageUrl = null;
 
+    public ?string $targetLegacyBookingsReplacementUrl = null;
+
+    public ?string $targetLegacyPaymentsReplacementUrl = null;
+
     public function mount(): void
     {
         $this->loadProperty();
@@ -73,6 +77,8 @@ class WebPropertyDetail extends Component
         $this->targetVehicleBookingUrl = $this->property->target_vehicle_booking_url;
         $this->targetMoverooSubdomainUrl = $this->property->target_moveroo_subdomain_url;
         $this->targetContactUsPageUrl = $this->property->target_contact_us_page_url;
+        $this->targetLegacyBookingsReplacementUrl = $this->property->target_legacy_bookings_replacement_url;
+        $this->targetLegacyPaymentsReplacementUrl = $this->property->target_legacy_payments_replacement_url;
     }
 
     public function importIssueDetail(SearchConsoleIssueSnapshotImporter $importer): void
@@ -124,6 +130,8 @@ class WebPropertyDetail extends Component
             'targetVehicleBookingUrl' => $this->normalizeTargetUrl($this->targetVehicleBookingUrl),
             'targetMoverooSubdomainUrl' => $this->normalizeTargetUrl($this->targetMoverooSubdomainUrl),
             'targetContactUsPageUrl' => $this->normalizeTargetUrl($this->targetContactUsPageUrl),
+            'targetLegacyBookingsReplacementUrl' => $this->normalizeTargetUrl($this->targetLegacyBookingsReplacementUrl),
+            'targetLegacyPaymentsReplacementUrl' => $this->normalizeTargetUrl($this->targetLegacyPaymentsReplacementUrl),
         ];
 
         $this->resetValidation();
@@ -137,6 +145,8 @@ class WebPropertyDetail extends Component
                 'targetVehicleBookingUrl' => ['nullable', 'url', 'max:2048', 'regex:/^https?:\\/\\//i'],
                 'targetMoverooSubdomainUrl' => ['nullable', 'url', 'max:2048', 'regex:/^https?:\\/\\//i'],
                 'targetContactUsPageUrl' => ['nullable', 'url', 'max:2048', 'regex:/^https?:\\/\\//i'],
+                'targetLegacyBookingsReplacementUrl' => ['nullable', 'url', 'max:2048', 'regex:/^https?:\\/\\//i'],
+                'targetLegacyPaymentsReplacementUrl' => ['nullable', 'url', 'max:2048', 'regex:/^https?:\\/\\//i'],
             ]
         )->validate();
 
@@ -147,6 +157,8 @@ class WebPropertyDetail extends Component
             'target_vehicle_booking_url' => $validated['targetVehicleBookingUrl'],
             'target_moveroo_subdomain_url' => $validated['targetMoverooSubdomainUrl'],
             'target_contact_us_page_url' => $validated['targetContactUsPageUrl'],
+            'target_legacy_bookings_replacement_url' => $validated['targetLegacyBookingsReplacementUrl'],
+            'target_legacy_payments_replacement_url' => $validated['targetLegacyPaymentsReplacementUrl'],
         ]);
 
         $this->loadProperty();

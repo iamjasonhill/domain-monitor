@@ -61,7 +61,27 @@ class WebPropertyApiTest extends TestCase
             'target_vehicle_quote_url' => 'https://quote.moveroo.com.au/vehicle',
             'target_moveroo_subdomain_url' => 'https://wemove.moveroo.com.au',
             'target_contact_us_page_url' => 'https://moveroo.com.au/contact-us',
+            'target_legacy_bookings_replacement_url' => 'https://removalist.net/booking/create',
+            'target_legacy_payments_replacement_url' => 'https://wemove.moveroo.com.au/contact',
             'conversion_links_scanned_at' => now(),
+            'legacy_moveroo_endpoint_scan' => [
+                'legacy_booking_endpoint' => [
+                    'classification' => 'legacy_booking_endpoint',
+                    'found_on' => 'https://moveroo.com.au',
+                    'url' => 'https://wemove.moveroo.com.au/bookings',
+                    'resolved_url' => 'https://removalist.net/booking/create',
+                    'resolved_status' => 200,
+                    'resolved_host_changed' => true,
+                ],
+                'legacy_payment_endpoint' => [
+                    'classification' => 'legacy_payment_endpoint',
+                    'found_on' => 'https://moveroo.com.au',
+                    'url' => 'https://wemove.moveroo.com.au/payments',
+                    'resolved_url' => 'https://wemove.moveroo.com.au/contact',
+                    'resolved_status' => 200,
+                    'resolved_host_changed' => false,
+                ],
+            ],
         ]);
 
         WebPropertyDomain::create([
@@ -199,6 +219,13 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.conversion_links.target.vehicle_quote', 'https://quote.moveroo.com.au/vehicle')
             ->assertJsonPath('web_properties.0.conversion_links.target.moveroo_subdomain', 'https://wemove.moveroo.com.au')
             ->assertJsonPath('web_properties.0.conversion_links.target.contact_us_page', 'https://moveroo.com.au/contact-us')
+            ->assertJsonPath('web_properties.0.conversion_links.target.legacy_bookings_replacement', 'https://removalist.net/booking/create')
+            ->assertJsonPath('web_properties.0.conversion_links.target.legacy_payments_replacement', 'https://wemove.moveroo.com.au/contact')
+            ->assertJsonPath('web_properties.0.conversion_links.legacy_endpoints.legacy_booking_endpoint.url', 'https://wemove.moveroo.com.au/bookings')
+            ->assertJsonPath('web_properties.0.conversion_links.legacy_endpoints.legacy_booking_endpoint.resolved_url', 'https://removalist.net/booking/create')
+            ->assertJsonPath('web_properties.0.conversion_links.legacy_endpoints.legacy_booking_endpoint.resolved_host_changed', true)
+            ->assertJsonPath('web_properties.0.conversion_links.legacy_endpoints.legacy_payment_endpoint.url', 'https://wemove.moveroo.com.au/payments')
+            ->assertJsonPath('web_properties.0.conversion_links.legacy_endpoints.legacy_payment_endpoint.resolved_url', 'https://wemove.moveroo.com.au/contact')
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.has_issue_detail', false)
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.issue_detail_snapshot_count', 0)
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.latest_issue_detail_captured_at', null)

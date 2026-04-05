@@ -47,6 +47,8 @@ class WebPropertyConversionLinksTest extends TestCase
             ->set('targetVehicleBookingUrl', 'https://quote.moveroo.com.au/vehicle-booking')
             ->set('targetMoverooSubdomainUrl', 'https://wemove.moveroo.com.au')
             ->set('targetContactUsPageUrl', 'https://moveroo.com.au/contact-us')
+            ->set('targetLegacyBookingsReplacementUrl', 'https://removalist.net/booking/create')
+            ->set('targetLegacyPaymentsReplacementUrl', 'https://wemove.moveroo.com.au/contact')
             ->call('saveConversionTargets')
             ->assertHasNoErrors();
 
@@ -58,6 +60,8 @@ class WebPropertyConversionLinksTest extends TestCase
         $this->assertSame('https://quote.moveroo.com.au/vehicle-booking', $property->target_vehicle_booking_url);
         $this->assertSame('https://wemove.moveroo.com.au', $property->target_moveroo_subdomain_url);
         $this->assertSame('https://moveroo.com.au/contact-us', $property->target_contact_us_page_url);
+        $this->assertSame('https://removalist.net/booking/create', $property->target_legacy_bookings_replacement_url);
+        $this->assertSame('https://wemove.moveroo.com.au/contact', $property->target_legacy_payments_replacement_url);
     }
 
     public function test_property_detail_can_clear_target_conversion_links(): void
@@ -139,6 +143,302 @@ class WebPropertyConversionLinksTest extends TestCase
         $this->assertSame('https://cars.moveroo.com.au/quote/v2', $property->current_vehicle_quote_url);
         $this->assertNull($property->current_vehicle_booking_url);
         $this->assertNotNull($property->conversion_links_scanned_at);
+    }
+
+    public function test_property_detail_refresh_captures_legacy_moveroo_endpoint_drift(): void
+    {
+        $user = User::factory()->create();
+        $domain = Domain::factory()->create([
+            'domain' => 'discountbackloading.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'discountbackloading-com-au',
+            'name' => 'Discount Backloading',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://discountbackloading.com.au',
+            'target_moveroo_subdomain_url' => 'https://mymoveportal.discountbackloading.com.au',
+            'target_legacy_bookings_replacement_url' => 'https://removalist.net/booking/create',
+            'target_legacy_payments_replacement_url' => 'https://mymoveportal.discountbackloading.com.au/contact',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        Http::fake([
+            'https://discountbackloading.com.au' => Http::response(<<<'HTML'
+                <html>
+                    <body>
+                        <header>
+                            <a href="https://mymoveportal.discountbackloading.com.au/bookings">Book Online</a>
+                            <a href="https://mymoveportal.discountbackloading.com.au/payments">Make Payment</a>
+                        </header>
+                    </body>
+                </html>
+            HTML),
+            'https://mymoveportal.discountbackloading.com.au/bookings' => Http::response('', 302, [
+                'Location' => 'https://removalist.net/booking/create',
+            ]),
+            'https://removalist.net/booking/create' => Http::response('<html><body>Booking</body></html>', 200),
+            'https://mymoveportal.discountbackloading.com.au/payments' => Http::response('', 302, [
+                'Location' => 'https://mymoveportal.discountbackloading.com.au/contact',
+            ]),
+            'https://mymoveportal.discountbackloading.com.au/contact' => Http::response('<html><body>Contact</body></html>', 200),
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(WebPropertyDetail::class, ['propertySlug' => 'discountbackloading-com-au'])
+            ->call('refreshCurrentConversionLinks')
+            ->assertSee('Host changed: Yes')
+            ->assertSee('Preferred replacement: https://removalist.net/booking/create')
+            ->assertHasNoErrors();
+
+        $legacyEndpoints = $property->fresh()->conversionLinkSummary()['legacy_endpoints'];
+
+        $this->assertSame(
+            'https://mymoveportal.discountbackloading.com.au/bookings',
+            $legacyEndpoints['legacy_booking_endpoint']['url']
+        );
+        $this->assertSame(
+            'https://removalist.net/booking/create',
+            $legacyEndpoints['legacy_booking_endpoint']['resolved_url']
+        );
+        $this->assertSame(200, $legacyEndpoints['legacy_booking_endpoint']['resolved_status']);
+        $this->assertTrue($legacyEndpoints['legacy_booking_endpoint']['resolved_host_changed']);
+        $this->assertSame(
+            'https://removalist.net/booking/create',
+            $legacyEndpoints['legacy_booking_endpoint']['preferred_replacement']
+        );
+        $this->assertSame(
+            'https://mymoveportal.discountbackloading.com.au/payments',
+            $legacyEndpoints['legacy_payment_endpoint']['url']
+        );
+        $this->assertSame(
+            'https://mymoveportal.discountbackloading.com.au/contact',
+            $legacyEndpoints['legacy_payment_endpoint']['resolved_url']
+        );
+        $this->assertFalse($legacyEndpoints['legacy_payment_endpoint']['resolved_host_changed']);
+        $this->assertSame(
+            'https://mymoveportal.discountbackloading.com.au/contact',
+            $legacyEndpoints['legacy_payment_endpoint']['preferred_replacement']
+        );
+    }
+
+    public function test_property_detail_refresh_requires_an_explicit_moveroo_subdomain_target_for_legacy_endpoint_detection(): void
+    {
+        $user = User::factory()->create();
+        $domain = Domain::factory()->create([
+            'domain' => 'discountbackloading.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'discountbackloading-com-au',
+            'name' => 'Discount Backloading',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://discountbackloading.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        Http::fake([
+            'https://discountbackloading.com.au' => Http::response(<<<'HTML'
+                <html>
+                    <body>
+                        <header>
+                            <a href="https://portal.discountbackloading.com.au/bookings">Book Online</a>
+                        </header>
+                    </body>
+                </html>
+            HTML),
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(WebPropertyDetail::class, ['propertySlug' => 'discountbackloading-com-au'])
+            ->call('refreshCurrentConversionLinks')
+            ->assertHasNoErrors();
+
+        $legacyEndpoints = $property->fresh()->conversionLinkSummary()['legacy_endpoints'];
+
+        $this->assertNull($legacyEndpoints['legacy_booking_endpoint']);
+        $this->assertNull($legacyEndpoints['legacy_payment_endpoint']);
+    }
+
+    public function test_property_detail_refresh_preserves_previous_legacy_resolution_when_probe_fails(): void
+    {
+        $user = User::factory()->create();
+        $domain = Domain::factory()->create([
+            'domain' => 'discountbackloading.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'discountbackloading-com-au',
+            'name' => 'Discount Backloading',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://discountbackloading.com.au',
+            'target_moveroo_subdomain_url' => 'https://mymoveportal.discountbackloading.com.au',
+            'legacy_moveroo_endpoint_scan' => [
+                'legacy_booking_endpoint' => [
+                    'classification' => 'legacy_booking_endpoint',
+                    'found_on' => 'https://discountbackloading.com.au',
+                    'url' => 'https://mymoveportal.discountbackloading.com.au/bookings',
+                    'resolved_url' => 'https://removalist.net/booking/create',
+                    'resolved_status' => 200,
+                    'resolved_host_changed' => true,
+                ],
+                'legacy_payment_endpoint' => null,
+            ],
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        Http::fake([
+            'https://discountbackloading.com.au' => Http::response(<<<'HTML'
+                <html>
+                    <body>
+                        <header>
+                            <a href="https://mymoveportal.discountbackloading.com.au/bookings">Book Online</a>
+                        </header>
+                    </body>
+                </html>
+            HTML),
+            'https://mymoveportal.discountbackloading.com.au/bookings' => Http::failedConnection(),
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(WebPropertyDetail::class, ['propertySlug' => 'discountbackloading-com-au'])
+            ->call('refreshCurrentConversionLinks')
+            ->assertHasNoErrors();
+
+        $legacyEndpoints = $property->fresh()->conversionLinkSummary()['legacy_endpoints'];
+
+        $this->assertSame(
+            'https://removalist.net/booking/create',
+            $legacyEndpoints['legacy_booking_endpoint']['resolved_url']
+        );
+        $this->assertSame(200, $legacyEndpoints['legacy_booking_endpoint']['resolved_status']);
+        $this->assertTrue($legacyEndpoints['legacy_booking_endpoint']['resolved_host_changed']);
+    }
+
+    public function test_property_detail_refresh_blocks_unsafe_legacy_redirect_targets(): void
+    {
+        $user = User::factory()->create();
+        $domain = Domain::factory()->create([
+            'domain' => 'discountbackloading.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'discountbackloading-com-au',
+            'name' => 'Discount Backloading',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://discountbackloading.com.au',
+            'target_moveroo_subdomain_url' => 'https://mymoveportal.discountbackloading.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        Http::fake([
+            'https://discountbackloading.com.au' => Http::response(<<<'HTML'
+                <html>
+                    <body>
+                        <header>
+                            <a href="https://mymoveportal.discountbackloading.com.au/bookings">Book Online</a>
+                        </header>
+                    </body>
+                </html>
+            HTML),
+            'https://mymoveportal.discountbackloading.com.au/bookings' => Http::response('', 302, [
+                'Location' => 'http://127.0.0.1/private?token=secret',
+            ]),
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(WebPropertyDetail::class, ['propertySlug' => 'discountbackloading-com-au'])
+            ->call('refreshCurrentConversionLinks')
+            ->assertHasNoErrors();
+
+        $legacyEndpoints = $property->fresh()->conversionLinkSummary()['legacy_endpoints'];
+
+        $this->assertNull($legacyEndpoints['legacy_booking_endpoint']['resolved_url']);
+        $this->assertSame(302, $legacyEndpoints['legacy_booking_endpoint']['resolved_status']);
+        $this->assertNull($legacyEndpoints['legacy_booking_endpoint']['resolved_host_changed']);
+
+        Http::assertSentCount(2);
+    }
+
+    public function test_property_detail_refresh_sanitizes_resolved_legacy_endpoint_urls(): void
+    {
+        $user = User::factory()->create();
+        $domain = Domain::factory()->create([
+            'domain' => 'discountbackloading.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'discountbackloading-com-au',
+            'name' => 'Discount Backloading',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://discountbackloading.com.au',
+            'target_moveroo_subdomain_url' => 'https://mymoveportal.discountbackloading.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        Http::fake([
+            'https://discountbackloading.com.au' => Http::response(<<<'HTML'
+                <html>
+                    <body>
+                        <header>
+                            <a href="https://mymoveportal.discountbackloading.com.au/bookings">Book Online</a>
+                        </header>
+                    </body>
+                </html>
+            HTML),
+            'https://mymoveportal.discountbackloading.com.au/bookings' => Http::response('', 302, [
+                'Location' => 'https://removalist.net/booking/create?token=secret#frag',
+            ]),
+            'https://removalist.net/booking/create?token=secret#frag' => Http::response('<html><body>Booking</body></html>', 200),
+            'https://removalist.net/booking/create' => Http::response('<html><body>Booking</body></html>', 200),
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(WebPropertyDetail::class, ['propertySlug' => 'discountbackloading-com-au'])
+            ->call('refreshCurrentConversionLinks')
+            ->assertHasNoErrors();
+
+        $legacyEndpoints = $property->fresh()->conversionLinkSummary()['legacy_endpoints'];
+
+        $this->assertSame(
+            'https://removalist.net/booking/create',
+            $legacyEndpoints['legacy_booking_endpoint']['resolved_url']
+        );
     }
 
     public function test_property_detail_rejects_mutations_for_unauthorized_users_outside_local_env(): void
