@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\WebPropertyDetail;
 use App\Models\Domain;
+use App\Models\Subdomain;
 use App\Models\User;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
@@ -432,5 +433,133 @@ class WebPropertyCanonicalOriginTest extends TestCase
             ->set('linkedSubdomainHost', 'quoting.hostless-site.example.com')
             ->call('saveLinkedSubdomain')
             ->assertHasErrors(['linkedSubdomainHost']);
+    }
+
+    public function test_property_detail_suggests_likely_owned_web_subdomains_and_filters_dns_noise(): void
+    {
+        $user = User::factory()->create();
+        $primaryDomain = Domain::factory()->create([
+            'domain' => 'backloadingremovals.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'backloadingremovals-com-au',
+            'name' => 'Backloading Removals',
+            'primary_domain_id' => $primaryDomain->id,
+            'production_url' => 'https://backloadingremovals.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $primaryDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        Subdomain::create([
+            'domain_id' => $primaryDomain->id,
+            'subdomain' => 'removalist',
+            'full_domain' => 'removalist.backloadingremovals.com.au',
+            'ip_address' => '170.64.144.64',
+            'ip_checked_at' => now(),
+            'is_active' => true,
+        ]);
+
+        Subdomain::create([
+            'domain_id' => $primaryDomain->id,
+            'subdomain' => 'mymovehub',
+            'full_domain' => 'mymovehub.backloadingremovals.com.au',
+            'ip_address' => '170.64.144.64',
+            'ip_checked_at' => now(),
+            'is_active' => true,
+        ]);
+
+        Subdomain::create([
+            'domain_id' => $primaryDomain->id,
+            'subdomain' => 'em2057',
+            'full_domain' => 'em2057.backloadingremovals.com.au',
+            'ip_checked_at' => now(),
+            'is_active' => true,
+        ]);
+
+        Subdomain::create([
+            'domain_id' => $primaryDomain->id,
+            'subdomain' => 's1._domainkey',
+            'full_domain' => 's1._domainkey.backloadingremovals.com.au',
+            'ip_checked_at' => now(),
+            'is_active' => true,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(WebPropertyDetail::class, ['propertySlug' => 'backloadingremovals-com-au'])
+            ->assertSee('Suggested Owned Subdomains')
+            ->assertSee('removalist.backloadingremovals.com.au')
+            ->assertSee('mymovehub.backloadingremovals.com.au')
+            ->assertDontSee('em2057.backloadingremovals.com.au')
+            ->assertDontSee('s1._domainkey.backloadingremovals.com.au')
+            ->call('useSuggestedOwnedSubdomain', 'removalist.backloadingremovals.com.au')
+            ->assertSet('linkedSubdomainHost', 'removalist.backloadingremovals.com.au');
+    }
+
+    public function test_property_detail_does_not_resuggest_already_linked_owned_subdomains(): void
+    {
+        $user = User::factory()->create();
+        $primaryDomain = Domain::factory()->create([
+            'domain' => 'movingagain.com.au',
+            'is_active' => true,
+        ]);
+        $existingSubdomain = Domain::factory()->create([
+            'domain' => 'quoting.movingagain.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'movingagain-site',
+            'name' => 'Moving Again',
+            'primary_domain_id' => $primaryDomain->id,
+            'production_url' => 'https://movingagain.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $primaryDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $existingSubdomain->id,
+            'usage_type' => 'subdomain',
+            'is_canonical' => false,
+        ]);
+
+        Subdomain::create([
+            'domain_id' => $primaryDomain->id,
+            'subdomain' => 'quoting',
+            'full_domain' => 'quoting.movingagain.com.au',
+            'ip_address' => '170.64.144.64',
+            'ip_checked_at' => now(),
+            'is_active' => true,
+        ]);
+
+        Subdomain::create([
+            'domain_id' => $primaryDomain->id,
+            'subdomain' => 'vehicles',
+            'full_domain' => 'vehicles.movingagain.com.au',
+            'ip_address' => '170.64.144.64',
+            'ip_checked_at' => now(),
+            'is_active' => true,
+        ]);
+
+        $component = Livewire::actingAs($user)
+            ->test(WebPropertyDetail::class, ['propertySlug' => 'movingagain-site'])
+            ->assertSee('vehicles.movingagain.com.au');
+
+        $this->assertSame(
+            ['vehicles.movingagain.com.au'],
+            array_column($component->instance()->suggestedOwnedSubdomains, 'host')
+        );
     }
 }

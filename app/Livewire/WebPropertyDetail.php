@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Domain;
+use App\Models\Subdomain;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use App\Services\PropertyConversionLinkScanner;
@@ -59,6 +60,11 @@ class WebPropertyDetail extends Component
 
     public ?string $linkedSubdomainNotes = null;
 
+    /**
+     * @var array<int, array{host: string, resolution_label: string, resolution_state: string, source_domain: string}>
+     */
+    public array $suggestedOwnedSubdomains = [];
+
     public function mount(): void
     {
         $this->loadProperty();
@@ -78,6 +84,9 @@ class WebPropertyDetail extends Component
                         ->with([
                             'platform',
                             'tags',
+                            'subdomains' => fn ($subdomainQuery) => $subdomainQuery
+                                ->where('is_active', true)
+                                ->orderBy('full_domain'),
                             'deployments.domain',
                             'alerts' => fn ($alertQuery) => $alertQuery->whereNull('resolved_at'),
                         ]);
@@ -107,6 +116,7 @@ class WebPropertyDetail extends Component
         $this->canonicalOriginSitemapPolicyKnown = (bool) $this->property->canonical_origin_sitemap_policy_known;
         $this->linkedSubdomainHost = null;
         $this->linkedSubdomainNotes = null;
+        $this->suggestedOwnedSubdomains = $this->buildSuggestedOwnedSubdomains();
     }
 
     public function importIssueDetail(SearchConsoleIssueSnapshotImporter $importer): void
@@ -423,6 +433,11 @@ class WebPropertyDetail extends Component
         session()->flash('message', 'Owned subdomain linked successfully.');
     }
 
+    public function useSuggestedOwnedSubdomain(string $host): void
+    {
+        $this->linkedSubdomainHost = $this->normalizeCanonicalOriginHost($host);
+    }
+
     public function refreshCurrentConversionLinks(PropertyConversionLinkScanner $scanner): void
     {
         if (! $this->property instanceof WebProperty) {
@@ -555,5 +570,67 @@ class WebPropertyDetail extends Component
             in_array(mb_strtolower((string) $user->email), $allowedEmails, true),
             403
         );
+    }
+
+    /**
+     * @return array<int, array{host: string, resolution_label: string, resolution_state: string, source_domain: string}>
+     */
+    private function buildSuggestedOwnedSubdomains(): array
+    {
+        if (! $this->property instanceof WebProperty) {
+            return [];
+        }
+
+        $linkedHosts = $this->property->propertyDomains
+            ->map(fn (WebPropertyDomain $link): ?string => $this->normalizeCanonicalOriginHost($link->domain?->domain))
+            ->filter(fn (?string $host): bool => is_string($host) && $host !== '')
+            ->values();
+
+        return $this->property->propertyDomains
+            ->filter(fn (WebPropertyDomain $link): bool => $link->usage_type !== 'subdomain')
+            ->flatMap(function (WebPropertyDomain $link) use ($linkedHosts) {
+                $sourceDomain = $link->domain?->domain;
+
+                if (! is_string($sourceDomain) || $sourceDomain === '') {
+                    return [];
+                }
+
+                return $link->domain->subdomains
+                    ->filter(function (Subdomain $subdomain) use ($linkedHosts): bool {
+                        if (! $subdomain->expectsIpResolution()) {
+                            return false;
+                        }
+
+                        return ! $linkedHosts->contains(
+                            $this->normalizeCanonicalOriginHost($subdomain->full_domain)
+                        );
+                    })
+                    ->map(fn (Subdomain $subdomain): array => [
+                        'host' => $subdomain->full_domain,
+                        'resolution_label' => $subdomain->resolutionLabel(),
+                        'resolution_state' => $subdomain->resolutionState(),
+                        'source_domain' => $sourceDomain,
+                    ]);
+            })
+            ->unique('host')
+            ->sort(function (array $left, array $right): int {
+                $priority = [
+                    'resolves' => 0,
+                    'unchecked' => 1,
+                    'unresolved' => 2,
+                    'not_applicable' => 3,
+                ];
+
+                $leftPriority = $priority[$left['resolution_state']] ?? 9;
+                $rightPriority = $priority[$right['resolution_state']] ?? 9;
+
+                if ($leftPriority !== $rightPriority) {
+                    return $leftPriority <=> $rightPriority;
+                }
+
+                return strcmp($left['host'], $right['host']);
+            })
+            ->values()
+            ->all();
     }
 }
