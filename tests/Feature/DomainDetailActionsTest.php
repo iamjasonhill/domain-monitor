@@ -7,6 +7,9 @@ use App\Models\DnsRecord;
 use App\Models\Domain;
 use App\Models\Subdomain;
 use App\Models\SynergyCredential;
+use App\Models\User;
+use App\Models\WebProperty;
+use App\Models\WebPropertyDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Livewire\Livewire;
@@ -16,6 +19,33 @@ use Tests\TestCase;
 class DomainDetailActionsTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_domain_detail_links_to_owned_subdomain_management_on_web_property_page(): void
+    {
+        $user = User::factory()->create();
+        $domain = Domain::factory()->create([
+            'domain' => 'backloading-au.com.au',
+        ]);
+        $property = WebProperty::factory()->create([
+            'slug' => 'backloading-au-com-au',
+            'name' => 'Backloading AU',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://backloading-au.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('domains.show', $domain->id));
+
+        $response->assertOk();
+        $response->assertSee('Manage Owned Subdomains');
+        $response->assertSee(route('web-properties.show', $property->slug), false);
+    }
 
     public function test_opening_add_dns_record_modal_resets_the_form_state(): void
     {
