@@ -256,7 +256,7 @@
                 @if($ownedSubdomainProperty)
                     <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-100">
                         Owned subdomains for this domain’s property surface are managed from the web property page.
-                        <a href="{{ route('web-properties.show', $ownedSubdomainProperty->slug) }}#linked-domains" wire:navigate class="ml-1 font-semibold underline decoration-blue-400 underline-offset-2 hover:text-blue-700 dark:hover:text-blue-200">
+                        <a href="{{ route('web-properties.show', $ownedSubdomainProperty->slug) }}#linked-domains" class="ml-1 font-semibold underline decoration-blue-400 underline-offset-2 hover:text-blue-700 dark:hover:text-blue-200">
                             Manage Owned Subdomains
                         </a>
                     </div>

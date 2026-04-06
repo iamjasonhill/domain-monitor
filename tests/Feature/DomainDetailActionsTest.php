@@ -44,7 +44,7 @@ class DomainDetailActionsTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Manage Owned Subdomains');
-        $response->assertSee(route('web-properties.show', $property->slug), false);
+        $response->assertSee(route('web-properties.show', $property->slug).'#linked-domains', false);
     }
 
     public function test_opening_add_dns_record_modal_resets_the_form_state(): void
