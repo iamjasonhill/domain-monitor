@@ -318,4 +318,70 @@ class WebPropertyCanonicalOriginTest extends TestCase
             'usage_type' => 'subdomain',
         ]);
     }
+
+    public function test_property_detail_rejects_linking_when_hostname_is_already_attached_with_a_different_usage(): void
+    {
+        $user = User::factory()->create();
+        $primaryDomain = Domain::factory()->create([
+            'domain' => 'movingagain.com.au',
+            'is_active' => true,
+        ]);
+        $existingSubdomain = Domain::factory()->create([
+            'domain' => 'quoting.movingagain.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'movingagain-site',
+            'name' => 'Moving Again',
+            'primary_domain_id' => $primaryDomain->id,
+            'production_url' => 'https://movingagain.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $primaryDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $existingSubdomain->id,
+            'usage_type' => 'alias',
+            'is_canonical' => false,
+            'notes' => 'Existing alias mapping',
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(WebPropertyDetail::class, ['propertySlug' => 'movingagain-site'])
+            ->set('linkedSubdomainHost', 'quoting.movingagain.com.au')
+            ->call('saveLinkedSubdomain')
+            ->assertHasErrors(['linkedSubdomainHost']);
+
+        $this->assertDatabaseHas('web_property_domains', [
+            'web_property_id' => $property->id,
+            'domain_id' => $existingSubdomain->id,
+            'usage_type' => 'alias',
+            'notes' => 'Existing alias mapping',
+        ]);
+    }
+
+    public function test_property_detail_rejects_linking_without_a_declared_host_surface(): void
+    {
+        $user = User::factory()->create();
+        $property = WebProperty::factory()->create([
+            'slug' => 'hostless-site',
+            'name' => 'Hostless Site',
+            'primary_domain_id' => null,
+            'production_url' => null,
+            'canonical_origin_host' => null,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(WebPropertyDetail::class, ['propertySlug' => 'hostless-site'])
+            ->set('linkedSubdomainHost', 'quoting.hostless-site.example.com')
+            ->call('saveLinkedSubdomain')
+            ->assertHasErrors(['linkedSubdomainHost']);
+    }
 }

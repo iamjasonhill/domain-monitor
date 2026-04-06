@@ -347,6 +347,15 @@ class WebPropertyDetail extends Component
                 return;
             }
 
+            if ($allowedParentHosts === []) {
+                $validator->errors()->add(
+                    'linkedSubdomainHost',
+                    'This property does not yet have a declared host surface for owned subdomain linking.'
+                );
+
+                return;
+            }
+
             if (! collect($allowedParentHosts)->contains(
                 fn (string $parentHost): bool => str_ends_with($normalizedHost, '.'.$parentHost)
             )) {
@@ -367,17 +376,30 @@ class WebPropertyDetail extends Component
             ]
         );
 
-        WebPropertyDomain::query()->updateOrCreate(
-            [
+        $existingLink = WebPropertyDomain::query()
+            ->where('web_property_id', $this->property->id)
+            ->where('domain_id', $domain->id)
+            ->first();
+
+        if ($existingLink instanceof WebPropertyDomain) {
+            if ($existingLink->usage_type !== 'subdomain') {
+                $this->addError('linkedSubdomainHost', 'That hostname is already linked to this property with a different usage type.');
+
+                return;
+            }
+
+            $existingLink->update([
+                'notes' => $validated['linkedSubdomainNotes'],
+            ]);
+        } else {
+            WebPropertyDomain::query()->create([
                 'web_property_id' => $this->property->id,
                 'domain_id' => $domain->id,
-            ],
-            [
                 'usage_type' => 'subdomain',
                 'is_canonical' => false,
-                'notes' => $validated['linkedSubdomainNotes'] !== '' ? $validated['linkedSubdomainNotes'] : null,
-            ]
-        );
+                'notes' => $validated['linkedSubdomainNotes'],
+            ]);
+        }
 
         $this->loadProperty();
 
