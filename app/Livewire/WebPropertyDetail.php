@@ -2,7 +2,9 @@
 
 namespace App\Livewire;
 
+use App\Models\Domain;
 use App\Models\WebProperty;
+use App\Models\WebPropertyDomain;
 use App\Services\PropertyConversionLinkScanner;
 use App\Services\SearchConsoleIssueEvidenceService;
 use App\Services\SearchConsoleIssueSnapshotImporter;
@@ -53,6 +55,10 @@ class WebPropertyDetail extends Component
 
     public bool $canonicalOriginSitemapPolicyKnown = false;
 
+    public ?string $linkedSubdomainHost = null;
+
+    public ?string $linkedSubdomainNotes = null;
+
     public function mount(): void
     {
         $this->loadProperty();
@@ -99,6 +105,8 @@ class WebPropertyDetail extends Component
             $this->property->canonical_origin_excluded_subdomains
         ));
         $this->canonicalOriginSitemapPolicyKnown = (bool) $this->property->canonical_origin_sitemap_policy_known;
+        $this->linkedSubdomainHost = null;
+        $this->linkedSubdomainNotes = null;
     }
 
     public function importIssueDetail(SearchConsoleIssueSnapshotImporter $importer): void
@@ -295,6 +303,124 @@ class WebPropertyDetail extends Component
         $this->loadProperty();
 
         session()->flash('message', 'Canonical origin policy updated.');
+    }
+
+    public function saveLinkedSubdomain(): void
+    {
+        if (! $this->property instanceof WebProperty) {
+            session()->flash('error', 'Property not found.');
+
+            return;
+        }
+
+        $this->authorizePropertyMutation();
+
+        $normalizedHost = $this->normalizeCanonicalOriginHost($this->linkedSubdomainHost);
+        $productionUrlHost = parse_url((string) $this->property->production_url, PHP_URL_HOST);
+        $allowedParentHosts = collect([
+            $this->normalizeCanonicalOriginHost($this->property->canonical_origin_host),
+            $this->normalizeCanonicalOriginHost($this->property->primaryDomainName()),
+            $this->normalizeCanonicalOriginHost(is_string($productionUrlHost) ? $productionUrlHost : null),
+        ])
+            ->filter(fn (?string $host): bool => is_string($host) && $host !== '')
+            ->unique()
+            ->values()
+            ->all();
+
+        $this->resetValidation();
+
+        $validated = Validator::make(
+            [
+                'linkedSubdomainHost' => $normalizedHost,
+                'linkedSubdomainNotes' => is_string($this->linkedSubdomainNotes) ? trim($this->linkedSubdomainNotes) : null,
+            ],
+            [
+                'linkedSubdomainHost' => ['required', 'string', 'max:255', 'regex:/^(?=.{1,255}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\\.([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))*$/i'],
+                'linkedSubdomainNotes' => ['nullable', 'string', 'max:1000'],
+            ],
+            [
+                'linkedSubdomainHost.required' => 'Owned subdomain host is required.',
+                'linkedSubdomainHost.regex' => 'Owned subdomain host must be a valid hostname.',
+            ]
+        )->after(function ($validator) use ($normalizedHost, $allowedParentHosts): void {
+            if ($normalizedHost === null) {
+                return;
+            }
+
+            if ($allowedParentHosts === []) {
+                $validator->errors()->add(
+                    'linkedSubdomainHost',
+                    'This property does not yet have a declared host surface for owned subdomain linking.'
+                );
+
+                return;
+            }
+
+            if (! collect($allowedParentHosts)->contains(
+                fn (string $parentHost): bool => str_ends_with($normalizedHost, '.'.$parentHost)
+            )) {
+                $validator->errors()->add(
+                    'linkedSubdomainHost',
+                    'Owned subdomain host must be a strict subdomain of this property’s declared host surface.'
+                );
+            }
+        })->validate();
+
+        $domain = Domain::withTrashed()->firstWhere('domain', $validated['linkedSubdomainHost']);
+
+        if (! $domain instanceof Domain) {
+            $domain = Domain::query()->create([
+                'domain' => $validated['linkedSubdomainHost'],
+                'platform' => $this->property->platform,
+                'hosting_provider' => $this->property->primaryDomain?->hosting_provider,
+                'check_frequency_minutes' => 60,
+                'is_active' => true,
+            ]);
+        } else {
+            $domain->fill([
+                'platform' => $domain->platform ?? $this->property->platform,
+                'hosting_provider' => $domain->hosting_provider ?? $this->property->primaryDomain?->hosting_provider,
+                'check_frequency_minutes' => $domain->check_frequency_minutes ?: 60,
+                'is_active' => true,
+            ]);
+
+            if ($domain->trashed()) {
+                $domain->restore();
+            }
+
+            if ($domain->isDirty()) {
+                $domain->save();
+            }
+        }
+
+        $existingLink = WebPropertyDomain::query()
+            ->where('web_property_id', $this->property->id)
+            ->where('domain_id', $domain->id)
+            ->first();
+
+        if ($existingLink instanceof WebPropertyDomain) {
+            if ($existingLink->usage_type !== 'subdomain') {
+                $this->addError('linkedSubdomainHost', 'That hostname is already linked to this property with a different usage type.');
+
+                return;
+            }
+
+            $existingLink->update([
+                'notes' => $validated['linkedSubdomainNotes'],
+            ]);
+        } else {
+            WebPropertyDomain::query()->create([
+                'web_property_id' => $this->property->id,
+                'domain_id' => $domain->id,
+                'usage_type' => 'subdomain',
+                'is_canonical' => false,
+                'notes' => $validated['linkedSubdomainNotes'],
+            ]);
+        }
+
+        $this->loadProperty();
+
+        session()->flash('message', 'Owned subdomain linked successfully.');
     }
 
     public function refreshCurrentConversionLinks(PropertyConversionLinkScanner $scanner): void

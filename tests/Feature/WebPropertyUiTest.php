@@ -151,6 +151,7 @@ class WebPropertyUiTest extends TestCase
         $response->assertSee('Save Canonical Policy');
         $response->assertSee('property_only');
         $response->assertSee('cartransport.movingagain.com.au');
+        $response->assertSee('Add Owned Subdomain');
         $response->assertSee('Automation Checklist');
         $response->assertSee('Needs Matomo');
     }

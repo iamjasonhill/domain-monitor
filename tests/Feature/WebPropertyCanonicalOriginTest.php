@@ -203,4 +203,234 @@ class WebPropertyCanonicalOriginTest extends TestCase
         $this->assertNull($property->canonical_origin_host);
         $this->assertNull($property->canonical_origin_excluded_subdomains);
     }
+
+    public function test_property_detail_can_link_an_owned_subdomain(): void
+    {
+        $user = User::factory()->create();
+        $primaryDomain = Domain::factory()->create([
+            'domain' => 'movingagain.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'movingagain-site',
+            'name' => 'Moving Again',
+            'primary_domain_id' => $primaryDomain->id,
+            'production_url' => 'https://movingagain.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $primaryDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(WebPropertyDetail::class, ['propertySlug' => 'movingagain-site'])
+            ->set('linkedSubdomainHost', 'quoting.movingagain.com.au')
+            ->set('linkedSubdomainNotes', 'Separate quoting surface')
+            ->call('saveLinkedSubdomain')
+            ->assertHasNoErrors()
+            ->assertSee('quoting.movingagain.com.au');
+
+        $linkedDomain = Domain::query()->where('domain', 'quoting.movingagain.com.au')->first();
+
+        $this->assertNotNull($linkedDomain);
+        $this->assertDatabaseHas('web_property_domains', [
+            'web_property_id' => $property->id,
+            'domain_id' => $linkedDomain->id,
+            'usage_type' => 'subdomain',
+            'is_canonical' => false,
+            'notes' => 'Separate quoting surface',
+        ]);
+    }
+
+    public function test_property_detail_rejects_owned_subdomain_outside_property_surface(): void
+    {
+        $user = User::factory()->create();
+        $primaryDomain = Domain::factory()->create([
+            'domain' => 'movingagain.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'movingagain-site',
+            'name' => 'Moving Again',
+            'primary_domain_id' => $primaryDomain->id,
+            'production_url' => 'https://movingagain.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $primaryDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(WebPropertyDetail::class, ['propertySlug' => 'movingagain-site'])
+            ->set('linkedSubdomainHost', 'quoting.otherbrand.com.au')
+            ->call('saveLinkedSubdomain')
+            ->assertHasErrors(['linkedSubdomainHost']);
+
+        $this->assertDatabaseMissing('domains', [
+            'domain' => 'quoting.otherbrand.com.au',
+        ]);
+    }
+
+    public function test_property_detail_reuses_existing_domain_when_linking_owned_subdomain(): void
+    {
+        $user = User::factory()->create();
+        $primaryDomain = Domain::factory()->create([
+            'domain' => 'movingagain.com.au',
+            'is_active' => true,
+        ]);
+        $existingSubdomain = Domain::factory()->create([
+            'domain' => 'quoting.movingagain.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'movingagain-site',
+            'name' => 'Moving Again',
+            'primary_domain_id' => $primaryDomain->id,
+            'production_url' => 'https://movingagain.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $primaryDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(WebPropertyDetail::class, ['propertySlug' => 'movingagain-site'])
+            ->set('linkedSubdomainHost', 'quoting.movingagain.com.au')
+            ->call('saveLinkedSubdomain')
+            ->assertHasNoErrors();
+
+        $this->assertSame(1, Domain::query()->where('domain', 'quoting.movingagain.com.au')->count());
+        $this->assertDatabaseHas('web_property_domains', [
+            'web_property_id' => $property->id,
+            'domain_id' => $existingSubdomain->id,
+            'usage_type' => 'subdomain',
+        ]);
+    }
+
+    public function test_property_detail_restores_soft_deleted_domain_when_linking_owned_subdomain(): void
+    {
+        $user = User::factory()->create();
+        $primaryDomain = Domain::factory()->create([
+            'domain' => 'movingagain.com.au',
+            'is_active' => true,
+        ]);
+        $deletedSubdomain = Domain::factory()->create([
+            'domain' => 'quoting.movingagain.com.au',
+            'is_active' => false,
+        ]);
+        $deletedSubdomain->delete();
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'movingagain-site',
+            'name' => 'Moving Again',
+            'primary_domain_id' => $primaryDomain->id,
+            'production_url' => 'https://movingagain.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $primaryDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(WebPropertyDetail::class, ['propertySlug' => 'movingagain-site'])
+            ->set('linkedSubdomainHost', 'quoting.movingagain.com.au')
+            ->set('linkedSubdomainNotes', 'Restored quoting surface')
+            ->call('saveLinkedSubdomain')
+            ->assertHasNoErrors();
+
+        $restoredSubdomain = Domain::withTrashed()->where('domain', 'quoting.movingagain.com.au')->first();
+
+        $this->assertNotNull($restoredSubdomain);
+        $this->assertNull($restoredSubdomain->deleted_at);
+        $this->assertTrue($restoredSubdomain->is_active);
+        $this->assertSame($deletedSubdomain->id, $restoredSubdomain->id);
+        $this->assertSame(1, Domain::withTrashed()->where('domain', 'quoting.movingagain.com.au')->count());
+        $this->assertDatabaseHas('web_property_domains', [
+            'web_property_id' => $property->id,
+            'domain_id' => $deletedSubdomain->id,
+            'usage_type' => 'subdomain',
+            'notes' => 'Restored quoting surface',
+        ]);
+    }
+
+    public function test_property_detail_rejects_linking_when_hostname_is_already_attached_with_a_different_usage(): void
+    {
+        $user = User::factory()->create();
+        $primaryDomain = Domain::factory()->create([
+            'domain' => 'movingagain.com.au',
+            'is_active' => true,
+        ]);
+        $existingSubdomain = Domain::factory()->create([
+            'domain' => 'quoting.movingagain.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'movingagain-site',
+            'name' => 'Moving Again',
+            'primary_domain_id' => $primaryDomain->id,
+            'production_url' => 'https://movingagain.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $primaryDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $existingSubdomain->id,
+            'usage_type' => 'alias',
+            'is_canonical' => false,
+            'notes' => 'Existing alias mapping',
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(WebPropertyDetail::class, ['propertySlug' => 'movingagain-site'])
+            ->set('linkedSubdomainHost', 'quoting.movingagain.com.au')
+            ->call('saveLinkedSubdomain')
+            ->assertHasErrors(['linkedSubdomainHost']);
+
+        $this->assertDatabaseHas('web_property_domains', [
+            'web_property_id' => $property->id,
+            'domain_id' => $existingSubdomain->id,
+            'usage_type' => 'alias',
+            'notes' => 'Existing alias mapping',
+        ]);
+    }
+
+    public function test_property_detail_rejects_linking_without_a_declared_host_surface(): void
+    {
+        $user = User::factory()->create();
+        $property = WebProperty::factory()->create([
+            'slug' => 'hostless-site',
+            'name' => 'Hostless Site',
+            'primary_domain_id' => null,
+            'production_url' => null,
+            'canonical_origin_host' => null,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(WebPropertyDetail::class, ['propertySlug' => 'hostless-site'])
+            ->set('linkedSubdomainHost', 'quoting.hostless-site.example.com')
+            ->call('saveLinkedSubdomain')
+            ->assertHasErrors(['linkedSubdomainHost']);
+    }
 }
