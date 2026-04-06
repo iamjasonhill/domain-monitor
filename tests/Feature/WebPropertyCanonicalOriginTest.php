@@ -319,6 +319,55 @@ class WebPropertyCanonicalOriginTest extends TestCase
         ]);
     }
 
+    public function test_property_detail_restores_soft_deleted_domain_when_linking_owned_subdomain(): void
+    {
+        $user = User::factory()->create();
+        $primaryDomain = Domain::factory()->create([
+            'domain' => 'movingagain.com.au',
+            'is_active' => true,
+        ]);
+        $deletedSubdomain = Domain::factory()->create([
+            'domain' => 'quoting.movingagain.com.au',
+            'is_active' => false,
+        ]);
+        $deletedSubdomain->delete();
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'movingagain-site',
+            'name' => 'Moving Again',
+            'primary_domain_id' => $primaryDomain->id,
+            'production_url' => 'https://movingagain.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $primaryDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(WebPropertyDetail::class, ['propertySlug' => 'movingagain-site'])
+            ->set('linkedSubdomainHost', 'quoting.movingagain.com.au')
+            ->set('linkedSubdomainNotes', 'Restored quoting surface')
+            ->call('saveLinkedSubdomain')
+            ->assertHasNoErrors();
+
+        $restoredSubdomain = Domain::withTrashed()->where('domain', 'quoting.movingagain.com.au')->first();
+
+        $this->assertNotNull($restoredSubdomain);
+        $this->assertNull($restoredSubdomain->deleted_at);
+        $this->assertTrue($restoredSubdomain->is_active);
+        $this->assertSame($deletedSubdomain->id, $restoredSubdomain->id);
+        $this->assertSame(1, Domain::withTrashed()->where('domain', 'quoting.movingagain.com.au')->count());
+        $this->assertDatabaseHas('web_property_domains', [
+            'web_property_id' => $property->id,
+            'domain_id' => $deletedSubdomain->id,
+            'usage_type' => 'subdomain',
+            'notes' => 'Restored quoting surface',
+        ]);
+    }
+
     public function test_property_detail_rejects_linking_when_hostname_is_already_attached_with_a_different_usage(): void
     {
         $user = User::factory()->create();

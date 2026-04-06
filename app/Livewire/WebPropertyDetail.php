@@ -366,15 +366,32 @@ class WebPropertyDetail extends Component
             }
         })->validate();
 
-        $domain = Domain::query()->firstOrCreate(
-            ['domain' => $validated['linkedSubdomainHost']],
-            [
+        $domain = Domain::withTrashed()->firstWhere('domain', $validated['linkedSubdomainHost']);
+
+        if (! $domain instanceof Domain) {
+            $domain = Domain::query()->create([
+                'domain' => $validated['linkedSubdomainHost'],
                 'platform' => $this->property->platform,
                 'hosting_provider' => $this->property->primaryDomain?->hosting_provider,
                 'check_frequency_minutes' => 60,
                 'is_active' => true,
-            ]
-        );
+            ]);
+        } else {
+            $domain->fill([
+                'platform' => $domain->platform ?? $this->property->platform,
+                'hosting_provider' => $domain->hosting_provider ?? $this->property->primaryDomain?->hosting_provider,
+                'check_frequency_minutes' => $domain->check_frequency_minutes ?: 60,
+                'is_active' => true,
+            ]);
+
+            if ($domain->trashed()) {
+                $domain->restore();
+            }
+
+            if ($domain->isDirty()) {
+                $domain->save();
+            }
+        }
 
         $existingLink = WebPropertyDomain::query()
             ->where('web_property_id', $this->property->id)
