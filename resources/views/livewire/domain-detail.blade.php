@@ -219,6 +219,11 @@
         <!-- Subdomains -->
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
             <div class="p-6">
+                @php
+                    $ownedSubdomainProperty = $domain->webProperties
+                        ->sortByDesc(fn ($property) => (int) ($property->pivot?->is_canonical ?? false))
+                        ->first();
+                @endphp
                 <div class="flex justify-between items-center mb-4">
                     <div class="flex items-center gap-2 cursor-pointer" wire:click="$toggle('showSubdomains')">
                         <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Subdomains</h3>
@@ -248,6 +253,14 @@
                         @endif
                     </div>
                 </div>
+                @if($ownedSubdomainProperty)
+                    <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-100">
+                        Owned subdomains for this domain’s property surface are managed from the web property page.
+                        <a href="{{ route('web-properties.show', $ownedSubdomainProperty->slug) }}#linked-domains" class="ml-1 font-semibold underline decoration-blue-400 underline-offset-2 hover:text-blue-700 dark:hover:text-blue-200">
+                            Manage Owned Subdomains
+                        </a>
+                    </div>
+                @endif
                 @if($showSubdomains)
                     @if($domain->subdomains && $domain->subdomains->count() > 0)
                     <div class="overflow-x-auto">
@@ -663,12 +676,14 @@
                         @endif
                     </p>
                 @endif
+                @endif
             </div>
         </div>
 
         @include('livewire.domain-detail.sections.email-security')
 
         @include('livewire.domain-detail.sections.analysis-panels')
+        @include('livewire.domain-detail.sections.modals')
     @else
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
             <div class="p-6 text-center">
@@ -678,8 +693,5 @@
                 </a>
             </div>
         </div>
-    @endif
-
-    @include('livewire.domain-detail.sections.modals')
     @endif
 </div>

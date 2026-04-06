@@ -97,6 +97,9 @@ class DomainDetail extends Component
             'subdomains' => function ($query) {
                 $query->where('is_active', true)->orderBy('subdomain');
             },
+            'webProperties' => function ($query) {
+                $query->orderBy('name');
+            },
             'contacts' => function ($query) {
                 $query->latest('synced_at')->limit(4); // Get latest contacts (one per type)
             },
