@@ -65,6 +65,37 @@ class WebPropertyDetail extends Component
      */
     public array $suggestedOwnedSubdomains = [];
 
+    public bool $showExternalLinksModal = false;
+
+    public ?string $selectedExternalLinksDomainName = null;
+
+    public ?string $selectedExternalLinksUsageType = null;
+
+    /**
+     * @var array{
+     *   status: string,
+     *   checked_at: string|null,
+     *   pages_scanned: int,
+     *   external_links_count: int,
+     *   unique_hosts_count: int,
+     *   external_links: array<int, array{
+     *     url: string,
+     *     host: string|null,
+     *     relationship: string,
+     *     found_on: string|null,
+     *     found_on_pages: array<int, string>
+     *   }>
+     * }
+     */
+    public array $selectedExternalLinksScan = [
+        'status' => 'unknown',
+        'checked_at' => null,
+        'pages_scanned' => 0,
+        'external_links_count' => 0,
+        'unique_hosts_count' => 0,
+        'external_links' => [],
+    ];
+
     public function mount(): void
     {
         $this->loadProperty();
@@ -118,6 +149,7 @@ class WebPropertyDetail extends Component
         $this->linkedSubdomainHost = null;
         $this->linkedSubdomainNotes = null;
         $this->suggestedOwnedSubdomains = $this->buildSuggestedOwnedSubdomains();
+        $this->closeExternalLinksModal();
     }
 
     public function importIssueDetail(SearchConsoleIssueSnapshotImporter $importer): void
@@ -437,6 +469,33 @@ class WebPropertyDetail extends Component
     public function useSuggestedOwnedSubdomain(string $host): void
     {
         $this->linkedSubdomainHost = $this->normalizeCanonicalOriginHost($host);
+    }
+
+    public function openExternalLinksModal(string $domainId): void
+    {
+        if (! $this->property instanceof WebProperty) {
+            return;
+        }
+
+        $link = $this->property->orderedDomainLinks()
+            ->first(fn (WebPropertyDomain $propertyDomain): bool => $propertyDomain->domain_id === $domainId);
+
+        if (! $link instanceof WebPropertyDomain || ! $link->domain instanceof Domain) {
+            return;
+        }
+
+        $this->selectedExternalLinksDomainName = $link->domain->domain;
+        $this->selectedExternalLinksUsageType = $link->usage_type;
+        $this->selectedExternalLinksScan = $link->domain->externalLinksSummary();
+        $this->showExternalLinksModal = true;
+    }
+
+    public function closeExternalLinksModal(): void
+    {
+        $this->showExternalLinksModal = false;
+        $this->selectedExternalLinksDomainName = null;
+        $this->selectedExternalLinksUsageType = null;
+        $this->selectedExternalLinksScan = Domain::emptyExternalLinksSummary();
     }
 
     public function refreshCurrentConversionLinks(PropertyConversionLinkScanner $scanner): void
