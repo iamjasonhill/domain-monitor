@@ -25,6 +25,7 @@ use Illuminate\Support\Str;
  * @property string|null $hosting_review_status
  * @property \Illuminate\Support\Carbon|null $hosting_reviewed_at
  * @property string|null $platform
+ * @property string|null $email_usage
  * @property \Illuminate\Support\Carbon|null $expires_at
  * @property \Illuminate\Support\Carbon|null $renewed_at
  * @property string|null $renewed_by
@@ -84,6 +85,14 @@ class Domain extends Model
     /** @use HasFactory<\Database\Factories\DomainFactory> */
     use HasFactory, SoftDeletes;
 
+    public const string EMAIL_USAGE_NONE = 'none';
+
+    public const string EMAIL_USAGE_SEND = 'send';
+
+    public const string EMAIL_USAGE_RECEIVE = 'receive';
+
+    public const string EMAIL_USAGE_SEND_RECEIVE = 'send_receive';
+
     public $incrementing = false;
 
     protected $keyType = 'string';
@@ -100,6 +109,7 @@ class Domain extends Model
         'hosting_review_status',
         'hosting_reviewed_at',
         'platform',
+        'email_usage',
         'target_platform',
         'migration_tier',
         'scaffolding_status',
@@ -606,6 +616,36 @@ class Domain extends Model
         return $platformType === 'Email Only';
     }
 
+    public function emailUsage(): string
+    {
+        $explicitUsage = $this->normalizedEmailUsage($this->email_usage);
+
+        if ($explicitUsage !== null) {
+            return $explicitUsage;
+        }
+
+        if ($this->matchesOperationalWebOnlySubdomainPattern()) {
+            return self::EMAIL_USAGE_NONE;
+        }
+
+        return self::EMAIL_USAGE_SEND_RECEIVE;
+    }
+
+    public function emailExpected(): bool
+    {
+        return $this->emailUsage() !== self::EMAIL_USAGE_NONE;
+    }
+
+    public function emailSendingExpected(): bool
+    {
+        return in_array($this->emailUsage(), [self::EMAIL_USAGE_SEND, self::EMAIL_USAGE_SEND_RECEIVE], true);
+    }
+
+    public function emailReceivingExpected(): bool
+    {
+        return in_array($this->emailUsage(), [self::EMAIL_USAGE_RECEIVE, self::EMAIL_USAGE_SEND_RECEIVE], true);
+    }
+
     public function monitoringSkipReason(string $checkType): ?string
     {
         if (! $this->is_active) {
@@ -620,12 +660,72 @@ class Domain extends Model
             return 'domain is marked as email-only for web-facing checks';
         }
 
+        if ($checkType === 'email_security' && ! $this->emailExpected()) {
+            return 'domain is marked as web-only for email security checks';
+        }
+
         return null;
     }
 
     public function shouldSkipMonitoringCheck(string $checkType): bool
     {
         return $this->monitoringSkipReason($checkType) !== null;
+    }
+
+    private function normalizedEmailUsage(mixed $value): ?string
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        $normalized = strtolower(trim($value));
+
+        return in_array($normalized, [
+            self::EMAIL_USAGE_NONE,
+            self::EMAIL_USAGE_SEND,
+            self::EMAIL_USAGE_RECEIVE,
+            self::EMAIL_USAGE_SEND_RECEIVE,
+        ], true) ? $normalized : null;
+    }
+
+    private function matchesOperationalWebOnlySubdomainPattern(): bool
+    {
+        $domain = strtolower(trim((string) $this->domain));
+        $labels = array_values(array_filter(explode('.', $domain), static fn (string $label): bool => $label !== ''));
+
+        if ($labels === [] || ! $this->isSubdomainHostname($labels)) {
+            return false;
+        }
+
+        return in_array($labels[0], ['app', 'admin', 'booking', 'bookings', 'portal', 'quoting'], true);
+    }
+
+    /**
+     * @param  array<int, string>  $labels
+     */
+    private function isSubdomainHostname(array $labels): bool
+    {
+        $registrableLabelCount = 2;
+        $compoundPublicSuffixes = [
+            'asn.au',
+            'com.au',
+            'edu.au',
+            'gov.au',
+            'id.au',
+            'net.au',
+            'org.au',
+        ];
+        $host = implode('.', $labels);
+
+        foreach ($compoundPublicSuffixes as $suffix) {
+            if ($host === $suffix || str_ends_with($host, '.'.$suffix)) {
+                $registrableLabelCount = 3;
+
+                break;
+            }
+        }
+
+        return count($labels) > $registrableLabelCount;
     }
 
     public function isParkedForHosting(): bool

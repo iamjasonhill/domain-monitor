@@ -105,7 +105,7 @@ class WebPropertyApiTest extends TestCase
         ]);
 
         $ownedSubdomain = Domain::factory()->create([
-            'domain' => 'quotes.moveroo.com.au',
+            'domain' => 'quoting.moveroo.com.au',
             'platform' => 'Astro',
             'hosting_provider' => 'Vercel',
         ]);
@@ -265,7 +265,24 @@ class WebPropertyApiTest extends TestCase
 
         $this->assertIsArray($ownedSubdomains);
         $this->assertContains('www.moveroo.com.au', $ownedSubdomains);
-        $this->assertContains('quotes.moveroo.com.au', $ownedSubdomains);
+        $this->assertContains('quoting.moveroo.com.au', $ownedSubdomains);
+
+        /** @var array<int, array<string, mixed>> $domains */
+        $domains = $response->json('web_properties.0.domains') ?? [];
+        $primarySummary = collect($domains)->firstWhere('domain', 'moveroo.com.au');
+        $quotingSummary = collect($domains)->firstWhere('domain', 'quoting.moveroo.com.au');
+
+        $this->assertIsArray($primarySummary);
+        $this->assertSame('send_receive', $primarySummary['email_usage']);
+        $this->assertTrue($primarySummary['email_expected']);
+        $this->assertTrue($primarySummary['email_sending_expected']);
+        $this->assertTrue($primarySummary['email_receiving_expected']);
+
+        $this->assertIsArray($quotingSummary);
+        $this->assertSame('none', $quotingSummary['email_usage']);
+        $this->assertFalse($quotingSummary['email_expected']);
+        $this->assertFalse($quotingSummary['email_sending_expected']);
+        $this->assertFalse($quotingSummary['email_receiving_expected']);
     }
 
     public function test_web_properties_summary_can_filter_to_fleet_focus_properties(): void

@@ -359,6 +359,79 @@ class DashboardPriorityQueueApiTest extends TestCase
         $this->assertFalse($shouldFix['coverage_gap']);
     }
 
+    public function test_priority_queue_skips_email_security_issues_for_web_only_subdomains(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $primaryDomain = Domain::factory()->create([
+            'domain' => 'backloading-au.com.au',
+            'is_active' => true,
+            'platform' => 'WordPress',
+        ]);
+
+        $quotingSubdomain = Domain::factory()->create([
+            'domain' => 'quoting.backloading-au.com.au',
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'email_usage' => Domain::EMAIL_USAGE_NONE,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'backloading-au-com-au',
+            'name' => 'Backloading AU',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $primaryDomain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $primaryDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $quotingSubdomain->id,
+            'usage_type' => 'subdomain',
+            'is_canonical' => false,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => 'backloading-au',
+            'repo_provider' => 'local_only',
+            'local_path' => '/Users/jasonhill/Projects/websites/backloading-au',
+            'framework' => 'WordPress',
+            'is_primary' => true,
+        ]);
+
+        DomainCheck::factory()->create([
+            'domain_id' => $quotingSubdomain->id,
+            'check_type' => 'email_security',
+            'status' => 'fail',
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/dashboard/priority-queue');
+
+        $response->assertOk();
+
+        /** @var array<int, array<string, mixed>> $mustFixPayload */
+        $mustFixPayload = $response->json('must_fix') ?? [];
+        /** @var array<int, array<string, mixed>> $shouldFixPayload */
+        $shouldFixPayload = $response->json('should_fix') ?? [];
+
+        $this->assertFalse(collect($mustFixPayload)->contains(
+            fn (array $item): bool => ($item['domain'] ?? null) === 'quoting.backloading-au.com.au'
+        ));
+        $this->assertFalse(collect($shouldFixPayload)->contains(
+            fn (array $item): bool => ($item['domain'] ?? null) === 'quoting.backloading-au.com.au'
+        ));
+    }
+
     public function test_priority_queue_promotes_page_with_redirect_baseline_issue_into_fleet_standard_gap(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
