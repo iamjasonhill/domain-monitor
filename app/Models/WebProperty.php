@@ -258,10 +258,10 @@ class WebProperty extends Model
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function domainSummaries(): array
+    public function domainSummaries(bool $includeExternalLinkDetails = true): array
     {
         return $this->orderedDomainLinks()
-            ->map(function (WebPropertyDomain $link): array {
+            ->map(function (WebPropertyDomain $link) use ($includeExternalLinkDetails): array {
                 $domain = $link->domain;
                 $platformRelation = $domain && $domain->relationLoaded('platform')
                     ? $domain->getRelation('platform')
@@ -270,7 +270,7 @@ class WebProperty extends Model
                     ? $platformRelation->platform_type
                     : $domain?->getAttribute('platform');
 
-                return [
+                $summary = [
                     'id' => $domain?->id,
                     'domain' => $domain?->domain,
                     'usage_type' => $link->usage_type,
@@ -284,6 +284,12 @@ class WebProperty extends Model
                     'hosting_provider' => $domain?->hosting_provider,
                     'notes' => $link->notes,
                 ];
+
+                if ($includeExternalLinkDetails) {
+                    $summary['external_links_scan'] = $domain?->externalLinksSummary() ?? Domain::emptyExternalLinksSummary();
+                }
+
+                return $summary;
             })
             ->values()
             ->all();
@@ -787,7 +793,7 @@ class WebProperty extends Model
     /**
      * @return array<string, mixed>
      */
-    public function brainSummary(): array
+    public function brainSummary(bool $includeFullExternalLinks = true): array
     {
         $executionReadiness = $this->executionReadinessSummary();
 
@@ -808,7 +814,7 @@ class WebProperty extends Model
             'fleet_priority' => $this->priority,
             'is_fleet_focus' => $this->isFleetFocus(),
             'notes' => $this->notes,
-            'domains' => $this->domainSummaries(),
+            'domains' => $this->domainSummaries($includeFullExternalLinks),
             'repositories' => $this->repositorySummaries(),
             'analytics_sources' => $this->analyticsSourceSummaries(),
             'health_summary' => $this->healthSummary(),

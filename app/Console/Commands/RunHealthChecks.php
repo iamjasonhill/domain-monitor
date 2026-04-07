@@ -30,14 +30,14 @@ class RunHealthChecks extends Command
     /**
      * Execute the console command.
      */
-    public function handle(HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck, \App\Services\ReputationHealthCheck $reputationCheck, \App\Services\SecurityHeadersHealthCheck $securityHeadersCheck, \App\Services\SeoHealthCheck $seoCheck, \App\Services\BrokenLinkHealthCheck $brokenLinkCheck, \App\Services\UptimeHealthCheck $uptimeCheck): int
+    public function handle(HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck, \App\Services\ReputationHealthCheck $reputationCheck, \App\Services\SecurityHeadersHealthCheck $securityHeadersCheck, \App\Services\SeoHealthCheck $seoCheck, \App\Services\BrokenLinkHealthCheck $brokenLinkCheck, \App\Services\ExternalLinkInventoryHealthCheck $externalLinkInventoryCheck, \App\Services\UptimeHealthCheck $uptimeCheck): int
     {
         $domainOption = $this->option('domain');
         $allOption = $this->option('all');
         $type = $this->option('type');
 
-        if (! in_array($type, ['http', 'ssl', 'dns', 'uptime', 'email_security', 'reputation', 'security_headers', 'seo', 'broken_links'])) {
-            $this->error("Invalid check type: {$type}. Must be one of: http, ssl, dns, uptime, email_security, reputation, security_headers, seo, broken_links");
+        if (! in_array($type, ['http', 'ssl', 'dns', 'uptime', 'email_security', 'reputation', 'security_headers', 'seo', 'broken_links', 'external_links'])) {
+            $this->error("Invalid check type: {$type}. Must be one of: http, ssl, dns, uptime, email_security, reputation, security_headers, seo, broken_links, external_links");
 
             return Command::FAILURE;
         }
@@ -51,11 +51,11 @@ class RunHealthChecks extends Command
                 return Command::FAILURE;
             }
 
-            return $this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck, $reputationCheck, $securityHeadersCheck, $seoCheck, $brokenLinkCheck, $uptimeCheck);
+            return $this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck, $reputationCheck, $securityHeadersCheck, $seoCheck, $brokenLinkCheck, $externalLinkInventoryCheck, $uptimeCheck);
         }
 
         if ($allOption) {
-            $excludeEmailOnly = in_array($type, ['http', 'ssl', 'security_headers', 'seo', 'uptime', 'broken_links'], true);
+            $excludeEmailOnly = in_array($type, ['http', 'ssl', 'security_headers', 'seo', 'uptime', 'broken_links', 'external_links'], true);
 
             $domains = Domain::with('platform')
                 ->where('is_active', true)
@@ -77,7 +77,7 @@ class RunHealthChecks extends Command
 
             $successCount = 0;
             foreach ($domains as $domain) {
-                if ($this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck, $reputationCheck, $securityHeadersCheck, $seoCheck, $brokenLinkCheck, $uptimeCheck, false) === Command::SUCCESS) {
+                if ($this->runCheckForDomain($domain, $type, $httpCheck, $sslCheck, $dnsCheck, $emailSecurityCheck, $reputationCheck, $securityHeadersCheck, $seoCheck, $brokenLinkCheck, $externalLinkInventoryCheck, $uptimeCheck, false) === Command::SUCCESS) {
                     $successCount++;
                 }
                 $bar->advance();
@@ -98,7 +98,7 @@ class RunHealthChecks extends Command
     /**
      * Run health check for a single domain
      */
-    private function runCheckForDomain(Domain $domain, string $type, HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck, \App\Services\ReputationHealthCheck $reputationCheck, \App\Services\SecurityHeadersHealthCheck $securityHeadersCheck, \App\Services\SeoHealthCheck $seoCheck, \App\Services\BrokenLinkHealthCheck $brokenLinkCheck, \App\Services\UptimeHealthCheck $uptimeCheck, bool $verbose = true): int
+    private function runCheckForDomain(Domain $domain, string $type, HttpHealthCheck $httpCheck, SslHealthCheck $sslCheck, DnsHealthCheck $dnsCheck, \App\Services\EmailSecurityHealthCheck $emailSecurityCheck, \App\Services\ReputationHealthCheck $reputationCheck, \App\Services\SecurityHeadersHealthCheck $securityHeadersCheck, \App\Services\SeoHealthCheck $seoCheck, \App\Services\BrokenLinkHealthCheck $brokenLinkCheck, \App\Services\ExternalLinkInventoryHealthCheck $externalLinkInventoryCheck, \App\Services\UptimeHealthCheck $uptimeCheck, bool $verbose = true): int
     {
         if ($verbose) {
             $this->info("Running {$type} check for: {$domain->domain}");
@@ -133,6 +133,7 @@ class RunHealthChecks extends Command
             $securityHeadersResult = null;
             $seoResult = null;
             $brokenLinkResult = null;
+            $externalLinkInventoryResult = null;
 
             if ($type === 'http') {
                 $httpResult = $httpCheck->check($domain->domain);
@@ -189,6 +190,11 @@ class RunHealthChecks extends Command
                 $status = $this->determineBrokenLinksStatus($brokenLinkResult);
                 $errorMessage = $brokenLinkResult['error_message'];
                 $payload = $brokenLinkResult['payload'];
+            } elseif ($type === 'external_links') {
+                $externalLinkInventoryResult = $externalLinkInventoryCheck->check($domain->domain);
+                $status = $this->determineInventoryStatus($externalLinkInventoryResult);
+                $errorMessage = $externalLinkInventoryResult['error_message'];
+                $payload = $externalLinkInventoryResult['payload'];
             } else {
                 if ($verbose) {
                     $this->warn("  Check type '{$type}' not yet implemented");
@@ -273,6 +279,10 @@ class RunHealthChecks extends Command
                             $this->line('    ... and '.(count($brokenLinkResult['broken_links']) - 5).' more');
                         }
                     }
+                }
+                if ($externalLinkInventoryResult) {
+                    $this->line("  Pages Scanned: {$externalLinkInventoryResult['pages_scanned']}");
+                    $this->line("  External Links: {$externalLinkInventoryResult['external_links_count']}");
                 }
                 $this->line("  Duration: {$duration}ms");
                 if ($errorMessage) {
@@ -365,5 +375,19 @@ class RunHealthChecks extends Command
         }
 
         return $result['is_valid'] ? 'ok' : 'fail';
+    }
+
+    /**
+     * @param  array{verified?: bool, payload?: array{page_failures_count?: int}}  $result
+     */
+    private function determineInventoryStatus(array $result): string
+    {
+        if (($result['verified'] ?? false) !== true) {
+            return 'unknown';
+        }
+
+        $payload = is_array($result['payload'] ?? null) ? $result['payload'] : [];
+
+        return ((int) ($payload['page_failures_count'] ?? 0)) > 0 ? 'warn' : 'ok';
     }
 }

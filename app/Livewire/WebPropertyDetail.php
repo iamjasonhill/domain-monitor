@@ -84,6 +84,7 @@ class WebPropertyDetail extends Component
                         ->with([
                             'platform',
                             'tags',
+                            'latestExternalLinksCheck',
                             'subdomains' => fn ($subdomainQuery) => $subdomainQuery
                                 ->where('is_active', true)
                                 ->orderBy('full_domain'),

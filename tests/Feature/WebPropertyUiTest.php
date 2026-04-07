@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class WebPropertyUiTest extends TestCase
@@ -315,6 +316,74 @@ class WebPropertyUiTest extends TestCase
         $response->assertSee('https://checklist.example.au/');
         $response->assertSee('https://checklist.example.au/new-page/');
         $response->assertDontSee('1970-01-01');
+    }
+
+    public function test_web_property_detail_shows_external_link_inventory_for_linked_domains(): void
+    {
+        $user = User::factory()->create();
+        $domain = Domain::factory()->create([
+            'domain' => 'inventory-ui.example.com',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'inventory-ui-site',
+            'name' => 'Inventory UI Site',
+            'property_type' => 'marketing_site',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://inventory-ui.example.com',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        DomainCheck::withoutEvents(function () use ($domain): void {
+            DomainCheck::factory()->create([
+                'id' => (string) Str::uuid(),
+                'domain_id' => $domain->id,
+                'check_type' => 'external_links',
+                'status' => 'ok',
+                'started_at' => now()->subMinute(),
+                'finished_at' => now(),
+                'duration_ms' => 800,
+                'payload' => [
+                    'domain' => 'inventory-ui.example.com',
+                    'pages_scanned' => 3,
+                    'external_links_count' => 2,
+                    'unique_hosts_count' => 2,
+                    'external_links' => [
+                        [
+                            'url' => 'https://quotes.inventory-ui.example.com/start',
+                            'host' => 'quotes.inventory-ui.example.com',
+                            'relationship' => 'subdomain',
+                            'found_on' => 'https://inventory-ui.example.com/',
+                            'found_on_pages' => ['https://inventory-ui.example.com/'],
+                        ],
+                        [
+                            'url' => 'https://partner.example.org/book',
+                            'host' => 'partner.example.org',
+                            'relationship' => 'external',
+                            'found_on' => 'https://inventory-ui.example.com/contact',
+                            'found_on_pages' => ['https://inventory-ui.example.com/contact'],
+                        ],
+                    ],
+                ],
+                'retry_count' => 0,
+            ]);
+        });
+
+        $response = $this->actingAs($user)->get('/web-properties/inventory-ui-site');
+
+        $response->assertOk();
+        $response->assertSee('External Links');
+        $response->assertSee('quotes.inventory-ui.example.com/start');
+        $response->assertSee('partner.example.org/book');
+        $response->assertSee('3 pages scanned');
     }
 
     public function test_web_property_detail_hides_suppressed_search_console_issue_summaries(): void

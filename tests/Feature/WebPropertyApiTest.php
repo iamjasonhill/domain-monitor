@@ -13,7 +13,6 @@ use App\Models\SearchConsoleIssueSnapshot;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -161,37 +160,31 @@ class WebPropertyApiTest extends TestCase
         ]);
 
         DomainCheck::withoutEvents(function () use ($primaryDomain) {
-            DB::table('domain_checks')->insert([
+            DomainCheck::factory()->create([
                 'id' => (string) Str::uuid(),
                 'domain_id' => $primaryDomain->id,
                 'check_type' => 'uptime',
                 'status' => 'ok',
                 'started_at' => now()->subMinute(),
                 'finished_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
 
-            DB::table('domain_checks')->insert([
+            DomainCheck::factory()->create([
                 'id' => (string) Str::uuid(),
                 'domain_id' => $primaryDomain->id,
                 'check_type' => 'http',
                 'status' => 'ok',
                 'started_at' => now()->subMinute(),
                 'finished_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
 
-            DB::table('domain_checks')->insert([
+            DomainCheck::factory()->create([
                 'id' => (string) Str::uuid(),
                 'domain_id' => $primaryDomain->id,
                 'check_type' => 'ssl',
                 'status' => 'warn',
                 'started_at' => now()->subMinute(),
                 'finished_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
         });
 
@@ -495,6 +488,117 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('data.conversion_links.target.legacy_payments_replacement', null)
             ->assertJsonPath('data.conversion_links.legacy_endpoints.legacy_booking_endpoint', null)
             ->assertJsonPath('data.conversion_links.legacy_endpoints.legacy_payment_endpoint', null);
+    }
+
+    public function test_property_apis_surface_latest_external_link_inventory_for_linked_domains(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'inventory.example.com',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'inventory-site',
+            'name' => 'Inventory Site',
+            'property_type' => 'marketing_site',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://inventory.example.com',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        DomainCheck::withoutEvents(function () use ($domain): void {
+            DomainCheck::factory()->create([
+                'id' => (string) Str::uuid(),
+                'domain_id' => $domain->id,
+                'check_type' => 'external_links',
+                'status' => 'ok',
+                'started_at' => now()->subMinute(),
+                'finished_at' => now(),
+                'duration_ms' => 1200,
+                'payload' => [
+                    'domain' => 'inventory.example.com',
+                    'pages_scanned' => 4,
+                    'external_links_count' => 2,
+                    'unique_hosts_count' => 2,
+                    'external_links' => [
+                        [
+                            'url' => 'https://quotes.inventory.example.com/start',
+                            'host' => 'quotes.inventory.example.com',
+                            'relationship' => 'subdomain',
+                            'found_on' => 'https://inventory.example.com/',
+                            'found_on_pages' => ['https://inventory.example.com/'],
+                        ],
+                        [
+                            'url' => 'https://partner.example.org/book',
+                            'host' => 'partner.example.org',
+                            'relationship' => 'external',
+                            'found_on' => 'https://inventory.example.com/contact',
+                            'found_on_pages' => ['https://inventory.example.com/contact'],
+                        ],
+                    ],
+                ],
+                'retry_count' => 0,
+            ]);
+        });
+
+        $headers = ['Authorization' => 'Bearer test-api-key'];
+
+        $this->withHeaders($headers)
+            ->getJson('/api/web-properties-summary')
+            ->assertOk()
+            ->assertJsonMissingPath('web_properties.0.domains.0.external_links_scan');
+
+        $this->withHeaders($headers)
+            ->getJson('/api/web-properties/inventory-site')
+            ->assertOk()
+            ->assertJsonPath('data.domains.0.external_links_scan.status', 'ok')
+            ->assertJsonPath('data.domains.0.external_links_scan.unique_hosts_count', 2)
+            ->assertJsonPath('data.domains.0.external_links_scan.external_links.1.url', 'https://partner.example.org/book');
+    }
+
+    public function test_property_detail_api_exposes_empty_external_link_inventory_shape_before_first_scan(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'inventory-empty.example.com',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'inventory-empty-site',
+            'name' => 'Inventory Empty Site',
+            'property_type' => 'marketing_site',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://inventory-empty.example.com',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        $this->withHeaders(['Authorization' => 'Bearer test-api-key'])
+            ->getJson('/api/web-properties/inventory-empty-site')
+            ->assertOk()
+            ->assertJsonPath('data.domains.0.external_links_scan.status', 'unknown')
+            ->assertJsonPath('data.domains.0.external_links_scan.checked_at', null)
+            ->assertJsonPath('data.domains.0.external_links_scan.pages_scanned', 0)
+            ->assertJsonPath('data.domains.0.external_links_scan.external_links_count', 0)
+            ->assertJsonPath('data.domains.0.external_links_scan.unique_hosts_count', 0)
+            ->assertJsonPath('data.domains.0.external_links_scan.external_links', []);
     }
 
     public function test_web_properties_summary_ignores_empty_fleet_focus_filter(): void
@@ -969,15 +1073,13 @@ class WebPropertyApiTest extends TestCase
         ]);
 
         DomainCheck::withoutEvents(function () use ($domain) {
-            DB::table('domain_checks')->insert([
+            DomainCheck::factory()->create([
                 'id' => (string) Str::uuid(),
                 'domain_id' => $domain->id,
                 'check_type' => 'dns',
                 'status' => 'fail',
                 'started_at' => now()->subMinute(),
                 'finished_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
         });
 

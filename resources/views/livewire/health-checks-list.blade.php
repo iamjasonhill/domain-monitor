@@ -31,6 +31,7 @@
                         <option value="security_headers">Security Headers</option>
                         <option value="seo">SEO</option>
                         <option value="broken_links">Broken Links</option>
+                        <option value="external_links">External Links</option>
                     </select>
                 </div>
             </div>
