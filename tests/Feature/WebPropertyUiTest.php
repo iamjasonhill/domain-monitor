@@ -15,7 +15,6 @@ use App\Models\User;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -344,7 +343,7 @@ class WebPropertyUiTest extends TestCase
         ]);
 
         DomainCheck::withoutEvents(function () use ($domain): void {
-            DB::table('domain_checks')->insert([
+            DomainCheck::factory()->create([
                 'id' => (string) Str::uuid(),
                 'domain_id' => $domain->id,
                 'check_type' => 'external_links',
@@ -352,7 +351,7 @@ class WebPropertyUiTest extends TestCase
                 'started_at' => now()->subMinute(),
                 'finished_at' => now(),
                 'duration_ms' => 800,
-                'payload' => json_encode([
+                'payload' => [
                     'domain' => 'inventory-ui.example.com',
                     'pages_scanned' => 3,
                     'external_links_count' => 2,
@@ -373,10 +372,8 @@ class WebPropertyUiTest extends TestCase
                             'found_on_pages' => ['https://inventory-ui.example.com/contact'],
                         ],
                     ],
-                ], JSON_THROW_ON_ERROR),
+                ],
                 'retry_count' => 0,
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
         });
 

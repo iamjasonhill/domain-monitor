@@ -13,7 +13,6 @@ use App\Models\SearchConsoleIssueSnapshot;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -161,37 +160,31 @@ class WebPropertyApiTest extends TestCase
         ]);
 
         DomainCheck::withoutEvents(function () use ($primaryDomain) {
-            DB::table('domain_checks')->insert([
+            DomainCheck::factory()->create([
                 'id' => (string) Str::uuid(),
                 'domain_id' => $primaryDomain->id,
                 'check_type' => 'uptime',
                 'status' => 'ok',
                 'started_at' => now()->subMinute(),
                 'finished_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
 
-            DB::table('domain_checks')->insert([
+            DomainCheck::factory()->create([
                 'id' => (string) Str::uuid(),
                 'domain_id' => $primaryDomain->id,
                 'check_type' => 'http',
                 'status' => 'ok',
                 'started_at' => now()->subMinute(),
                 'finished_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
 
-            DB::table('domain_checks')->insert([
+            DomainCheck::factory()->create([
                 'id' => (string) Str::uuid(),
                 'domain_id' => $primaryDomain->id,
                 'check_type' => 'ssl',
                 'status' => 'warn',
                 'started_at' => now()->subMinute(),
                 'finished_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
         });
 
@@ -523,7 +516,7 @@ class WebPropertyApiTest extends TestCase
         ]);
 
         DomainCheck::withoutEvents(function () use ($domain): void {
-            DB::table('domain_checks')->insert([
+            DomainCheck::factory()->create([
                 'id' => (string) Str::uuid(),
                 'domain_id' => $domain->id,
                 'check_type' => 'external_links',
@@ -531,7 +524,7 @@ class WebPropertyApiTest extends TestCase
                 'started_at' => now()->subMinute(),
                 'finished_at' => now(),
                 'duration_ms' => 1200,
-                'payload' => json_encode([
+                'payload' => [
                     'domain' => 'inventory.example.com',
                     'pages_scanned' => 4,
                     'external_links_count' => 2,
@@ -552,10 +545,8 @@ class WebPropertyApiTest extends TestCase
                             'found_on_pages' => ['https://inventory.example.com/contact'],
                         ],
                     ],
-                ], JSON_THROW_ON_ERROR),
+                ],
                 'retry_count' => 0,
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
         });
 
@@ -1082,15 +1073,13 @@ class WebPropertyApiTest extends TestCase
         ]);
 
         DomainCheck::withoutEvents(function () use ($domain) {
-            DB::table('domain_checks')->insert([
+            DomainCheck::factory()->create([
                 'id' => (string) Str::uuid(),
                 'domain_id' => $domain->id,
                 'check_type' => 'dns',
                 'status' => 'fail',
                 'started_at' => now()->subMinute(),
                 'finished_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
         });
 

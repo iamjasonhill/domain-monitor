@@ -703,7 +703,9 @@ class Domain extends Model
      */
     public function externalLinksSummary(): array
     {
-        $latestCheck = $this->latestExternalLinksCheck()->first();
+        $latestCheck = $this->relationLoaded('latestExternalLinksCheck')
+            ? $this->latestExternalLinksCheck
+            : $this->latestExternalLinksCheck()->first();
 
         if (! $latestCheck instanceof DomainCheck) {
             return self::emptyExternalLinksSummary();
