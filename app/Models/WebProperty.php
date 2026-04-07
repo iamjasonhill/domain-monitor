@@ -626,33 +626,74 @@ class WebProperty extends Model
     public function conversionLinkSummary(): array
     {
         return [
-            'current' => [
-                'household_quote' => $this->current_household_quote_url,
-                'household_booking' => $this->current_household_booking_url,
-                'vehicle_quote' => $this->current_vehicle_quote_url,
-                'vehicle_booking' => $this->current_vehicle_booking_url,
-            ],
-            'target' => [
-                'household_quote' => $this->target_household_quote_url,
-                'household_booking' => $this->target_household_booking_url,
-                'vehicle_quote' => $this->target_vehicle_quote_url,
-                'vehicle_booking' => $this->target_vehicle_booking_url,
-                'moveroo_subdomain' => $this->target_moveroo_subdomain_url,
-                'contact_us_page' => $this->target_contact_us_page_url,
-                'legacy_bookings_replacement' => $this->target_legacy_bookings_replacement_url,
-                'legacy_payments_replacement' => $this->target_legacy_payments_replacement_url,
-            ],
-            'legacy_endpoints' => [
-                'legacy_booking_endpoint' => $this->legacyMoverooEndpointSummary(
-                    'legacy_booking_endpoint',
-                    $this->target_legacy_bookings_replacement_url,
-                ),
-                'legacy_payment_endpoint' => $this->legacyMoverooEndpointSummary(
-                    'legacy_payment_endpoint',
-                    $this->target_legacy_payments_replacement_url,
-                ),
-            ],
+            'current' => $this->currentConversionLinkSummary(),
+            'target' => $this->targetConversionLinkSummary(),
+            'legacy_endpoints' => $this->legacyEndpointConversionLinkSummary(),
             'scanned_at' => $this->conversion_links_scanned_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * @return array{
+     *   household_quote: string|null,
+     *   household_booking: string|null,
+     *   vehicle_quote: string|null,
+     *   vehicle_booking: string|null
+     * }
+     */
+    private function currentConversionLinkSummary(): array
+    {
+        return [
+            'household_quote' => $this->current_household_quote_url,
+            'household_booking' => $this->current_household_booking_url,
+            'vehicle_quote' => $this->current_vehicle_quote_url,
+            'vehicle_booking' => $this->current_vehicle_booking_url,
+        ];
+    }
+
+    /**
+     * @return array{
+     *   household_quote: string|null,
+     *   household_booking: string|null,
+     *   vehicle_quote: string|null,
+     *   vehicle_booking: string|null,
+     *   moveroo_subdomain: string|null,
+     *   contact_us_page: string|null,
+     *   legacy_bookings_replacement: string|null,
+     *   legacy_payments_replacement: string|null
+     * }
+     */
+    private function targetConversionLinkSummary(): array
+    {
+        return [
+            'household_quote' => $this->target_household_quote_url,
+            'household_booking' => $this->target_household_booking_url,
+            'vehicle_quote' => $this->target_vehicle_quote_url,
+            'vehicle_booking' => $this->target_vehicle_booking_url,
+            'moveroo_subdomain' => $this->target_moveroo_subdomain_url,
+            'contact_us_page' => $this->target_contact_us_page_url,
+            'legacy_bookings_replacement' => $this->target_legacy_bookings_replacement_url,
+            'legacy_payments_replacement' => $this->target_legacy_payments_replacement_url,
+        ];
+    }
+
+    /**
+     * @return array{
+     *   legacy_booking_endpoint: array<string, mixed>|null,
+     *   legacy_payment_endpoint: array<string, mixed>|null
+     * }
+     */
+    private function legacyEndpointConversionLinkSummary(): array
+    {
+        return [
+            'legacy_booking_endpoint' => $this->legacyMoverooEndpointSummary(
+                'legacy_booking_endpoint',
+                $this->target_legacy_bookings_replacement_url,
+            ),
+            'legacy_payment_endpoint' => $this->legacyMoverooEndpointSummary(
+                'legacy_payment_endpoint',
+                $this->target_legacy_payments_replacement_url,
+            ),
         ];
     }
 
