@@ -75,6 +75,7 @@ use Illuminate\Support\Str;
  * @property string|null $latest_security_headers_status
  * @property string|null $latest_reputation_status
  * @property string|null $latest_broken_links_status
+ * @property string|null $latest_external_links_status
  * @property int|null $open_critical_alerts_count
  * @property int|null $open_warning_alerts_count
  *
@@ -218,6 +219,17 @@ class Domain extends Model
     }
 
     /**
+     * @return HasOne<DomainCheck, $this>
+     */
+    public function latestExternalLinksCheck(): HasOne
+    {
+        return $this->hasOne(DomainCheck::class)
+            ->where('check_type', 'external_links')
+            ->orderByDesc('finished_at')
+            ->orderByDesc('created_at');
+    }
+
+    /**
      * @return HasMany<DomainAlert, $this>
      */
     /**
@@ -238,6 +250,7 @@ class Domain extends Model
             'security_headers',
             'reputation',
             'broken_links',
+            'external_links',
         ];
 
         foreach ($checkTypes as $type) {
@@ -656,7 +669,7 @@ class Domain extends Model
             return 'domain is marked as parked';
         }
 
-        if ($this->isEmailOnly() && in_array($checkType, ['http', 'ssl', 'security_headers', 'seo', 'uptime', 'broken_links'], true)) {
+        if ($this->isEmailOnly() && in_array($checkType, ['http', 'ssl', 'security_headers', 'seo', 'uptime', 'broken_links', 'external_links'], true)) {
             return 'domain is marked as email-only for web-facing checks';
         }
 
@@ -670,6 +683,90 @@ class Domain extends Model
     public function shouldSkipMonitoringCheck(string $checkType): bool
     {
         return $this->monitoringSkipReason($checkType) !== null;
+    }
+
+    /**
+     * @return array{
+     *   status: string,
+     *   checked_at: string|null,
+     *   pages_scanned: int,
+     *   external_links_count: int,
+     *   unique_hosts_count: int,
+     *   external_links: array<int, array{
+     *     url: string,
+     *     host: string|null,
+     *     relationship: string,
+     *     found_on: string|null,
+     *     found_on_pages: array<int, string>
+     *   }>
+     * }
+     */
+    public function externalLinksSummary(): array
+    {
+        $latestCheck = $this->latestExternalLinksCheck()->first();
+
+        if (! $latestCheck instanceof DomainCheck) {
+            return self::emptyExternalLinksSummary();
+        }
+
+        $payload = is_array($latestCheck->payload) ? $latestCheck->payload : [];
+        $rawExternalLinks = is_array($payload['external_links'] ?? null) ? $payload['external_links'] : [];
+        $externalLinks = collect($rawExternalLinks)
+            ->filter(fn (mixed $item): bool => is_array($item) && is_string($item['url'] ?? null))
+            ->map(function (array $item): array {
+                $rawFoundOnPages = is_array($item['found_on_pages'] ?? null) ? $item['found_on_pages'] : [];
+                $foundOnPages = collect($rawFoundOnPages)
+                    ->filter(fn (mixed $page): bool => is_string($page) && $page !== '')
+                    ->values()
+                    ->all();
+
+                return [
+                    'url' => (string) $item['url'],
+                    'host' => is_string($item['host'] ?? null) ? $item['host'] : null,
+                    'relationship' => is_string($item['relationship'] ?? null) ? $item['relationship'] : 'external',
+                    'found_on' => is_string($item['found_on'] ?? null) ? $item['found_on'] : ($foundOnPages[0] ?? null),
+                    'found_on_pages' => $foundOnPages,
+                ];
+            })
+            ->values()
+            ->all();
+
+        return [
+            'status' => $latestCheck->status,
+            'checked_at' => $latestCheck->finished_at?->toIso8601String(),
+            'pages_scanned' => max(0, (int) ($payload['pages_scanned'] ?? 0)),
+            'external_links_count' => max(0, (int) ($payload['external_links_count'] ?? count($externalLinks))),
+            'unique_hosts_count' => max(0, (int) ($payload['unique_hosts_count'] ?? 0)),
+            'external_links' => $externalLinks,
+        ];
+    }
+
+    /**
+     * @return array{
+     *   status: string,
+     *   checked_at: string|null,
+     *   pages_scanned: int,
+     *   external_links_count: int,
+     *   unique_hosts_count: int,
+     *   external_links: array<int, array{
+     *     url: string,
+     *     host: string|null,
+     *     relationship: string,
+     *     found_on: string|null,
+     *     found_on_pages: array<int, string>
+     *   }>
+     * }
+     */
+    public static function emptyExternalLinksSummary(): array
+    {
+        return [
+            'status' => 'unknown',
+            'checked_at' => null,
+            'pages_scanned' => 0,
+            'external_links_count' => 0,
+            'unique_hosts_count' => 0,
+            'external_links' => [],
+        ];
     }
 
     private function normalizedEmailUsage(mixed $value): ?string

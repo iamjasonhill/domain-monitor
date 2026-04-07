@@ -701,6 +701,7 @@
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Usage</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">State</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Health</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">External Links</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
@@ -708,6 +709,7 @@
                             @foreach($domains as $link)
                                 @php
                                     $domain = $link->domain;
+                                    $externalLinksScan = $domain?->externalLinksSummary() ?? \App\Models\Domain::emptyExternalLinksSummary();
                                 @endphp
                                 <tr>
                                     <td class="px-4 py-4 align-top">
@@ -758,6 +760,60 @@
                                                     </span>
                                                 @endforeach
                                             </div>
+                                        @endif
+                                    </td>
+                                    <td class="px-4 py-4 align-top">
+                                        @if($domain)
+                                            <div class="text-sm text-gray-700 dark:text-gray-300">
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <span @class([
+                                                        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                                                        'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' => $externalLinksScan['status'] === 'ok',
+                                                        'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' => $externalLinksScan['status'] === 'warn',
+                                                        'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' => $externalLinksScan['status'] === 'unknown',
+                                                        'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300' => ! in_array($externalLinksScan['status'], ['ok', 'warn', 'unknown'], true),
+                                                    ])>
+                                                        {{ strtoupper($externalLinksScan['status']) }}
+                                                    </span>
+                                                    <span>{{ $externalLinksScan['external_links_count'] }} links</span>
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ $externalLinksScan['unique_hosts_count'] }} hosts</span>
+                                                </div>
+                                                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                                    {{ $externalLinksScan['pages_scanned'] }} pages scanned
+                                                    @if($externalLinksScan['checked_at'])
+                                                        · {{ \Illuminate\Support\Carbon::parse($externalLinksScan['checked_at'])->diffForHumans() }}
+                                                    @else
+                                                        · not scanned yet
+                                                    @endif
+                                                </div>
+                                            </div>
+
+                                            @if(($externalLinksScan['external_links'] ?? []) !== [])
+                                                <div class="mt-3 max-h-40 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 text-xs dark:border-gray-700">
+                                                    @foreach($externalLinksScan['external_links'] as $externalLink)
+                                                        <div class="space-y-1">
+                                                            <div class="break-all font-medium text-blue-600 dark:text-blue-400">
+                                                                <a href="{{ $externalLink['url'] }}" target="_blank" rel="noopener noreferrer" class="hover:underline">
+                                                                    {{ $externalLink['url'] }}
+                                                                </a>
+                                                            </div>
+                                                            <div class="flex flex-wrap items-center gap-2 text-gray-500 dark:text-gray-400">
+                                                                <span @class([
+                                                                    'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium',
+                                                                    'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' => $externalLink['relationship'] === 'subdomain',
+                                                                    'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' => $externalLink['relationship'] === 'parent_domain',
+                                                                    'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' => ! in_array($externalLink['relationship'], ['subdomain', 'parent_domain'], true),
+                                                                ])>
+                                                                    {{ str_replace('_', ' ', $externalLink['relationship']) }}
+                                                                </span>
+                                                                @if($externalLink['found_on'])
+                                                                    <span class="break-all">Found on {{ $externalLink['found_on'] }}</span>
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            @endif
                                         @endif
                                     </td>
                                     <td class="px-4 py-4 align-top">

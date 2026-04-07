@@ -156,8 +156,9 @@ class DomainCheck extends Model
             $payload['error_message'] = $this->error_message;
         }
 
-        if ($this->payload) {
-            $payload['check_payload'] = $this->payload;
+        $brainCheckPayload = $this->brainCheckPayload();
+        if ($brainCheckPayload !== null) {
+            $payload['check_payload'] = $brainCheckPayload;
         }
 
         if ($this->metadata) {
@@ -172,6 +173,38 @@ class DomainCheck extends Model
         $payload['occurred_at'] = ($this->finished_at ?? $this->created_at)?->toIso8601String();
 
         $brain->sendAsync($eventType, $payload);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function brainCheckPayload(): ?array
+    {
+        if (! is_array($this->payload)) {
+            return null;
+        }
+
+        if ($this->check_type !== 'external_links') {
+            return $this->payload;
+        }
+
+        $externalLinks = is_array($this->payload['external_links'] ?? null) ? $this->payload['external_links'] : [];
+        $hosts = collect($externalLinks)
+            ->filter(fn (mixed $item): bool => is_array($item) && is_string($item['host'] ?? null))
+            ->map(fn (array $item): string => (string) $item['host'])
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        return [
+            'domain' => is_string($this->payload['domain'] ?? null) ? $this->payload['domain'] : null,
+            'pages_scanned' => (int) ($this->payload['pages_scanned'] ?? 0),
+            'external_links_count' => (int) ($this->payload['external_links_count'] ?? count($externalLinks)),
+            'unique_hosts_count' => (int) ($this->payload['unique_hosts_count'] ?? count($hosts)),
+            'hosts' => $hosts,
+            'page_failures_count' => (int) ($this->payload['page_failures_count'] ?? 0),
+        ];
     }
 
     /**

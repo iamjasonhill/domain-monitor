@@ -83,6 +83,7 @@ class ScheduledTasks extends Component
             'domains:health-check --all --type=security_headers' => 'Security Header Checks',
             'domains:health-check --all --type=seo' => 'SEO Fundamentals Checks',
             'domains:health-check --all --type=broken_links' => 'Broken Link Checks',
+            'domains:health-check --all --type=external_links' => 'External Link Inventory Checks',
             'domains:sync-synergy-expiry' => 'Synergy Wholesale Expiry Sync',
             'domains:sync-dns-records' => 'DNS Records Sync',
         ];

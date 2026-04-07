@@ -89,6 +89,59 @@ class DomainCheckAlertingTest extends TestCase
         $this->createCheck($domain->id, 'dns', 'fail');
     }
 
+    public function test_external_link_checks_emit_redacted_brain_payload(): void
+    {
+        config()->set('services.brain.base_url', 'https://brain.example.test');
+        config()->set('services.brain.api_key', 'test-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'brain-redaction.example.com',
+        ]);
+
+        $brain = $this->mock(BrainEventClient::class);
+        $brain->shouldReceive('sendAsync')->once()->withArgs(function (string $eventType, array $payload): bool {
+            $this->assertSame('domain.check.external_links', $eventType);
+            $this->assertSame(2, data_get($payload, 'check_payload.external_links_count'));
+            $this->assertSame(2, data_get($payload, 'check_payload.unique_hosts_count'));
+            $this->assertSame(['partner.example.org', 'quotes.brain-redaction.example.com'], data_get($payload, 'check_payload.hosts'));
+            $this->assertNull(data_get($payload, 'check_payload.external_links.0.url'));
+
+            return true;
+        });
+
+        DomainCheck::factory()->create([
+            'domain_id' => $domain->id,
+            'check_type' => 'external_links',
+            'status' => 'ok',
+            'payload' => [
+                'domain' => 'brain-redaction.example.com',
+                'pages_scanned' => 4,
+                'external_links_count' => 2,
+                'unique_hosts_count' => 2,
+                'external_links' => [
+                    [
+                        'url' => 'https://quotes.brain-redaction.example.com/start',
+                        'host' => 'quotes.brain-redaction.example.com',
+                        'relationship' => 'subdomain',
+                        'found_on' => 'https://brain-redaction.example.com/',
+                        'found_on_pages' => ['https://brain-redaction.example.com/'],
+                    ],
+                    [
+                        'url' => 'https://partner.example.org/book',
+                        'host' => 'partner.example.org',
+                        'relationship' => 'external',
+                        'found_on' => 'https://brain-redaction.example.com/contact',
+                        'found_on_pages' => ['https://brain-redaction.example.com/contact'],
+                    ],
+                ],
+            ],
+            'started_at' => now()->subSeconds(2),
+            'finished_at' => now()->subSecond(),
+            'duration_ms' => 123,
+            'retry_count' => 0,
+        ]);
+    }
+
     private function createCheck(string $domainId, string $type, string $status): DomainCheck
     {
         return DomainCheck::factory()->create([

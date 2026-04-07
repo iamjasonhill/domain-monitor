@@ -617,6 +617,13 @@ Schedule::command('domains:health-check --all --type=broken_links')
     ->at('05:30')
     ->timezone('UTC');
 
+// External link inventory checks - run weekly to surface off-host links per domain
+Schedule::command('domains:health-check --all --type=external_links')
+    ->weekly()
+    ->sundays()
+    ->at('05:45')
+    ->timezone('UTC');
+
 // Synergy Wholesale domain sync - queue jobs 3 times daily (8am, 2pm, 8pm UTC)
 // Jobs are processed via Horizon to prevent gateway timeouts
 Schedule::command('domains:queue-sync-jobs --type=info')

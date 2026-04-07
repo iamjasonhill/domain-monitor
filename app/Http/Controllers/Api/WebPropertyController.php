@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\WebPropertyHealthSummaryResource;
 use App\Http\Resources\WebPropertyResource;
+use App\Http\Resources\WebPropertySummaryResource;
 use App\Models\SearchConsoleIssueSnapshot;
 use App\Models\WebProperty;
 use Illuminate\Database\Eloquent\Builder;
@@ -65,7 +66,7 @@ class WebPropertyController extends Controller
             'fleet_focus' => 'nullable|boolean',
         ]);
 
-        $query = $this->baseQuery()->orderBy('name');
+        $query = $this->baseQuery(includeExternalLinkDetails: false)->orderBy('name');
         $this->applyFleetFocusFilter($query, $validated);
 
         $properties = $query->get();
@@ -74,7 +75,7 @@ class WebPropertyController extends Controller
             'source_system' => 'domain-monitor',
             'contract_version' => 1,
             'generated_at' => now()->toIso8601String(),
-            'web_properties' => WebPropertyResource::collection($properties)->resolve(),
+            'web_properties' => WebPropertySummaryResource::collection($properties)->resolve(),
         ]);
     }
 
@@ -94,7 +95,7 @@ class WebPropertyController extends Controller
     /**
      * @return Builder<WebProperty>
      */
-    private function baseQuery(): Builder
+    private function baseQuery(bool $includeExternalLinkDetails = true): Builder
     {
         return WebProperty::query()
             ->addSelect([
@@ -130,14 +131,20 @@ class WebPropertyController extends Controller
                 'repositories',
                 'analyticsSources',
                 'analyticsSources.latestInstallAudit',
-                'propertyDomains.domain' => function ($query) {
+                'propertyDomains.domain' => function ($query) use ($includeExternalLinkDetails) {
+                    $relations = [
+                        'platform',
+                        'tags',
+                        'deployments.domain',
+                        'alerts' => fn ($alertQuery) => $alertQuery->whereNull('resolved_at'),
+                    ];
+
+                    if ($includeExternalLinkDetails) {
+                        $relations[] = 'latestExternalLinksCheck';
+                    }
+
                     $query->withLatestCheckStatuses()
-                        ->with([
-                            'platform',
-                            'tags',
-                            'deployments.domain',
-                            'alerts' => fn ($alertQuery) => $alertQuery->whereNull('resolved_at'),
-                        ]);
+                        ->with($relations);
                 },
             ]);
     }
