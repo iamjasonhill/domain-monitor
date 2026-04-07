@@ -639,6 +639,58 @@
                             </button>
                         </div>
                     </div>
+
+                    <div class="mt-5 border-t border-gray-200 pt-4 dark:border-gray-700">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <h6 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Suggested Owned Subdomains</h6>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Likely web surfaces discovered under this property’s linked domains. Mail, auth, and service-only DNS records are excluded.
+                                </p>
+                            </div>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">{{ count($suggestedOwnedSubdomains) }} suggested</span>
+                        </div>
+
+                        @if($suggestedOwnedSubdomains === [])
+                            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+                                No likely web subdomains have been discovered yet.
+                            </p>
+                        @else
+                            <div class="mt-3 space-y-2">
+                                @foreach($suggestedOwnedSubdomains as $suggestion)
+                                    <div class="flex flex-col gap-3 rounded-lg border border-gray-200 px-3 py-3 dark:border-gray-700 md:flex-row md:items-center md:justify-between">
+                                        <div class="min-w-0">
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $suggestion['host'] }}</span>
+                                                <span @class([
+                                                    'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                                                    'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' => $suggestion['resolution_state'] === 'resolves',
+                                                    'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' => $suggestion['resolution_state'] === 'unchecked',
+                                                    'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300' => $suggestion['resolution_state'] === 'unresolved',
+                                                    'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' => ! in_array($suggestion['resolution_state'], ['resolves', 'unchecked', 'unresolved'], true),
+                                                ])>
+                                                    {{ $suggestion['resolution_label'] }}
+                                                </span>
+                                            </div>
+                                            <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                                Discovered under {{ $suggestion['source_domain'] }}
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center md:justify-end">
+                                            <button
+                                                type="button"
+                                                wire:click="useSuggestedOwnedSubdomain('{{ $suggestion['host'] }}')"
+                                                class="inline-flex items-center justify-center rounded-md border border-blue-200 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/20"
+                                            >
+                                                Use Suggestion
+                                            </button>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
                 </div>
 
                 <div class="mt-6 overflow-x-auto">
