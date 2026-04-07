@@ -618,7 +618,6 @@ class WebPropertyDetail extends Component
                     'resolves' => 0,
                     'unchecked' => 1,
                     'unresolved' => 2,
-                    'not_applicable' => 3,
                 ];
 
                 $leftPriority = $priority[$left['resolution_state']] ?? 9;
