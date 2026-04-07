@@ -17,9 +17,11 @@ class SearchConsoleIssueActionabilityService
      */
     public function normalize(WebProperty $property, string $issueClass, array $issueEvidence): array
     {
-        $normalizedEvidence = $issueClass === 'not_found_404'
-            ? $this->normalizeNotFound404Issue($property, $issueEvidence)
-            : $issueEvidence;
+        $normalizedEvidence = match ($issueClass) {
+            'not_found_404' => $this->normalizeNotFound404Issue($property, $issueEvidence),
+            'page_with_redirect_in_sitemap' => $this->normalizePageWithRedirectIssue($issueEvidence),
+            default => $issueEvidence,
+        };
 
         $expectedExclusion = $this->intentionalSearchConsoleExclusionService->classify(
             $property,
@@ -175,6 +177,59 @@ class SearchConsoleIssueActionabilityService
 
     /**
      * @param  array<string, mixed>  $issueEvidence
+     * @return array<string, mixed>
+     */
+    private function normalizePageWithRedirectIssue(array $issueEvidence): array
+    {
+        $candidateUrls = $this->candidateUrls($issueEvidence);
+
+        if ($candidateUrls === []) {
+            return $issueEvidence;
+        }
+
+        $activeUrls = [];
+        $retiredUrls = [];
+
+        foreach ($candidateUrls as $url) {
+            $sitemapCheck = $this->liveSitemapCheckForUrl($issueEvidence, $url);
+
+            if ($sitemapCheck !== null && ($sitemapCheck['present_in_current_sitemap'] ?? null) === false) {
+                $retiredUrls[$url] = 'removed_from_current_sitemap';
+
+                continue;
+            }
+
+            $activeUrls[] = $url;
+        }
+
+        if ($activeUrls === $candidateUrls) {
+            return $issueEvidence;
+        }
+
+        if (! $this->issueEvidenceRepresentsCompleteSet($issueEvidence, $candidateUrls)) {
+            return $this->filterEvidenceToUrls($issueEvidence, $activeUrls, true);
+        }
+
+        $normalizedEvidence = $this->filterEvidenceToUrls($issueEvidence, $activeUrls);
+
+        if ($activeUrls !== []) {
+            return $normalizedEvidence;
+        }
+
+        $matchedUrls = array_keys($retiredUrls);
+        $normalizedEvidence['expected_exclusion'] = [
+            'state' => 'resolved_or_retired_redirect_in_sitemap',
+            'code' => 'removed_from_current_sitemap',
+            'reason' => 'current_sitemap_no_longer_contains_historical_redirect_urls',
+            'matched_urls' => array_slice($matchedUrls, 0, 10),
+            'matched_url_count' => count($matchedUrls),
+        ];
+
+        return $normalizedEvidence;
+    }
+
+    /**
+     * @param  array<string, mixed>  $issueEvidence
      * @return array<int, string>
      */
     private function candidateUrls(array $issueEvidence): array
@@ -308,6 +363,21 @@ class SearchConsoleIssueActionabilityService
     }
 
     /**
+     * @param  array<string, mixed>  $issueEvidence
+     * @return array<string, mixed>|null
+     */
+    private function liveSitemapCheckForUrl(array $issueEvidence, string $url): ?array
+    {
+        foreach ((array) ($issueEvidence['live_sitemap_checks'] ?? []) as $check) {
+            if (is_array($check) && is_string($check['url'] ?? null) && $check['url'] === $url) {
+                return $check;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @param  array<string, mixed>  $liveCheck
      */
     private function isResolvedLiveUrlCheck(array $liveCheck): bool
@@ -425,6 +495,12 @@ class SearchConsoleIssueActionabilityService
         ));
         $issueEvidence['live_url_checks'] = array_values(array_filter(
             (array) ($issueEvidence['live_url_checks'] ?? []),
+            static fn (mixed $check): bool => is_array($check)
+                && is_string($check['url'] ?? null)
+                && isset($activeUrlMap[$check['url']])
+        ));
+        $issueEvidence['live_sitemap_checks'] = array_values(array_filter(
+            (array) ($issueEvidence['live_sitemap_checks'] ?? []),
             static fn (mixed $check): bool => is_array($check)
                 && is_string($check['url'] ?? null)
                 && isset($activeUrlMap[$check['url']])

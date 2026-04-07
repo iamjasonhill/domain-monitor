@@ -172,6 +172,7 @@ class SearchConsoleIssueSnapshot extends Model
             'canonical_state' => is_array($normalizedPayload['canonical_state'] ?? null) ? $normalizedPayload['canonical_state'] : null,
             'search_analytics' => is_array($normalizedPayload['search_analytics'] ?? null) ? $normalizedPayload['search_analytics'] : null,
             'live_url_checks' => is_array($normalizedPayload['live_url_checks'] ?? null) ? $normalizedPayload['live_url_checks'] : null,
+            'live_sitemap_checks' => is_array($normalizedPayload['live_sitemap_checks'] ?? null) ? $normalizedPayload['live_sitemap_checks'] : null,
         ], static fn (mixed $value): bool => $value !== null && $value !== []);
     }
 
