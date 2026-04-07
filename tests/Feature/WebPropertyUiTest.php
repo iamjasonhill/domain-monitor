@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\WebPropertyDetail;
 use App\Models\AnalyticsInstallAudit;
 use App\Models\DetectedIssueVerification;
 use App\Models\Domain;
@@ -16,6 +17,7 @@ use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class WebPropertyUiTest extends TestCase
@@ -381,9 +383,79 @@ class WebPropertyUiTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('External Links');
+        $response->assertSee('View all 2 links');
         $response->assertSee('quotes.inventory-ui.example.com/start');
         $response->assertSee('partner.example.org/book');
         $response->assertSee('3 pages scanned');
+    }
+
+    public function test_web_property_external_links_inventory_modal_can_be_opened_for_linked_domain(): void
+    {
+        $domain = Domain::factory()->create([
+            'domain' => 'inventory-modal.example.com',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'inventory-modal-site',
+            'name' => 'Inventory Modal Site',
+            'property_type' => 'marketing_site',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://inventory-modal.example.com',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        DomainCheck::withoutEvents(function () use ($domain): void {
+            DomainCheck::factory()->create([
+                'id' => (string) Str::uuid(),
+                'domain_id' => $domain->id,
+                'check_type' => 'external_links',
+                'status' => 'ok',
+                'started_at' => now()->subMinute(),
+                'finished_at' => now(),
+                'duration_ms' => 500,
+                'payload' => [
+                    'domain' => 'inventory-modal.example.com',
+                    'pages_scanned' => 2,
+                    'external_links_count' => 2,
+                    'unique_hosts_count' => 2,
+                    'external_links' => [
+                        [
+                            'url' => 'https://quotes.inventory-modal.example.com/start',
+                            'host' => 'quotes.inventory-modal.example.com',
+                            'relationship' => 'subdomain',
+                            'found_on' => 'https://inventory-modal.example.com/',
+                            'found_on_pages' => ['https://inventory-modal.example.com/'],
+                        ],
+                        [
+                            'url' => 'https://partner.example.org/book',
+                            'host' => 'partner.example.org',
+                            'relationship' => 'external',
+                            'found_on' => 'https://inventory-modal.example.com/contact',
+                            'found_on_pages' => ['https://inventory-modal.example.com/contact'],
+                        ],
+                    ],
+                ],
+                'retry_count' => 0,
+            ]);
+        });
+
+        Livewire::test(WebPropertyDetail::class, ['propertySlug' => 'inventory-modal-site'])
+            ->call('openExternalLinksModal', $domain->id)
+            ->assertSet('showExternalLinksModal', true)
+            ->assertSet('selectedExternalLinksDomainName', 'inventory-modal.example.com')
+            ->assertSee('External Link Inventory')
+            ->assertSee('quotes.inventory-modal.example.com/start')
+            ->assertSee('partner.example.org/book')
+            ->call('closeExternalLinksModal')
+            ->assertSet('showExternalLinksModal', false);
     }
 
     public function test_web_property_detail_hides_suppressed_search_console_issue_summaries(): void
