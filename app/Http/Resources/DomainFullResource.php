@@ -65,6 +65,10 @@ class DomainFullResource extends JsonResource
             'status' => $this->is_active ? 'active' : 'inactive',
             'is_parked' => $this->resource->isParked(),
             'is_email_only' => $this->resource->isEmailOnly(),
+            'email_usage' => $this->resource->emailUsage(),
+            'email_expected' => $this->resource->emailExpected(),
+            'email_sending_expected' => $this->resource->emailSendingExpected(),
+            'email_receiving_expected' => $this->resource->emailReceivingExpected(),
 
             // Registration & Expiry
             'registrar' => $this->registrar,

@@ -22,6 +22,7 @@ class DomainFactory extends Factory
             'registrar' => fake()->optional()->company(),
             'hosting_provider' => fake()->optional()->randomElement(['Vercel', 'Render', 'Cloudflare', 'AWS', 'DigitalOcean', 'Linode']),
             'platform' => fake()->optional()->randomElement(['WordPress', 'Laravel', 'Next.js', 'Shopify', 'Static']),
+            'email_usage' => null,
             'expires_at' => fake()->optional()->dateTimeBetween('now', '+2 years'),
             'last_checked_at' => fake()->optional()->dateTimeBetween('-1 week', 'now'),
             'check_frequency_minutes' => fake()->randomElement([15, 30, 60, 120]),
