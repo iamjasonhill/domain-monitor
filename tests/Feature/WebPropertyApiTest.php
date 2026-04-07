@@ -358,6 +358,145 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('data.0.slug', 'fleet-focus-site');
     }
 
+    public function test_property_apis_always_expose_fully_shaped_conversion_links_contract(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'stable-links.example.com',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'stable-links-site',
+            'name' => 'Stable Links Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+            'conversion_links_scanned_at' => null,
+            'current_household_quote_url' => null,
+            'current_household_booking_url' => null,
+            'current_vehicle_quote_url' => null,
+            'current_vehicle_booking_url' => null,
+            'target_household_quote_url' => null,
+            'target_household_booking_url' => null,
+            'target_vehicle_quote_url' => null,
+            'target_vehicle_booking_url' => null,
+            'target_moveroo_subdomain_url' => null,
+            'target_contact_us_page_url' => null,
+            'target_legacy_bookings_replacement_url' => null,
+            'target_legacy_payments_replacement_url' => null,
+            'legacy_moveroo_endpoint_scan' => null,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        $headers = [
+            'Authorization' => 'Bearer test-api-key',
+        ];
+
+        $summaryResponse = $this->withHeaders($headers)->getJson('/api/web-properties-summary');
+
+        $summaryResponse
+            ->assertOk()
+            ->assertJsonPath('web_properties.0.slug', 'stable-links-site')
+            ->assertJsonStructure([
+                'web_properties' => [[
+                    'conversion_links' => [
+                        'scanned_at',
+                        'current' => [
+                            'household_quote',
+                            'household_booking',
+                            'vehicle_quote',
+                            'vehicle_booking',
+                        ],
+                        'target' => [
+                            'household_quote',
+                            'household_booking',
+                            'vehicle_quote',
+                            'vehicle_booking',
+                            'moveroo_subdomain',
+                            'contact_us_page',
+                            'legacy_bookings_replacement',
+                            'legacy_payments_replacement',
+                        ],
+                        'legacy_endpoints' => [
+                            'legacy_booking_endpoint',
+                            'legacy_payment_endpoint',
+                        ],
+                    ],
+                ]],
+            ])
+            ->assertJsonPath('web_properties.0.conversion_links.scanned_at', null)
+            ->assertJsonPath('web_properties.0.conversion_links.current.household_quote', null)
+            ->assertJsonPath('web_properties.0.conversion_links.current.household_booking', null)
+            ->assertJsonPath('web_properties.0.conversion_links.current.vehicle_quote', null)
+            ->assertJsonPath('web_properties.0.conversion_links.current.vehicle_booking', null)
+            ->assertJsonPath('web_properties.0.conversion_links.target.household_quote', null)
+            ->assertJsonPath('web_properties.0.conversion_links.target.household_booking', null)
+            ->assertJsonPath('web_properties.0.conversion_links.target.vehicle_quote', null)
+            ->assertJsonPath('web_properties.0.conversion_links.target.vehicle_booking', null)
+            ->assertJsonPath('web_properties.0.conversion_links.target.moveroo_subdomain', null)
+            ->assertJsonPath('web_properties.0.conversion_links.target.contact_us_page', null)
+            ->assertJsonPath('web_properties.0.conversion_links.target.legacy_bookings_replacement', null)
+            ->assertJsonPath('web_properties.0.conversion_links.target.legacy_payments_replacement', null)
+            ->assertJsonPath('web_properties.0.conversion_links.legacy_endpoints.legacy_booking_endpoint', null)
+            ->assertJsonPath('web_properties.0.conversion_links.legacy_endpoints.legacy_payment_endpoint', null);
+
+        $detailResponse = $this->withHeaders($headers)->getJson('/api/web-properties/stable-links-site');
+
+        $detailResponse
+            ->assertOk()
+            ->assertJsonPath('data.slug', 'stable-links-site')
+            ->assertJsonStructure([
+                'data' => [
+                    'conversion_links' => [
+                        'scanned_at',
+                        'current' => [
+                            'household_quote',
+                            'household_booking',
+                            'vehicle_quote',
+                            'vehicle_booking',
+                        ],
+                        'target' => [
+                            'household_quote',
+                            'household_booking',
+                            'vehicle_quote',
+                            'vehicle_booking',
+                            'moveroo_subdomain',
+                            'contact_us_page',
+                            'legacy_bookings_replacement',
+                            'legacy_payments_replacement',
+                        ],
+                        'legacy_endpoints' => [
+                            'legacy_booking_endpoint',
+                            'legacy_payment_endpoint',
+                        ],
+                    ],
+                ],
+            ])
+            ->assertJsonPath('data.conversion_links.scanned_at', null)
+            ->assertJsonPath('data.conversion_links.current.household_quote', null)
+            ->assertJsonPath('data.conversion_links.current.household_booking', null)
+            ->assertJsonPath('data.conversion_links.current.vehicle_quote', null)
+            ->assertJsonPath('data.conversion_links.current.vehicle_booking', null)
+            ->assertJsonPath('data.conversion_links.target.household_quote', null)
+            ->assertJsonPath('data.conversion_links.target.household_booking', null)
+            ->assertJsonPath('data.conversion_links.target.vehicle_quote', null)
+            ->assertJsonPath('data.conversion_links.target.vehicle_booking', null)
+            ->assertJsonPath('data.conversion_links.target.moveroo_subdomain', null)
+            ->assertJsonPath('data.conversion_links.target.contact_us_page', null)
+            ->assertJsonPath('data.conversion_links.target.legacy_bookings_replacement', null)
+            ->assertJsonPath('data.conversion_links.target.legacy_payments_replacement', null)
+            ->assertJsonPath('data.conversion_links.legacy_endpoints.legacy_booking_endpoint', null)
+            ->assertJsonPath('data.conversion_links.legacy_endpoints.legacy_payment_endpoint', null);
+    }
+
     public function test_web_properties_summary_ignores_empty_fleet_focus_filter(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
