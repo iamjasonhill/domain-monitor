@@ -894,6 +894,68 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('data.domains.0.external_links_scan.external_links', []);
     }
 
+    public function test_web_properties_summary_can_include_external_link_inventory_when_requested(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'summary-inventory.example.com',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'summary-inventory-site',
+            'name' => 'Summary Inventory Site',
+            'property_type' => 'marketing_site',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://summary-inventory.example.com',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        DomainCheck::withoutEvents(function () use ($domain): void {
+            DomainCheck::factory()->create([
+                'id' => (string) Str::uuid(),
+                'domain_id' => $domain->id,
+                'check_type' => 'external_links',
+                'status' => 'ok',
+                'started_at' => now()->subMinute(),
+                'finished_at' => now(),
+                'duration_ms' => 900,
+                'payload' => [
+                    'domain' => 'summary-inventory.example.com',
+                    'pages_scanned' => 2,
+                    'external_links_count' => 1,
+                    'unique_hosts_count' => 1,
+                    'external_links' => [
+                        [
+                            'url' => 'https://portal.summary-inventory.example.com/start',
+                            'host' => 'portal.summary-inventory.example.com',
+                            'relationship' => 'subdomain',
+                            'found_on' => 'https://summary-inventory.example.com/',
+                            'found_on_pages' => ['https://summary-inventory.example.com/'],
+                        ],
+                    ],
+                ],
+                'retry_count' => 0,
+            ]);
+        });
+
+        $this->withHeaders(['Authorization' => 'Bearer test-api-key'])
+            ->getJson('/api/web-properties-summary?include_external_links=1')
+            ->assertOk()
+            ->assertJsonPath('web_properties.0.domains.0.external_links_scan.status', 'ok')
+            ->assertJsonPath('web_properties.0.domains.0.external_links_scan.pages_scanned', 2)
+            ->assertJsonPath('web_properties.0.domains.0.external_links_scan.external_links_count', 1)
+            ->assertJsonPath('web_properties.0.domains.0.external_links_scan.external_links.0.url', 'https://portal.summary-inventory.example.com/start');
+    }
+
     public function test_web_properties_summary_ignores_empty_fleet_focus_filter(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
