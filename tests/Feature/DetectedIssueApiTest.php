@@ -1276,6 +1276,129 @@ class DetectedIssueApiTest extends TestCase
             ->assertJsonPath('evidence.expected_exclusion.code', 'removed_from_current_sitemap');
     }
 
+    public function test_issues_endpoint_keeps_page_with_redirect_rows_when_live_sitemap_check_is_unchecked(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'unchecked-redirects.example.com',
+            'expires_at' => null,
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'DreamIT Host',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'unchecked-redirects-site',
+            'name' => 'Unchecked Redirects Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '305',
+            'search_console_property_uri' => 'sc-domain:unchecked-redirects.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_api',
+            'pages_with_redirect' => 1,
+            'raw_payload' => [
+                'issues' => [
+                    ['label' => 'Page with redirect', 'count' => 1],
+                ],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'source_issue_label' => 'Page with redirect',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:unchecked-redirects.example.com',
+            'captured_at' => now()->subDay(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => [
+                'not-a-valid-url',
+            ],
+            'examples' => [
+                ['url' => 'not-a-valid-url', 'last_crawled' => now()->subDays(2)->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'not-a-valid-url',
+                ],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'source_issue_label' => 'Page with redirect',
+            'capture_method' => 'gsc_live_recheck',
+            'source_report' => 'search_console_live_sitemap_recheck',
+            'source_property' => 'sc-domain:unchecked-redirects.example.com',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => [
+                'not-a-valid-url',
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'not-a-valid-url',
+                ],
+                'live_sitemap_checks' => [
+                    [
+                        'url' => 'not-a-valid-url',
+                        'checked_at' => now()->toIso8601String(),
+                        'present_in_current_sitemap' => null,
+                        'matched_sitemap' => null,
+                    ],
+                ],
+            ],
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues');
+
+        $response->assertOk()
+            ->assertJsonPath('stats.issue_class_counts.page_with_redirect_in_sitemap', 1);
+
+        /** @var array<int, array<string, mixed>> $payloadIssues */
+        $payloadIssues = $response->json('issues') ?? [];
+        $issue = collect($payloadIssues)->first(function (array $issue): bool {
+            return ($issue['property_slug'] ?? null) === 'unchecked-redirects-site'
+                && ($issue['issue_class'] ?? null) === 'page_with_redirect_in_sitemap';
+        });
+
+        $this->assertIsArray($issue);
+        $this->assertNull(data_get($issue, 'evidence.expected_exclusion'));
+        $this->assertSame(
+            null,
+            data_get($issue, 'evidence.live_sitemap_checks.0.present_in_current_sitemap')
+        );
+    }
+
     public function test_issues_endpoint_keeps_only_still_failing_404_examples_after_live_rechecks(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');

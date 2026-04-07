@@ -274,21 +274,26 @@ class SearchConsoleIssueLiveRecheckService
 
     /**
      * @param  array<int, string>  $candidateUrls
-     * @return array<int, array{url:string,checked_at:string,present_in_current_sitemap:bool,matched_sitemap:string|null}>|null
+     * @return array<int, array{url:string,checked_at:string,present_in_current_sitemap:bool|null,matched_sitemap:string|null}>|null
      */
     private function probeCurrentSitemapUrls(WebProperty $property, SearchConsoleIssueSnapshot $sourceSnapshot, array $candidateUrls): ?array
     {
         $candidateMap = [];
+        $uncheckableUrls = [];
 
         foreach ($candidateUrls as $url) {
             $normalizedUrl = $this->normalizeComparableUrl($url);
 
-            if ($normalizedUrl !== null) {
-                $candidateMap[$normalizedUrl] = $url;
+            if ($normalizedUrl === null) {
+                $uncheckableUrls[$url] = true;
+
+                continue;
             }
+
+            $candidateMap[$normalizedUrl] = $url;
         }
 
-        if ($candidateMap === []) {
+        if ($candidateMap === [] && $uncheckableUrls === []) {
             return null;
         }
 
@@ -356,7 +361,9 @@ class SearchConsoleIssueLiveRecheckService
             fn (string $url): array => [
                 'url' => $url,
                 'checked_at' => $checkedAt,
-                'present_in_current_sitemap' => array_key_exists($url, $foundUrls),
+                'present_in_current_sitemap' => isset($uncheckableUrls[$url])
+                    ? null
+                    : array_key_exists($url, $foundUrls),
                 'matched_sitemap' => $foundUrls[$url] ?? null,
             ],
             $candidateUrls
