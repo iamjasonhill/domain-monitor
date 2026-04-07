@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Domain;
 use App\Models\SearchConsoleIssueSnapshot;
+use App\Models\Subdomain;
 use App\Models\WebProperty;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -20,6 +22,11 @@ class SearchConsoleIssueLiveRecheckService
     private const URL_LIMIT = 10;
 
     private const TOTAL_BUDGET_SECONDS = 20;
+
+    /**
+     * @var array<string, bool>
+     */
+    private array $managedHostCache = [];
 
     /**
      * @return array{status:'refreshed'|'skipped'|'failed',captured_at:string|null,checked_url_count:int,reason:string|null}
@@ -266,7 +273,7 @@ class SearchConsoleIssueLiveRecheckService
             return false;
         }
 
-        return in_array($host, $this->knownHosts($property), true)
+        return (in_array($host, $this->knownHosts($property), true) || $this->isManagedHost($host))
             && $this->hostResolvesPublicly($host);
     }
 
@@ -377,5 +384,29 @@ class SearchConsoleIssueLiveRecheckService
         }
 
         return array_values(array_unique($hosts));
+    }
+
+    private function isManagedHost(string $host): bool
+    {
+        if (array_key_exists($host, $this->managedHostCache)) {
+            return $this->managedHostCache[$host];
+        }
+
+        $domainExists = Domain::query()
+            ->where('domain', $host)
+            ->where('is_active', true)
+            ->exists();
+
+        if ($domainExists) {
+            return $this->managedHostCache[$host] = true;
+        }
+
+        $subdomain = Subdomain::query()
+            ->where('full_domain', $host)
+            ->where('is_active', true)
+            ->first();
+
+        return $this->managedHostCache[$host] = $subdomain instanceof Subdomain
+            && $subdomain->expectsIpResolution();
     }
 }

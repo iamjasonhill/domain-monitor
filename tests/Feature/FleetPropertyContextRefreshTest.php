@@ -744,6 +744,126 @@ class FleetPropertyContextRefreshTest extends TestCase
         );
     }
 
+    public function test_refresh_rechecks_subdomain_property_examples_on_other_managed_hosts_and_hides_resolved_404_issue(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        config()->set('services.domain_monitor.fleet_control_api_key', 'fleet-token');
+
+        $targetProperty = $this->makeProperty('vehicles-backloadingremovals-site', 'vehicles.backloadingremovals.com.au');
+        $managedSiblingProperty = $this->makeProperty('removalist-backloadingremovals-site', 'removalist.backloadingremovals.com.au');
+
+        DomainSeoBaseline::create([
+            'domain_id' => $targetProperty->primary_domain_id,
+            'web_property_id' => $targetProperty->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '556',
+            'search_console_property_uri' => 'sc-domain:vehicles.backloadingremovals.com.au',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_api',
+            'not_found_404' => 1,
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $targetProperty->primary_domain_id,
+            'web_property_id' => $targetProperty->id,
+            'issue_class' => 'not_found_404',
+            'source_issue_label' => 'Not found (404)',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:vehicles.backloadingremovals.com.au',
+            'captured_at' => now()->subDay(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => [
+                'https://removalist.backloadingremovals.com.au/payments',
+            ],
+            'examples' => [
+                ['url' => 'https://removalist.backloadingremovals.com.au/payments', 'last_crawled' => now()->subDays(2)->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://removalist.backloadingremovals.com.au/payments',
+                ],
+            ],
+        ]);
+
+        $this->mock(PropertyConversionLinkScanner::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('persistForProperty')
+                ->once()
+                ->andReturn([
+                    'current_household_quote_url' => null,
+                    'current_household_booking_url' => null,
+                    'current_vehicle_quote_url' => null,
+                    'current_vehicle_booking_url' => null,
+                    'conversion_links_scanned_at' => now(),
+                ]);
+        });
+
+        $this->mock(DomainHealthCheckRunner::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('run')
+                ->times(3)
+                ->andReturnUsing(fn (Domain $domain, string $type): array => $this->skippedHealthResult($type));
+        });
+
+        $this->mock(SearchConsoleApiEnrichmentRefresher::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('refreshProperty')
+                ->once()
+                ->andReturn([
+                    'status' => 'skipped',
+                    'captured_at' => null,
+                    'reason' => 'fresh',
+                    'message' => null,
+                ]);
+        });
+
+        Http::fake([
+            'https://removalist.backloadingremovals.com.au/payments' => Http::response('', 302, [
+                'Location' => 'https://removalist.backloadingremovals.com.au/contact',
+            ]),
+            'https://removalist.backloadingremovals.com.au/contact' => Http::response('<html>Contact</html>', 200),
+        ]);
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer fleet-token',
+        ])->postJson('/api/web-properties/vehicles-backloadingremovals-site/refresh-fleet-context')
+            ->assertOk()
+            ->assertJsonPath('refreshed.search_console_live_rechecks.status', 'refreshed')
+            ->assertJsonPath('refreshed.search_console_live_rechecks.checked_url_count', 1);
+
+        $liveRecheck = SearchConsoleIssueSnapshot::query()
+            ->where('web_property_id', $targetProperty->id)
+            ->where('issue_class', 'not_found_404')
+            ->where('capture_method', 'gsc_live_recheck')
+            ->latest('captured_at')
+            ->first();
+
+        $this->assertNotNull($liveRecheck);
+        $this->assertSame(
+            'https://removalist.backloadingremovals.com.au/contact',
+            data_get($liveRecheck->issueEvidence(), 'live_url_checks.0.final_url')
+        );
+        $this->assertTrue((bool) data_get($liveRecheck->issueEvidence(), 'live_url_checks.0.resolved_ok'));
+
+        $issuesResponse = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues');
+
+        $issuesResponse->assertOk()
+            ->assertJsonMissingPath('stats.issue_class_counts.not_found_404');
+
+        /** @var array<int, array<string, mixed>> $payloadIssues */
+        $payloadIssues = $issuesResponse->json('issues') ?? [];
+        $issue = collect($payloadIssues)->firstWhere('property_slug', 'vehicles-backloadingremovals-site');
+
+        $this->assertNull($issue);
+        $this->assertSame('removalist-backloadingremovals-site', $managedSiblingProperty->slug);
+    }
+
     public function test_refresh_only_updates_the_requested_property_scope(): void
     {
         $targetProperty = $this->makeProperty('target-scope-site', 'target-scope.example.com');
