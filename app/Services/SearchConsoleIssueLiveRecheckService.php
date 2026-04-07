@@ -393,7 +393,7 @@ class SearchConsoleIssueLiveRecheckService
         }
 
         $domainExists = Domain::query()
-            ->where('domain', $host)
+            ->whereRaw('LOWER(domain) = ?', [$host])
             ->where('is_active', true)
             ->exists();
 
@@ -402,7 +402,7 @@ class SearchConsoleIssueLiveRecheckService
         }
 
         $subdomain = Subdomain::query()
-            ->where('full_domain', $host)
+            ->whereRaw('LOWER(full_domain) = ?', [$host])
             ->where('is_active', true)
             ->first();
 

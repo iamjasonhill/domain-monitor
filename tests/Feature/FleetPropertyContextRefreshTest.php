@@ -11,6 +11,7 @@ use App\Models\PropertyAnalyticsSource;
 use App\Models\PropertyRepository;
 use App\Models\SearchConsoleCoverageStatus;
 use App\Models\SearchConsoleIssueSnapshot;
+use App\Models\Subdomain;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use App\Services\DetectedIssueIdentityService;
@@ -750,7 +751,22 @@ class FleetPropertyContextRefreshTest extends TestCase
         config()->set('services.domain_monitor.fleet_control_api_key', 'fleet-token');
 
         $targetProperty = $this->makeProperty('vehicles-backloadingremovals-site', 'vehicles.backloadingremovals.com.au');
-        $managedSiblingProperty = $this->makeProperty('removalist-backloadingremovals-site', 'removalist.backloadingremovals.com.au');
+        $rootDomain = Domain::factory()->create([
+            'domain' => 'backloadingremovals.com.au',
+            'expires_at' => null,
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'Vercel',
+        ]);
+
+        Subdomain::create([
+            'domain_id' => $rootDomain->id,
+            'subdomain' => 'Removalist',
+            'full_domain' => 'Removalist.BackloadingRemovals.com.au',
+            'ip_address' => '170.64.144.64',
+            'ip_checked_at' => now(),
+            'is_active' => true,
+        ]);
 
         DomainSeoBaseline::create([
             'domain_id' => $targetProperty->primary_domain_id,
@@ -861,7 +877,6 @@ class FleetPropertyContextRefreshTest extends TestCase
         $issue = collect($payloadIssues)->firstWhere('property_slug', 'vehicles-backloadingremovals-site');
 
         $this->assertNull($issue);
-        $this->assertSame('removalist-backloadingremovals-site', $managedSiblingProperty->slug);
     }
 
     public function test_refresh_only_updates_the_requested_property_scope(): void
