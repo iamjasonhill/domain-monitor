@@ -274,7 +274,7 @@ class WebProperty extends Model
                     'id' => $domain?->id,
                     'domain' => $domain?->domain,
                     'usage_type' => $link->usage_type,
-                    'email_usage' => $domain?->emailUsage(),
+                    'email_usage' => $domain?->emailUsage() ?? Domain::EMAIL_USAGE_NONE,
                     'email_expected' => $domain?->emailExpected() ?? false,
                     'email_sending_expected' => $domain?->emailSendingExpected() ?? false,
                     'email_receiving_expected' => $domain?->emailReceivingExpected() ?? false,

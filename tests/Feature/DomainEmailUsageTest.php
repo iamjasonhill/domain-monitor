@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Domain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
 class DomainEmailUsageTest extends TestCase
@@ -56,16 +57,12 @@ class DomainEmailUsageTest extends TestCase
             'is_active' => true,
         ]);
 
-        $command = $this->artisan('domains:health-check', [
+        $exitCode = Artisan::call('domains:health-check', [
             '--type' => 'email_security',
             '--domain' => 'quoting.backloading-au.com.au',
         ]);
 
-        if (is_int($command)) {
-            $this->assertSame(0, $command);
-        } else {
-            $command->assertSuccessful();
-        }
+        $this->assertSame(0, $exitCode);
 
         $this->assertDatabaseMissing('domain_checks', [
             'domain_id' => $domain->id,
