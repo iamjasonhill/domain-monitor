@@ -763,10 +763,10 @@
                                         @endif
                                     </td>
                                     <td class="px-4 py-4 align-top">
-                                        @if($domain)
-                                            @php
-                                                $relationshipCounts = collect($externalLinksScan['external_links'] ?? [])
-                                                    ->countBy(fn (array $link): string => (string) ($link['relationship'] ?? 'external'))
+                                            @if($domain)
+                                                @php
+                                                    $relationshipCounts = collect($externalLinksScan['external_links'] ?? [])
+                                                    ->countBy(fn (array $inventoryLink): string => (string) ($inventoryLink['relationship'] ?? 'external'))
                                                     ->all();
                                                 $previewLinks = array_slice($externalLinksScan['external_links'] ?? [], 0, 2);
                                             @endphp
@@ -808,11 +808,21 @@
 
                                                     <div class="mt-3 space-y-2">
                                                         @foreach($previewLinks as $externalLink)
+                                                            @php
+                                                                $previewUrl = (string) ($externalLink['url'] ?? '');
+                                                                $safePreviewUrl = \Illuminate\Support\Str::startsWith($previewUrl, ['http://', 'https://'])
+                                                                    ? $previewUrl
+                                                                    : null;
+                                                            @endphp
                                                             <div class="rounded-md bg-gray-50 px-3 py-2 text-xs dark:bg-gray-900/40">
                                                                 <div class="truncate font-medium text-blue-600 dark:text-blue-400">
-                                                                    <a href="{{ $externalLink['url'] }}" target="_blank" rel="noopener noreferrer" class="hover:underline">
-                                                                        {{ $externalLink['url'] }}
-                                                                    </a>
+                                                                    @if($safePreviewUrl)
+                                                                        <a href="{{ $safePreviewUrl }}" target="_blank" rel="noopener noreferrer" class="hover:underline">
+                                                                            {{ $previewUrl }}
+                                                                        </a>
+                                                                    @else
+                                                                        <span class="text-gray-900 dark:text-gray-100">{{ $previewUrl }}</span>
+                                                                    @endif
                                                                 </div>
                                                                 <div class="mt-1 flex flex-wrap items-center gap-2 text-gray-500 dark:text-gray-400">
                                                                     <span @class([
@@ -870,12 +880,24 @@
         </div>
 
         @if($showExternalLinksModal)
-            <div class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60" wire:click="closeExternalLinksModal">
-                <div class="relative mx-auto mt-10 w-full max-w-5xl px-4 pb-10" wire:click.stop>
+            <div
+                x-data
+                x-on:keydown.escape.window="$wire.closeExternalLinksModal()"
+                class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60"
+                wire:click="closeExternalLinksModal"
+            >
+                <div
+                    class="relative mx-auto mt-10 w-full max-w-5xl px-4 pb-10"
+                    wire:click.stop
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="external-links-modal-title"
+                    tabindex="-1"
+                >
                     <div class="rounded-xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800">
                         <div class="flex items-start justify-between gap-4 border-b border-gray-200 px-6 py-5 dark:border-gray-700">
                             <div>
-                                <h4 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                                <h4 id="external-links-modal-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                                     External Link Inventory
                                 </h4>
                                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -924,11 +946,21 @@
                                     </div>
                                 @else
                                     @foreach(($selectedExternalLinksScan['external_links'] ?? []) as $externalLink)
+                                        @php
+                                            $modalUrl = (string) ($externalLink['url'] ?? '');
+                                            $safeModalUrl = \Illuminate\Support\Str::startsWith($modalUrl, ['http://', 'https://'])
+                                                ? $modalUrl
+                                                : null;
+                                        @endphp
                                         <div class="rounded-lg border border-gray-200 px-4 py-3 dark:border-gray-700">
                                             <div class="break-all text-sm font-medium text-blue-600 dark:text-blue-400">
-                                                <a href="{{ $externalLink['url'] }}" target="_blank" rel="noopener noreferrer" class="hover:underline">
-                                                    {{ $externalLink['url'] }}
-                                                </a>
+                                                @if($safeModalUrl)
+                                                    <a href="{{ $safeModalUrl }}" target="_blank" rel="noopener noreferrer" class="hover:underline">
+                                                        {{ $modalUrl }}
+                                                    </a>
+                                                @else
+                                                    <span class="text-gray-900 dark:text-gray-100">{{ $modalUrl }}</span>
+                                                @endif
                                             </div>
                                             <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                                                 <span @class([
