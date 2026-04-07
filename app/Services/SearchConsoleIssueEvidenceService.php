@@ -334,6 +334,10 @@ class SearchConsoleIssueEvidenceService
                 $evidence['live_url_checks'] = $liveEvidence['live_url_checks'];
             }
 
+            if (array_key_exists('live_sitemap_checks', $liveEvidence)) {
+                $evidence['live_sitemap_checks'] = $liveEvidence['live_sitemap_checks'];
+            }
+
             if (is_string($liveEvidence['captured_at'] ?? null) && $liveEvidence['captured_at'] !== '') {
                 $evidence['live_captured_at'] = $liveEvidence['captured_at'];
             }

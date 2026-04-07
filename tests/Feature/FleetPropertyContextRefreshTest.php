@@ -190,7 +190,7 @@ class FleetPropertyContextRefreshTest extends TestCase
             ->assertJsonPath('refreshed.search_console_api_enrichment.status', 'skipped')
             ->assertJsonPath('refreshed.search_console_api_enrichment.reason', 'fresh');
 
-        Http::assertNothingSent();
+        Http::assertNotSent(fn ($request): bool => str_contains($request->url(), 'googleapis.com'));
     }
 
     public function test_search_console_refresh_is_skipped_for_manually_excluded_properties(): void
@@ -226,7 +226,7 @@ class FleetPropertyContextRefreshTest extends TestCase
             ->assertJsonPath('refreshed.search_console_api_enrichment.reason', 'ineligible')
             ->assertJsonPath('refreshed.search_console_api_enrichment.message', 'Property is not eligible for Fleet context refresh.');
 
-        Http::assertNothingSent();
+        Http::assertNotSent(fn ($request): bool => str_contains($request->url(), 'googleapis.com'));
     }
 
     public function test_search_console_refresh_runs_when_stale(): void
@@ -507,7 +507,7 @@ class FleetPropertyContextRefreshTest extends TestCase
             ->assertJsonPath('refreshed.search_console_api_enrichment.reason', 'missing')
             ->assertJsonPath('refreshed.search_console_api_enrichment.message', 'No Search Console issue detail evidence is available for enrichment.');
 
-        Http::assertNothingSent();
+        Http::assertNotSent(fn ($request): bool => str_contains($request->url(), 'googleapis.com'));
     }
 
     public function test_health_checks_refresh_the_canonical_domain_used_by_api_rollups(): void
@@ -743,6 +743,138 @@ class FleetPropertyContextRefreshTest extends TestCase
                 ->values()
                 ->all()
         );
+    }
+
+    public function test_refresh_rechecks_current_sitemap_membership_and_hides_stale_redirect_rows(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        config()->set('services.domain_monitor.fleet_control_api_key', 'fleet-token');
+
+        $property = $this->makeProperty('stale-redirect-sitemap-site', 'stale-redirect-sitemap.example.com');
+
+        DomainSeoBaseline::create([
+            'domain_id' => $property->primary_domain_id,
+            'web_property_id' => $property->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '557',
+            'search_console_property_uri' => 'sc-domain:stale-redirect-sitemap.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_api',
+            'pages_with_redirect' => 2,
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $property->primary_domain_id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'source_issue_label' => 'Page with redirect',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:stale-redirect-sitemap.example.com',
+            'captured_at' => now()->subDay(),
+            'captured_by' => 'test',
+            'affected_url_count' => 2,
+            'sample_urls' => [
+                'https://stale-redirect-sitemap.example.com/removals-insurance/',
+                'http://stale-redirect-sitemap.example.com/index.php',
+            ],
+            'examples' => [
+                ['url' => 'https://stale-redirect-sitemap.example.com/removals-insurance/', 'last_crawled' => now()->subDays(2)->toDateString()],
+                ['url' => 'http://stale-redirect-sitemap.example.com/index.php', 'last_crawled' => now()->subDays(2)->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://stale-redirect-sitemap.example.com/removals-insurance/',
+                    'http://stale-redirect-sitemap.example.com/index.php',
+                ],
+            ],
+        ]);
+
+        $this->mock(PropertyConversionLinkScanner::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('persistForProperty')
+                ->once()
+                ->andReturn([
+                    'current_household_quote_url' => null,
+                    'current_household_booking_url' => null,
+                    'current_vehicle_quote_url' => null,
+                    'current_vehicle_booking_url' => null,
+                    'conversion_links_scanned_at' => now(),
+                ]);
+        });
+
+        $this->mock(DomainHealthCheckRunner::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('run')
+                ->times(3)
+                ->andReturnUsing(fn (Domain $domain, string $type): array => $this->skippedHealthResult($type));
+        });
+
+        $this->mock(SearchConsoleApiEnrichmentRefresher::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('refreshProperty')
+                ->once()
+                ->andReturn([
+                    'status' => 'skipped',
+                    'captured_at' => null,
+                    'reason' => 'fresh',
+                    'message' => null,
+                ]);
+        });
+
+        Http::fake([
+            'https://stale-redirect-sitemap.example.com/sitemap.xml' => Http::response('', 404),
+            'https://stale-redirect-sitemap.example.com/sitemap_index.xml' => Http::response(<<<'XML'
+                <?xml version="1.0" encoding="UTF-8"?>
+                <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+                    <sitemap>
+                        <loc>https://stale-redirect-sitemap.example.com/page-sitemap.xml</loc>
+                    </sitemap>
+                </sitemapindex>
+            XML, 200),
+            'https://stale-redirect-sitemap.example.com/page-sitemap.xml' => Http::response(<<<'XML'
+                <?xml version="1.0" encoding="UTF-8"?>
+                <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+                    <url>
+                        <loc>https://stale-redirect-sitemap.example.com/interstate-removals/</loc>
+                    </url>
+                </urlset>
+            XML, 200),
+            'https://stale-redirect-sitemap.example.com/sitemaps.xml' => Http::response('', 404),
+        ]);
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer fleet-token',
+        ])->postJson('/api/web-properties/stale-redirect-sitemap-site/refresh-fleet-context')
+            ->assertOk()
+            ->assertJsonPath('refreshed.search_console_live_rechecks.status', 'refreshed')
+            ->assertJsonPath('refreshed.search_console_live_rechecks.checked_url_count', 2);
+
+        $liveRecheck = SearchConsoleIssueSnapshot::query()
+            ->where('web_property_id', $property->id)
+            ->where('issue_class', 'page_with_redirect_in_sitemap')
+            ->where('capture_method', 'gsc_live_recheck')
+            ->latest('captured_at')
+            ->first();
+
+        $this->assertNotNull($liveRecheck);
+        $this->assertFalse((bool) data_get($liveRecheck->issueEvidence(), 'live_sitemap_checks.0.present_in_current_sitemap'));
+        $this->assertFalse((bool) data_get($liveRecheck->issueEvidence(), 'live_sitemap_checks.1.present_in_current_sitemap'));
+
+        $issuesResponse = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues');
+
+        $issuesResponse->assertOk()
+            ->assertJsonMissingPath('stats.issue_class_counts.page_with_redirect_in_sitemap');
+
+        /** @var array<int, array<string, mixed>> $payloadIssues */
+        $payloadIssues = $issuesResponse->json('issues') ?? [];
+        $issue = collect($payloadIssues)->firstWhere('property_slug', 'stale-redirect-sitemap-site');
+
+        $this->assertNull($issue);
     }
 
     public function test_refresh_rechecks_subdomain_property_examples_on_other_managed_hosts_and_hides_resolved_404_issue(): void
