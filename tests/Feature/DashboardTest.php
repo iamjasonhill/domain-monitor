@@ -16,6 +16,7 @@ use App\Models\Subdomain;
 use App\Models\User;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
+use App\Services\DashboardIssueQueueService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Livewire\Livewire;
@@ -86,6 +87,44 @@ class DashboardTest extends TestCase
             ->assertSee('Security headers need review')
             ->assertSee('Email security needs review')
             ->assertSee('Domain expires in 14 days');
+    }
+
+    public function test_dashboard_should_fix_cards_fall_back_to_secondary_reasons_when_primary_reasons_are_empty(): void
+    {
+        $user = User::factory()->create();
+
+        $this->instance(DashboardIssueQueueService::class, new class extends DashboardIssueQueueService
+        {
+            public function __construct() {}
+
+            public function snapshot(bool $includeExpectedExclusions = false): array
+            {
+                return [
+                    'stats' => [
+                        'must_fix' => 0,
+                        'should_fix' => 1,
+                    ],
+                    'must_fix' => [],
+                    'should_fix' => [[
+                        'id' => 123,
+                        'domain' => 'downgraded-queue.example.com',
+                        'hosting_provider' => 'DreamIT Host',
+                        'primary_reasons' => [],
+                        'secondary_reasons' => ['Broken links need review'],
+                        'primary_reason_count' => 0,
+                        'secondary_reason_count' => 1,
+                        'updated_at_human' => '5 minutes ago',
+                    ]],
+                ];
+            }
+        });
+
+        $this->actingAs($user)->get('/dashboard')
+            ->assertOk()
+            ->assertSee('downgraded-queue.example.com')
+            ->assertSee('Broken links need review')
+            ->assertSee('1 issue')
+            ->assertDontSee('0 issues');
     }
 
     public function test_dashboard_excludes_domains_marked_as_parked_in_synergy(): void
