@@ -881,10 +881,9 @@
 
         @if($showExternalLinksModal)
             <div
-                x-data
-                x-on:keydown.escape.window="$wire.closeExternalLinksModal()"
                 class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60"
                 wire:click="closeExternalLinksModal"
+                wire:keydown.escape.window="closeExternalLinksModal"
             >
                 <div
                     class="relative mx-auto mt-10 w-full max-w-5xl px-4 pb-10"
