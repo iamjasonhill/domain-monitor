@@ -258,6 +258,12 @@
                 @if($shouldFixDomains->isNotEmpty())
                     <div class="space-y-4">
                         @foreach($shouldFixDomains as $item)
+                            @php
+                                $visibleReasons = $item['primary_reasons'] !== []
+                                    ? $item['primary_reasons']
+                                    : $item['secondary_reasons'];
+                                $visibleReasonCount = count($visibleReasons);
+                            @endphp
                             <div class="border border-amber-200 dark:border-amber-900/60 rounded-lg p-4 bg-amber-50/50 dark:bg-amber-950/20">
                                 <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                                     <div>
@@ -269,12 +275,12 @@
                                         @endif
                                     </div>
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-                                        {{ $item['primary_reason_count'] }} issue{{ $item['primary_reason_count'] === 1 ? '' : 's' }}
+                                        {{ $visibleReasonCount }} issue{{ $visibleReasonCount === 1 ? '' : 's' }}
                                     </span>
                                 </div>
 
                                 <ul class="mt-4 space-y-2">
-                                    @foreach($item['primary_reasons'] as $reason)
+                                    @foreach($visibleReasons as $reason)
                                         <li class="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-2">
                                             <span class="mt-1 h-2 w-2 rounded-full bg-amber-500 shrink-0"></span>
                                             <span>{{ $reason }}</span>
