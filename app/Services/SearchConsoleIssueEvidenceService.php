@@ -237,7 +237,7 @@ class SearchConsoleIssueEvidenceService
                 ->each(function (SearchConsoleIssueSnapshot $snapshot) use (&$grouped, $bucket): void {
                     $grouped[$snapshot->web_property_id] ??= [];
                     $grouped[$snapshot->web_property_id][$snapshot->issue_class] ??= ['detail' => null, 'api' => null, 'live' => null];
-                    $grouped[$snapshot->web_property_id][$snapshot->issue_class][$bucket] = $snapshot;
+                    $grouped[$snapshot->web_property_id][$snapshot->issue_class][$bucket] ??= $snapshot;
                 });
         }
 
@@ -273,12 +273,16 @@ class SearchConsoleIssueEvidenceService
                                             ->orWhere(function ($sameCreatedAndCaptureQuery): void {
                                                 $sameCreatedAndCaptureQuery
                                                     ->whereColumn('newer.created_at', 'search_console_issue_snapshots.created_at')
-                                                    ->whereColumn('newer.id', '>', 'search_console_issue_snapshots.id');
+                                                    ->whereColumn('newer.updated_at', '>', 'search_console_issue_snapshots.updated_at');
                                             });
                                     });
                             });
                     });
             })
+            ->orderByDesc('captured_at')
+            ->orderByDesc('created_at')
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
             ->get();
     }
 

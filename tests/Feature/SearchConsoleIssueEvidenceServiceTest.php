@@ -151,7 +151,7 @@ class SearchConsoleIssueEvidenceServiceTest extends TestCase
         $this->assertNotNull($issueEvidence['live_captured_at']);
     }
 
-    public function test_it_breaks_same_timestamp_ties_with_newer_created_at_within_a_bucket(): void
+    public function test_it_breaks_same_timestamp_ties_with_newer_updated_at_within_a_bucket(): void
     {
         $domain = Domain::factory()->create([
             'domain' => 'tie-break-example.com',
@@ -197,7 +197,7 @@ class SearchConsoleIssueEvidenceServiceTest extends TestCase
             'capture_method' => 'gsc_mcp_api',
             'source_report' => 'search_console_api_bundle_second',
             'captured_at' => $capturedAt,
-            'created_at' => Carbon::parse('2026-04-08 10:00:02', 'UTC'),
+            'created_at' => Carbon::parse('2026-04-08 10:00:01', 'UTC'),
             'updated_at' => Carbon::parse('2026-04-08 10:00:02', 'UTC'),
             'normalized_payload' => [
                 'sitemaps' => [
