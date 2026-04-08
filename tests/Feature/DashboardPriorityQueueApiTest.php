@@ -432,6 +432,97 @@ class DashboardPriorityQueueApiTest extends TestCase
         ));
     }
 
+    public function test_priority_queue_skips_domains_linked_only_as_subdomains(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $primaryDomain = Domain::factory()->create([
+            'domain' => 'backloadingremovals.com.au',
+            'is_active' => true,
+            'platform' => 'WordPress',
+        ]);
+
+        $linkedSubdomain = Domain::factory()->create([
+            'domain' => 'vehicles.backloadingremovals.com.au',
+            'is_active' => true,
+            'platform' => 'WordPress',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'backloadingremovals-com-au',
+            'name' => 'Backloading Removals',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $primaryDomain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $primaryDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $linkedSubdomain->id,
+            'usage_type' => 'subdomain',
+            'is_canonical' => false,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => 'backloadingremovals',
+            'repo_provider' => 'local_only',
+            'local_path' => '/Users/jasonhill/Projects/websites/backloadingremovals',
+            'framework' => 'WordPress',
+            'is_primary' => true,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $linkedSubdomain->id,
+            'web_property_id' => $property->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '15',
+            'search_console_property_uri' => 'sc-domain:vehicles.backloadingremovals.com.au',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_api',
+            'clicks' => 0,
+            'impressions' => 0,
+            'ctr' => 0,
+            'average_position' => 0,
+            'pages_with_redirect' => 56,
+            'raw_payload' => [
+                'issues' => [
+                    ['label' => 'Page with redirect', 'count' => 56],
+                ],
+            ],
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/dashboard/priority-queue');
+
+        $response->assertOk();
+
+        /** @var array<int, array<string, mixed>> $mustFixPayload */
+        $mustFixPayload = $response->json('must_fix') ?? [];
+        /** @var array<int, array<string, mixed>> $shouldFixPayload */
+        $shouldFixPayload = $response->json('should_fix') ?? [];
+
+        $this->assertFalse(collect($mustFixPayload)->contains(
+            fn (array $item): bool => ($item['domain'] ?? null) === 'vehicles.backloadingremovals.com.au'
+        ));
+        $this->assertFalse(collect($shouldFixPayload)->contains(
+            fn (array $item): bool => ($item['domain'] ?? null) === 'vehicles.backloadingremovals.com.au'
+        ));
+    }
+
     public function test_priority_queue_promotes_page_with_redirect_baseline_issue_into_fleet_standard_gap(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
