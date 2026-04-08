@@ -24,7 +24,7 @@ class SearchConsoleIssueLiveRecheckServiceTest extends TestCase
             {
                 return [
                     ['ip' => '10.0.0.10'],
-                    ['ip' => '203.0.113.20'],
+                    ['ip' => '8.8.8.8'],
                 ];
             }
         };
@@ -71,8 +71,8 @@ class SearchConsoleIssueLiveRecheckServiceTest extends TestCase
             protected function dnsRecordsForHost(string $host): array
             {
                 return [
-                    ['ip' => '198.51.100.10'],
-                    ['ipv6' => '2001:db8::20'],
+                    ['ip' => '1.1.1.1'],
+                    ['ipv6' => '2606:4700:4700::1111'],
                 ];
             }
         };
