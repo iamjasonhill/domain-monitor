@@ -136,7 +136,22 @@ class SearchConsoleIssueActionabilityService
         }
 
         if (! $this->issueEvidenceRepresentsCompleteSet($issueEvidence, $candidateUrls)) {
-            return $this->filterEvidenceToUrls($issueEvidence, $activeUrls, true);
+            $normalizedEvidence = $this->filterEvidenceToUrls($issueEvidence, $activeUrls, true);
+
+            if ($activeUrls !== []) {
+                return $normalizedEvidence;
+            }
+
+            $matchedUrls = array_keys($retiredUrls);
+            $normalizedEvidence['expected_exclusion'] = [
+                'state' => 'resolved_or_retired_redirect_in_sitemap',
+                'code' => 'removed_from_current_sitemap',
+                'reason' => 'current_sitemap_no_longer_contains_historical_redirect_urls',
+                'matched_urls' => array_slice($matchedUrls, 0, 10),
+                'matched_url_count' => count($matchedUrls),
+            ];
+
+            return $normalizedEvidence;
         }
 
         $normalizedEvidence = $this->filterEvidenceToUrls($issueEvidence, $activeUrls);
@@ -181,7 +196,11 @@ class SearchConsoleIssueActionabilityService
      */
     private function normalizePageWithRedirectIssue(array $issueEvidence): array
     {
-        $candidateUrls = $this->candidateUrls($issueEvidence);
+        $candidateUrls = $this->liveCheckedSitemapUrls($issueEvidence);
+
+        if ($candidateUrls === []) {
+            $candidateUrls = $this->candidateUrls($issueEvidence);
+        }
 
         if ($candidateUrls === []) {
             return $issueEvidence;
@@ -207,7 +226,22 @@ class SearchConsoleIssueActionabilityService
         }
 
         if (! $this->issueEvidenceRepresentsCompleteSet($issueEvidence, $candidateUrls)) {
-            return $this->filterEvidenceToUrls($issueEvidence, $activeUrls, true);
+            $normalizedEvidence = $this->filterEvidenceToUrls($issueEvidence, $activeUrls, true);
+
+            if ($activeUrls !== []) {
+                return $normalizedEvidence;
+            }
+
+            $matchedUrls = array_keys($retiredUrls);
+            $normalizedEvidence['expected_exclusion'] = [
+                'state' => 'resolved_or_retired_redirect_in_sitemap',
+                'code' => 'removed_from_current_sitemap',
+                'reason' => 'current_sitemap_no_longer_contains_historical_redirect_urls',
+                'matched_urls' => array_slice($matchedUrls, 0, 10),
+                'matched_url_count' => count($matchedUrls),
+            ];
+
+            return $normalizedEvidence;
         }
 
         $normalizedEvidence = $this->filterEvidenceToUrls($issueEvidence, $activeUrls);
@@ -226,6 +260,23 @@ class SearchConsoleIssueActionabilityService
         ];
 
         return $normalizedEvidence;
+    }
+
+    /**
+     * @param  array<string, mixed>  $issueEvidence
+     * @return array<int, string>
+     */
+    private function liveCheckedSitemapUrls(array $issueEvidence): array
+    {
+        $urls = [];
+
+        foreach ((array) ($issueEvidence['live_sitemap_checks'] ?? []) as $check) {
+            if (is_array($check) && is_string($check['url'] ?? null) && $check['url'] !== '') {
+                $urls[] = $check['url'];
+            }
+        }
+
+        return array_values(array_unique($urls));
     }
 
     /**
