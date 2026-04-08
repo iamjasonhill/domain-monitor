@@ -1256,9 +1256,6 @@ class DetectedIssueApiTest extends TestCase
             'Authorization' => 'Bearer test-api-key',
         ])->getJson('/api/issues');
 
-        $response->assertOk()
-            ->assertJsonMissingPath('stats.issue_class_counts.page_with_redirect_in_sitemap');
-
         /** @var array<int, array<string, mixed>> $payloadIssues */
         $payloadIssues = $response->json('issues') ?? [];
         $this->assertNull(collect($payloadIssues)->first(function (array $issue): bool {
@@ -1397,6 +1394,151 @@ class DetectedIssueApiTest extends TestCase
             null,
             data_get($issue, 'evidence.live_sitemap_checks.0.present_in_current_sitemap')
         );
+    }
+
+    public function test_issues_endpoint_suppresses_page_with_redirect_rows_when_all_checked_examples_are_gone_from_current_sitemap_even_if_historical_count_is_larger(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'partial-stale-redirects.example.com',
+            'expires_at' => null,
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'DreamIT Host',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'partial-stale-redirects-site',
+            'name' => 'Partial Stale Redirects Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'baseline_type' => 'search_console',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '306',
+            'search_console_property_uri' => 'sc-domain:partial-stale-redirects.example.com',
+            'search_type' => 'web',
+            'date_range_start' => now()->subDays(28)->toDateString(),
+            'date_range_end' => now()->toDateString(),
+            'import_method' => 'matomo_api',
+            'pages_with_redirect' => 56,
+            'raw_payload' => [
+                'issues' => [
+                    ['label' => 'Page with redirect', 'count' => 56],
+                ],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'source_issue_label' => 'Page with redirect',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:partial-stale-redirects.example.com',
+            'captured_at' => now()->subDay(),
+            'captured_by' => 'test',
+            'affected_url_count' => 56,
+            'sample_urls' => [
+                'http://www.partial-stale-redirects.example.com/',
+                'https://partial-stale-redirects.example.com/author/admin/',
+                'https://partial-stale-redirects.example.com/2024/01/',
+            ],
+            'examples' => [
+                ['url' => 'http://www.partial-stale-redirects.example.com/', 'last_crawled' => now()->subDays(2)->toDateString()],
+                ['url' => 'https://partial-stale-redirects.example.com/author/admin/', 'last_crawled' => now()->subDays(2)->toDateString()],
+                ['url' => 'https://partial-stale-redirects.example.com/2024/01/', 'last_crawled' => now()->subDays(2)->toDateString()],
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'http://www.partial-stale-redirects.example.com/',
+                    'https://partial-stale-redirects.example.com/author/admin/',
+                    'https://partial-stale-redirects.example.com/2024/01/',
+                ],
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'source_issue_label' => 'Page with redirect',
+            'capture_method' => 'gsc_live_recheck',
+            'source_report' => 'search_console_live_sitemap_recheck',
+            'source_property' => 'sc-domain:partial-stale-redirects.example.com',
+            'captured_at' => now(),
+            'captured_by' => 'test',
+            'affected_url_count' => 3,
+            'sample_urls' => [
+                'http://www.partial-stale-redirects.example.com/',
+                'https://partial-stale-redirects.example.com/author/admin/',
+                'https://partial-stale-redirects.example.com/2024/01/',
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'http://www.partial-stale-redirects.example.com/',
+                    'https://partial-stale-redirects.example.com/author/admin/',
+                    'https://partial-stale-redirects.example.com/2024/01/',
+                ],
+                'live_sitemap_checks' => [
+                    [
+                        'url' => 'http://www.partial-stale-redirects.example.com/',
+                        'checked_at' => now()->toIso8601String(),
+                        'present_in_current_sitemap' => false,
+                        'matched_sitemap' => null,
+                    ],
+                    [
+                        'url' => 'https://partial-stale-redirects.example.com/author/admin/',
+                        'checked_at' => now()->toIso8601String(),
+                        'present_in_current_sitemap' => false,
+                        'matched_sitemap' => null,
+                    ],
+                    [
+                        'url' => 'https://partial-stale-redirects.example.com/2024/01/',
+                        'checked_at' => now()->toIso8601String(),
+                        'present_in_current_sitemap' => false,
+                        'matched_sitemap' => null,
+                    ],
+                ],
+            ],
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues');
+
+        /** @var array<int, array<string, mixed>> $payloadIssues */
+        $payloadIssues = $response->json('issues') ?? [];
+        $this->assertNull(collect($payloadIssues)->first(function (array $issue): bool {
+            return ($issue['property_slug'] ?? null) === 'partial-stale-redirects-site'
+                && ($issue['issue_class'] ?? null) === 'page_with_redirect_in_sitemap';
+        }));
+
+        $identity = app(\App\Services\DetectedIssueIdentityService::class);
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues/'.urlencode($identity->makeIssueId($domain->id, $property->slug, 'page_with_redirect_in_sitemap')))
+            ->assertOk()
+            ->assertJsonPath('evidence.expected_exclusion.code', 'removed_from_current_sitemap')
+            ->assertJsonPath('evidence.active_affected_url_count', 0)
+            ->assertJsonPath('evidence.raw_affected_url_count', 56);
     }
 
     public function test_issues_endpoint_keeps_only_still_failing_404_examples_after_live_rechecks(): void
