@@ -93,19 +93,21 @@ class DashboardTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->instance(DashboardIssueQueueService::class, new class(app(\App\Services\DetectedIssueIdentityService::class), app(\App\Services\DetectedIssueVerificationService::class), app(\App\Services\SearchConsoleIssueEvidenceService::class), app(\App\Services\SearchConsoleIssueActionabilityService::class)) extends DashboardIssueQueueService
+        $this->instance(DashboardIssueQueueService::class, new class(app(\App\Services\DetectedIssueIdentityService::class), app(\App\Services\DetectedIssueVerificationService::class), app(\App\Services\SearchConsoleIssueEvidenceService::class), app(\App\Services\SearchConsoleIssueActionabilityService::class), app(\App\Services\PropertyExecutionReadinessResolver::class)) extends DashboardIssueQueueService
         {
             public function __construct(
                 \App\Services\DetectedIssueIdentityService $issueIdentityService,
                 \App\Services\DetectedIssueVerificationService $issueVerificationService,
                 \App\Services\SearchConsoleIssueEvidenceService $issueEvidenceService,
                 \App\Services\SearchConsoleIssueActionabilityService $issueActionabilityService,
+                \App\Services\PropertyExecutionReadinessResolver $executionReadinessResolver,
             ) {
                 parent::__construct(
                     $issueIdentityService,
                     $issueVerificationService,
                     $issueEvidenceService,
                     $issueActionabilityService,
+                    $executionReadinessResolver,
                 );
             }
 

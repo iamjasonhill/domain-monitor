@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\PropertyExecutionReadinessResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -322,23 +323,7 @@ class WebProperty extends Model
 
     public function controllerRepository(): ?PropertyRepository
     {
-        $repositories = $this->relationLoaded('repositories') ? $this->repositories : $this->repositories()->get();
-        $orderedRepositories = $repositories
-            ->sortByDesc(fn (PropertyRepository $repository) => $repository->is_controller)
-            ->sortByDesc(fn (PropertyRepository $repository) => $repository->is_primary)
-            ->values();
-
-        $explicitController = $orderedRepositories->first(
-            fn (PropertyRepository $repository) => $repository->is_controller
-        );
-
-        if ($explicitController instanceof PropertyRepository) {
-            return $explicitController;
-        }
-
-        return $orderedRepositories->first(
-            fn (PropertyRepository $repository) => $this->repositoryHasControllerPath($repository)
-        ) ?? $orderedRepositories->first();
+        return app(PropertyExecutionReadinessResolver::class)->controllerRepository($this);
     }
 
     /**
@@ -356,36 +341,7 @@ class WebProperty extends Model
      */
     public function executionReadinessSummary(): array
     {
-        $eligibility = $this->coverageEligibility();
-        $controllerRepository = $this->controllerRepository();
-        $controllerRepositorySummary = $this->controllerRepositorySummary($controllerRepository);
-
-        if (! $eligibility['eligible']) {
-            return [
-                'control_state' => 'not_applicable',
-                'execution_surface' => null,
-                'fleet_managed' => false,
-                ...$controllerRepositorySummary,
-            ];
-        }
-
-        if (! $controllerRepository instanceof PropertyRepository || ! $this->repositoryHasControllerPath($controllerRepository)) {
-            return [
-                'control_state' => 'uncontrolled',
-                'execution_surface' => null,
-                'fleet_managed' => false,
-                ...$controllerRepositorySummary,
-            ];
-        }
-
-        $executionSurface = $this->executionSurfaceForRepository($controllerRepository);
-
-        return [
-            'control_state' => 'controlled',
-            'execution_surface' => $executionSurface,
-            'fleet_managed' => $this->isFleetManagedExecutionSurface($executionSurface),
-            ...$controllerRepositorySummary,
-        ];
+        return app(PropertyExecutionReadinessResolver::class)->executionReadinessForProperty($this);
     }
 
     public function isFleetManagedExecutionSurface(?string $executionSurface): bool
@@ -1504,48 +1460,6 @@ class WebProperty extends Model
             1 => 'ok',
             default => 'unknown',
         };
-    }
-
-    private function repositoryHasControllerPath(PropertyRepository $repository): bool
-    {
-        return is_string($repository->local_path) && trim($repository->local_path) !== '';
-    }
-
-    /**
-     * @return array{
-     *   controller_repo:string|null,
-     *   controller_repo_url:string|null,
-     *   controller_local_path:string|null,
-     *   deployment_provider:string|null,
-     *   deployment_project_name:string|null,
-     *   deployment_project_id:string|null
-     * }
-     */
-    private function controllerRepositorySummary(?PropertyRepository $repository): array
-    {
-        return [
-            'controller_repo' => $repository?->repo_name,
-            'controller_repo_url' => $repository?->repo_url,
-            'controller_local_path' => $repository?->local_path,
-            'deployment_provider' => $repository?->deployment_provider,
-            'deployment_project_name' => $repository?->deployment_project_name,
-            'deployment_project_id' => $repository?->deployment_project_id,
-        ];
-    }
-
-    private function executionSurfaceForRepository(PropertyRepository $repository): string
-    {
-        $framework = strtolower((string) ($repository->framework ?? $this->platform ?? ''));
-
-        if ($repository->repo_name === '_wp-house') {
-            return 'fleet_wordpress_controlled';
-        }
-
-        if (str_contains($framework, 'astro')) {
-            return 'astro_repo_controlled';
-        }
-
-        return 'repository_controlled';
     }
 
     /**
