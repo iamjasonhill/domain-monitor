@@ -56,6 +56,74 @@ class SearchConsoleIssueLiveRecheckServiceTest extends TestCase
         $this->assertFalse($this->hostResolvesPublicly($service, 'private-only.example.com'));
     }
 
+    public function test_host_resolves_publicly_accepts_hosts_with_only_public_ips(): void
+    {
+        $service = new class extends SearchConsoleIssueLiveRecheckService
+        {
+            protected function shouldBypassDnsLookups(): bool
+            {
+                return false;
+            }
+
+            /**
+             * @return array<int, array<string, mixed>>
+             */
+            protected function dnsRecordsForHost(string $host): array
+            {
+                return [
+                    ['ip' => '198.51.100.10'],
+                    ['ipv6' => '2001:db8::20'],
+                ];
+            }
+        };
+
+        $this->assertTrue($this->hostResolvesPublicly($service, 'public-only.example.com'));
+    }
+
+    public function test_host_resolves_publicly_rejects_hosts_with_no_dns_records(): void
+    {
+        $service = new class extends SearchConsoleIssueLiveRecheckService
+        {
+            protected function shouldBypassDnsLookups(): bool
+            {
+                return false;
+            }
+
+            /**
+             * @return array<int, array<string, mixed>>
+             */
+            protected function dnsRecordsForHost(string $host): array
+            {
+                return [];
+            }
+        };
+
+        $this->assertFalse($this->hostResolvesPublicly($service, 'missing.example.com'));
+    }
+
+    public function test_host_resolves_publicly_rejects_hosts_with_no_ip_answers(): void
+    {
+        $service = new class extends SearchConsoleIssueLiveRecheckService
+        {
+            protected function shouldBypassDnsLookups(): bool
+            {
+                return false;
+            }
+
+            /**
+             * @return array<int, array<string, mixed>>
+             */
+            protected function dnsRecordsForHost(string $host): array
+            {
+                return [
+                    ['host' => 'alias.example.com', 'type' => 'CNAME'],
+                ];
+            }
+        };
+
+        $this->assertFalse($this->hostResolvesPublicly($service, 'cname-only.example.com'));
+    }
+
     private function hostResolvesPublicly(SearchConsoleIssueLiveRecheckService $service, string $host): bool
     {
         $method = new ReflectionMethod(SearchConsoleIssueLiveRecheckService::class, 'hostResolvesPublicly');

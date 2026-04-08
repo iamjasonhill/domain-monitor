@@ -789,16 +789,12 @@ class SearchConsoleIssueLiveRecheckService
             return false;
         }
 
-        $sawIpAddress = false;
-
         foreach ($records as $record) {
             $ipAddress = $record['ip'] ?? $record['ipv6'] ?? null;
 
             if (! is_string($ipAddress)) {
                 continue;
             }
-
-            $sawIpAddress = true;
 
             if (filter_var(
                 $ipAddress,
