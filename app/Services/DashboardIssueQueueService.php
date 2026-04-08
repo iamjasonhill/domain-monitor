@@ -398,6 +398,10 @@ class DashboardIssueQueueService
                 continue;
             }
 
+            if ($this->shouldSkipLinkedSubdomainDomain($domain)) {
+                continue;
+            }
+
             $property = $this->primaryProperty($domain);
             $coverageStatus = $this->controlCoverageStatus($domain, $property);
             [$mustFixReasons, $shouldFixReasons, $mustFixIssueRecords, $shouldFixIssueRecords] = $this->issueReasonsForDomain(
@@ -443,6 +447,26 @@ class DashboardIssueQueueService
             $mustFixDomains->sort($sorter)->values(),
             $shouldFixDomains->sort($sorter)->values(),
         ];
+    }
+
+    private function shouldSkipLinkedSubdomainDomain(Domain $domain): bool
+    {
+        if (! $domain->relationLoaded('webProperties')) {
+            return false;
+        }
+
+        if ($domain->webProperties->isEmpty()) {
+            return false;
+        }
+
+        return $domain->webProperties->every(function (WebProperty $property): bool {
+            $usageType = is_string(data_get($property, 'pivot.usage_type'))
+                ? data_get($property, 'pivot.usage_type')
+                : null;
+            $isCanonical = (bool) data_get($property, 'pivot.is_canonical', false);
+
+            return $usageType === 'subdomain' && ! $isCanonical;
+        });
     }
 
     /**
