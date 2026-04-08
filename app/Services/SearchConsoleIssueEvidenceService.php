@@ -9,6 +9,15 @@ use Illuminate\Support\Collection;
 
 class SearchConsoleIssueEvidenceService
 {
+    /**
+     * @var array<string, array<int, string>>
+     */
+    private const SNAPSHOT_BUCKET_METHODS = [
+        'detail' => ['gsc_drilldown_zip'],
+        'api' => ['gsc_api', 'gsc_mcp_api'],
+        'live' => ['gsc_live_recheck'],
+    ];
+
     public function __construct(
         private readonly DetectedIssueIdentityService $issueIdentityService,
         private readonly DetectedIssueVerificationService $issueVerificationService,
@@ -223,23 +232,54 @@ class SearchConsoleIssueEvidenceService
         /** @var array<string, array<string, array{detail:?SearchConsoleIssueSnapshot, api:?SearchConsoleIssueSnapshot, live:?SearchConsoleIssueSnapshot}>> $grouped */
         $grouped = [];
 
-        SearchConsoleIssueSnapshot::query()
-            ->whereIn('web_property_id', $propertyIds)
-            ->orderByDesc('captured_at')
-            ->orderByDesc('created_at')
-            ->get()
-            ->each(function (SearchConsoleIssueSnapshot $snapshot) use (&$grouped): void {
-                $bucket = match ($snapshot->capture_method) {
-                    'gsc_drilldown_zip' => 'detail',
-                    'gsc_live_recheck' => 'live',
-                    default => 'api',
-                };
-                $grouped[$snapshot->web_property_id] ??= [];
-                $grouped[$snapshot->web_property_id][$snapshot->issue_class] ??= ['detail' => null, 'api' => null, 'live' => null];
-                $grouped[$snapshot->web_property_id][$snapshot->issue_class][$bucket] ??= $snapshot;
-            });
+        foreach (self::SNAPSHOT_BUCKET_METHODS as $bucket => $captureMethods) {
+            $this->latestSnapshotsForBucket($propertyIds, $captureMethods)
+                ->each(function (SearchConsoleIssueSnapshot $snapshot) use (&$grouped, $bucket): void {
+                    $grouped[$snapshot->web_property_id] ??= [];
+                    $grouped[$snapshot->web_property_id][$snapshot->issue_class] ??= ['detail' => null, 'api' => null, 'live' => null];
+                    $grouped[$snapshot->web_property_id][$snapshot->issue_class][$bucket] = $snapshot;
+                });
+        }
 
         return $grouped;
+    }
+
+    /**
+     * @param  array<int, string>  $propertyIds
+     * @param  array<int, string>  $captureMethods
+     * @return Collection<int, SearchConsoleIssueSnapshot>
+     */
+    private function latestSnapshotsForBucket(array $propertyIds, array $captureMethods): Collection
+    {
+        return SearchConsoleIssueSnapshot::query()
+            ->whereIn('web_property_id', $propertyIds)
+            ->whereIn('capture_method', $captureMethods)
+            ->whereNotExists(function ($query) use ($captureMethods): void {
+                $query
+                    ->selectRaw('1')
+                    ->from('search_console_issue_snapshots as newer')
+                    ->whereColumn('newer.web_property_id', 'search_console_issue_snapshots.web_property_id')
+                    ->whereColumn('newer.issue_class', 'search_console_issue_snapshots.issue_class')
+                    ->whereIn('newer.capture_method', $captureMethods)
+                    ->where(function ($newerQuery): void {
+                        $newerQuery
+                            ->whereColumn('newer.captured_at', '>', 'search_console_issue_snapshots.captured_at')
+                            ->orWhere(function ($sameCaptureQuery): void {
+                                $sameCaptureQuery
+                                    ->whereColumn('newer.captured_at', 'search_console_issue_snapshots.captured_at')
+                                    ->where(function ($sameCreatedQuery): void {
+                                        $sameCreatedQuery
+                                            ->whereColumn('newer.created_at', '>', 'search_console_issue_snapshots.created_at')
+                                            ->orWhere(function ($sameCreatedAndCaptureQuery): void {
+                                                $sameCreatedAndCaptureQuery
+                                                    ->whereColumn('newer.created_at', 'search_console_issue_snapshots.created_at')
+                                                    ->whereColumn('newer.id', '>', 'search_console_issue_snapshots.id');
+                                            });
+                                    });
+                            });
+                    });
+            })
+            ->get();
     }
 
     /**
