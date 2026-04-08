@@ -610,10 +610,9 @@ Schedule::command('domains:health-check --all --type=seo')
     ->at('05:00')
     ->timezone('UTC');
 
-// Broken links checks - run weekly (resource intensive)
+// Broken links checks - run daily so Fleet/Paperclip does not work from week-old crawl results
 Schedule::command('domains:health-check --all --type=broken_links')
-    ->weekly()
-    ->sundays()
+    ->daily()
     ->at('05:30')
     ->timezone('UTC');
 
