@@ -779,13 +779,13 @@ class SearchConsoleIssueLiveRecheckService
 
     private function hostResolvesPublicly(string $host): bool
     {
-        if (app()->runningUnitTests()) {
+        if ($this->shouldBypassDnsLookups()) {
             return true;
         }
 
-        $records = dns_get_record($host, DNS_A | DNS_AAAA);
+        $records = $this->dnsRecordsForHost($host);
 
-        if (! is_array($records) || $records === []) {
+        if ($records === []) {
             return false;
         }
 
@@ -800,12 +800,27 @@ class SearchConsoleIssueLiveRecheckService
                 $ipAddress,
                 FILTER_VALIDATE_IP,
                 FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
-            ) === false) {
-                return false;
+            ) !== false) {
+                return true;
             }
         }
 
-        return true;
+        return false;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    protected function dnsRecordsForHost(string $host): array
+    {
+        $records = dns_get_record($host, DNS_A | DNS_AAAA);
+
+        return is_array($records) ? $records : [];
+    }
+
+    protected function shouldBypassDnsLookups(): bool
+    {
+        return app()->runningUnitTests();
     }
 
     /**
