@@ -725,6 +725,12 @@ if ($googleSearchConsoleConfigured) {
         ->timezone('UTC');
 }
 
+// Refresh live Search Console URL/sitemap rechecks daily so stale redirect and 404 rows retire without waiting for Fleet to touch each property.
+Schedule::command('analytics:refresh-search-console-live-rechecks')
+    ->daily()
+    ->at('09:25')
+    ->timezone('UTC');
+
 // Prune failed queue jobs older than 14 days (336 hours)
 Schedule::command('queue:prune-failed --hours=336')
     ->daily()

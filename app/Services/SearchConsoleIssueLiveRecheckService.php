@@ -6,6 +6,8 @@ use App\Models\Domain;
 use App\Models\SearchConsoleIssueSnapshot;
 use App\Models\Subdomain;
 use App\Models\WebProperty;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -35,6 +37,95 @@ class SearchConsoleIssueLiveRecheckService
      * @var array<string, bool>
      */
     private array $managedHostCache = [];
+
+    /**
+     * @return array{
+     *   dry_run: bool,
+     *   candidate_count: int,
+     *   processed_count: int,
+     *   refreshed_count: int,
+     *   properties: array<int, array<string, mixed>>,
+     *   errors: array<int, array{property_slug:string,message:string}>
+     * }
+     */
+    public function run(?string $propertySlug = null, ?int $batchLimit = null, ?string $capturedBy = null, bool $dryRun = false): array
+    {
+        $candidates = $this->candidateProperties($propertySlug, $batchLimit);
+        $results = [];
+        $errors = [];
+
+        foreach ($candidates as $property) {
+            if ($dryRun) {
+                $results[] = [
+                    'property_slug' => $property->slug,
+                    'primary_domain' => $property->primaryDomainName(),
+                    'latest_live_captured_at' => SearchConsoleIssueSnapshot::query()
+                        ->where('web_property_id', $property->id)
+                        ->where('capture_method', 'gsc_live_recheck')
+                        ->max('captured_at'),
+                ];
+
+                continue;
+            }
+
+            try {
+                $summary = $this->refreshProperty(
+                    $property,
+                    $capturedBy ?: 'scheduled_search_console_live_recheck'
+                );
+
+                $results[] = [
+                    'property_slug' => $property->slug,
+                    'primary_domain' => $property->primaryDomainName(),
+                    ...$summary,
+                ];
+            } catch (\Throwable $exception) {
+                $errors[] = [
+                    'property_slug' => $property->slug,
+                    'message' => $exception->getMessage(),
+                ];
+            }
+        }
+
+        return [
+            'dry_run' => $dryRun,
+            'candidate_count' => $candidates->count(),
+            'processed_count' => count($results),
+            'refreshed_count' => $dryRun
+                ? 0
+                : count(array_filter($results, fn (array $result): bool => ($result['status'] ?? null) === 'refreshed')),
+            'properties' => $results,
+            'errors' => $errors,
+        ];
+    }
+
+    /**
+     * @return Collection<int, WebProperty>
+     */
+    public function candidateProperties(?string $propertySlug = null, ?int $batchLimit = null): Collection
+    {
+        $query = $this->eligibleProperties()
+            ->with([
+                'primaryDomain.tags',
+                'propertyDomains.domain',
+            ])
+            ->orderBy('name');
+
+        if (is_string($propertySlug) && trim($propertySlug) !== '') {
+            $query->where('slug', trim($propertySlug));
+        }
+
+        /** @var Collection<int, WebProperty> $properties */
+        $properties = $query->get()
+            ->filter(fn (WebProperty $property): bool => $property->coverageEligibility()['eligible'])
+            ->values();
+
+        if ($batchLimit !== null) {
+            return $properties->take(max(1, $batchLimit))->values();
+        }
+
+        return $properties;
+    }
 
     /**
      * @return array{status:'refreshed'|'skipped'|'failed',captured_at:string|null,checked_url_count:int,reason:string|null}
@@ -225,6 +316,21 @@ class SearchConsoleIssueLiveRecheckService
             ->orderByDesc('captured_at')
             ->orderByDesc('created_at')
             ->first();
+    }
+
+    /**
+     * @return Builder<WebProperty>
+     */
+    private function eligibleProperties(): Builder
+    {
+        return WebProperty::query()
+            ->where('status', 'active')
+            ->where('property_type', '!=', 'domain_asset')
+            ->whereHas('searchConsoleIssueSnapshots', function ($query): void {
+                $query
+                    ->whereIn('issue_class', self::ISSUE_CLASSES)
+                    ->whereIn('capture_method', ['gsc_drilldown_zip', 'gsc_api', 'gsc_mcp_api']);
+            });
     }
 
     /**
