@@ -93,9 +93,21 @@ class DashboardTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->instance(DashboardIssueQueueService::class, new class extends DashboardIssueQueueService
+        $this->instance(DashboardIssueQueueService::class, new class(app(\App\Services\DetectedIssueIdentityService::class), app(\App\Services\DetectedIssueVerificationService::class), app(\App\Services\SearchConsoleIssueEvidenceService::class), app(\App\Services\SearchConsoleIssueActionabilityService::class)) extends DashboardIssueQueueService
         {
-            public function __construct() {}
+            public function __construct(
+                \App\Services\DetectedIssueIdentityService $issueIdentityService,
+                \App\Services\DetectedIssueVerificationService $issueVerificationService,
+                \App\Services\SearchConsoleIssueEvidenceService $issueEvidenceService,
+                \App\Services\SearchConsoleIssueActionabilityService $issueActionabilityService,
+            ) {
+                parent::__construct(
+                    $issueIdentityService,
+                    $issueVerificationService,
+                    $issueEvidenceService,
+                    $issueActionabilityService,
+                );
+            }
 
             public function snapshot(bool $includeExpectedExclusions = false): array
             {
