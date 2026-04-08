@@ -33,12 +33,13 @@ class PropertyExecutionReadinessResolverTest extends TestCase
         $resolver = new PropertyExecutionReadinessResolver;
 
         $selectedRepository = $resolver->controllerRepository($property);
+        $selectedRepositorySummary = $resolver->controllerRepositorySummary($selectedRepository);
 
         $this->assertInstanceOf(PropertyRepository::class, $selectedRepository);
         $this->assertSame('moveroo/controller-site', $selectedRepository->repo_name);
         $this->assertSame(
             'moveroo/controller-site',
-            $resolver->executionReadinessForProperty($property)['controller_repo']
+            $selectedRepositorySummary['controller_repo']
         );
     }
 
