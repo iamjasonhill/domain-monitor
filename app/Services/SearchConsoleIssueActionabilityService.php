@@ -144,9 +144,9 @@ class SearchConsoleIssueActionabilityService
 
             $matchedUrls = array_keys($retiredUrls);
             $normalizedEvidence['expected_exclusion'] = [
-                'state' => 'resolved_or_retired_redirect_in_sitemap',
-                'code' => 'removed_from_current_sitemap',
-                'reason' => 'current_sitemap_no_longer_contains_historical_redirect_urls',
+                'state' => 'resolved_or_retired_404',
+                'code' => 'resolved_or_retired_404',
+                'reason' => 'all_checked_historical_404_urls_are_non_actionable_or_already_resolved',
                 'matched_urls' => array_slice($matchedUrls, 0, 10),
                 'matched_url_count' => count($matchedUrls),
             ];
