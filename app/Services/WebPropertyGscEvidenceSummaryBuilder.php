@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\WebProperty;
-use Carbon\Carbon;
+use Illuminate\Support\Carbon;
 
 class WebPropertyGscEvidenceSummaryBuilder
 {
