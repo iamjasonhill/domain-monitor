@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Services\PropertyExecutionReadinessResolver;
+use App\Services\WebPropertyCanonicalOriginSummaryBuilder;
+use App\Services\WebPropertyGscEvidenceSummaryBuilder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -674,28 +676,7 @@ class WebProperty extends Model
      */
     public function canonicalOriginSummary(): array
     {
-        $scheme = $this->canonicalOriginSchemeValue();
-        $host = $this->canonicalOriginHostValue();
-        $baseUrl = $scheme !== null && $host !== null ? $scheme.'://'.$host : null;
-        $policy = $this->canonical_origin_policy === 'known' ? 'known' : 'unknown';
-        $hasExplicitCanonicalOrigin = is_string($this->canonical_origin_scheme)
-            && $this->canonical_origin_scheme !== ''
-            && is_string($this->canonical_origin_host)
-            && $this->canonical_origin_host !== '';
-
-        return [
-            'scheme' => $scheme,
-            'host' => $host,
-            'base_url' => $baseUrl,
-            'policy' => $policy,
-            'scope' => 'property_only',
-            'enforcement_eligible' => (bool) $this->canonical_origin_enforcement_eligible
-                && $policy === 'known'
-                && $hasExplicitCanonicalOrigin,
-            'owned_subdomains' => $this->ownedSubdomainHosts($host),
-            'excluded_subdomains' => $this->normalizedCanonicalOriginSubdomains($this->canonical_origin_excluded_subdomains),
-            'sitemap_policy_known' => (bool) $this->canonical_origin_sitemap_policy_known,
-        ];
+        return app(WebPropertyCanonicalOriginSummaryBuilder::class)->build($this);
     }
 
     /**
@@ -791,88 +772,6 @@ class WebProperty extends Model
         ];
     }
 
-    private function canonicalOriginSchemeValue(): ?string
-    {
-        if (is_string($this->canonical_origin_scheme) && $this->canonical_origin_scheme !== '') {
-            return strtolower($this->canonical_origin_scheme);
-        }
-
-        $scheme = parse_url((string) $this->production_url, PHP_URL_SCHEME);
-
-        return is_string($scheme) && $scheme !== '' ? strtolower($scheme) : null;
-    }
-
-    private function canonicalOriginHostValue(): ?string
-    {
-        if (is_string($this->canonical_origin_host) && $this->canonical_origin_host !== '') {
-            return strtolower($this->canonical_origin_host);
-        }
-
-        $host = parse_url((string) $this->production_url, PHP_URL_HOST);
-
-        return is_string($host) && $host !== '' ? strtolower($host) : null;
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function normalizedCanonicalOriginSubdomains(mixed $value): array
-    {
-        if (! is_array($value)) {
-            return [];
-        }
-
-        return collect($value)
-            ->map(fn (mixed $host): ?string => $this->normalizeCanonicalOriginHost($host))
-            ->filter(fn (?string $host): bool => is_string($host) && $host !== '')
-            ->unique()
-            ->values()
-            ->all();
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function ownedSubdomainHosts(?string $canonicalHost): array
-    {
-        if (! is_string($canonicalHost) || $canonicalHost === '') {
-            return [];
-        }
-
-        return $this->orderedDomainLinks()
-            ->map(fn (WebPropertyDomain $link): ?string => $this->normalizeCanonicalOriginHost($link->domain?->domain))
-            ->filter(
-                fn (?string $host): bool => is_string($host)
-                    && $host !== ''
-                    && $host !== $canonicalHost
-                    && Str::endsWith($host, '.'.$canonicalHost)
-            )
-            ->unique()
-            ->values()
-            ->all();
-    }
-
-    private function normalizeCanonicalOriginHost(mixed $value): ?string
-    {
-        if (! is_string($value)) {
-            return null;
-        }
-
-        $trimmed = trim($value);
-
-        if ($trimmed === '') {
-            return null;
-        }
-
-        if (Str::contains($trimmed, '://')) {
-            $host = parse_url($trimmed, PHP_URL_HOST);
-
-            return is_string($host) && $host !== '' ? strtolower($host) : null;
-        }
-
-        return strtolower(rtrim($trimmed, '.'));
-    }
-
     /**
      * @return array{
      *   has_issue_detail: bool,
@@ -885,29 +784,7 @@ class WebProperty extends Model
      */
     public function gscEvidenceSummary(): array
     {
-        $hasIssueDetail = (bool) ($this->getAttribute('has_gsc_issue_detail') ?? false);
-        $snapshotCount = (int) ($this->getAttribute('gsc_issue_detail_snapshot_count') ?? 0);
-        $latestCapturedAt = $this->getAttribute('gsc_issue_detail_last_captured_at');
-        $hasApiEnrichment = (bool) ($this->getAttribute('has_gsc_api_enrichment') ?? false);
-        $apiSnapshotCount = (int) ($this->getAttribute('gsc_api_snapshot_count') ?? 0);
-        $latestApiCapturedAt = $this->getAttribute('gsc_api_last_captured_at');
-
-        return [
-            'has_issue_detail' => $hasIssueDetail,
-            'issue_detail_snapshot_count' => $snapshotCount,
-            'latest_issue_detail_captured_at' => $latestCapturedAt instanceof \DateTimeInterface
-                ? $latestCapturedAt->format(\DateTimeInterface::ATOM)
-                : (is_string($latestCapturedAt) && $latestCapturedAt !== ''
-                    ? \Illuminate\Support\Carbon::parse($latestCapturedAt, 'UTC')->utc()->toIso8601String()
-                    : null),
-            'has_api_enrichment' => $hasApiEnrichment,
-            'api_snapshot_count' => $apiSnapshotCount,
-            'latest_api_captured_at' => $latestApiCapturedAt instanceof \DateTimeInterface
-                ? $latestApiCapturedAt->format(\DateTimeInterface::ATOM)
-                : (is_string($latestApiCapturedAt) && $latestApiCapturedAt !== ''
-                    ? \Illuminate\Support\Carbon::parse($latestApiCapturedAt, 'UTC')->utc()->toIso8601String()
-                    : null),
-        ];
+        return app(WebPropertyGscEvidenceSummaryBuilder::class)->build($this);
     }
 
     /**
