@@ -48,6 +48,8 @@ class WebPropertyApiTest extends TestCase
         $property = WebProperty::factory()->create([
             'slug' => 'moveroo-website',
             'name' => 'Moveroo Website',
+            'site_identity_site_name' => 'Moveroo',
+            'site_identity_legal_name' => 'Moveroo Australia',
             'property_type' => 'marketing_site',
             'status' => 'active',
             'platform' => 'Astro',
@@ -206,6 +208,11 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('contract_version', 1)
             ->assertJsonPath('web_properties.0.slug', 'moveroo-website')
             ->assertJsonPath('web_properties.0.primary_domain', 'moveroo.com.au')
+            ->assertJsonPath('web_properties.0.site_identity.site_name', 'Moveroo')
+            ->assertJsonPath('web_properties.0.site_identity.legal_name', 'Moveroo Australia')
+            ->assertJsonPath('web_properties.0.site_identity.primary_domain', 'https://moveroo.com.au/')
+            ->assertJsonPath('web_properties.0.site_identity.quote_portal', 'https://wemove.moveroo.com.au/')
+            ->assertJsonPath('web_properties.0.site_identity.contact_page', 'https://moveroo.com.au/contact-us')
             ->assertJsonPath('web_properties.0.canonical_origin.scheme', 'https')
             ->assertJsonPath('web_properties.0.canonical_origin.host', 'moveroo.com.au')
             ->assertJsonPath('web_properties.0.canonical_origin.base_url', 'https://moveroo.com.au')
@@ -366,6 +373,9 @@ class WebPropertyApiTest extends TestCase
             'property_type' => 'website',
             'status' => 'active',
             'primary_domain_id' => $domain->id,
+            'production_url' => 'https://stable-links.example.com/some-page',
+            'site_identity_site_name' => null,
+            'site_identity_legal_name' => null,
             'conversion_links_scanned_at' => null,
             'current_household_quote_url' => null,
             'current_household_booking_url' => null,
@@ -400,6 +410,13 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.slug', 'stable-links-site')
             ->assertJsonStructure([
                 'web_properties' => [[
+                    'site_identity' => [
+                        'site_name',
+                        'legal_name',
+                        'primary_domain',
+                        'quote_portal',
+                        'contact_page',
+                    ],
                     'conversion_links' => [
                         'scanned_at',
                         'current' => [
@@ -425,6 +442,11 @@ class WebPropertyApiTest extends TestCase
                     ],
                 ]],
             ])
+            ->assertJsonPath('web_properties.0.site_identity.site_name', 'Stable Links')
+            ->assertJsonPath('web_properties.0.site_identity.legal_name', null)
+            ->assertJsonPath('web_properties.0.site_identity.primary_domain', 'https://stable-links.example.com/')
+            ->assertJsonPath('web_properties.0.site_identity.quote_portal', null)
+            ->assertJsonPath('web_properties.0.site_identity.contact_page', null)
             ->assertJsonPath('web_properties.0.conversion_links.scanned_at', null)
             ->assertJsonPath('web_properties.0.conversion_links.current.household_quote', null)
             ->assertJsonPath('web_properties.0.conversion_links.current.household_booking', null)
@@ -448,6 +470,13 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('data.slug', 'stable-links-site')
             ->assertJsonStructure([
                 'data' => [
+                    'site_identity' => [
+                        'site_name',
+                        'legal_name',
+                        'primary_domain',
+                        'quote_portal',
+                        'contact_page',
+                    ],
                     'conversion_links' => [
                         'scanned_at',
                         'current' => [
@@ -473,6 +502,11 @@ class WebPropertyApiTest extends TestCase
                     ],
                 ],
             ])
+            ->assertJsonPath('data.site_identity.site_name', 'Stable Links')
+            ->assertJsonPath('data.site_identity.legal_name', null)
+            ->assertJsonPath('data.site_identity.primary_domain', 'https://stable-links.example.com/')
+            ->assertJsonPath('data.site_identity.quote_portal', null)
+            ->assertJsonPath('data.site_identity.contact_page', null)
             ->assertJsonPath('data.conversion_links.scanned_at', null)
             ->assertJsonPath('data.conversion_links.current.household_quote', null)
             ->assertJsonPath('data.conversion_links.current.household_booking', null)

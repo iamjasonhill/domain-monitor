@@ -31,6 +31,8 @@ class DashboardPriorityQueueApiTest extends TestCase
         $mustFixProperty = WebProperty::factory()->create([
             'slug' => 'must-fix-site',
             'name' => 'Must Fix Site',
+            'site_identity_site_name' => 'Must Fix',
+            'site_identity_legal_name' => 'Must Fix Australia',
             'property_type' => 'website',
             'status' => 'active',
             'primary_domain_id' => $mustFixDomain->id,
@@ -230,6 +232,11 @@ class DashboardPriorityQueueApiTest extends TestCase
             ->assertJsonPath('must_fix.0.canonical_origin.policy', 'known')
             ->assertJsonPath('must_fix.0.canonical_origin.scope', 'property_only')
             ->assertJsonPath('must_fix.0.canonical_origin.enforcement_eligible', true)
+            ->assertJsonPath('must_fix.0.site_identity.site_name', 'Must Fix')
+            ->assertJsonPath('must_fix.0.site_identity.legal_name', 'Must Fix Australia')
+            ->assertJsonPath('must_fix.0.site_identity.primary_domain', 'https://must-fix.example.com/')
+            ->assertJsonPath('must_fix.0.site_identity.quote_portal', 'https://must-fix.moveroo.com.au/')
+            ->assertJsonPath('must_fix.0.site_identity.contact_page', 'https://must-fix.example.com/contact-us')
             ->assertJsonPath('must_fix.0.conversion_links.target.household_quote', 'https://quote.must-fix.example.com/household')
             ->assertJsonPath('must_fix.0.conversion_links.target.moveroo_subdomain', 'https://must-fix.moveroo.com.au')
             ->assertJsonPath('must_fix.0.conversion_links.target.contact_us_page', 'https://must-fix.example.com/contact-us')
