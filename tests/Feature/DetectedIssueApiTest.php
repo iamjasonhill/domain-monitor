@@ -31,6 +31,8 @@ class DetectedIssueApiTest extends TestCase
         $redirectProperty = WebProperty::factory()->create([
             'slug' => 'redirect-issue-site',
             'name' => 'Redirect Issue Site',
+            'site_identity_site_name' => 'Redirect Issue',
+            'site_identity_legal_name' => 'Redirect Issue Australia',
             'property_type' => 'website',
             'status' => 'active',
             'primary_domain_id' => $redirectDomain->id,
@@ -358,6 +360,11 @@ class DetectedIssueApiTest extends TestCase
         $this->assertSame('https://redirect-issue.moveroo.com.au/bookings', data_get($redirectIssue, 'conversion_links.legacy_endpoints.legacy_booking_endpoint.url'));
         $this->assertSame('https://removalist.net/booking/create', data_get($redirectIssue, 'conversion_links.legacy_endpoints.legacy_booking_endpoint.resolved_url'));
         $this->assertTrue((bool) data_get($redirectIssue, 'conversion_links.legacy_endpoints.legacy_booking_endpoint.resolved_host_changed'));
+        $this->assertSame('Redirect Issue', data_get($redirectIssue, 'site_identity.site_name'));
+        $this->assertSame('Redirect Issue Australia', data_get($redirectIssue, 'site_identity.legal_name'));
+        $this->assertSame('https://redirect-issue.example.com/', data_get($redirectIssue, 'site_identity.primary_domain'));
+        $this->assertSame('https://redirect-issue.moveroo.com.au/', data_get($redirectIssue, 'site_identity.quote_portal'));
+        $this->assertSame('https://redirect-issue.example.com/contact-us', data_get($redirectIssue, 'site_identity.contact_page'));
         $this->assertSame('https', data_get($redirectIssue, 'canonical_origin.scheme'));
         $this->assertSame('redirect-issue.example.com', data_get($redirectIssue, 'canonical_origin.host'));
         $this->assertSame('https://redirect-issue.example.com', data_get($redirectIssue, 'canonical_origin.base_url'));
@@ -421,6 +428,11 @@ class DetectedIssueApiTest extends TestCase
             ->assertJsonPath('issue_id', $redirectIssue['issue_id'])
             ->assertJsonPath('issue_class', 'page_with_redirect_in_sitemap')
             ->assertJsonPath('conversion_links.target.moveroo_subdomain', 'https://redirect-issue.moveroo.com.au')
+            ->assertJsonPath('site_identity.site_name', 'Redirect Issue')
+            ->assertJsonPath('site_identity.legal_name', 'Redirect Issue Australia')
+            ->assertJsonPath('site_identity.primary_domain', 'https://redirect-issue.example.com/')
+            ->assertJsonPath('site_identity.quote_portal', 'https://redirect-issue.moveroo.com.au/')
+            ->assertJsonPath('site_identity.contact_page', 'https://redirect-issue.example.com/contact-us')
             ->assertJsonPath('canonical_origin.host', 'redirect-issue.example.com')
             ->assertJsonPath('canonical_origin.enforcement_eligible', true)
             ->assertJsonPath('conversion_links.target.contact_us_page', 'https://redirect-issue.example.com/contact-us')

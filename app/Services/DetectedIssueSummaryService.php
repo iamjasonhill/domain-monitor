@@ -116,6 +116,7 @@ class DetectedIssueSummaryService
         $propertyName = null;
         $conversionLinks = null;
         $canonicalOrigin = null;
+        $siteIdentity = null;
         $platformProfile = null;
         $baselineSurface = null;
 
@@ -126,6 +127,8 @@ class DetectedIssueSummaryService
                     'id',
                     'slug',
                     'name',
+                    'site_identity_site_name',
+                    'site_identity_legal_name',
                     'property_type',
                     'production_url',
                     'canonical_origin_scheme',
@@ -156,6 +159,7 @@ class DetectedIssueSummaryService
                 $propertyName = $property->name;
                 $conversionLinks = $property->conversionLinkSummary();
                 $canonicalOrigin = $property->canonicalOriginSummary();
+                $siteIdentity = $property->siteIdentitySummary();
             }
         }
 
@@ -188,6 +192,7 @@ class DetectedIssueSummaryService
             'controller_repo_url' => null,
             'conversion_links' => $conversionLinks,
             'canonical_origin' => $canonicalOrigin,
+            'site_identity' => $siteIdentity,
             'evidence' => [
                 'primary_reasons' => [],
                 'secondary_reasons' => [],
@@ -273,6 +278,7 @@ class DetectedIssueSummaryService
                 'controller_repo_url' => is_string($item['controller_repo_url'] ?? null) ? $item['controller_repo_url'] : null,
                 'conversion_links' => is_array($item['conversion_links'] ?? null) ? $item['conversion_links'] : null,
                 'canonical_origin' => is_array($item['canonical_origin'] ?? null) ? $item['canonical_origin'] : null,
+                'site_identity' => is_array($item['site_identity'] ?? null) ? $item['site_identity'] : null,
                 'evidence' => [
                     'primary_reasons' => [$issueEntry['reason']],
                     'secondary_reasons' => array_values(array_filter(

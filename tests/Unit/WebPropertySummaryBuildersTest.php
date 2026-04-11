@@ -7,6 +7,7 @@ use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use App\Services\WebPropertyCanonicalOriginSummaryBuilder;
 use App\Services\WebPropertyGscEvidenceSummaryBuilder;
+use App\Services\WebPropertySiteIdentitySummaryBuilder;
 use Carbon\CarbonImmutable;
 use PHPUnit\Framework\TestCase;
 
@@ -106,6 +107,52 @@ class WebPropertySummaryBuildersTest extends TestCase
             'has_api_enrichment' => false,
             'api_snapshot_count' => 0,
             'latest_api_captured_at' => null,
+        ], $summary);
+    }
+
+    public function test_site_identity_builder_uses_explicit_fields_and_aligned_targets(): void
+    {
+        $property = new WebProperty([
+            'name' => 'WeMove Website',
+            'site_identity_site_name' => 'WeMove',
+            'site_identity_legal_name' => 'WeMove Australia',
+            'production_url' => 'https://wemove.com.au/services',
+            'canonical_origin_scheme' => 'https',
+            'canonical_origin_host' => 'wemove.com.au',
+            'canonical_origin_policy' => 'known',
+            'target_moveroo_subdomain_url' => 'https://quotes.wemove.com.au',
+            'target_contact_us_page_url' => 'https://quotes.wemove.com.au/contact?from=footer',
+        ]);
+        $property->setRelation('propertyDomains', collect([
+            $this->domainLink('wemove.com.au', 'primary', true),
+        ]));
+
+        $summary = (new WebPropertySiteIdentitySummaryBuilder)->build($property);
+
+        $this->assertSame([
+            'site_name' => 'WeMove',
+            'legal_name' => 'WeMove Australia',
+            'primary_domain' => 'https://wemove.com.au/',
+            'quote_portal' => 'https://quotes.wemove.com.au/',
+            'contact_page' => 'https://quotes.wemove.com.au/contact',
+        ], $summary);
+    }
+
+    public function test_site_identity_builder_returns_stable_nulls_and_infers_site_name(): void
+    {
+        $property = new WebProperty([
+            'name' => 'Moveroo Website',
+        ]);
+        $property->setRelation('propertyDomains', collect());
+
+        $summary = (new WebPropertySiteIdentitySummaryBuilder)->build($property);
+
+        $this->assertSame([
+            'site_name' => 'Moveroo',
+            'legal_name' => null,
+            'primary_domain' => null,
+            'quote_portal' => null,
+            'contact_page' => null,
         ], $summary);
     }
 

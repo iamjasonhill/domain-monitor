@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Services\PropertyExecutionReadinessResolver;
 use App\Services\WebPropertyCanonicalOriginSummaryBuilder;
 use App\Services\WebPropertyGscEvidenceSummaryBuilder;
+use App\Services\WebPropertySiteIdentitySummaryBuilder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -19,6 +20,8 @@ use Illuminate\Support\Str;
  * @property string $id
  * @property string $slug
  * @property string $name
+ * @property string|null $site_identity_site_name
+ * @property string|null $site_identity_legal_name
  * @property string $property_type
  * @property string $status
  * @property string|null $primary_domain_id
@@ -66,6 +69,8 @@ class WebProperty extends Model
     protected $fillable = [
         'slug',
         'name',
+        'site_identity_site_name',
+        'site_identity_legal_name',
         'property_type',
         'status',
         'primary_domain_id',
@@ -740,6 +745,7 @@ class WebProperty extends Model
             'property_type' => $this->property_type,
             'status' => $this->status,
             'primary_domain' => $this->primaryDomainName(),
+            'site_identity' => $this->siteIdentitySummary(),
             'production_url' => $this->production_url,
             'staging_url' => $this->staging_url,
             'canonical_origin' => $this->canonicalOriginSummary(),
@@ -770,6 +776,20 @@ class WebProperty extends Model
             'gsc_evidence_summary' => $this->gscEvidenceSummary(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * @return array{
+     *   site_name: string|null,
+     *   legal_name: string|null,
+     *   primary_domain: string|null,
+     *   quote_portal: string|null,
+     *   contact_page: string|null
+     * }
+     */
+    public function siteIdentitySummary(): array
+    {
+        return app(WebPropertySiteIdentitySummaryBuilder::class)->build($this);
     }
 
     /**
