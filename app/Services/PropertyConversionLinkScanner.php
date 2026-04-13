@@ -77,6 +77,90 @@ class PropertyConversionLinkScanner
      */
     public function extractAnchors(string $html, string $baseUrl): array
     {
+        return $this->extractAnchorsForXPath($html, $baseUrl, '//nav//a[@href] | //header//a[@href]');
+    }
+
+    /**
+     * @return array<int, array{href: string, text: string, bucket: string|null, score: int}>
+     */
+    public function extractAllAnchors(string $html, string $baseUrl): array
+    {
+        return $this->extractAnchorsForXPath($html, $baseUrl, '//a[@href]');
+    }
+
+    /**
+     * @return array{
+     *   homepage_url: string,
+     *   canonical_moveroo_host: string|null,
+     *   owned_subdomain_hosts: array<int, string>,
+     *   offending_links: array<int, array{href: string, text: string, host: string}>
+     * }
+     */
+    public function auditOwnedSubdomainLinkDriftForProperty(WebProperty $property): array
+    {
+        $homepageUrl = $this->homepageUrlForProperty($property);
+
+        if ($homepageUrl === null) {
+            throw new \RuntimeException('Property does not have a scannable production URL or primary domain.');
+        }
+
+        if (! $this->isAllowedScanUrl($homepageUrl, $property)) {
+            throw new \RuntimeException('Property homepage URL is not allowed for conversion-link scanning.');
+        }
+
+        $response = $this->http
+            ->timeout(15)
+            ->withoutRedirecting()
+            ->withHeaders([
+                'Accept' => 'text/html,application/xhtml+xml',
+                'User-Agent' => 'DomainMonitorConversionLinkScanner/1.0 (+https://monitor.again.com.au)',
+            ])
+            ->get($homepageUrl);
+
+        if (! $response->successful()) {
+            throw new \RuntimeException(sprintf(
+                'Homepage URL returned non-success HTTP status [%d].',
+                $response->status()
+            ));
+        }
+
+        $canonicalMoverooHost = $this->targetMoverooHost($property);
+        $ownedSubdomainHosts = $this->ownedSubdomainHosts($property);
+        $offendingHosts = array_values(array_diff($ownedSubdomainHosts, array_filter([$canonicalMoverooHost])));
+
+        $offendingLinks = collect($this->extractAllAnchors($response->body(), $homepageUrl))
+            ->map(function (array $anchor): ?array {
+                $host = parse_url($anchor['href'], PHP_URL_HOST);
+
+                if (! is_string($host) || $host === '') {
+                    return null;
+                }
+
+                return [
+                    'href' => $anchor['href'],
+                    'text' => $anchor['text'],
+                    'host' => Str::lower($host),
+                ];
+            })
+            ->filter(fn (?array $anchor): bool => is_array($anchor))
+            ->filter(fn (array $anchor): bool => in_array($anchor['host'], $offendingHosts, true))
+            ->unique(fn (array $anchor): string => $anchor['host'].'|'.$anchor['href'])
+            ->values()
+            ->all();
+
+        return [
+            'homepage_url' => $homepageUrl,
+            'canonical_moveroo_host' => $canonicalMoverooHost,
+            'owned_subdomain_hosts' => $ownedSubdomainHosts,
+            'offending_links' => $offendingLinks,
+        ];
+    }
+
+    /**
+     * @return array<int, array{href: string, text: string, bucket: string|null, score: int}>
+     */
+    private function extractAnchorsForXPath(string $html, string $baseUrl, string $query): array
+    {
         $dom = new DOMDocument;
 
         $previousInternalErrors = libxml_use_internal_errors(true);
@@ -85,7 +169,7 @@ class PropertyConversionLinkScanner
         libxml_use_internal_errors($previousInternalErrors);
 
         $xpath = new DOMXPath($dom);
-        $nodes = $xpath->query('//nav//a[@href] | //header//a[@href]');
+        $nodes = $xpath->query($query);
 
         $anchors = [];
 
@@ -242,6 +326,23 @@ class PropertyConversionLinkScanner
         }
 
         return array_values(array_unique($hosts));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function ownedSubdomainHosts(WebProperty $property): array
+    {
+        return $property->orderedDomainLinks()
+            ->filter(function ($link): bool {
+                return $link->usage_type === 'subdomain'
+                    && is_string($link->domain?->domain)
+                    && $link->domain->domain !== '';
+            })
+            ->map(fn ($link): string => Str::lower((string) $link->domain?->domain))
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private function normalizeUrl(string $href, string $baseUrl): ?string

@@ -157,6 +157,84 @@ Artisan::command('fleet:scan-conversion-links {propertySlug? : Optional web prop
     return $failed > 0 ? Command::FAILURE : Command::SUCCESS;
 })->purpose('Scan live homepage navigation for current quote and booking links on Fleet properties.');
 
+Artisan::command('fleet:audit-owned-subdomain-links {propertySlug? : Optional web property slug}', function (PropertyConversionLinkScanner $scanner) {
+    $propertySlug = $this->argument('propertySlug');
+
+    $query = WebProperty::query()
+        ->with(['primaryDomain', 'propertyDomains.domain']);
+
+    if (is_string($propertySlug) && $propertySlug !== '') {
+        $query->where('slug', $propertySlug);
+    } else {
+        $query->fleetFocus();
+    }
+
+    $properties = $query
+        ->orderBy('name')
+        ->get();
+
+    if ($properties->isEmpty()) {
+        $this->warn('No web properties matched the owned-subdomain audit scope.');
+
+        return Command::INVALID;
+    }
+
+    $clean = 0;
+    $drifted = 0;
+    $failed = 0;
+
+    foreach ($properties as $property) {
+        try {
+            $audit = $scanner->auditOwnedSubdomainLinkDriftForProperty($property);
+
+            if ($audit['canonical_moveroo_host'] === null) {
+                $this->line(sprintf('[%s] skipped: no canonical moveroo subdomain configured.', $property->slug));
+                $clean++;
+
+                continue;
+            }
+
+            $offendingLinks = $audit['offending_links'];
+
+            if ($offendingLinks === []) {
+                $this->info(sprintf('[%s] clean: no owned-subdomain drift links found.', $property->slug));
+                $clean++;
+
+                continue;
+            }
+
+            $drifted++;
+            $this->warn(sprintf(
+                '[%s] drift: canonical=%s | offending links=%d',
+                $property->slug,
+                $audit['canonical_moveroo_host'],
+                count($offendingLinks)
+            ));
+
+            foreach ($offendingLinks as $link) {
+                $this->line(sprintf(
+                    '  - [%s] %s (%s)',
+                    $link['host'],
+                    $link['href'],
+                    $link['text'] !== '' ? $link['text'] : 'no anchor text'
+                ));
+            }
+        } catch (\Throwable $exception) {
+            $this->warn(sprintf('[%s] audit failed: %s', $property->slug, $exception->getMessage()));
+            $failed++;
+        }
+    }
+
+    $this->line(sprintf(
+        'Owned-subdomain audit complete. Clean [%d], drifted [%d], failed [%d].',
+        $clean,
+        $drifted,
+        $failed
+    ));
+
+    return ($drifted > 0 || $failed > 0) ? Command::FAILURE : Command::SUCCESS;
+})->purpose('Audit Fleet properties for links to owned subdomains other than the canonical Moveroo subdomain.');
+
 Artisan::command('analytics:import-search-console-evidence {property : Web property slug} {path : Path to the Google Search Console page indexing export ZIP} {--captured-by= : Optional captured_by value}', function (ManualSearchConsoleEvidenceImporter $importer) {
     $propertyArgument = $this->argument('property');
     $pathArgument = $this->argument('path');
