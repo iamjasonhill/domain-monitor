@@ -637,13 +637,38 @@ class WebProperty extends Model
         return [
             'household_quote' => $this->target_household_quote_url,
             'household_booking' => $this->target_household_booking_url,
-            'vehicle_quote' => $this->target_vehicle_quote_url,
+            'vehicle_quote' => $this->targetVehicleQuoteTargetUrl(),
             'vehicle_booking' => $this->target_vehicle_booking_url,
             'moveroo_subdomain' => $this->target_moveroo_subdomain_url,
             'contact_us_page' => $this->target_contact_us_page_url,
             'legacy_bookings_replacement' => $this->target_legacy_bookings_replacement_url,
             'legacy_payments_replacement' => $this->target_legacy_payments_replacement_url,
         ];
+    }
+
+    private function targetVehicleQuoteTargetUrl(): ?string
+    {
+        if (is_string($this->target_vehicle_quote_url) && trim($this->target_vehicle_quote_url) !== '') {
+            return $this->target_vehicle_quote_url;
+        }
+
+        if (! is_string($this->target_moveroo_subdomain_url) || trim($this->target_moveroo_subdomain_url) === '') {
+            return null;
+        }
+
+        $parts = parse_url(trim($this->target_moveroo_subdomain_url));
+
+        if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'])) {
+            return null;
+        }
+
+        $origin = strtolower((string) $parts['scheme']).'://'.Str::lower((string) $parts['host']);
+
+        if (isset($parts['port'])) {
+            $origin .= ':'.$parts['port'];
+        }
+
+        return $origin.'/quote/vehicle';
     }
 
     /**

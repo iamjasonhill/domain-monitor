@@ -524,6 +524,48 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('data.conversion_links.legacy_endpoints.legacy_payment_endpoint', null);
     }
 
+    public function test_property_apis_derive_vehicle_quote_target_from_moveroo_subdomain_when_missing(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'wemove.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'wemove-website',
+            'name' => 'WeMove Website',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://wemove.com.au',
+            'target_vehicle_quote_url' => null,
+            'target_moveroo_subdomain_url' => 'https://quotes.wemove.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        $headers = [
+            'Authorization' => 'Bearer test-api-key',
+        ];
+
+        $this->withHeaders($headers)
+            ->getJson('/api/web-properties-summary')
+            ->assertOk()
+            ->assertJsonPath('web_properties.0.conversion_links.target.moveroo_subdomain', 'https://quotes.wemove.com.au')
+            ->assertJsonPath('web_properties.0.conversion_links.target.vehicle_quote', 'https://quotes.wemove.com.au/quote/vehicle');
+
+        $this->withHeaders($headers)
+            ->getJson('/api/web-properties/wemove-website')
+            ->assertOk()
+            ->assertJsonPath('data.conversion_links.target.moveroo_subdomain', 'https://quotes.wemove.com.au')
+            ->assertJsonPath('data.conversion_links.target.vehicle_quote', 'https://quotes.wemove.com.au/quote/vehicle');
+    }
+
     public function test_property_apis_surface_latest_external_link_inventory_for_linked_domains(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
