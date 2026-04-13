@@ -95,6 +95,39 @@ class WebPropertyConversionLinksTest extends TestCase
         $this->assertNull($property->fresh()->target_household_quote_url);
     }
 
+    public function test_property_detail_prefills_vehicle_quote_from_moveroo_subdomain_when_missing(): void
+    {
+        $user = User::factory()->create();
+        $domain = Domain::factory()->create([
+            'domain' => 'movingagain.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'movingagain-website',
+            'name' => 'Moving Again Website',
+            'primary_domain_id' => $domain->id,
+            'target_vehicle_quote_url' => null,
+            'target_moveroo_subdomain_url' => 'https://quotes.movingagain.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        $this->assertSame(
+            'https://quotes.movingagain.com.au/quote/vehicle',
+            $property->conversionLinkSummary()['target']['vehicle_quote']
+        );
+
+        Livewire::actingAs($user)
+            ->test(WebPropertyDetail::class, ['propertySlug' => 'movingagain-website'])
+            ->assertSet('targetVehicleQuoteUrl', 'https://quotes.movingagain.com.au/quote/vehicle');
+    }
+
     public function test_property_detail_can_refresh_current_conversion_links_from_live_navigation(): void
     {
         $user = User::factory()->create();

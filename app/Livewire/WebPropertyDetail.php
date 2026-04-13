@@ -132,7 +132,7 @@ class WebPropertyDetail extends Component
 
         $this->targetHouseholdQuoteUrl = $this->property->target_household_quote_url;
         $this->targetHouseholdBookingUrl = $this->property->target_household_booking_url;
-        $this->targetVehicleQuoteUrl = $this->property->target_vehicle_quote_url;
+        $this->targetVehicleQuoteUrl = data_get($this->property->conversionLinkSummary(), 'target.vehicle_quote');
         $this->targetVehicleBookingUrl = $this->property->target_vehicle_booking_url;
         $this->targetMoverooSubdomainUrl = $this->property->target_moveroo_subdomain_url;
         $this->targetContactUsPageUrl = $this->property->target_contact_us_page_url;
