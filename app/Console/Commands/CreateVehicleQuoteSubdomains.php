@@ -105,7 +105,7 @@ class CreateVehicleQuoteSubdomains extends Command
                 'type' => 'A',
                 'value' => self::TARGET_IP,
                 'ttl' => 300,
-                'priority' => null,
+                'priority' => 0,
             ]);
 
             if ($result['ok'] === false) {

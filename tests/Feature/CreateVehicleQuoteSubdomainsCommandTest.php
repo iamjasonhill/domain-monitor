@@ -45,7 +45,7 @@ class CreateVehicleQuoteSubdomainsCommandTest extends TestCase
         app()->instance(DomainDnsRecordService::class, new class extends DomainDnsRecordService
         {
             /**
-             * @param  array{host: string, type: string, value: string, ttl: int, priority: int|null}  $recordData
+             * @param  array{host: string, type: string, value: string, ttl: int, priority: int}  $recordData
              */
             public function saveRecord(Domain $domain, array $recordData, ?string $editingDnsRecordId = null): array
             {
@@ -86,12 +86,12 @@ class CreateVehicleQuoteSubdomainsCommandTest extends TestCase
         $dnsRecordService = new class extends DomainDnsRecordService
         {
             /**
-             * @var array<int, array{domain: string, host: string, type: string, value: string, ttl: int, priority: int|null}>
+             * @var array<int, array{domain: string, host: string, type: string, value: string, ttl: int, priority: int}>
              */
             public array $calls = [];
 
             /**
-             * @param  array{host: string, type: string, value: string, ttl: int, priority: int|null}  $recordData
+             * @param  array{host: string, type: string, value: string, ttl: int, priority: int}  $recordData
              */
             public function saveRecord(Domain $domain, array $recordData, ?string $editingDnsRecordId = null): array
             {
@@ -143,7 +143,7 @@ class CreateVehicleQuoteSubdomainsCommandTest extends TestCase
                 'type' => 'A',
                 'value' => '170.64.144.64',
                 'ttl' => 300,
-                'priority' => null,
+                'priority' => 0,
             ],
         ], $dnsRecordService->calls);
         $this->assertSame(['movemycar.com.au'], $subdomainService->domains);
