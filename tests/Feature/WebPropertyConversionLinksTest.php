@@ -780,4 +780,158 @@ class WebPropertyConversionLinksTest extends TestCase
         $this->assertSame('https://removalists.moveroo.com.au/quote/household', $property->current_household_quote_url);
         $this->assertNull($property->current_household_booking_url);
     }
+
+    public function test_fleet_owned_subdomain_audit_is_clean_when_only_canonical_moveroo_subdomain_is_linked(): void
+    {
+        config()->set('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+
+        $tag = DomainTag::firstOrCreate(
+            ['name' => 'fleet.live'],
+            [
+                'priority' => 95,
+                'color' => '#2563EB',
+            ]
+        );
+
+        $domain = Domain::factory()->create([
+            'domain' => 'wemove.com.au',
+            'is_active' => true,
+        ]);
+
+        $canonicalSubdomain = Domain::factory()->create([
+            'domain' => 'quotes.wemove.com.au',
+            'is_active' => true,
+        ]);
+
+        $legacySubdomain = Domain::factory()->create([
+            'domain' => 'removalportal.wemove.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'wemove-com-au',
+            'name' => 'wemove.com.au',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://wemove.com.au',
+            'target_moveroo_subdomain_url' => 'https://quotes.wemove.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $canonicalSubdomain->id,
+            'usage_type' => 'subdomain',
+            'is_canonical' => false,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $legacySubdomain->id,
+            'usage_type' => 'subdomain',
+            'is_canonical' => false,
+        ]);
+
+        $domain->tags()->syncWithoutDetaching([$tag->id]);
+
+        Http::fake([
+            'https://wemove.com.au' => Http::response(<<<'HTML'
+                <html>
+                    <body>
+                        <header>
+                            <a href="https://quotes.wemove.com.au/quote/household">Get Quote</a>
+                            <a href="https://quotes.wemove.com.au/contact">Contact</a>
+                        </header>
+                    </body>
+                </html>
+            HTML),
+        ]);
+
+        $this->assertSame(0, Artisan::call('fleet:audit-owned-subdomain-links', ['propertySlug' => 'wemove-com-au']));
+        $this->assertStringContainsString('clean: no owned-subdomain drift links found', Artisan::output());
+    }
+
+    public function test_fleet_owned_subdomain_audit_flags_links_to_other_owned_subdomains(): void
+    {
+        config()->set('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+
+        $tag = DomainTag::firstOrCreate(
+            ['name' => 'fleet.live'],
+            [
+                'priority' => 95,
+                'color' => '#2563EB',
+            ]
+        );
+
+        $domain = Domain::factory()->create([
+            'domain' => 'backloadingremovals.com.au',
+            'is_active' => true,
+        ]);
+
+        $canonicalSubdomain = Domain::factory()->create([
+            'domain' => 'mymovehub.backloadingremovals.com.au',
+            'is_active' => true,
+        ]);
+
+        $legacySubdomain = Domain::factory()->create([
+            'domain' => 'removalist.backloadingremovals.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'backloadingremovals-com-au',
+            'name' => 'backloadingremovals.com.au',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://backloadingremovals.com.au',
+            'target_moveroo_subdomain_url' => 'https://mymovehub.backloadingremovals.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $canonicalSubdomain->id,
+            'usage_type' => 'subdomain',
+            'is_canonical' => false,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $legacySubdomain->id,
+            'usage_type' => 'subdomain',
+            'is_canonical' => false,
+        ]);
+
+        $domain->tags()->syncWithoutDetaching([$tag->id]);
+
+        Http::fake([
+            'https://backloadingremovals.com.au' => Http::response(<<<'HTML'
+                <html>
+                    <body>
+                        <header>
+                            <a href="https://mymovehub.backloadingremovals.com.au/quote/household">Canonical quote</a>
+                            <a href="https://removalist.backloadingremovals.com.au/payments">Legacy portal</a>
+                        </header>
+                    </body>
+                </html>
+            HTML),
+        ]);
+
+        $this->assertSame(1, Artisan::call('fleet:audit-owned-subdomain-links', ['propertySlug' => 'backloadingremovals-com-au']));
+        $output = Artisan::output();
+
+        $this->assertStringContainsString('drift: canonical=mymovehub.backloadingremovals.com.au', $output);
+        $this->assertStringContainsString('removalist.backloadingremovals.com.au', $output);
+        $this->assertStringContainsString('https://removalist.backloadingremovals.com.au/payments', $output);
+    }
 }
