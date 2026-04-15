@@ -50,7 +50,7 @@ trait ManagesDomainDnsRecords
         }
 
         $this->editingDnsRecordId = $record->id;
-        $this->dnsRecordHost = $record->host;
+        $this->dnsRecordHost = $this->editableDnsRecordHost($record->host);
         $this->dnsRecordType = $record->type;
         $this->dnsRecordValue = $record->value;
         $this->dnsRecordTtl = $record->ttl ?? 300;
@@ -72,11 +72,8 @@ trait ManagesDomainDnsRecords
             return;
         }
 
-        $host = trim($this->dnsRecordHost ?? '');
-        if ($host === '' || $host === '@') {
-            $host = '@';
-            $this->dnsRecordHost = '@';
-        }
+        $host = $this->normalizedDnsRecordHostInput($this->dnsRecordHost);
+        $this->dnsRecordHost = $host;
 
         $this->validate([
             'dnsRecordHost' => ['required', 'string', 'max:255'],
@@ -94,8 +91,8 @@ trait ManagesDomainDnsRecords
             'dnsRecordPriority.max' => 'Priority cannot exceed 65535.',
         ]);
 
-        if ($host !== '@' && ! preg_match('/^[a-z0-9]([a-z0-9\-_]*[a-z0-9])?$/i', $host)) {
-            $this->addError('dnsRecordHost', 'Host must be a valid subdomain name (letters, numbers, hyphens, underscores) or @ for root domain.');
+        if ($host !== '@' && ! preg_match('/^(?:[a-z0-9_](?:[a-z0-9\-_]{0,61}[a-z0-9_])?)(?:\.[a-z0-9_](?:[a-z0-9\-_]{0,61}[a-z0-9_])?)*$/i', $host)) {
+            $this->addError('dnsRecordHost', 'Host must be a valid relative DNS name (for example www, _dmarc, or s1._domainkey) or @ for root domain.');
 
             return;
         }
@@ -172,5 +169,37 @@ trait ManagesDomainDnsRecords
         $this->dnsRecordValue = '';
         $this->dnsRecordTtl = 300;
         $this->dnsRecordPriority = 0;
+    }
+
+    private function normalizedDnsRecordHostInput(?string $host): string
+    {
+        $normalizedHost = trim((string) $host);
+
+        if ($normalizedHost === '' || $normalizedHost === '@') {
+            return '@';
+        }
+
+        $domainName = trim((string) ($this->domain->domain ?? ''));
+
+        if ($domainName === '') {
+            return $normalizedHost;
+        }
+
+        if (strcasecmp($normalizedHost, $domainName) === 0) {
+            return '@';
+        }
+
+        $suffix = '.'.$domainName;
+
+        if (strlen($normalizedHost) > strlen($suffix) && str_ends_with(strtolower($normalizedHost), strtolower($suffix))) {
+            return substr($normalizedHost, 0, -strlen($suffix));
+        }
+
+        return $normalizedHost;
+    }
+
+    private function editableDnsRecordHost(string $host): string
+    {
+        return $this->normalizedDnsRecordHostInput($host);
     }
 }

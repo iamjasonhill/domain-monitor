@@ -94,6 +94,43 @@ class DomainDetailActionsTest extends TestCase
             ->assertSet('dnsRecordPriority', 0);
     }
 
+    public function test_opening_edit_dns_record_modal_normalizes_synced_hostnames_for_editing(): void
+    {
+        $domain = Domain::factory()->create([
+            'domain' => 'wemove.com.au',
+        ]);
+
+        $rootRecord = DnsRecord::factory()->create([
+            'domain_id' => $domain->id,
+            'host' => 'wemove.com.au',
+            'type' => 'A',
+            'value' => '203.0.113.10',
+        ]);
+
+        $wwwRecord = DnsRecord::factory()->create([
+            'domain_id' => $domain->id,
+            'host' => 'www.wemove.com.au',
+            'type' => 'A',
+            'value' => '203.0.113.11',
+        ]);
+
+        $dkimRecord = DnsRecord::factory()->create([
+            'domain_id' => $domain->id,
+            'host' => 's1._domainkey.wemove.com.au',
+            'type' => 'CNAME',
+            'value' => 'selector.example.net',
+        ]);
+
+        Livewire::test(DomainDetail::class, ['domainId' => $domain->id])
+            ->call('openEditDnsRecordModal', $rootRecord->id)
+            ->assertSet('showDnsRecordModal', true)
+            ->assertSet('dnsRecordHost', '@')
+            ->call('openEditDnsRecordModal', $wwwRecord->id)
+            ->assertSet('dnsRecordHost', 'www')
+            ->call('openEditDnsRecordModal', $dkimRecord->id)
+            ->assertSet('dnsRecordHost', 's1._domainkey');
+    }
+
     public function test_saving_dns_record_with_blank_host_normalizes_to_root_domain(): void
     {
         $domain = Domain::factory()->create([
@@ -145,6 +182,64 @@ class DomainDetailActionsTest extends TestCase
             'ttl' => 300,
             'priority' => 0,
             'record_id' => 'RID-NEW-123',
+        ]);
+    }
+
+    public function test_saving_existing_dns_record_accepts_synced_full_hostname_input(): void
+    {
+        $domain = Domain::factory()->create([
+            'domain' => 'wemove.com.au',
+        ]);
+
+        $record = DnsRecord::factory()->create([
+            'domain_id' => $domain->id,
+            'record_id' => 'RID-WWW-123',
+            'host' => 'www.wemove.com.au',
+            'type' => 'A',
+            'value' => '203.0.113.10',
+            'ttl' => 300,
+            'priority' => 0,
+        ]);
+
+        $credential = SynergyCredential::factory()->create([
+            'is_active' => true,
+        ]);
+
+        $synergyAlias = Mockery::mock('alias:App\Services\SynergyWholesaleClient');
+        /** @phpstan-ignore-next-line */
+        $synergyAlias->shouldReceive('isAustralianTld')
+            ->with($domain->domain)
+            ->andReturnTrue();
+
+        $synergyClient = Mockery::mock();
+        /** @phpstan-ignore-next-line */
+        $synergyAlias->shouldReceive('fromEncryptedCredentials')
+            ->with($credential->reseller_id, $credential->api_key_encrypted, $credential->api_url)
+            ->andReturn($synergyClient);
+
+        /** @phpstan-ignore-next-line */
+        $synergyClient->shouldReceive('updateDnsRecord')
+            ->once()
+            ->with($domain->domain, 'RID-WWW-123', 'www', 'A', '203.0.113.44', 600, 0)
+            ->andReturn([
+                'status' => 'OK',
+                'error_message' => null,
+            ]);
+
+        Livewire::test(DomainDetail::class, ['domainId' => $domain->id])
+            ->call('openEditDnsRecordModal', $record->id)
+            ->assertSet('dnsRecordHost', 'www')
+            ->set('dnsRecordValue', '203.0.113.44')
+            ->set('dnsRecordTtl', 600)
+            ->call('saveDnsRecord')
+            ->assertHasNoErrors()
+            ->assertSet('showDnsRecordModal', false);
+
+        $this->assertDatabaseHas('dns_records', [
+            'id' => $record->id,
+            'host' => 'www',
+            'value' => '203.0.113.44',
+            'ttl' => 600,
         ]);
     }
 
