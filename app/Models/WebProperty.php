@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Services\PropertyExecutionReadinessResolver;
 use App\Services\WebPropertyCanonicalOriginSummaryBuilder;
 use App\Services\WebPropertyGscEvidenceSummaryBuilder;
+use App\Services\WebPropertySeoBaselineSummaryBuilder;
 use App\Services\WebPropertySiteIdentitySummaryBuilder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -799,6 +800,7 @@ class WebProperty extends Model
             'deployment_project_id' => $executionReadiness['deployment_project_id'],
             'conversion_links' => $this->conversionLinkSummary(),
             'gsc_evidence_summary' => $this->gscEvidenceSummary(),
+            'seo_baseline_summary' => $this->seoBaselineSummary(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }
@@ -830,6 +832,40 @@ class WebProperty extends Model
     public function gscEvidenceSummary(): array
     {
         return app(WebPropertyGscEvidenceSummaryBuilder::class)->build($this);
+    }
+
+    /**
+     * @return array{
+     *   has_baseline: bool,
+     *   latest: array{
+     *     captured_at: string|null,
+     *     baseline_type: string|null,
+     *     indexed_pages: int|null,
+     *     not_indexed_pages: int|null,
+     *     clicks: float|null,
+     *     impressions: float|null,
+     *     ctr: float|null,
+     *     average_position: float|null
+     *   },
+     *   trend: array{
+     *     window: string,
+     *     point_count: int,
+     *     indexed_pages_delta: int|null,
+     *     not_indexed_pages_delta: int|null,
+     *     points: array<int, array{
+     *       captured_at: string|null,
+     *       baseline_type: string|null,
+     *       indexed_pages: int|null,
+     *       not_indexed_pages: int|null,
+     *       clicks: float|null,
+     *       impressions: float|null
+     *     }>
+     *   }
+     * }
+     */
+    public function seoBaselineSummary(): array
+    {
+        return app(WebPropertySeoBaselineSummaryBuilder::class)->build($this);
     }
 
     /**

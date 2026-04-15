@@ -131,6 +131,10 @@ class WebPropertyController extends Controller
                 'repositories',
                 'analyticsSources',
                 'analyticsSources.latestInstallAudit',
+                'seoBaselines' => fn ($query) => $query
+                    ->orderByDesc('captured_at')
+                    ->orderByDesc('created_at')
+                    ->limit(12),
                 'propertyDomains.domain' => function ($query) use ($includeExternalLinkDetails) {
                     $relations = [
                         'platform',

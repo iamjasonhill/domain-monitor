@@ -6,6 +6,7 @@ use App\Models\AnalyticsInstallAudit;
 use App\Models\Domain;
 use App\Models\DomainAlert;
 use App\Models\DomainCheck;
+use App\Models\DomainSeoBaseline;
 use App\Models\DomainTag;
 use App\Models\PropertyAnalyticsSource;
 use App\Models\PropertyRepository;
@@ -145,6 +146,44 @@ class WebPropertyApiTest extends TestCase
 
         $source = PropertyAnalyticsSource::query()->where('web_property_id', $property->id)->firstOrFail();
 
+        DomainSeoBaseline::create([
+            'domain_id' => $primaryDomain->id,
+            'web_property_id' => $property->id,
+            'property_analytics_source_id' => $source->id,
+            'baseline_type' => 'pre_rebuild',
+            'captured_at' => now()->subWeeks(2),
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '6',
+            'search_console_property_uri' => 'https://moveroo.com.au/',
+            'search_type' => 'web',
+            'import_method' => 'matomo_api',
+            'clicks' => 12,
+            'impressions' => 810,
+            'ctr' => 0.0148,
+            'average_position' => 17.2,
+            'indexed_pages' => 14,
+            'not_indexed_pages' => 66,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $primaryDomain->id,
+            'web_property_id' => $property->id,
+            'property_analytics_source_id' => $source->id,
+            'baseline_type' => 'weekly_checkpoint',
+            'captured_at' => now()->subWeek(),
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '6',
+            'search_console_property_uri' => 'https://moveroo.com.au/',
+            'search_type' => 'web',
+            'import_method' => 'matomo_api',
+            'clicks' => 18,
+            'impressions' => 980,
+            'ctr' => 0.0183,
+            'average_position' => 15.7,
+            'indexed_pages' => 19,
+            'not_indexed_pages' => 58,
+        ]);
+
         AnalyticsInstallAudit::create([
             'property_analytics_source_id' => $source->id,
             'web_property_id' => $property->id,
@@ -259,6 +298,13 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.has_api_enrichment', false)
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.api_snapshot_count', 0)
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.latest_api_captured_at', null)
+            ->assertJsonPath('web_properties.0.seo_baseline_summary.has_baseline', true)
+            ->assertJsonPath('web_properties.0.seo_baseline_summary.latest.baseline_type', 'weekly_checkpoint')
+            ->assertJsonPath('web_properties.0.seo_baseline_summary.latest.indexed_pages', 19)
+            ->assertJsonPath('web_properties.0.seo_baseline_summary.latest.not_indexed_pages', 58)
+            ->assertJsonPath('web_properties.0.seo_baseline_summary.trend.point_count', 2)
+            ->assertJsonPath('web_properties.0.seo_baseline_summary.trend.indexed_pages_delta', 5)
+            ->assertJsonPath('web_properties.0.seo_baseline_summary.trend.not_indexed_pages_delta', -8)
             ->assertJsonPath('web_properties.0.health_summary.active_alerts_count', 1);
 
         $ownedSubdomains = $response->json('web_properties.0.canonical_origin.owned_subdomains');
@@ -440,6 +486,26 @@ class WebPropertyApiTest extends TestCase
                             'legacy_payment_endpoint',
                         ],
                     ],
+                    'seo_baseline_summary' => [
+                        'has_baseline',
+                        'latest' => [
+                            'captured_at',
+                            'baseline_type',
+                            'indexed_pages',
+                            'not_indexed_pages',
+                            'clicks',
+                            'impressions',
+                            'ctr',
+                            'average_position',
+                        ],
+                        'trend' => [
+                            'window',
+                            'point_count',
+                            'indexed_pages_delta',
+                            'not_indexed_pages_delta',
+                            'points',
+                        ],
+                    ],
                 ]],
             ])
             ->assertJsonPath('web_properties.0.site_identity.site_name', 'Stable Links')
@@ -461,7 +527,17 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.conversion_links.target.legacy_bookings_replacement', null)
             ->assertJsonPath('web_properties.0.conversion_links.target.legacy_payments_replacement', null)
             ->assertJsonPath('web_properties.0.conversion_links.legacy_endpoints.legacy_booking_endpoint', null)
-            ->assertJsonPath('web_properties.0.conversion_links.legacy_endpoints.legacy_payment_endpoint', null);
+            ->assertJsonPath('web_properties.0.conversion_links.legacy_endpoints.legacy_payment_endpoint', null)
+            ->assertJsonPath('web_properties.0.seo_baseline_summary.has_baseline', false)
+            ->assertJsonPath('web_properties.0.seo_baseline_summary.latest.captured_at', null)
+            ->assertJsonPath('web_properties.0.seo_baseline_summary.latest.baseline_type', null)
+            ->assertJsonPath('web_properties.0.seo_baseline_summary.latest.indexed_pages', null)
+            ->assertJsonPath('web_properties.0.seo_baseline_summary.latest.not_indexed_pages', null)
+            ->assertJsonPath('web_properties.0.seo_baseline_summary.trend.window', 'last_12_checkpoints')
+            ->assertJsonPath('web_properties.0.seo_baseline_summary.trend.point_count', 0)
+            ->assertJsonPath('web_properties.0.seo_baseline_summary.trend.indexed_pages_delta', null)
+            ->assertJsonPath('web_properties.0.seo_baseline_summary.trend.not_indexed_pages_delta', null)
+            ->assertJsonPath('web_properties.0.seo_baseline_summary.trend.points', []);
 
         $detailResponse = $this->withHeaders($headers)->getJson('/api/web-properties/stable-links-site');
 
@@ -500,6 +576,26 @@ class WebPropertyApiTest extends TestCase
                             'legacy_payment_endpoint',
                         ],
                     ],
+                    'seo_baseline_summary' => [
+                        'has_baseline',
+                        'latest' => [
+                            'captured_at',
+                            'baseline_type',
+                            'indexed_pages',
+                            'not_indexed_pages',
+                            'clicks',
+                            'impressions',
+                            'ctr',
+                            'average_position',
+                        ],
+                        'trend' => [
+                            'window',
+                            'point_count',
+                            'indexed_pages_delta',
+                            'not_indexed_pages_delta',
+                            'points',
+                        ],
+                    ],
                 ],
             ])
             ->assertJsonPath('data.site_identity.site_name', 'Stable Links')
@@ -521,7 +617,17 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('data.conversion_links.target.legacy_bookings_replacement', null)
             ->assertJsonPath('data.conversion_links.target.legacy_payments_replacement', null)
             ->assertJsonPath('data.conversion_links.legacy_endpoints.legacy_booking_endpoint', null)
-            ->assertJsonPath('data.conversion_links.legacy_endpoints.legacy_payment_endpoint', null);
+            ->assertJsonPath('data.conversion_links.legacy_endpoints.legacy_payment_endpoint', null)
+            ->assertJsonPath('data.seo_baseline_summary.has_baseline', false)
+            ->assertJsonPath('data.seo_baseline_summary.latest.captured_at', null)
+            ->assertJsonPath('data.seo_baseline_summary.latest.baseline_type', null)
+            ->assertJsonPath('data.seo_baseline_summary.latest.indexed_pages', null)
+            ->assertJsonPath('data.seo_baseline_summary.latest.not_indexed_pages', null)
+            ->assertJsonPath('data.seo_baseline_summary.trend.window', 'last_12_checkpoints')
+            ->assertJsonPath('data.seo_baseline_summary.trend.point_count', 0)
+            ->assertJsonPath('data.seo_baseline_summary.trend.indexed_pages_delta', null)
+            ->assertJsonPath('data.seo_baseline_summary.trend.not_indexed_pages_delta', null)
+            ->assertJsonPath('data.seo_baseline_summary.trend.points', []);
     }
 
     public function test_property_apis_derive_vehicle_quote_target_from_moveroo_subdomain_when_missing(): void

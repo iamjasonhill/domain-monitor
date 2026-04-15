@@ -2,6 +2,7 @@
     $latestSeoBaseline = $domain->seoBaselines->first();
     $seoBaselines = $domain->seoBaselines;
     $searchConsoleCoverage = $domain->latestSearchConsoleCoverageStatus;
+    $trendBaselines = $seoBaselines->take(12)->reverse()->values();
     $matomoSiteId = $latestSeoBaseline?->matomo_site_id ?: $searchConsoleCoverage?->matomo_site_id;
     $matomoDashboardUrl = $matomoSiteId
         ? rtrim((string) config('services.matomo.base_url', 'https://stats.redirection.com.au'), '/').'/index.php?module=SearchConsoleIntegration&action=dashboard&idSite='.$matomoSiteId
@@ -179,6 +180,84 @@
                     </dl>
                 </div>
             </div>
+
+            @if($trendBaselines->isNotEmpty())
+                @php
+                    $chartMaxValue = max(
+                        1,
+                        (int) $trendBaselines
+                            ->flatMap(fn ($baseline) => [
+                                (int) ($baseline->indexed_pages ?? 0),
+                                (int) ($baseline->not_indexed_pages ?? 0),
+                            ])
+                            ->max()
+                    );
+                    $firstTrendBaseline = $trendBaselines->first();
+                    $lastTrendBaseline = $trendBaselines->last();
+                    $indexedDelta = $firstTrendBaseline && $lastTrendBaseline && is_numeric($firstTrendBaseline->indexed_pages) && is_numeric($lastTrendBaseline->indexed_pages)
+                        ? (int) $lastTrendBaseline->indexed_pages - (int) $firstTrendBaseline->indexed_pages
+                        : null;
+                    $notIndexedDelta = $firstTrendBaseline && $lastTrendBaseline && is_numeric($firstTrendBaseline->not_indexed_pages) && is_numeric($lastTrendBaseline->not_indexed_pages)
+                        ? (int) $lastTrendBaseline->not_indexed_pages - (int) $firstTrendBaseline->not_indexed_pages
+                        : null;
+                @endphp
+                <div class="mt-6 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                            <h4 class="text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Indexed Trend</h4>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                Weekly checkpoint trend for indexed versus not indexed pages.
+                            </p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div class="rounded-lg bg-emerald-50 p-3 dark:bg-emerald-900/20">
+                                <div class="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Indexed Delta</div>
+                                <div class="mt-1 text-lg font-semibold text-emerald-800 dark:text-emerald-200">
+                                    {{ $indexedDelta === null ? '—' : (($indexedDelta > 0 ? '+' : '').$indexedDelta) }}
+                                </div>
+                            </div>
+                            <div class="rounded-lg bg-amber-50 p-3 dark:bg-amber-900/20">
+                                <div class="text-xs uppercase tracking-wide text-amber-700 dark:text-amber-300">Not Indexed Delta</div>
+                                <div class="mt-1 text-lg font-semibold text-amber-800 dark:text-amber-200">
+                                    {{ $notIndexedDelta === null ? '—' : (($notIndexedDelta > 0 ? '+' : '').$notIndexedDelta) }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-5 grid auto-cols-fr grid-flow-col gap-3 overflow-x-auto pb-1">
+                        @foreach($trendBaselines as $baseline)
+                            @php
+                                $indexedHeight = max(4, (int) round((((int) ($baseline->indexed_pages ?? 0)) / $chartMaxValue) * 140));
+                                $notIndexedHeight = max(4, (int) round((((int) ($baseline->not_indexed_pages ?? 0)) / $chartMaxValue) * 140));
+                            @endphp
+                            <div class="min-w-[64px]">
+                                <div class="flex h-40 items-end justify-center gap-2 rounded-lg bg-gray-50 px-2 py-3 dark:bg-gray-900/50">
+                                    <div class="w-4 rounded-t bg-emerald-500" style="height: {{ $indexedHeight }}px" title="Indexed: {{ $baseline->indexed_pages ?? '—' }}"></div>
+                                    <div class="w-4 rounded-t bg-amber-400" style="height: {{ $notIndexedHeight }}px" title="Not indexed: {{ $baseline->not_indexed_pages ?? '—' }}"></div>
+                                </div>
+                                <div class="mt-2 text-center text-[11px] font-medium text-gray-700 dark:text-gray-300">
+                                    {{ $baseline->captured_at->format('M j') }}
+                                </div>
+                                <div class="mt-1 text-center text-[10px] text-gray-500 dark:text-gray-400">
+                                    {{ $baseline->indexed_pages ?? '—' }} / {{ $baseline->not_indexed_pages ?? '—' }}
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="mt-4 flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400">
+                        <div class="inline-flex items-center gap-2">
+                            <span class="h-3 w-3 rounded-full bg-emerald-500"></span>
+                            Indexed pages
+                        </div>
+                        <div class="inline-flex items-center gap-2">
+                            <span class="h-3 w-3 rounded-full bg-amber-400"></span>
+                            Not indexed pages
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             @php
                 $nonZeroIssues = $latestSeoBaseline->nonZeroIndexationIssues();
