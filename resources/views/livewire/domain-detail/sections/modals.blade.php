@@ -1,5 +1,5 @@
 <!-- DNS Record Add/Edit Modal -->
-<x-modal name="dns-record" :show="$showDnsRecordModal" close-action="closeDnsRecordModal" focusable wire:key="dns-record-modal">
+<x-modal name="dns-record" wire:model="showDnsRecordModal" close-action="closeDnsRecordModal" focusable wire:key="dns-record-modal">
     <form wire:submit="saveDnsRecord" class="p-6">
         <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
             {{ $editingDnsRecordId ? 'Edit DNS Record' : 'Add DNS Record' }}
@@ -93,7 +93,7 @@
 </x-modal>
 
 <!-- Subdomain Add/Edit Modal -->
-<x-modal name="subdomain" :show="$showSubdomainModal" close-action="closeSubdomainModal" focusable wire:key="subdomain-modal">
+<x-modal name="subdomain" wire:model="showSubdomainModal" close-action="closeSubdomainModal" focusable wire:key="subdomain-modal">
     <form wire:submit="saveSubdomain" class="p-6">
         <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
             {{ $editingSubdomainId ? 'Edit Subdomain' : 'Add Subdomain' }}
@@ -130,7 +130,7 @@
 </x-modal>
 
 <!-- Delete Confirmation Modal -->
-<x-modal name="delete-domain" :show="$showDeleteModal" close-action="closeDeleteModal" focusable>
+<x-modal name="delete-domain" wire:model="showDeleteModal" close-action="closeDeleteModal" focusable>
     <form wire:submit="deleteDomain" class="p-6">
         <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
             {{ __('Are you sure you want to delete this domain?') }}

@@ -13,11 +13,13 @@ $maxWidth = [
     'xl' => 'sm:max-w-xl',
     '2xl' => 'sm:max-w-2xl',
 ][$maxWidth];
+
+$wireModel = $attributes->wire('model');
 @endphp
 
 <div
     x-data="{
-        show: @js($show),
+        show: @if($wireModel) @entangle($wireModel) @else @js($show) @endif,
         closeAction: @js($closeAction),
         focusables() {
             // All focusable element types...
