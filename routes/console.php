@@ -603,6 +603,7 @@ Artisan::command('analytics:refresh-search-console-api-enrichment {--capture-met
 })->purpose('Refresh missing or stale Search Console API enrichment for drilldown-backed properties.');
 
 $brainConfigured = filled(config('services.brain.base_url')) && filled(config('services.brain.api_key'));
+$matomoConfigured = filled(config('services.matomo.base_url')) && filled(config('services.matomo.token_auth'));
 $googleSearchConsoleConfigured = filled(config('services.google.search_console.access_token'))
     || (
         filled(config('services.google.search_console.refresh_token'))
@@ -808,6 +809,15 @@ Schedule::command('analytics:refresh-search-console-live-rechecks')
     ->daily()
     ->at('09:25')
     ->timezone('UTC');
+
+// Capture a weekly Search Console baseline trend for active Matomo-mapped properties.
+if ($matomoConfigured) {
+    Schedule::command('analytics:refresh-weekly-search-console-baselines')
+        ->weekly()
+        ->sundays()
+        ->at('09:35')
+        ->timezone('UTC');
+}
 
 // Prune failed queue jobs older than 14 days (336 hours)
 Schedule::command('queue:prune-failed --hours=336')

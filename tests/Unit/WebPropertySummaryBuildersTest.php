@@ -3,12 +3,15 @@
 namespace Tests\Unit;
 
 use App\Models\Domain;
+use App\Models\DomainSeoBaseline;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use App\Services\WebPropertyCanonicalOriginSummaryBuilder;
 use App\Services\WebPropertyGscEvidenceSummaryBuilder;
+use App\Services\WebPropertySeoBaselineSummaryBuilder;
 use App\Services\WebPropertySiteIdentitySummaryBuilder;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use PHPUnit\Framework\TestCase;
 
 class WebPropertySummaryBuildersTest extends TestCase
@@ -156,6 +159,61 @@ class WebPropertySummaryBuildersTest extends TestCase
         ], $summary);
     }
 
+    public function test_seo_baseline_builder_returns_stable_defaults_without_checkpoints(): void
+    {
+        $property = new WebProperty;
+        $property->setRelation('seoBaselines', new EloquentCollection);
+
+        $summary = (new WebPropertySeoBaselineSummaryBuilder)->build($property);
+
+        $this->assertSame([
+            'has_baseline' => false,
+            'latest' => [
+                'captured_at' => null,
+                'baseline_type' => null,
+                'indexed_pages' => null,
+                'not_indexed_pages' => null,
+                'clicks' => null,
+                'impressions' => null,
+                'ctr' => null,
+                'average_position' => null,
+            ],
+            'trend' => [
+                'window' => 'last_12_checkpoints',
+                'point_count' => 0,
+                'indexed_pages_delta' => null,
+                'not_indexed_pages_delta' => null,
+                'points' => [],
+            ],
+        ], $summary);
+    }
+
+    public function test_seo_baseline_builder_exposes_latest_snapshot_and_trend_deltas(): void
+    {
+        $property = new WebProperty;
+        $property->setRelation('seoBaselines', new EloquentCollection([
+            $this->seoBaseline('2026-04-12T00:00:00+00:00', 'weekly_checkpoint', 18, 182, 21, 1200),
+            $this->seoBaseline('2026-04-05T00:00:00+00:00', 'weekly_checkpoint', 12, 205, 14, 950),
+            $this->seoBaseline('2026-03-29T00:00:00+00:00', 'pre_rebuild', 9, 214, 10, 880),
+        ]));
+
+        $summary = (new WebPropertySeoBaselineSummaryBuilder)->build($property);
+
+        $this->assertTrue($summary['has_baseline']);
+        $this->assertSame('2026-04-12T00:00:00+00:00', $summary['latest']['captured_at']);
+        $this->assertSame('weekly_checkpoint', $summary['latest']['baseline_type']);
+        $this->assertSame(18, $summary['latest']['indexed_pages']);
+        $this->assertSame(182, $summary['latest']['not_indexed_pages']);
+        $this->assertSame(21.0, $summary['latest']['clicks']);
+        $this->assertSame(1200.0, $summary['latest']['impressions']);
+        $this->assertSame(9, $summary['trend']['indexed_pages_delta']);
+        $this->assertSame(-32, $summary['trend']['not_indexed_pages_delta']);
+        $this->assertSame(3, $summary['trend']['point_count']);
+        $this->assertSame('2026-03-29T00:00:00+00:00', $summary['trend']['points'][0]['captured_at']);
+        $this->assertSame(9, $summary['trend']['points'][0]['indexed_pages']);
+        $this->assertSame(18, $summary['trend']['points'][2]['indexed_pages']);
+    }
+
     private function domainLink(string $domainName, string $usageType, bool $isCanonical = false): WebPropertyDomain
     {
         $domain = new Domain([
@@ -169,5 +227,28 @@ class WebPropertySummaryBuildersTest extends TestCase
         $link->setRelation('domain', $domain);
 
         return $link;
+    }
+
+    private function seoBaseline(
+        string $capturedAt,
+        string $baselineType,
+        int $indexedPages,
+        int $notIndexedPages,
+        int $clicks,
+        int $impressions,
+    ): DomainSeoBaseline {
+        $baseline = new DomainSeoBaseline;
+        $baseline->setRawAttributes([
+            'captured_at' => CarbonImmutable::parse($capturedAt)->toDateTimeString(),
+            'baseline_type' => $baselineType,
+            'indexed_pages' => $indexedPages,
+            'not_indexed_pages' => $notIndexedPages,
+            'clicks' => $clicks,
+            'impressions' => $impressions,
+            'ctr' => 0.01,
+            'average_position' => 11.4,
+        ], true);
+
+        return $baseline;
     }
 }
