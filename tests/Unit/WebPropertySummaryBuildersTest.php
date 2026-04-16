@@ -2,10 +2,13 @@
 
 namespace Tests\Unit;
 
+use App\Models\AnalyticsInstallAudit;
 use App\Models\Domain;
 use App\Models\DomainSeoBaseline;
+use App\Models\PropertyAnalyticsSource;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
+use App\Services\WebPropertyAnalyticsSummaryBuilder;
 use App\Services\WebPropertyCanonicalOriginSummaryBuilder;
 use App\Services\WebPropertyGscEvidenceSummaryBuilder;
 use App\Services\WebPropertySeoBaselineSummaryBuilder;
@@ -156,6 +159,48 @@ class WebPropertySummaryBuildersTest extends TestCase
             'primary_domain' => null,
             'quote_portal' => null,
             'contact_page' => null,
+        ], $summary);
+    }
+
+    public function test_analytics_builder_returns_stable_disabled_defaults_without_source(): void
+    {
+        $property = new WebProperty;
+        $property->setRelation('analyticsSources', new EloquentCollection);
+
+        $summary = (new WebPropertyAnalyticsSummaryBuilder)->build($property);
+
+        $this->assertSame([
+            'enabled' => false,
+            'provider' => null,
+            'config' => [],
+        ], $summary);
+    }
+
+    public function test_analytics_builder_exposes_matomo_config_with_stable_shape(): void
+    {
+        $property = new WebProperty;
+
+        $source = new PropertyAnalyticsSource([
+            'provider' => 'matomo',
+            'external_id' => '13',
+            'is_primary' => true,
+            'status' => 'active',
+        ]);
+        $source->setRelation('latestInstallAudit', new AnalyticsInstallAudit([
+            'expected_tracker_host' => 'stats.redirection.com.au',
+        ]));
+
+        $property->setRelation('analyticsSources', new EloquentCollection([$source]));
+
+        $summary = (new WebPropertyAnalyticsSummaryBuilder)->build($property);
+
+        $this->assertSame([
+            'enabled' => true,
+            'provider' => 'matomo',
+            'config' => [
+                'base_url' => 'https://stats.redirection.com.au',
+                'site_id' => '13',
+            ],
         ], $summary);
     }
 

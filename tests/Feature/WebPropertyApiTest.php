@@ -266,6 +266,10 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.repositories.0.repo_name', 'moveroo/moveroo-website-astro')
             ->assertJsonPath('web_properties.0.analytics_sources.0.external_id', '6')
             ->assertJsonPath('web_properties.0.analytics_sources.0.install_audit.install_verdict', 'installed_match')
+            ->assertJsonPath('web_properties.0.analytics.enabled', true)
+            ->assertJsonPath('web_properties.0.analytics.provider', 'matomo')
+            ->assertJsonPath('web_properties.0.analytics.config.base_url', 'https://stats.redirection.com.au')
+            ->assertJsonPath('web_properties.0.analytics.config.site_id', '6')
             ->assertJsonPath('web_properties.0.health_summary.checks.uptime', 'ok')
             ->assertJsonPath('web_properties.0.health_summary.checks.http', 'ok')
             ->assertJsonPath('web_properties.0.health_summary.checks.ssl', 'warn')
@@ -466,6 +470,11 @@ class WebPropertyApiTest extends TestCase
                         'quote_portal',
                         'contact_page',
                     ],
+                    'analytics' => [
+                        'enabled',
+                        'provider',
+                        'config',
+                    ],
                     'platform_migration' => [
                         'current_platform',
                         'target_platform',
@@ -521,6 +530,9 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.site_identity.primary_domain', 'https://stable-links.example.com/')
             ->assertJsonPath('web_properties.0.site_identity.quote_portal', null)
             ->assertJsonPath('web_properties.0.site_identity.contact_page', null)
+            ->assertJsonPath('web_properties.0.analytics.enabled', false)
+            ->assertJsonPath('web_properties.0.analytics.provider', null)
+            ->assertJsonPath('web_properties.0.analytics.config', [])
             ->assertJsonPath('web_properties.0.platform_migration.current_platform', $property->platform)
             ->assertJsonPath('web_properties.0.platform_migration.target_platform', null)
             ->assertJsonPath('web_properties.0.platform_migration.astro_cutover_at', null)
@@ -563,6 +575,11 @@ class WebPropertyApiTest extends TestCase
                         'primary_domain',
                         'quote_portal',
                         'contact_page',
+                    ],
+                    'analytics' => [
+                        'enabled',
+                        'provider',
+                        'config',
                     ],
                     'platform_migration' => [
                         'current_platform',
@@ -619,6 +636,9 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('data.site_identity.primary_domain', 'https://stable-links.example.com/')
             ->assertJsonPath('data.site_identity.quote_portal', null)
             ->assertJsonPath('data.site_identity.contact_page', null)
+            ->assertJsonPath('data.analytics.enabled', false)
+            ->assertJsonPath('data.analytics.provider', null)
+            ->assertJsonPath('data.analytics.config', [])
             ->assertJsonPath('data.platform_migration.current_platform', $property->platform)
             ->assertJsonPath('data.platform_migration.target_platform', null)
             ->assertJsonPath('data.platform_migration.astro_cutover_at', null)
