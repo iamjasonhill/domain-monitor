@@ -8,6 +8,7 @@
             $tags = collect($property->tagSummaries());
             $conversionLinks = $property->conversionLinkSummary();
             $canonicalOrigin = $property->canonicalOriginSummary();
+            $seoBaselineSummary = $property->seoBaselineSummary();
             $automationCoverage = $property->automationCoverageSummary();
             $automationChecks = [
                 [
@@ -168,6 +169,117 @@
                         @endif
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg mb-6">
+            <div class="p-6">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                        <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">SEO Baseline Trend</h4>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            Weekly Search Console checkpoint trend for the property’s indexed and not indexed pages.
+                        </p>
+                    </div>
+                    @if($seoBaselineSummary['has_baseline'])
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div class="rounded-lg bg-emerald-50 p-3 dark:bg-emerald-900/20">
+                                <div class="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Indexed Delta</div>
+                                <div class="mt-1 text-lg font-semibold text-emerald-800 dark:text-emerald-200">
+                                    {{ $seoBaselineSummary['trend']['indexed_pages_delta'] === null ? '—' : (($seoBaselineSummary['trend']['indexed_pages_delta'] > 0 ? '+' : '').$seoBaselineSummary['trend']['indexed_pages_delta']) }}
+                                </div>
+                            </div>
+                            <div class="rounded-lg bg-amber-50 p-3 dark:bg-amber-900/20">
+                                <div class="text-xs uppercase tracking-wide text-amber-700 dark:text-amber-300">Not Indexed Delta</div>
+                                <div class="mt-1 text-lg font-semibold text-amber-800 dark:text-amber-200">
+                                    {{ $seoBaselineSummary['trend']['not_indexed_pages_delta'] === null ? '—' : (($seoBaselineSummary['trend']['not_indexed_pages_delta'] > 0 ? '+' : '').$seoBaselineSummary['trend']['not_indexed_pages_delta']) }}
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+
+                @if($seoBaselineSummary['has_baseline'])
+                    @php
+                        $trendPoints = collect($seoBaselineSummary['trend']['points'] ?? []);
+                        $chartMaxValue = max(
+                            1,
+                            (int) $trendPoints
+                                ->flatMap(fn (array $point) => [
+                                    (int) ($point['indexed_pages'] ?? 0),
+                                    (int) ($point['not_indexed_pages'] ?? 0),
+                                ])
+                                ->max()
+                        );
+                    @endphp
+
+                    <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+                        <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                            <h5 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Latest Checkpoint</h5>
+                            <dl class="mt-4 space-y-3 text-sm">
+                                <div>
+                                    <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Captured</div>
+                                    <div class="mt-1 font-medium text-gray-900 dark:text-gray-100">
+                                        {{ $seoBaselineSummary['latest']['captured_at'] ? \Illuminate\Support\Carbon::parse($seoBaselineSummary['latest']['captured_at'])->format('Y-m-d H:i') : '—' }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Baseline Type</div>
+                                    <div class="mt-1 font-medium text-gray-900 dark:text-gray-100">
+                                        {{ $seoBaselineSummary['latest']['baseline_type'] ? str($seoBaselineSummary['latest']['baseline_type'])->replace('_', ' ')->title() : '—' }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Indexed Pages</div>
+                                    <div class="mt-1 font-medium text-gray-900 dark:text-gray-100">{{ $seoBaselineSummary['latest']['indexed_pages'] ?? '—' }}</div>
+                                </div>
+                                <div>
+                                    <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Not Indexed Pages</div>
+                                    <div class="mt-1 font-medium text-gray-900 dark:text-gray-100">{{ $seoBaselineSummary['latest']['not_indexed_pages'] ?? '—' }}</div>
+                                </div>
+                            </dl>
+                        </div>
+
+                        <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4 lg:col-span-2">
+                            <h5 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Recent Checkpoints</h5>
+                            <div class="mt-5 grid auto-cols-fr grid-flow-col gap-3 overflow-x-auto pb-1">
+                                @foreach($trendPoints as $point)
+                                    @php
+                                        $indexedHeight = max(4, (int) round((((int) ($point['indexed_pages'] ?? 0)) / $chartMaxValue) * 140));
+                                        $notIndexedHeight = max(4, (int) round((((int) ($point['not_indexed_pages'] ?? 0)) / $chartMaxValue) * 140));
+                                    @endphp
+                                    <div class="min-w-[64px]">
+                                        <div class="flex h-40 items-end justify-center gap-2 rounded-lg bg-gray-50 px-2 py-3 dark:bg-gray-900/50">
+                                            <div class="w-4 rounded-t bg-emerald-500" style="height: {{ $indexedHeight }}px" title="Indexed: {{ $point['indexed_pages'] ?? '—' }}"></div>
+                                            <div class="w-4 rounded-t bg-amber-400" style="height: {{ $notIndexedHeight }}px" title="Not indexed: {{ $point['not_indexed_pages'] ?? '—' }}"></div>
+                                        </div>
+                                        <div class="mt-2 text-center text-[11px] font-medium text-gray-700 dark:text-gray-300">
+                                            {{ $point['captured_at'] ? \Illuminate\Support\Carbon::parse($point['captured_at'])->format('M j') : '—' }}
+                                        </div>
+                                        <div class="mt-1 text-center text-[10px] text-gray-500 dark:text-gray-400">
+                                            {{ $point['indexed_pages'] ?? '—' }} / {{ $point['not_indexed_pages'] ?? '—' }}
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            <div class="mt-4 flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400">
+                                <div class="inline-flex items-center gap-2">
+                                    <span class="h-3 w-3 rounded-full bg-emerald-500"></span>
+                                    Indexed pages
+                                </div>
+                                <div class="inline-flex items-center gap-2">
+                                    <span class="h-3 w-3 rounded-full bg-amber-400"></span>
+                                    Not indexed pages
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @else
+                    <div class="mt-6 rounded-lg border border-dashed border-gray-300 p-6 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
+                        No Search Console baseline checkpoints have been stored for this property yet.
+                    </div>
+                @endif
             </div>
         </div>
 

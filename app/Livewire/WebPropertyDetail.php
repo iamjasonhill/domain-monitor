@@ -110,6 +110,10 @@ class WebPropertyDetail extends Component
                 'analyticsSources',
                 'analyticsSources.latestInstallAudit',
                 'analyticsSources.latestSearchConsoleCoverage',
+                'seoBaselines' => fn ($query) => $query
+                    ->orderByDesc('captured_at')
+                    ->orderByDesc('created_at')
+                    ->limit(12),
                 'propertyDomains.domain' => function ($query): void {
                     $query->withLatestCheckStatuses()
                         ->with([

@@ -136,6 +136,44 @@ class WebPropertyUiTest extends TestCase
             'raw_payload' => ['verdict' => 'not_detected'],
         ]);
 
+        DomainSeoBaseline::create([
+            'domain_id' => $primaryDomain->id,
+            'web_property_id' => $property->id,
+            'property_analytics_source_id' => $source->id,
+            'baseline_type' => 'pre_rebuild',
+            'captured_at' => now()->subWeek(),
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '7',
+            'search_console_property_uri' => 'https://movingagain.com.au/',
+            'search_type' => 'web',
+            'import_method' => 'matomo_api',
+            'clicks' => 12,
+            'impressions' => 650,
+            'ctr' => 0.0184,
+            'average_position' => 18.2,
+            'indexed_pages' => 11,
+            'not_indexed_pages' => 74,
+        ]);
+
+        DomainSeoBaseline::create([
+            'domain_id' => $primaryDomain->id,
+            'web_property_id' => $property->id,
+            'property_analytics_source_id' => $source->id,
+            'baseline_type' => 'weekly_checkpoint',
+            'captured_at' => now(),
+            'source_provider' => 'matomo',
+            'matomo_site_id' => '7',
+            'search_console_property_uri' => 'https://movingagain.com.au/',
+            'search_type' => 'web',
+            'import_method' => 'matomo_api',
+            'clicks' => 15,
+            'impressions' => 710,
+            'ctr' => 0.0211,
+            'average_position' => 16.4,
+            'indexed_pages' => 16,
+            'not_indexed_pages' => 61,
+        ]);
+
         $response = $this->actingAs($user)->get('/web-properties/moving-again');
 
         $response->assertOk();
@@ -150,6 +188,12 @@ class WebPropertyUiTest extends TestCase
         $response->assertSee('Target Links');
         $response->assertSee('Moveroo Subdomain');
         $response->assertSee('Contact Us Page');
+        $response->assertSee('SEO Baseline Trend');
+        $response->assertSee('Latest Checkpoint');
+        $response->assertSee('Indexed Delta');
+        $response->assertSee('+5');
+        $response->assertSee('Not Indexed Delta');
+        $response->assertSee('-13');
         $response->assertSee('Canonical Origin Policy');
         $response->assertSee('Save Canonical Policy');
         $response->assertSee('property_only');
