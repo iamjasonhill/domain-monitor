@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\PropertyExecutionReadinessResolver;
+use App\Services\WebPropertyAnalyticsSummaryBuilder;
 use App\Services\WebPropertyCanonicalOriginSummaryBuilder;
 use App\Services\WebPropertyGscEvidenceSummaryBuilder;
 use App\Services\WebPropertyPlatformMigrationSummaryBuilder;
@@ -827,6 +828,7 @@ class WebProperty extends Model
             'domains' => $this->domainSummaries($includeFullExternalLinks),
             'repositories' => $this->repositorySummaries(),
             'analytics_sources' => $this->analyticsSourceSummaries(),
+            'analytics' => $this->analyticsSummary(),
             'health_summary' => $this->healthSummary(),
             'deployment_summary' => $this->deploymentSummary(),
             'tags' => $this->tagSummaries(),
@@ -858,6 +860,18 @@ class WebProperty extends Model
     public function siteIdentitySummary(): array
     {
         return app(WebPropertySiteIdentitySummaryBuilder::class)->build($this);
+    }
+
+    /**
+     * @return array{
+     *   enabled: bool,
+     *   provider: string|null,
+     *   config: array<string, string|null>
+     * }
+     */
+    public function analyticsSummary(): array
+    {
+        return app(WebPropertyAnalyticsSummaryBuilder::class)->build($this);
     }
 
     /**
