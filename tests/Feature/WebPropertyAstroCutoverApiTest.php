@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Domain;
 use App\Models\PropertyAnalyticsSource;
+use App\Models\SearchConsoleIssueSnapshot;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -50,6 +51,22 @@ class WebPropertyAstroCutoverApiTest extends TestCase
             'status' => 'active',
         ]);
 
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'capture_method' => 'gsc_drilldown_zip',
+            'captured_at' => now()->subDay(),
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'not_found_404',
+            'capture_method' => 'gsc_api',
+            'captured_at' => now()->subHours(4),
+        ]);
+
         $cutoverAt = Carbon::parse('2026-04-16T10:30:00+10:00');
 
         Artisan::shouldReceive('call')
@@ -81,7 +98,11 @@ class WebPropertyAstroCutoverApiTest extends TestCase
             ->assertJsonPath('astro_cutover.baseline_refresh.baseline_type', 'astro_cutover')
             ->assertJsonPath('data.platform_migration.current_platform', 'WordPress')
             ->assertJsonPath('data.platform_migration.target_platform', 'Astro')
-            ->assertJsonPath('data.platform_migration.astro_cutover_at', $cutoverAt->toIso8601String());
+            ->assertJsonPath('data.platform_migration.astro_cutover_at', $cutoverAt->toIso8601String())
+            ->assertJsonPath('data.gsc_evidence_summary.has_issue_detail', true)
+            ->assertJsonPath('data.gsc_evidence_summary.issue_detail_snapshot_count', 1)
+            ->assertJsonPath('data.gsc_evidence_summary.has_api_enrichment', true)
+            ->assertJsonPath('data.gsc_evidence_summary.api_snapshot_count', 1);
 
         $this->assertSame(
             $cutoverAt->toIso8601String(),

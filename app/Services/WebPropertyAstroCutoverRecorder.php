@@ -131,6 +131,7 @@ class WebPropertyAstroCutoverRecorder
     private function findProperty(string $slug): WebProperty
     {
         $property = WebProperty::query()
+            ->withGscEvidenceSummaryAttributes()
             ->with([
                 'primaryDomain.tags',
                 'repositories',
