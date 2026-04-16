@@ -9,6 +9,7 @@
             $conversionLinks = $property->conversionLinkSummary();
             $canonicalOrigin = $property->canonicalOriginSummary();
             $seoBaselineSummary = $property->seoBaselineSummary();
+            $platformMigration = $property->platformMigrationSummary();
             $automationCoverage = $property->automationCoverageSummary();
             $automationChecks = [
                 [
@@ -136,6 +137,12 @@
                             <dd class="mt-1 font-medium text-gray-900 dark:text-gray-100">{{ $property->priority ?? 'Not set' }}</dd>
                         </div>
                         <div>
+                            <dt class="text-gray-500 dark:text-gray-400">Astro Cutover</dt>
+                            <dd class="mt-1 font-medium text-gray-900 dark:text-gray-100">
+                                {{ $platformMigration['astro_cutover_at'] ? \Illuminate\Support\Carbon::parse($platformMigration['astro_cutover_at'])->format('Y-m-d H:i') : 'Not recorded' }}
+                            </dd>
+                        </div>
+                        <div>
                             <dt class="text-gray-500 dark:text-gray-400">Overall Health</dt>
                             <dd class="mt-1">
                                 <span @class([
@@ -180,6 +187,11 @@
                         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                             Weekly Search Console checkpoint trend for the property’s indexed and not indexed pages.
                         </p>
+                        @if($platformMigration['astro_cutover_at'])
+                            <p class="mt-2 text-sm font-medium text-blue-700 dark:text-blue-300">
+                                Astro cutover recorded {{ \Illuminate\Support\Carbon::parse($platformMigration['astro_cutover_at'])->format('Y-m-d H:i') }}.
+                            </p>
+                        @endif
                     </div>
                     @if($seoBaselineSummary['has_baseline'])
                         <div class="grid grid-cols-2 gap-3 text-sm">

@@ -190,17 +190,24 @@ class WebPropertySummaryBuildersTest extends TestCase
 
     public function test_seo_baseline_builder_exposes_latest_snapshot_and_trend_deltas(): void
     {
+        $latestBaseline = $this->seoBaseline('2026-04-12T00:00:00+00:00', 'weekly_checkpoint', 18, 182, 21, 1200);
+        $middleBaseline = $this->seoBaseline('2026-04-05T00:00:00+00:00', 'weekly_checkpoint', 12, 205, 14, 950);
+        $earliestBaseline = $this->seoBaseline('2026-03-29T00:00:00+00:00', 'pre_rebuild', 9, 214, 10, 880);
+
         $property = new WebProperty;
         $property->setRelation('seoBaselines', new EloquentCollection([
-            $this->seoBaseline('2026-04-12T00:00:00+00:00', 'weekly_checkpoint', 18, 182, 21, 1200),
-            $this->seoBaseline('2026-04-05T00:00:00+00:00', 'weekly_checkpoint', 12, 205, 14, 950),
-            $this->seoBaseline('2026-03-29T00:00:00+00:00', 'pre_rebuild', 9, 214, 10, 880),
+            $latestBaseline,
+            $middleBaseline,
+            $earliestBaseline,
         ]));
 
         $summary = (new WebPropertySeoBaselineSummaryBuilder)->build($property);
 
         $this->assertTrue($summary['has_baseline']);
-        $this->assertSame('2026-04-12T00:00:00+00:00', $summary['latest']['captured_at']);
+        $this->assertSame(
+            \Illuminate\Support\Carbon::parse((string) $latestBaseline->getRawOriginal('captured_at'))->toIso8601String(),
+            $summary['latest']['captured_at']
+        );
         $this->assertSame('weekly_checkpoint', $summary['latest']['baseline_type']);
         $this->assertSame(18, $summary['latest']['indexed_pages']);
         $this->assertSame(182, $summary['latest']['not_indexed_pages']);
@@ -209,7 +216,10 @@ class WebPropertySummaryBuildersTest extends TestCase
         $this->assertSame(9, $summary['trend']['indexed_pages_delta']);
         $this->assertSame(-32, $summary['trend']['not_indexed_pages_delta']);
         $this->assertSame(3, $summary['trend']['point_count']);
-        $this->assertSame('2026-03-29T00:00:00+00:00', $summary['trend']['points'][0]['captured_at']);
+        $this->assertSame(
+            \Illuminate\Support\Carbon::parse((string) $earliestBaseline->getRawOriginal('captured_at'))->toIso8601String(),
+            $summary['trend']['points'][0]['captured_at']
+        );
         $this->assertSame(9, $summary['trend']['points'][0]['indexed_pages']);
         $this->assertSame(18, $summary['trend']['points'][2]['indexed_pages']);
     }
