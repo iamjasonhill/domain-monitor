@@ -76,6 +76,7 @@ class WebPropertyUiTest extends TestCase
             'status' => 'active',
             'primary_domain_id' => $primaryDomain->id,
             'production_url' => 'https://movingagain.com.au',
+            'astro_cutover_at' => now()->subDays(2),
             'canonical_origin_scheme' => 'https',
             'canonical_origin_host' => 'movingagain.com.au',
             'canonical_origin_policy' => 'known',
@@ -194,6 +195,8 @@ class WebPropertyUiTest extends TestCase
         $response->assertSee('+5');
         $response->assertSee('Not Indexed Delta');
         $response->assertSee('-13');
+        $response->assertSee('Astro Cutover');
+        $response->assertSee('Astro cutover recorded');
         $response->assertSee('Canonical Origin Policy');
         $response->assertSee('Save Canonical Policy');
         $response->assertSee('property_only');

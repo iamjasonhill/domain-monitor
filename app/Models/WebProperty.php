@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Services\PropertyExecutionReadinessResolver;
 use App\Services\WebPropertyCanonicalOriginSummaryBuilder;
 use App\Services\WebPropertyGscEvidenceSummaryBuilder;
+use App\Services\WebPropertyPlatformMigrationSummaryBuilder;
 use App\Services\WebPropertySeoBaselineSummaryBuilder;
 use App\Services\WebPropertySiteIdentitySummaryBuilder;
 use Illuminate\Database\Eloquent\Builder;
@@ -36,6 +37,7 @@ use Illuminate\Support\Str;
  * @property bool $canonical_origin_sitemap_policy_known
  * @property string|null $platform
  * @property string|null $target_platform
+ * @property \Illuminate\Support\Carbon|null $astro_cutover_at
  * @property string|null $owner
  * @property int|null $priority
  * @property string|null $notes
@@ -85,6 +87,7 @@ class WebProperty extends Model
         'canonical_origin_sitemap_policy_known',
         'platform',
         'target_platform',
+        'astro_cutover_at',
         'owner',
         'priority',
         'notes',
@@ -111,6 +114,7 @@ class WebProperty extends Model
             'canonical_origin_enforcement_eligible' => 'boolean',
             'canonical_origin_excluded_subdomains' => 'array',
             'canonical_origin_sitemap_policy_known' => 'boolean',
+            'astro_cutover_at' => 'datetime',
             'conversion_links_scanned_at' => 'datetime',
             'legacy_moveroo_endpoint_scan' => 'array',
         ];
@@ -777,6 +781,7 @@ class WebProperty extends Model
             'canonical_origin' => $this->canonicalOriginSummary(),
             'platform' => $this->platform,
             'target_platform' => $this->target_platform,
+            'platform_migration' => $this->platformMigrationSummary(),
             'owner' => $this->owner,
             'priority' => $this->priority,
             // Fleet consumers use a stable, explicitly named alias for manual work ordering.
@@ -866,6 +871,18 @@ class WebProperty extends Model
     public function seoBaselineSummary(): array
     {
         return app(WebPropertySeoBaselineSummaryBuilder::class)->build($this);
+    }
+
+    /**
+     * @return array{
+     *   current_platform: string|null,
+     *   target_platform: string|null,
+     *   astro_cutover_at: string|null
+     * }
+     */
+    public function platformMigrationSummary(): array
+    {
+        return app(WebPropertyPlatformMigrationSummaryBuilder::class)->build($this);
     }
 
     /**

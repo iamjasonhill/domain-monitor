@@ -198,9 +198,11 @@ class WebPropertySummaryBuildersTest extends TestCase
         ]));
 
         $summary = (new WebPropertySeoBaselineSummaryBuilder)->build($property);
+        $latestCapturedAt = \Illuminate\Support\Carbon::parse('2026-04-12T00:00:00+00:00')->toIso8601String();
+        $earliestCapturedAt = \Illuminate\Support\Carbon::parse('2026-03-29T00:00:00+00:00')->toIso8601String();
 
         $this->assertTrue($summary['has_baseline']);
-        $this->assertSame('2026-04-12T00:00:00+00:00', $summary['latest']['captured_at']);
+        $this->assertSame($latestCapturedAt, $summary['latest']['captured_at']);
         $this->assertSame('weekly_checkpoint', $summary['latest']['baseline_type']);
         $this->assertSame(18, $summary['latest']['indexed_pages']);
         $this->assertSame(182, $summary['latest']['not_indexed_pages']);
@@ -209,7 +211,7 @@ class WebPropertySummaryBuildersTest extends TestCase
         $this->assertSame(9, $summary['trend']['indexed_pages_delta']);
         $this->assertSame(-32, $summary['trend']['not_indexed_pages_delta']);
         $this->assertSame(3, $summary['trend']['point_count']);
-        $this->assertSame('2026-03-29T00:00:00+00:00', $summary['trend']['points'][0]['captured_at']);
+        $this->assertSame($earliestCapturedAt, $summary['trend']['points'][0]['captured_at']);
         $this->assertSame(9, $summary['trend']['points'][0]['indexed_pages']);
         $this->assertSame(18, $summary['trend']['points'][2]['indexed_pages']);
     }

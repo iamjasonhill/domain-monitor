@@ -41,6 +41,15 @@ class IntegrationMetaController extends Controller
                     'purpose' => 'detected issue detail',
                 ],
                 [
+                    'path' => '/api/web-properties/{slug}/astro-cutover',
+                    'source_system' => 'domain-monitor',
+                    'contract_version' => 1,
+                    'purpose' => 'record Astro go-live milestone and trigger an immediate SEO baseline checkpoint',
+                    'method' => 'POST',
+                    'accepted_tokens' => ['FLEET_CONTROL_API_KEY'],
+                    'optional' => true,
+                ],
+                [
                     'path' => '/api/issues/{issue_id}/verification',
                     'source_system' => 'domain-monitor-issues',
                     'contract_version' => 1,
