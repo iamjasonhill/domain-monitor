@@ -49,7 +49,7 @@ Shared runtime does not imply shared analytics identity.
 The authoritative runtime read model is:
 
 ```text
-GET /api/web-properties-summary
+GET /api/runtime/analytics-contexts
 ```
 
 from:
@@ -58,24 +58,29 @@ from:
 https://monitor.again.com.au
 ```
 
-The properties summary already includes:
+The runtime contexts feed already includes:
 
-- `slug`
-- `primary_domain`
-- `analytics_sources`
-- `event_architecture`
-- `conversion_surfaces`
+- `hostname`
+- `property_slug`
+- `site_key`
+- `journey_type`
+- `runtime`
+- `ga4`
+- `event_contract`
+- `conversion_surface`
 
-The runtime should consume the summary as the canonical source for hostname
-resolution.
+The runtime should prefer this feed for lightweight hostname resolution.
+
+Use `/api/web-properties-summary` only when broader property context is also
+needed.
 
 ## Runtime Resolution Model
 
 For an incoming request:
 
 1. normalize the request hostname to lowercase with no trailing `.`
-2. find a matching entry in `conversion_surfaces.hostname`
-3. read the parent `web_property.slug`
+2. find a matching row by `runtime_contexts.hostname`
+3. read the parent `property_slug`
 4. resolve analytics binding:
    - if `conversion_surfaces.analytics.binding_mode = inherits_property`, use
      the property's primary `ga4` source

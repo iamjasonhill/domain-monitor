@@ -29,6 +29,12 @@ class IntegrationMetaController extends Controller
                     'purpose' => 'authoritative web property summary',
                 ],
                 [
+                    'path' => '/api/runtime/analytics-contexts',
+                    'source_system' => 'domain-monitor-runtime-analytics',
+                    'contract_version' => 1,
+                    'purpose' => 'lightweight hostname-to-analytics runtime resolution feed',
+                ],
+                [
                     'path' => '/api/issues',
                     'source_system' => 'domain-monitor-issues',
                     'contract_version' => 1,

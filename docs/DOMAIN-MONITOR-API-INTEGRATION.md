@@ -72,6 +72,30 @@ Selected property fields now include:
 - `conversion_surfaces`
 - `event_architecture`
 
+### Runtime Analytics Contexts
+
+```text
+GET /api/runtime/analytics-contexts
+```
+
+- `source_system`: `domain-monitor-runtime-analytics`
+- `contract_version`: `1`
+
+Purpose:
+- lightweight hostname-to-analytics resolution for shared runtimes
+- avoids consuming the full property summary when the app only needs runtime
+  analytics context
+
+Selected context fields include:
+- `hostname`
+- `property_slug`
+- `site_key`
+- `journey_type`
+- `runtime`
+- `ga4`
+- `event_contract`
+- `conversion_surface`
+
 ### Normalized Issues
 
 ```text
@@ -127,7 +151,9 @@ Purpose:
 - Prefer `/api/web-properties-summary` plus `/api/issues` as the core read
   model.
 - For shared runtimes that must resolve analytics by hostname, use the
-  properties summary plus `conversion_surfaces` as the canonical read model.
+  dedicated `/api/runtime/analytics-contexts` feed where possible.
+- Use `/api/web-properties-summary` plus `conversion_surfaces` when broader
+  property context is also needed.
 - See
   [RUNTIME-ANALYTICS-RESOLUTION-CONTRACT.md](/Users/jasonhill/Projects/2026%20Projects/domain-monitor/docs/RUNTIME-ANALYTICS-RESOLUTION-CONTRACT.md)
   for the runtime-facing hostname to analytics resolution contract.
