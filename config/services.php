@@ -75,6 +75,7 @@ return [
         'brain_api_key' => env('BRAIN_API_KEY'),
         'ops_api_key' => env('OPS_API_KEY'),
         'fleet_control_api_key' => env('FLEET_CONTROL_API_KEY'),
+        'moveroo_removals_api_key' => env('MOVEROO_REMOVALS_API_KEY'),
     ],
 
 ];

@@ -31,6 +31,7 @@ class AuthenticateApiKey
             'brain' => config('services.domain_monitor.brain_api_key'),
             'ops' => config('services.domain_monitor.ops_api_key'),
             'fleet_control' => config('services.domain_monitor.fleet_control_api_key'),
+            'moveroo_removals' => config('services.domain_monitor.moveroo_removals_api_key'),
         ];
 
         $allowedKeys = array_filter(

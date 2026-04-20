@@ -15,17 +15,17 @@ class IntegrationMetaApiTest extends TestCase
             ->assertUnauthorized();
     }
 
-    public function test_integration_meta_endpoint_accepts_fleet_control_api_key(): void
+    public function test_integration_meta_endpoint_accepts_dedicated_moveroo_removals_api_key(): void
     {
-        config()->set('services.domain_monitor.fleet_control_api_key', 'fleet-token');
+        config()->set('services.domain_monitor.moveroo_removals_api_key', 'moveroo-runtime-token');
 
         $this->withHeaders([
-            'Authorization' => 'Bearer fleet-token',
+            'Authorization' => 'Bearer moveroo-runtime-token',
         ])->getJson('/api/meta/integrations')
             ->assertOk()
             ->assertJsonPath('service', 'domain-monitor')
             ->assertJsonPath('auth.scheme', 'Bearer')
-            ->assertJsonPath('auth.accepted_tokens.2', 'FLEET_CONTROL_API_KEY')
+            ->assertJsonPath('auth.accepted_tokens.3', 'MOVEROO_REMOVALS_API_KEY')
             ->assertJsonPath('feeds.0.path', '/api/web-properties-summary')
             ->assertJsonPath('feeds.1.path', '/api/runtime/analytics-contexts')
             ->assertJsonPath('feeds.2.path', '/api/issues')

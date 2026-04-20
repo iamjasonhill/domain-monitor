@@ -19,6 +19,7 @@ class IntegrationMetaController extends Controller
                     'BRAIN_API_KEY',
                     'OPS_API_KEY',
                     'FLEET_CONTROL_API_KEY',
+                    'MOVEROO_REMOVALS_API_KEY',
                 ],
             ],
             'feeds' => [

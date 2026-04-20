@@ -75,6 +75,7 @@ See `DEPLOYMENT.md` for a complete list of required environment variables.
 - `BRAIN_API_KEY` - Existing Brain/MM BRAIN bearer token for `Authorization: Bearer <token>`
 - `OPS_API_KEY` - Optional separate bearer token for ops-style integrations
 - `FLEET_CONTROL_API_KEY` - Preferred dedicated bearer token for `fleet-control`
+- `MOVEROO_REMOVALS_API_KEY` - Preferred dedicated bearer token for `Moveroo Removals 2026`
 
 Use dedicated integration keys per client where possible instead of reusing one shared token across every external service.
 

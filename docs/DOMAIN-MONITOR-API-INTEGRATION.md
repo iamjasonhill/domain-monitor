@@ -24,11 +24,13 @@ Accepted environment variables on the Domain Monitor side:
 - `BRAIN_API_KEY`
 - `OPS_API_KEY`
 - `FLEET_CONTROL_API_KEY`
+- `MOVEROO_REMOVALS_API_KEY`
 
 Recommended usage:
 
 - MM BRAIN: `BRAIN_API_KEY`
 - fleet-control: `FLEET_CONTROL_API_KEY`
+- Moveroo Removals 2026: `MOVEROO_REMOVALS_API_KEY`
 - other operator tooling: dedicated token where practical
 
 ## Discovery
