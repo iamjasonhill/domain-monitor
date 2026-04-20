@@ -20,6 +20,7 @@ return [
             'backloadingremovals.com.au',
             'beauy.com.au',
             'cartransport.au',
+            'cartransport.movingagain.com.au',
             'cartransportaus.com.au',
             'cartransportwithpersonalitems.com.au',
             'discountbackloading.com.au',
