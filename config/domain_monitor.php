@@ -48,6 +48,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Conversion Surfaces
+    |--------------------------------------------------------------------------
+    |
+    | Quote and booking hostnames often ride on shared runtimes. Keep their
+    | runtime metadata centralized here so backfills and UI writes stay aligned
+    | with the maintained Laravel implementation.
+    |
+    */
+    'conversion_surfaces' => [
+        'default_quote_surface' => [
+            'surface_type' => 'quote_subdomain',
+            'journey_type' => 'mixed_quote',
+            'runtime_driver' => 'Laravel',
+            'runtime_label' => 'Moveroo Removals 2026',
+            'runtime_path' => '/Users/jasonhill/Projects/laravel-projects/Moveroo Removals 2026',
+            'analytics_binding_mode' => 'inherits_property',
+            'event_contract_binding_mode' => 'inherits_property',
+            'rollout_status' => 'defined',
+            'notes' => 'Backfilled from the property quote-subdomain target.',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Domain Monitor UI Windows
     |--------------------------------------------------------------------------
     |

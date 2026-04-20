@@ -13,6 +13,7 @@ use App\Models\PropertyAnalyticsSource;
 use App\Models\PropertyRepository;
 use App\Models\SearchConsoleIssueSnapshot;
 use App\Models\WebProperty;
+use App\Models\WebPropertyConversionSurface;
 use App\Models\WebPropertyDomain;
 use App\Models\WebPropertyEventContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -146,6 +147,22 @@ class WebPropertyApiTest extends TestCase
             'is_primary' => true,
         ]);
 
+        PropertyAnalyticsSource::create([
+            'web_property_id' => $property->id,
+            'provider' => 'ga4',
+            'external_id' => 'G-9F3Y80LEQL',
+            'external_name' => 'Moveroo GA4',
+            'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/MM-Google',
+            'provider_config' => [
+                'property_id' => '457902172',
+                'stream_id' => '9677257871',
+                'measurement_id' => 'G-9F3Y80LEQL',
+                'bigquery_project' => 'mm-moveroo-analytics',
+            ],
+            'is_primary' => false,
+            'status' => 'active',
+        ]);
+
         $eventContract = AnalyticsEventContract::create([
             'key' => 'shared-ga4-baseline-v1',
             'name' => 'Shared GA4 Baseline',
@@ -170,7 +187,26 @@ class WebPropertyApiTest extends TestCase
             'notes' => 'Backfilled from MM-Google.',
         ]);
 
-        $source = PropertyAnalyticsSource::query()->where('web_property_id', $property->id)->firstOrFail();
+        WebPropertyConversionSurface::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $ownedSubdomain->id,
+            'hostname' => 'quoting.moveroo.com.au',
+            'surface_type' => 'quote_subdomain',
+            'journey_type' => 'mixed_quote',
+            'runtime_driver' => 'Laravel',
+            'runtime_label' => 'Moveroo Removals 2026',
+            'runtime_path' => '/Users/jasonhill/Projects/laravel-projects/Moveroo Removals 2026',
+            'tenant_key' => 'moveroo-com-au',
+            'analytics_binding_mode' => 'inherits_property',
+            'event_contract_binding_mode' => 'inherits_property',
+            'rollout_status' => 'defined',
+            'notes' => 'Shared quote hostname.',
+        ]);
+
+        $source = PropertyAnalyticsSource::query()
+            ->where('web_property_id', $property->id)
+            ->where('provider', 'matomo')
+            ->firstOrFail();
 
         DomainSeoBaseline::create([
             'domain_id' => $primaryDomain->id,
@@ -295,6 +331,10 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.event_architecture.has_contract', true)
             ->assertJsonPath('web_properties.0.event_architecture.contracts.0.contract.key', 'shared-ga4-baseline-v1')
             ->assertJsonPath('web_properties.0.event_architecture.contracts.0.rollout_status', 'defined')
+            ->assertJsonPath('web_properties.0.conversion_surfaces.0.hostname', 'quoting.moveroo.com.au')
+            ->assertJsonPath('web_properties.0.conversion_surfaces.0.runtime.path', '/Users/jasonhill/Projects/laravel-projects/Moveroo Removals 2026')
+            ->assertJsonPath('web_properties.0.conversion_surfaces.0.analytics.measurement_id', 'G-9F3Y80LEQL')
+            ->assertJsonPath('web_properties.0.conversion_surfaces.0.event_contract.contract.key', 'shared-ga4-baseline-v1')
             ->assertJsonPath('web_properties.0.analytics.enabled', true)
             ->assertJsonPath('web_properties.0.analytics.provider', 'matomo')
             ->assertJsonPath('web_properties.0.analytics.config.base_url', 'https://stats.redirection.com.au')

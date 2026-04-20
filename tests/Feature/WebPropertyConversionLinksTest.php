@@ -7,6 +7,7 @@ use App\Models\Domain;
 use App\Models\DomainTag;
 use App\Models\User;
 use App\Models\WebProperty;
+use App\Models\WebPropertyConversionSurface;
 use App\Models\WebPropertyDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -62,6 +63,14 @@ class WebPropertyConversionLinksTest extends TestCase
         $this->assertSame('https://moveroo.com.au/contact-us', $property->target_contact_us_page_url);
         $this->assertSame('https://removalist.net/booking/create', $property->target_legacy_bookings_replacement_url);
         $this->assertSame('https://wemove.moveroo.com.au/contact', $property->target_legacy_payments_replacement_url);
+
+        $surface = WebPropertyConversionSurface::query()->where('hostname', 'wemove.moveroo.com.au')->first();
+
+        $this->assertNotNull($surface);
+        $this->assertSame($property->id, $surface?->web_property_id);
+        $this->assertSame('quote_subdomain', $surface?->surface_type);
+        $this->assertSame('inherits_property', $surface?->analytics_binding_mode);
+        $this->assertSame('/Users/jasonhill/Projects/laravel-projects/Moveroo Removals 2026', $surface?->runtime_path);
     }
 
     public function test_property_detail_can_clear_target_conversion_links(): void

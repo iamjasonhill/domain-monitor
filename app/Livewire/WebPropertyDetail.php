@@ -9,6 +9,7 @@ use App\Models\WebPropertyDomain;
 use App\Services\PropertyConversionLinkScanner;
 use App\Services\SearchConsoleIssueEvidenceService;
 use App\Services\SearchConsoleIssueSnapshotImporter;
+use App\Services\WebPropertyConversionSurfaceSyncService;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -110,6 +111,10 @@ class WebPropertyDetail extends Component
                 'analyticsSources',
                 'analyticsSources.latestInstallAudit',
                 'analyticsSources.latestSearchConsoleCoverage',
+                'eventContractAssignments.eventContract',
+                'conversionSurfaces.domain',
+                'conversionSurfaces.analyticsSource',
+                'conversionSurfaces.eventContractAssignment.eventContract',
                 'seoBaselines' => fn ($query) => $query
                     ->orderByDesc('captured_at')
                     ->orderByDesc('created_at')
@@ -188,7 +193,7 @@ class WebPropertyDetail extends Component
         }
     }
 
-    public function saveConversionTargets(): void
+    public function saveConversionTargets(WebPropertyConversionSurfaceSyncService $conversionSurfaceSyncService): void
     {
         if (! $this->property instanceof WebProperty) {
             session()->flash('error', 'Property not found.');
@@ -235,6 +240,8 @@ class WebPropertyDetail extends Component
             'target_legacy_bookings_replacement_url' => $validated['targetLegacyBookingsReplacementUrl'],
             'target_legacy_payments_replacement_url' => $validated['targetLegacyPaymentsReplacementUrl'],
         ]);
+
+        $conversionSurfaceSyncService->syncTargetQuoteSurface($this->property->fresh());
 
         $this->loadProperty();
 

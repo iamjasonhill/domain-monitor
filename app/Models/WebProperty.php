@@ -217,6 +217,14 @@ class WebProperty extends Model
     }
 
     /**
+     * @return HasMany<WebPropertyConversionSurface, $this>
+     */
+    public function conversionSurfaces(): HasMany
+    {
+        return $this->hasMany(WebPropertyConversionSurface::class)->orderBy('hostname');
+    }
+
+    /**
      * @return HasMany<DomainSeoBaseline, $this>
      */
     public function seoBaselines(): HasMany
@@ -481,6 +489,71 @@ class WebProperty extends Model
                         'notes' => $contract->notes,
                         'definition' => is_array($contractPayload) ? $contractPayload : null,
                     ] : null,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function conversionSurfaceSummaries(): array
+    {
+        $surfaces = $this->relationLoaded('conversionSurfaces')
+            ? $this->conversionSurfaces
+            : $this->conversionSurfaces()->with(['domain', 'analyticsSource', 'eventContractAssignment.eventContract'])->get();
+
+        return $surfaces
+            ->loadMissing(['domain', 'analyticsSource', 'eventContractAssignment.eventContract'])
+            ->map(function (WebPropertyConversionSurface $surface): array {
+                $analyticsSource = $surface->analytics_binding_mode === 'inherits_property'
+                    ? $this->primaryAnalyticsSource('ga4')
+                    : $surface->analyticsSource;
+                $analyticsConfig = $analyticsSource?->provider_config;
+
+                $eventContractAssignment = $surface->event_contract_binding_mode === 'inherits_property'
+                    ? $this->primaryEventContractAssignment()
+                    : $surface->eventContractAssignment;
+                $eventContract = $eventContractAssignment?->eventContract;
+
+                return [
+                    'id' => $surface->id,
+                    'hostname' => $surface->hostname,
+                    'domain_id' => $surface->domain_id,
+                    'surface_type' => $surface->surface_type,
+                    'journey_type' => $surface->journey_type,
+                    'tenant_key' => $surface->tenant_key,
+                    'runtime' => [
+                        'driver' => $surface->runtime_driver,
+                        'label' => $surface->runtime_label,
+                        'path' => $surface->runtime_path,
+                    ],
+                    'analytics' => [
+                        'binding_mode' => $surface->analytics_binding_mode,
+                        'provider' => $analyticsSource?->provider,
+                        'external_id' => $analyticsSource?->external_id,
+                        'external_name' => $analyticsSource?->external_name,
+                        'property_id' => is_array($analyticsConfig) ? ($analyticsConfig['property_id'] ?? null) : null,
+                        'stream_id' => is_array($analyticsConfig) ? ($analyticsConfig['stream_id'] ?? null) : null,
+                        'measurement_id' => is_array($analyticsConfig) ? ($analyticsConfig['measurement_id'] ?? null) : null,
+                        'bigquery_project' => is_array($analyticsConfig) ? ($analyticsConfig['bigquery_project'] ?? null) : null,
+                    ],
+                    'event_contract' => [
+                        'binding_mode' => $surface->event_contract_binding_mode,
+                        'rollout_status' => $eventContractAssignment?->rollout_status,
+                        'verified_at' => $eventContractAssignment?->verified_at?->toIso8601String(),
+                        'contract' => $eventContract ? [
+                            'key' => $eventContract->key,
+                            'name' => $eventContract->name,
+                            'version' => $eventContract->version,
+                            'contract_type' => $eventContract->contract_type,
+                            'status' => $eventContract->status,
+                        ] : null,
+                    ],
+                    'rollout_status' => $surface->rollout_status,
+                    'verified_at' => $surface->verified_at?->toIso8601String(),
+                    'notes' => $surface->notes,
                 ];
             })
             ->values()
@@ -882,6 +955,7 @@ class WebProperty extends Model
                 'has_contract' => $eventContracts !== [],
                 'contracts' => $eventContracts,
             ],
+            'conversion_surfaces' => $this->conversionSurfaceSummaries(),
             'health_summary' => $this->healthSummary(),
             'deployment_summary' => $this->deploymentSummary(),
             'tags' => $this->tagSummaries(),
@@ -1081,6 +1155,17 @@ class WebProperty extends Model
         return $sources
             ->where('provider', $provider)
             ->sortByDesc(fn (PropertyAnalyticsSource $source) => $source->is_primary)
+            ->first();
+    }
+
+    public function primaryEventContractAssignment(): ?WebPropertyEventContract
+    {
+        $assignments = $this->relationLoaded('eventContractAssignments')
+            ? $this->eventContractAssignments
+            : $this->eventContractAssignments()->with('eventContract')->get();
+
+        return $assignments
+            ->sortByDesc(fn (WebPropertyEventContract $assignment) => $assignment->is_primary)
             ->first();
     }
 
