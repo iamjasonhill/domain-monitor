@@ -354,13 +354,25 @@ return [
                 'property_type' => 'website',
                 'priority' => 100,
                 'notes' => 'Operationally critical removals quoting platform. Keep alerts, analytics, and infrastructure issues highly visible.',
+                'repository' => [
+                    'repo_name' => 'moveroocombined',
+                    'repo_url' => 'https://github.com/iamjasonhill/moveroocombined',
+                    'local_path' => '/Users/jasonhill/Projects/laravel-projects/Moveroo Removals 2026',
+                    'framework' => 'Laravel',
+                ],
             ],
             'vehicle.net.au' => [
                 'slug' => 'vehicle-net-au',
                 'name' => 'vehicle.net.au',
                 'property_type' => 'website',
                 'priority' => 95,
-                'notes' => 'Operationally critical vehicle quoting platform. Treat health and alerting issues as high priority.',
+                'notes' => 'Legacy vehicle quoting platform attached to the separate Moveroo Cars 2026 runtime. Phase-out is in progress, so keep health visibility high but do not normalize this surface onto the maintained removals runtime.',
+                'repository' => [
+                    'repo_name' => 'laravel',
+                    'repo_url' => 'https://github.com/iamjasonhill/laravel',
+                    'local_path' => '/Users/jasonhill/Projects/websites/laravel',
+                    'framework' => 'Laravel',
+                ],
             ],
             'interstate-removals.com.au' => [
                 'slug' => 'interstate-removals-com-au',
