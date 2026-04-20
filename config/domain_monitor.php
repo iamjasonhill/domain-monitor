@@ -105,13 +105,19 @@ return [
                 ],
             ],
             'moveroo.com.au' => [
-                'slug' => 'moveroo-website',
+                'slug' => 'moveroo-com-au',
                 'name' => 'Moveroo Website',
                 'property_type' => 'marketing_site',
                 'repository' => [
-                    'repo_name' => 'moveroo-website-astro',
-                    'local_path' => '/Users/jasonhill/Projects/websites/moveroo-website-astro',
+                    'repo_name' => 'MM-moveroo.com.au',
+                    'repo_provider' => 'github',
+                    'repo_url' => 'https://github.com/iamjasonhill/moveroowebsite.git',
+                    'local_path' => '/Users/jasonhill/Projects/websites/MM-moveroo.com.au',
                     'framework' => 'Astro',
+                    'is_controller' => true,
+                    'deployment_provider' => 'vercel',
+                    'deployment_project_name' => 'moveroowebsite',
+                    'deployment_project_id' => 'prj_ibD57znQpOtny1qcDGdnsyRChj1M',
                 ],
                 'analytics_sources' => [
                     [
@@ -127,9 +133,14 @@ return [
                 'name' => 'cartransport.au',
                 'property_type' => 'website',
                 'repository' => [
-                    'repo_name' => 'cartransport-au-astro',
-                    'local_path' => '/Users/jasonhill/Projects/websites/cartransport-au-astro',
+                    'repo_name' => 'MM-cartransport.au',
+                    'repo_provider' => 'github',
+                    'repo_url' => 'https://github.com/moveroo/ws-cartranspor-au.git',
+                    'local_path' => '/Users/jasonhill/Projects/websites/MM-cartransport.au',
                     'framework' => 'Astro',
+                    'is_controller' => true,
+                    'deployment_provider' => 'netlify',
+                    'deployment_project_id' => '87dc85b0-b392-4f33-a1a0-4e1439052880',
                 ],
                 'analytics_sources' => [
                     [
@@ -145,9 +156,15 @@ return [
                 'name' => 'cartransportwithpersonalitems.com.au',
                 'property_type' => 'website',
                 'repository' => [
-                    'repo_name' => 'cartransportwithpersonalitems-com-au-astro',
-                    'local_path' => '/Users/jasonhill/Projects/websites/cartransportwithpersonalitems-com-au-astro',
+                    'repo_name' => 'MM-cartransportwithpersonalitems.com.au',
+                    'repo_provider' => 'github',
+                    'repo_url' => 'https://github.com/iamjasonhill/cartransportwithpersonalitems-astro.git',
+                    'local_path' => '/Users/jasonhill/Projects/websites/MM-cartransportwithpersonalitems.com.au',
                     'framework' => 'Astro',
+                    'is_controller' => true,
+                    'deployment_provider' => 'vercel',
+                    'deployment_project_name' => 'cartransportwithpersonalitems-astro',
+                    'deployment_project_id' => 'prj_zOYvqgoYrBKz4HwU7NZ324sX4eLt',
                 ],
                 'analytics_sources' => [
                     [
@@ -163,9 +180,14 @@ return [
                 'name' => 'discountbackloading.com.au',
                 'property_type' => 'website',
                 'repository' => [
-                    'repo_name' => '_wp-house',
-                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
-                    'framework' => 'WordPress',
+                    'repo_name' => 'MM-discountbackloading.com.au',
+                    'repo_provider' => 'github',
+                    'repo_url' => 'https://github.com/iamjasonhill/MM-discountbackloading.git',
+                    'local_path' => '/Users/jasonhill/Projects/websites/MM-discountbackloading.com.au',
+                    'framework' => 'Astro',
+                    'is_controller' => true,
+                    'deployment_provider' => 'vercel',
+                    'deployment_project_name' => 'mm-discountbackloading',
                 ],
                 'analytics_sources' => [
                     [
@@ -289,9 +311,14 @@ return [
                 'name' => 'wemove.com.au',
                 'property_type' => 'website',
                 'repository' => [
-                    'repo_name' => '_wp-house',
-                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
-                    'framework' => 'WordPress',
+                    'repo_name' => 'MM-wemove.com.au',
+                    'repo_provider' => 'github',
+                    'repo_url' => 'https://github.com/iamjasonhill/MM-wemove.git',
+                    'local_path' => '/Users/jasonhill/Projects/websites/MM-wemove.com.au',
+                    'framework' => 'Astro',
+                    'is_controller' => true,
+                    'deployment_provider' => 'vercel',
+                    'deployment_project_name' => 'mm-wemove',
                 ],
                 'analytics_sources' => [
                     [
@@ -465,9 +492,15 @@ return [
                 'name' => 'movingcars.com.au',
                 'property_type' => 'website',
                 'repository' => [
-                    'repo_name' => 'movingcars-com-au-astro',
-                    'local_path' => '/Users/jasonhill/Projects/websites/movingcars-com-au-astro',
+                    'repo_name' => 'MM-movingcars.com.au',
+                    'repo_provider' => 'github',
+                    'repo_url' => 'https://github.com/iamjasonhill/astrosites2026.git',
+                    'local_path' => '/Users/jasonhill/Projects/websites/MM-movingcars.com.au',
                     'framework' => 'Astro',
+                    'is_controller' => true,
+                    'deployment_provider' => 'vercel',
+                    'deployment_project_name' => 'astrosites2026',
+                    'deployment_project_id' => 'prj_TLUsNXogLgMC0xStHFmM5XdoFB1M',
                 ],
                 'analytics_sources' => [
                     [
@@ -480,13 +513,19 @@ return [
 
             ],
             'movingagain.com.au' => [
-                'slug' => 'moving-again',
+                'slug' => 'movingagain-com-au',
                 'name' => 'Moving Again',
                 'property_type' => 'marketing_site',
                 'repository' => [
-                    'repo_name' => 'moving-again-astro',
-                    'local_path' => '/Users/jasonhill/Projects/websites/moving-again-astro',
+                    'repo_name' => 'MM-movingagain.com.au',
+                    'repo_provider' => 'github',
+                    'repo_url' => 'https://github.com/iamjasonhill/WS-Moving-Again.git',
+                    'local_path' => '/Users/jasonhill/Projects/websites/MM-movingagain.com.au',
                     'framework' => 'Astro',
+                    'is_controller' => true,
+                    'deployment_provider' => 'vercel',
+                    'deployment_project_name' => 'ws-moving-again',
+                    'deployment_project_id' => 'prj_d8PcMjvn7HUh4Pq0PnkqkFAOBxfs',
                 ],
                 'analytics_sources' => [
                     [
@@ -520,13 +559,19 @@ return [
                 ],
             ],
             'movinginsurance.com.au' => [
-                'slug' => 'moving-insurance',
+                'slug' => 'movinginsurance-com-au',
                 'name' => 'Moving Insurance',
                 'property_type' => 'marketing_site',
                 'repository' => [
-                    'repo_name' => 'moving-insurance-astro',
-                    'local_path' => '/Users/jasonhill/Projects/websites/moving-insurance-astro',
+                    'repo_name' => 'MM-movinginsurance.com.au',
+                    'repo_provider' => 'github',
+                    'repo_url' => 'https://github.com/iamjasonhill/WS-movinginsurance.git',
+                    'local_path' => '/Users/jasonhill/Projects/websites/MM-movinginsurance.com.au',
                     'framework' => 'Astro',
+                    'is_controller' => true,
+                    'deployment_provider' => 'vercel',
+                    'deployment_project_name' => 'ws-movinginsurance',
+                    'deployment_project_id' => 'prj_lNASlgeo2N8yQp92KKMXyTXAftsB',
                 ],
                 'analytics_sources' => [
                     [

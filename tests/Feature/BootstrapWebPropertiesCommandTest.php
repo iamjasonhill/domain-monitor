@@ -36,11 +36,11 @@ class BootstrapWebPropertiesCommandTest extends TestCase
             'websites_root' => $websitesRoot,
             'overrides' => [
                 'moveroo.com.au' => [
-                    'slug' => 'moveroo-website',
+                    'slug' => 'moveroo-com-au',
                     'name' => 'Moveroo Website',
                     'property_type' => 'marketing_site',
                     'repository' => [
-                        'repo_name' => 'moveroo-website-astro',
+                        'repo_name' => 'MM-moveroo.com.au',
                         'local_path' => $websitesRoot.'/moveroo-website-astro',
                         'framework' => 'Astro',
                     ],
@@ -73,7 +73,7 @@ class BootstrapWebPropertiesCommandTest extends TestCase
         $this->assertDatabaseCount('web_properties', 2);
         $this->assertDatabaseCount('web_property_domains', 2);
 
-        $moverooProperty = WebProperty::query()->where('slug', 'moveroo-website')->firstOrFail();
+        $moverooProperty = WebProperty::query()->where('slug', 'moveroo-com-au')->firstOrFail();
         $this->assertSame('marketing_site', $moverooProperty->property_type);
         $this->assertSame($moveroo->id, $moverooProperty->primary_domain_id);
 
@@ -88,7 +88,7 @@ class BootstrapWebPropertiesCommandTest extends TestCase
         ]);
 
         $repository = PropertyRepository::query()->where('web_property_id', $moverooProperty->id)->firstOrFail();
-        $this->assertSame('moveroo-website-astro', $repository->repo_name);
+        $this->assertSame('MM-moveroo.com.au', $repository->repo_name);
         $this->assertSame('Astro', $repository->framework);
 
         $analytics = PropertyAnalyticsSource::query()->where('web_property_id', $moverooProperty->id)->firstOrFail();
