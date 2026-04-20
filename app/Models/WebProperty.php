@@ -23,6 +23,7 @@ use Illuminate\Support\Str;
  * @property string $id
  * @property string $slug
  * @property string $name
+ * @property string|null $site_key
  * @property string|null $site_identity_site_name
  * @property string|null $site_identity_legal_name
  * @property string $property_type
@@ -73,6 +74,7 @@ class WebProperty extends Model
     protected $fillable = [
         'slug',
         'name',
+        'site_key',
         'site_identity_site_name',
         'site_identity_legal_name',
         'property_type',
@@ -931,6 +933,7 @@ class WebProperty extends Model
         return [
             'slug' => $this->slug,
             'name' => $this->name,
+            'site_key' => $this->siteKey(),
             'property_type' => $this->property_type,
             'status' => $this->status,
             'primary_domain' => $this->primaryDomainName(),
@@ -987,6 +990,36 @@ class WebProperty extends Model
     public function siteIdentitySummary(): array
     {
         return app(WebPropertySiteIdentitySummaryBuilder::class)->build($this);
+    }
+
+    public function siteKey(): ?string
+    {
+        $explicit = $this->normalizedSiteKey($this->site_key);
+        if ($explicit !== null) {
+            return $explicit;
+        }
+
+        if (! $this->exists && ! $this->relationLoaded('analyticsSources')) {
+            return null;
+        }
+
+        $ga4Source = $this->primaryAnalyticsSource('ga4');
+        $providerSiteKey = $ga4Source instanceof PropertyAnalyticsSource
+            ? data_get($ga4Source->provider_config, 'site_key')
+            : null;
+
+        return $this->normalizedSiteKey($providerSiteKey);
+    }
+
+    private function normalizedSiteKey(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $normalized = trim($value);
+
+        return $normalized !== '' ? $normalized : null;
     }
 
     /**

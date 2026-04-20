@@ -52,6 +52,7 @@ class WebPropertyApiTest extends TestCase
         $property = WebProperty::factory()->create([
             'slug' => 'moveroo-website',
             'name' => 'Moveroo Website',
+            'site_key' => 'moveroo',
             'site_identity_site_name' => 'Moveroo',
             'site_identity_legal_name' => 'Moveroo Australia',
             'property_type' => 'marketing_site',
@@ -308,7 +309,9 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('source_system', 'domain-monitor')
             ->assertJsonPath('contract_version', 1)
             ->assertJsonPath('web_properties.0.slug', 'moveroo-website')
+            ->assertJsonPath('web_properties.0.site_key', 'moveroo')
             ->assertJsonPath('web_properties.0.primary_domain', 'moveroo.com.au')
+            ->assertJsonPath('web_properties.0.site_identity.site_key', 'moveroo')
             ->assertJsonPath('web_properties.0.site_identity.site_name', 'Moveroo')
             ->assertJsonPath('web_properties.0.site_identity.legal_name', 'Moveroo Australia')
             ->assertJsonPath('web_properties.0.site_identity.primary_domain', 'https://moveroo.com.au/')

@@ -80,6 +80,9 @@ class SyncMmGoogleGa4CommandTest extends TestCase
             '--workspace-path' => '/Users/jasonhill/Projects/2026 Projects/MM-Google',
         ]));
 
+        $property->refresh();
+        $this->assertSame('movingagain', $property->site_key);
+
         $ga4 = PropertyAnalyticsSource::query()
             ->where('web_property_id', $property->id)
             ->where('provider', 'ga4')

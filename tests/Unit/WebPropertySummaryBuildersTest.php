@@ -120,6 +120,7 @@ class WebPropertySummaryBuildersTest extends TestCase
     {
         $property = new WebProperty([
             'name' => 'WeMove Website',
+            'site_key' => 'wemove',
             'site_identity_site_name' => 'WeMove',
             'site_identity_legal_name' => 'WeMove Australia',
             'production_url' => 'https://wemove.com.au/services',
@@ -136,6 +137,7 @@ class WebPropertySummaryBuildersTest extends TestCase
         $summary = (new WebPropertySiteIdentitySummaryBuilder)->build($property);
 
         $this->assertSame([
+            'site_key' => 'wemove',
             'site_name' => 'WeMove',
             'legal_name' => 'WeMove Australia',
             'primary_domain' => 'https://wemove.com.au/',
@@ -154,6 +156,7 @@ class WebPropertySummaryBuildersTest extends TestCase
         $summary = (new WebPropertySiteIdentitySummaryBuilder)->build($property);
 
         $this->assertSame([
+            'site_key' => null,
             'site_name' => 'Moveroo',
             'legal_name' => null,
             'primary_domain' => null,

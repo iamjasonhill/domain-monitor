@@ -59,6 +59,7 @@ Purpose:
 - controller authority and deployment-readiness metadata for managed surfaces
 
 Selected property fields now include:
+- `site_key`
 - `control_state`
 - `execution_surface`
 - `fleet_managed`
@@ -68,6 +69,8 @@ Selected property fields now include:
 - `deployment_provider`
 - `deployment_project_name`
 - `deployment_project_id`
+- `conversion_surfaces`
+- `event_architecture`
 
 ### Normalized Issues
 
@@ -123,6 +126,11 @@ Purpose:
   issue records.
 - Prefer `/api/web-properties-summary` plus `/api/issues` as the core read
   model.
+- For shared runtimes that must resolve analytics by hostname, use the
+  properties summary plus `conversion_surfaces` as the canonical read model.
+- See
+  [RUNTIME-ANALYTICS-RESOLUTION-CONTRACT.md](/Users/jasonhill/Projects/2026%20Projects/domain-monitor/docs/RUNTIME-ANALYTICS-RESOLUTION-CONTRACT.md)
+  for the runtime-facing hostname to analytics resolution contract.
 - Use `/api/dashboard/priority-queue` only as supplemental operational context.
 - Fail loudly if `source_system` or `contract_version` do not match expected
   values.

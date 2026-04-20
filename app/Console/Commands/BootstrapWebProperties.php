@@ -226,6 +226,7 @@ class BootstrapWebProperties extends Command
         return [
             'slug' => $slug,
             'name' => (string) ($override['name'] ?? $domain->domain),
+            'site_key' => $override['site_key'] ?? null,
             'property_type' => $propertyType,
             'status' => $domain->is_active ? 'active' : 'inactive',
             'primary_domain_id' => $domain->id,

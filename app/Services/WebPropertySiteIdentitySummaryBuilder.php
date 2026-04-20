@@ -9,6 +9,7 @@ class WebPropertySiteIdentitySummaryBuilder
 {
     /**
      * @return array{
+     *   site_key: string|null,
      *   site_name: string|null,
      *   legal_name: string|null,
      *   primary_domain: string|null,
@@ -19,6 +20,7 @@ class WebPropertySiteIdentitySummaryBuilder
     public function build(WebProperty $property): array
     {
         return [
+            'site_key' => $property->siteKey(),
             'site_name' => $this->siteName($property),
             'legal_name' => $this->normalizedText($property->site_identity_legal_name),
             'primary_domain' => $this->normalizedOriginUrl(

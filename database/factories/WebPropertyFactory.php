@@ -22,6 +22,7 @@ class WebPropertyFactory extends Factory
         return [
             'slug' => Str::slug($name.'-'.fake()->unique()->word()),
             'name' => $name,
+            'site_key' => Str::slug(fake()->unique()->word(), ''),
             'property_type' => fake()->randomElement(['marketing_site', 'programmatic_site', 'app']),
             'status' => fake()->randomElement(['active', 'planned', 'paused']),
             'production_url' => fake()->url(),

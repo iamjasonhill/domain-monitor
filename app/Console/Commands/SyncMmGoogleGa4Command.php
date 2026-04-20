@@ -49,6 +49,7 @@ class SyncMmGoogleGa4Command extends Command
 
         $matchedFleet = 0;
         $matchedNonFleet = 0;
+        $siteKeysUpdated = 0;
         $created = 0;
         $updated = 0;
         $unchanged = 0;
@@ -87,6 +88,10 @@ class SyncMmGoogleGa4Command extends Command
                 $matchedFleet++;
             } else {
                 $matchedNonFleet++;
+            }
+
+            if ($this->syncPropertySiteKey($property, Arr::get($site, 'key'), $dryRun)) {
+                $siteKeysUpdated++;
             }
 
             $source = $property->analyticsSources()
@@ -151,6 +156,7 @@ class SyncMmGoogleGa4Command extends Command
         $this->info('MM-Google GA4 sync summary');
         $this->line(sprintf('Matched in registry and fleet: %d', $matchedFleet));
         $this->line(sprintf('Matched in registry but not fleet: %d', $matchedNonFleet));
+        $this->line(sprintf('Property site keys updated: %d', $siteKeysUpdated));
         $this->line(sprintf('Created GA4 sources: %d', $created));
         $this->line(sprintf('Updated GA4 sources: %d', $updated));
         $this->line(sprintf('Unchanged GA4 sources: %d', $unchanged));
@@ -219,6 +225,29 @@ class SyncMmGoogleGa4Command extends Command
             })
             ->orderByDesc('priority')
             ->first();
+    }
+
+    private function syncPropertySiteKey(WebProperty $property, mixed $siteKey, bool $dryRun): bool
+    {
+        $normalizedSiteKey = $this->nullableString($siteKey);
+
+        if ($normalizedSiteKey === null || $property->site_key === $normalizedSiteKey) {
+            return false;
+        }
+
+        $this->line(sprintf(
+            '[site-key] %s <- %s',
+            $property->slug,
+            $normalizedSiteKey
+        ));
+
+        if (! $dryRun) {
+            $property->forceFill([
+                'site_key' => $normalizedSiteKey,
+            ])->save();
+        }
+
+        return true;
     }
 
     /**
