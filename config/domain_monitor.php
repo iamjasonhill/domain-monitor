@@ -68,6 +68,18 @@ return [
             'rollout_status' => 'defined',
             'notes' => 'Backfilled from the property quote-subdomain target.',
         ],
+        'overrides' => [
+            'properties' => [
+                'vehicle-net-au' => [
+                    'journey_type' => 'vehicle_quote',
+                    'runtime_label' => 'Moveroo Cars 2026',
+                    'runtime_path' => '/Users/jasonhill/Projects/laravel-projects/Moveroo-Cars-2026',
+                    'notes' => 'Legacy vehicle quoting surface attached to Moveroo Cars 2026. Phase-out is in progress, so keep visibility high but do not expand or normalize this surface onto the maintained removals runtime.',
+                    'replace_notes' => true,
+                ],
+            ],
+            'hostnames' => [],
+        ],
     ],
 
     /*

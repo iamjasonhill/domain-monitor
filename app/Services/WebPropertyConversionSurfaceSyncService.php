@@ -118,7 +118,7 @@ class WebPropertyConversionSurfaceSyncService
             $action = 'create';
         }
 
-        $runtimeConfig = $this->quoteSurfaceDefaults();
+        $runtimeConfig = $this->quoteSurfaceDefaults($property, $hostname);
         $desiredAttributes = [
             'platform' => $runtimeConfig['runtime_driver'],
             'hosting_provider' => $property->primaryDomain?->hosting_provider,
@@ -251,7 +251,7 @@ class WebPropertyConversionSurfaceSyncService
             'hostname' => $hostname,
         ]);
 
-        $defaults = $this->quoteSurfaceDefaults();
+        $defaults = $this->quoteSurfaceDefaults($property, $hostname);
         $surface->fill([
             'domain_id' => $domain->id,
             'surface_type' => (string) Arr::get($defaults, 'surface_type', 'quote_subdomain'),
@@ -263,7 +263,7 @@ class WebPropertyConversionSurfaceSyncService
             'analytics_binding_mode' => (string) Arr::get($defaults, 'analytics_binding_mode', 'inherits_property'),
             'event_contract_binding_mode' => (string) Arr::get($defaults, 'event_contract_binding_mode', 'inherits_property'),
             'rollout_status' => $surface->rollout_status ?: (string) Arr::get($defaults, 'rollout_status', 'defined'),
-            'notes' => $surface->notes ?: $this->nullableString(Arr::get($defaults, 'notes')),
+            'notes' => $this->surfaceNotes($surface, $defaults),
         ]);
 
         return [
@@ -299,11 +299,41 @@ class WebPropertyConversionSurfaceSyncService
     /**
      * @return array<string, mixed>
      */
-    private function quoteSurfaceDefaults(): array
+    private function quoteSurfaceDefaults(WebProperty $property, string $hostname): array
     {
         $defaults = config('domain_monitor.conversion_surfaces.default_quote_surface', []);
+        $propertyOverrides = config('domain_monitor.conversion_surfaces.overrides.properties', []);
+        $hostnameOverrides = config('domain_monitor.conversion_surfaces.overrides.hostnames', []);
 
-        return is_array($defaults) ? $defaults : [];
+        $resolvedDefaults = is_array($defaults) ? $defaults : [];
+        $resolvedPropertyOverrides = is_array($propertyOverrides) ? Arr::get($propertyOverrides, $property->slug, []) : [];
+        $resolvedHostnameOverrides = is_array($hostnameOverrides) ? Arr::get($hostnameOverrides, $hostname, []) : [];
+
+        return array_replace(
+            $resolvedDefaults,
+            is_array($resolvedPropertyOverrides) ? $resolvedPropertyOverrides : [],
+            is_array($resolvedHostnameOverrides) ? $resolvedHostnameOverrides : [],
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $defaults
+     */
+    private function surfaceNotes(WebPropertyConversionSurface $surface, array $defaults): ?string
+    {
+        $configuredNotes = $this->nullableString(Arr::get($defaults, 'notes'));
+
+        if ($configuredNotes === null) {
+            return $surface->notes;
+        }
+
+        $shouldReplaceNotes = (bool) Arr::get($defaults, 'replace_notes', false);
+
+        if ($shouldReplaceNotes || $this->nullableString($surface->notes) === null) {
+            return $configuredNotes;
+        }
+
+        return $surface->notes;
     }
 
     private function nullableString(mixed $value): ?string
