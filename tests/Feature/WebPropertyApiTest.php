@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AnalyticsEventContract;
 use App\Models\AnalyticsInstallAudit;
 use App\Models\Domain;
 use App\Models\DomainAlert;
@@ -13,6 +14,7 @@ use App\Models\PropertyRepository;
 use App\Models\SearchConsoleIssueSnapshot;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
+use App\Models\WebPropertyEventContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -144,6 +146,30 @@ class WebPropertyApiTest extends TestCase
             'is_primary' => true,
         ]);
 
+        $eventContract = AnalyticsEventContract::create([
+            'key' => 'shared-ga4-baseline-v1',
+            'name' => 'Shared GA4 Baseline',
+            'version' => 'v1',
+            'contract_type' => 'ga4_web',
+            'status' => 'active',
+            'scope' => 'portfolio_default',
+            'source_repo' => 'MM-Google',
+            'source_path' => 'docs/event-taxonomy.md',
+            'contract' => [
+                'recommended_events' => ['generate_lead', 'phone_click', 'form_submit'],
+                'key_events' => ['generate_lead', 'phone_click'],
+                'standard_parameters' => ['site_key', 'lead_type'],
+            ],
+        ]);
+
+        WebPropertyEventContract::create([
+            'web_property_id' => $property->id,
+            'analytics_event_contract_id' => $eventContract->id,
+            'is_primary' => true,
+            'rollout_status' => 'defined',
+            'notes' => 'Backfilled from MM-Google.',
+        ]);
+
         $source = PropertyAnalyticsSource::query()->where('web_property_id', $property->id)->firstOrFail();
 
         DomainSeoBaseline::create([
@@ -266,6 +292,9 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.repositories.0.repo_name', 'moveroo/moveroo-website-astro')
             ->assertJsonPath('web_properties.0.analytics_sources.0.external_id', '6')
             ->assertJsonPath('web_properties.0.analytics_sources.0.install_audit.install_verdict', 'installed_match')
+            ->assertJsonPath('web_properties.0.event_architecture.has_contract', true)
+            ->assertJsonPath('web_properties.0.event_architecture.contracts.0.contract.key', 'shared-ga4-baseline-v1')
+            ->assertJsonPath('web_properties.0.event_architecture.contracts.0.rollout_status', 'defined')
             ->assertJsonPath('web_properties.0.analytics.enabled', true)
             ->assertJsonPath('web_properties.0.analytics.provider', 'matomo')
             ->assertJsonPath('web_properties.0.analytics.config.base_url', 'https://stats.redirection.com.au')

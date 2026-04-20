@@ -209,6 +209,14 @@ class WebProperty extends Model
     }
 
     /**
+     * @return HasMany<WebPropertyEventContract, $this>
+     */
+    public function eventContractAssignments(): HasMany
+    {
+        return $this->hasMany(WebPropertyEventContract::class)->orderByDesc('is_primary');
+    }
+
+    /**
      * @return HasMany<DomainSeoBaseline, $this>
      */
     public function seoBaselines(): HasMany
@@ -438,6 +446,45 @@ class WebProperty extends Model
             'notes' => $source->notes,
             'install_audit' => $this->analyticsInstallAuditSummaryFor($source),
         ])->values()->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function eventContractSummaries(): array
+    {
+        $assignments = $this->relationLoaded('eventContractAssignments')
+            ? $this->eventContractAssignments
+            : $this->eventContractAssignments()->with('eventContract')->get();
+
+        return $assignments
+            ->loadMissing('eventContract')
+            ->map(function (WebPropertyEventContract $assignment): array {
+                $contract = $assignment->eventContract;
+                $contractPayload = $contract?->contract;
+
+                return [
+                    'id' => $assignment->id,
+                    'is_primary' => $assignment->is_primary,
+                    'rollout_status' => $assignment->rollout_status,
+                    'verified_at' => $assignment->verified_at?->toIso8601String(),
+                    'notes' => $assignment->notes,
+                    'contract' => $contract instanceof AnalyticsEventContract ? [
+                        'key' => $contract->key,
+                        'name' => $contract->name,
+                        'version' => $contract->version,
+                        'contract_type' => $contract->contract_type,
+                        'status' => $contract->status,
+                        'scope' => $contract->scope,
+                        'source_repo' => $contract->source_repo,
+                        'source_path' => $contract->source_path,
+                        'notes' => $contract->notes,
+                        'definition' => is_array($contractPayload) ? $contractPayload : null,
+                    ] : null,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     /**
@@ -806,6 +853,7 @@ class WebProperty extends Model
     public function brainSummary(bool $includeFullExternalLinks = true): array
     {
         $executionReadiness = $this->executionReadinessSummary();
+        $eventContracts = $this->eventContractSummaries();
 
         return [
             'slug' => $this->slug,
@@ -830,6 +878,10 @@ class WebProperty extends Model
             'repositories' => $this->repositorySummaries(),
             'analytics_sources' => $this->analyticsSourceSummaries(),
             'analytics' => $this->analyticsSummary(),
+            'event_architecture' => [
+                'has_contract' => $eventContracts !== [],
+                'contracts' => $eventContracts,
+            ],
             'health_summary' => $this->healthSummary(),
             'deployment_summary' => $this->deploymentSummary(),
             'tags' => $this->tagSummaries(),

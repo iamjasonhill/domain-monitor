@@ -103,6 +103,7 @@ class WebPropertyController extends Controller
                 'repositories',
                 'analyticsSources',
                 'analyticsSources.latestInstallAudit',
+                'eventContractAssignments.eventContract',
                 'seoBaselines' => fn ($query) => $query
                     ->orderByDesc('captured_at')
                     ->orderByDesc('created_at')
