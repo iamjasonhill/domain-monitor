@@ -93,7 +93,12 @@ class WebPropertyAnalyticsSummaryBuilder
                 'container_id' => $this->normalizedText($source->external_id),
             ],
             'ga4' => [
-                'measurement_id' => $this->normalizedText($source->external_id),
+                'measurement_id' => $this->ga4ConfigValue($source, 'measurement_id') ?? $this->normalizedText($source->external_id),
+                'property_id' => $this->ga4ConfigValue($source, 'property_id'),
+                'stream_id' => $this->ga4ConfigValue($source, 'stream_id'),
+                'analytics_account' => $this->ga4ConfigValue($source, 'analytics_account'),
+                'bigquery_project' => $this->ga4ConfigValue($source, 'bigquery_project'),
+                'measurement_protocol_secret_name' => $this->ga4ConfigValue($source, 'measurement_protocol_secret_name'),
             ],
             default => [],
         };
@@ -114,6 +119,17 @@ class WebPropertyAnalyticsSummaryBuilder
             'ga4' => $this->filledConfigValue($config, 'measurement_id'),
             default => false,
         };
+    }
+
+    private function ga4ConfigValue(PropertyAnalyticsSource $source, string $key): ?string
+    {
+        $config = $source->provider_config;
+
+        if (! is_array($config)) {
+            return null;
+        }
+
+        return $this->normalizedText($config[$key] ?? null);
     }
 
     private function matomoBaseUrl(PropertyAnalyticsSource $source): ?string

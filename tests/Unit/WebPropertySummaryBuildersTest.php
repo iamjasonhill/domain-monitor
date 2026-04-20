@@ -204,6 +204,43 @@ class WebPropertySummaryBuildersTest extends TestCase
         ], $summary);
     }
 
+    public function test_analytics_builder_exposes_rich_ga4_config_from_provider_metadata(): void
+    {
+        $property = new WebProperty;
+
+        $source = new PropertyAnalyticsSource([
+            'provider' => 'ga4',
+            'external_id' => 'G-K6VBFJGYYK',
+            'is_primary' => true,
+            'status' => 'active',
+            'provider_config' => [
+                'measurement_id' => 'G-K6VBFJGYYK',
+                'property_id' => '533626872',
+                'stream_id' => '14399248676',
+                'analytics_account' => 'accounts/328441504',
+                'bigquery_project' => 'mm-brain-2026',
+                'measurement_protocol_secret_name' => 'properties/533626872/dataStreams/14399248676/measurementProtocolSecrets/123',
+            ],
+        ]);
+
+        $property->setRelation('analyticsSources', new EloquentCollection([$source]));
+
+        $summary = (new WebPropertyAnalyticsSummaryBuilder)->build($property);
+
+        $this->assertSame([
+            'enabled' => true,
+            'provider' => 'ga4',
+            'config' => [
+                'measurement_id' => 'G-K6VBFJGYYK',
+                'property_id' => '533626872',
+                'stream_id' => '14399248676',
+                'analytics_account' => 'accounts/328441504',
+                'bigquery_project' => 'mm-brain-2026',
+                'measurement_protocol_secret_name' => 'properties/533626872/dataStreams/14399248676/measurementProtocolSecrets/123',
+            ],
+        ], $summary);
+    }
+
     public function test_seo_baseline_builder_returns_stable_defaults_without_checkpoints(): void
     {
         $property = new WebProperty;

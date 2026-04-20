@@ -432,6 +432,7 @@ class WebProperty extends Model
             'external_id' => $source->external_id,
             'external_name' => $source->external_name,
             'workspace_path' => $source->workspace_path,
+            'provider_config' => $source->provider_config,
             'is_primary' => $source->is_primary,
             'status' => $source->status,
             'notes' => $source->notes,

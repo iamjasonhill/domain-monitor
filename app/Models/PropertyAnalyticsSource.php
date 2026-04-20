@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
  * @property string $external_id
  * @property string|null $external_name
  * @property string|null $workspace_path
+ * @property array<string, mixed>|null $provider_config
  * @property bool $is_primary
  * @property string $status
  * @property string|null $notes
@@ -30,6 +31,7 @@ class PropertyAnalyticsSource extends Model
         'external_id',
         'external_name',
         'workspace_path',
+        'provider_config',
         'is_primary',
         'status',
         'notes',
@@ -38,6 +40,7 @@ class PropertyAnalyticsSource extends Model
     protected function casts(): array
     {
         return [
+            'provider_config' => 'array',
             'is_primary' => 'boolean',
         ];
     }
