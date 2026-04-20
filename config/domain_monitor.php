@@ -537,17 +537,21 @@ return [
                 ],
             ],
             'cartransport.movingagain.com.au' => [
-                'slug' => 'ma-car-transport',
+                'slug' => 'cartransport-movingagain-com-au',
                 'name' => 'Moving Again Car Transport',
                 'property_type' => 'website',
+                'platform' => 'Astro',
+                'target_platform' => 'Astro',
                 'repository' => [
-                    'repo_name' => 'moveroo/ma-catrans-program',
+                    'repo_name' => 'MM-cartransport.movingagain.com.au',
                     'repo_provider' => 'github',
                     'repo_url' => 'https://github.com/moveroo/ma-catrans-program',
-                    'local_path' => '/Users/jasonhill/Projects/websites/ma-car-transport-astro',
+                    'local_path' => '/Users/jasonhill/Projects/websites/MM-cartransport.movingagain.com.au',
                     'framework' => 'Astro',
                     'is_controller' => true,
                     'deployment_provider' => 'vercel',
+                    'deployment_project_name' => 'ma-catrans-program',
+                    'deployment_project_id' => 'prj_wEfisk5vy7yPmMRCUetKaxEMM8UW',
                 ],
                 'analytics_sources' => [
                     [
