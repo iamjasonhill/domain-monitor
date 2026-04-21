@@ -14,6 +14,7 @@ class DomainHealthCheckRunner
         private readonly SecurityHeadersHealthCheck $securityHeadersHealthCheck,
         private readonly SeoHealthCheck $seoHealthCheck,
         private readonly BrokenLinkHealthCheck $brokenLinkHealthCheck,
+        private readonly ExternalLinkInventoryHealthCheck $externalLinkInventoryHealthCheck,
     ) {}
 
     /**
@@ -25,7 +26,7 @@ class DomainHealthCheckRunner
      */
     public function run(Domain $domain, string $type): array
     {
-        if (! in_array($type, ['security_headers', 'seo', 'broken_links'], true)) {
+        if (! in_array($type, ['security_headers', 'seo', 'broken_links', 'external_links'], true)) {
             throw new InvalidArgumentException("Unsupported Fleet health check type [{$type}].");
         }
 
@@ -49,9 +50,12 @@ class DomainHealthCheckRunner
             } elseif ($type === 'seo') {
                 $result = $this->seoHealthCheck->check($domain->domain);
                 $status = $this->determineWarnStatus($result);
-            } else {
+            } elseif ($type === 'broken_links') {
                 $result = $this->brokenLinkHealthCheck->check($domain->domain);
                 $status = $this->determineBrokenLinksStatus($result);
+            } else {
+                $result = $this->externalLinkInventoryHealthCheck->check($domain->domain);
+                $status = $this->determineInventoryStatus($result);
             }
 
             $payload = $result['payload'];
@@ -127,5 +131,19 @@ class DomainHealthCheckRunner
         }
 
         return $result['is_valid'] ? 'ok' : 'fail';
+    }
+
+    /**
+     * @param  array{verified?: bool, payload?: array{page_failures_count?: int}}  $result
+     */
+    private function determineInventoryStatus(array $result): string
+    {
+        if (($result['verified'] ?? false) !== true) {
+            return 'unknown';
+        }
+
+        $payload = is_array($result['payload'] ?? null) ? $result['payload'] : [];
+
+        return ((int) ($payload['page_failures_count'] ?? 0)) > 0 ? 'warn' : 'ok';
     }
 }

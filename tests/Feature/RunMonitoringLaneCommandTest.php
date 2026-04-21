@@ -9,6 +9,7 @@ use App\Models\WebProperty;
 use App\Models\WebPropertyConversionSurface;
 use App\Models\WebPropertyDomain;
 use App\Services\BrokenLinkHealthCheck;
+use App\Services\ExternalLinkInventoryHealthCheck;
 use App\Services\HttpHealthCheck;
 use App\Services\PropertySiteSignalScanner;
 use App\Services\SslHealthCheck;
@@ -710,6 +711,28 @@ class RunMonitoringLaneCommandTest extends TestCase
         ]);
         $this->instance(BrokenLinkHealthCheck::class, $brokenLinkHealthCheck);
 
+        $externalLinkInventoryHealthCheck = Mockery::mock(ExternalLinkInventoryHealthCheck::class);
+        /** @var Mockery\Expectation $externalLinksClearExpectation */
+        $externalLinksClearExpectation = $externalLinkInventoryHealthCheck->shouldReceive('check');
+        $externalLinksClearExpectation->once()->andReturn([
+            'is_valid' => true,
+            'verified' => true,
+            'external_links_count' => 0,
+            'pages_scanned' => 4,
+            'external_links' => [],
+            'error_message' => null,
+            'payload' => [
+                'pages_scanned' => 4,
+                'external_links_count' => 0,
+                'unique_hosts_count' => 0,
+                'page_failures_count' => 0,
+                'external_links' => [],
+                'duration_ms' => 12,
+            ],
+        ]);
+        $this->instance(ExternalLinkInventoryHealthCheck::class, $externalLinkInventoryHealthCheck);
+        app()->forgetInstance(\App\Services\DomainHealthCheckRunner::class);
+
         $brain = Mockery::mock(BrainEventClient::class);
         $this->instance(BrainEventClient::class, $brain);
         /** @var Mockery\Expectation $deepAuditExpectation */
@@ -755,6 +778,232 @@ class RunMonitoringLaneCommandTest extends TestCase
         $this->assertIsArray($brokenLinksIssue);
         $this->assertSame('domain_monitor.monitoring_lane', $brokenLinksIssue['detector']);
         $this->assertSame(2, data_get($brokenLinksIssue, 'evidence.broken_links_count'));
+    }
+
+    public function test_deep_audit_lane_opens_external_link_inventory_findings_for_off_host_links(): void
+    {
+        config()->set('services.brain.base_url', 'https://brain.example.test');
+        config()->set('services.brain.api_key', 'test-key');
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $property = $this->makeProperty('external-links.example.au', 'External Links');
+
+        $brokenLinkHealthCheck = Mockery::mock(BrokenLinkHealthCheck::class);
+        /** @var Mockery\Expectation $brokenLinksClearExpectation */
+        $brokenLinksClearExpectation = $brokenLinkHealthCheck->shouldReceive('check');
+        $brokenLinksClearExpectation->once()->andReturn([
+            'is_valid' => true,
+            'verified' => true,
+            'broken_links_count' => 0,
+            'pages_scanned' => 3,
+            'broken_links' => [],
+            'error_message' => null,
+            'payload' => [
+                'broken_links_count' => 0,
+                'pages_scanned' => 3,
+                'broken_links' => [],
+                'duration_ms' => 10,
+            ],
+        ]);
+        $this->instance(BrokenLinkHealthCheck::class, $brokenLinkHealthCheck);
+
+        $externalLinkInventoryHealthCheck = Mockery::mock(ExternalLinkInventoryHealthCheck::class);
+        /** @var Mockery\Expectation $externalLinksDetectedExpectation */
+        $externalLinksDetectedExpectation = $externalLinkInventoryHealthCheck->shouldReceive('check');
+        $externalLinksDetectedExpectation->once()->andReturn([
+            'is_valid' => true,
+            'verified' => true,
+            'external_links_count' => 3,
+            'pages_scanned' => 5,
+            'external_links' => [
+                [
+                    'url' => 'https://partner.example.org/quote',
+                    'host' => 'partner.example.org',
+                    'relationship' => 'external',
+                    'found_on' => 'https://external-links.example.au/services/',
+                    'found_on_pages' => ['https://external-links.example.au/services/'],
+                ],
+                [
+                    'url' => 'https://facebook.com/example',
+                    'host' => 'facebook.com',
+                    'relationship' => 'external',
+                    'found_on' => 'https://external-links.example.au/contact/',
+                    'found_on_pages' => ['https://external-links.example.au/contact/'],
+                ],
+                [
+                    'url' => 'https://blog.external-links.example.au/post',
+                    'host' => 'blog.external-links.example.au',
+                    'relationship' => 'subdomain',
+                    'found_on' => 'https://external-links.example.au/',
+                    'found_on_pages' => ['https://external-links.example.au/'],
+                ],
+            ],
+            'error_message' => null,
+            'payload' => [
+                'pages_scanned' => 5,
+                'external_links_count' => 3,
+                'unique_hosts_count' => 3,
+                'page_failures_count' => 0,
+                'external_links' => [
+                    [
+                        'url' => 'https://partner.example.org/quote',
+                        'host' => 'partner.example.org',
+                        'relationship' => 'external',
+                        'found_on' => 'https://external-links.example.au/services/',
+                        'found_on_pages' => ['https://external-links.example.au/services/'],
+                    ],
+                    [
+                        'url' => 'https://facebook.com/example',
+                        'host' => 'facebook.com',
+                        'relationship' => 'external',
+                        'found_on' => 'https://external-links.example.au/contact/',
+                        'found_on_pages' => ['https://external-links.example.au/contact/'],
+                    ],
+                    [
+                        'url' => 'https://blog.external-links.example.au/post',
+                        'host' => 'blog.external-links.example.au',
+                        'relationship' => 'subdomain',
+                        'found_on' => 'https://external-links.example.au/',
+                        'found_on_pages' => ['https://external-links.example.au/'],
+                    ],
+                ],
+                'duration_ms' => 14,
+            ],
+        ]);
+        $this->instance(ExternalLinkInventoryHealthCheck::class, $externalLinkInventoryHealthCheck);
+        app()->forgetInstance(\App\Services\DomainHealthCheckRunner::class);
+
+        $brain = Mockery::mock(BrainEventClient::class);
+        $this->instance(BrainEventClient::class, $brain);
+        /** @var Mockery\Expectation $externalLinksOpenedExpectation */
+        $externalLinksOpenedExpectation = $brain->shouldReceive('sendAsync');
+        $externalLinksOpenedExpectation->once()->withArgs(function (string $eventType, array $payload): bool {
+            $this->assertSame('domain_monitor.finding.opened', $eventType);
+            $this->assertSame('cleanup.external_links_inventory', $payload['finding_type']);
+            $this->assertSame('cleanup', $payload['issue_type']);
+
+            return true;
+        });
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'deep_audit',
+            '--property' => $property->slug,
+        ]));
+
+        $this->assertDatabaseHas('monitoring_findings', [
+            'web_property_id' => $property->id,
+            'finding_type' => 'cleanup.external_links_inventory',
+            'status' => MonitoringFinding::STATUS_OPEN,
+        ]);
+
+        $issues = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues')
+            ->assertOk()
+            ->json('issues');
+
+        $this->assertIsArray($issues);
+
+        /** @var array<string, mixed>|null $externalLinksIssue */
+        $externalLinksIssue = collect($issues)->firstWhere('issue_class', 'cleanup.external_links_inventory');
+        $this->assertIsArray($externalLinksIssue);
+        $this->assertSame('should_fix', $externalLinksIssue['severity']);
+        $this->assertSame(2, data_get($externalLinksIssue, 'evidence.reviewable_external_links_count'));
+        $this->assertSame(['facebook.com', 'partner.example.org'], data_get($externalLinksIssue, 'evidence.unique_hosts'));
+    }
+
+    public function test_deep_audit_lane_does_not_open_external_link_inventory_findings_for_subdomains_only(): void
+    {
+        config()->set('services.brain.base_url', 'https://brain.example.test');
+        config()->set('services.brain.api_key', 'test-key');
+
+        $property = $this->makeProperty('subdomain-inventory.example.au', 'Subdomain Inventory');
+
+        $brokenLinkHealthCheck = Mockery::mock(BrokenLinkHealthCheck::class);
+        /** @var Mockery\Expectation $brokenLinksStillClearExpectation */
+        $brokenLinksStillClearExpectation = $brokenLinkHealthCheck->shouldReceive('check');
+        $brokenLinksStillClearExpectation->once()->andReturn([
+            'is_valid' => true,
+            'verified' => true,
+            'broken_links_count' => 0,
+            'pages_scanned' => 2,
+            'broken_links' => [],
+            'error_message' => null,
+            'payload' => [
+                'broken_links_count' => 0,
+                'pages_scanned' => 2,
+                'broken_links' => [],
+                'duration_ms' => 10,
+            ],
+        ]);
+        $this->instance(BrokenLinkHealthCheck::class, $brokenLinkHealthCheck);
+
+        $externalLinkInventoryHealthCheck = Mockery::mock(ExternalLinkInventoryHealthCheck::class);
+        /** @var Mockery\Expectation $subdomainInventoryExpectation */
+        $subdomainInventoryExpectation = $externalLinkInventoryHealthCheck->shouldReceive('check');
+        $subdomainInventoryExpectation->once()->andReturn([
+            'is_valid' => true,
+            'verified' => true,
+            'external_links_count' => 2,
+            'pages_scanned' => 4,
+            'external_links' => [
+                [
+                    'url' => 'https://blog.subdomain-inventory.example.au/post',
+                    'host' => 'blog.subdomain-inventory.example.au',
+                    'relationship' => 'subdomain',
+                    'found_on' => 'https://subdomain-inventory.example.au/',
+                    'found_on_pages' => ['https://subdomain-inventory.example.au/'],
+                ],
+                [
+                    'url' => 'https://example.au/about',
+                    'host' => 'example.au',
+                    'relationship' => 'parent_domain',
+                    'found_on' => 'https://subdomain-inventory.example.au/contact/',
+                    'found_on_pages' => ['https://subdomain-inventory.example.au/contact/'],
+                ],
+            ],
+            'error_message' => null,
+            'payload' => [
+                'pages_scanned' => 4,
+                'external_links_count' => 2,
+                'unique_hosts_count' => 2,
+                'page_failures_count' => 0,
+                'external_links' => [
+                    [
+                        'url' => 'https://blog.subdomain-inventory.example.au/post',
+                        'host' => 'blog.subdomain-inventory.example.au',
+                        'relationship' => 'subdomain',
+                        'found_on' => 'https://subdomain-inventory.example.au/',
+                        'found_on_pages' => ['https://subdomain-inventory.example.au/'],
+                    ],
+                    [
+                        'url' => 'https://example.au/about',
+                        'host' => 'example.au',
+                        'relationship' => 'parent_domain',
+                        'found_on' => 'https://subdomain-inventory.example.au/contact/',
+                        'found_on_pages' => ['https://subdomain-inventory.example.au/contact/'],
+                    ],
+                ],
+                'duration_ms' => 12,
+            ],
+        ]);
+        $this->instance(ExternalLinkInventoryHealthCheck::class, $externalLinkInventoryHealthCheck);
+        app()->forgetInstance(\App\Services\DomainHealthCheckRunner::class);
+
+        $brain = Mockery::mock(BrainEventClient::class);
+        $this->instance(BrainEventClient::class, $brain);
+        $brain->shouldIgnoreMissing();
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'deep_audit',
+            '--property' => $property->slug,
+        ]));
+
+        $this->assertSame(0, MonitoringFinding::query()->count());
+        $this->assertNull(MonitoringFinding::query()
+            ->where('web_property_id', $property->id)
+            ->where('finding_type', 'cleanup.external_links_inventory')
+            ->first());
     }
 
     private function makeProperty(string $domainName, string $name): WebProperty
