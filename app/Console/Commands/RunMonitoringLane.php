@@ -197,7 +197,8 @@ class RunMonitoringLane extends Command
                     $primaryDomain = $property->primaryDomainModel();
 
                     return $primaryDomain !== null
-                        && $primaryDomain->monitoringSkipReason('broken_links') === null;
+                        && $primaryDomain->monitoringSkipReason('broken_links') === null
+                        && $primaryDomain->monitoringSkipReason('external_links') === null;
                 }
 
                 return $property->production_url !== null || $property->primaryDomainName() !== null;
@@ -265,6 +266,11 @@ class RunMonitoringLane extends Command
                 'title' => 'Broken links found during deep audit crawl',
                 'issue_type' => 'cleanup',
                 'audit' => $siteScanner->auditBrokenLinks($property, $healthCheckRunner),
+            ],
+            'cleanup.external_links_inventory' => [
+                'title' => 'Off-host links found during deep audit inventory',
+                'issue_type' => 'cleanup',
+                'audit' => $siteScanner->auditExternalLinks($property, $healthCheckRunner),
             ],
         ];
     }

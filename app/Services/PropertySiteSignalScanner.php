@@ -610,6 +610,139 @@ class PropertySiteSignalScanner
      *   evidence: array<string, mixed>
      * }
      */
+    public function auditExternalLinks(WebProperty $property, DomainHealthCheckRunner $healthCheckRunner): array
+    {
+        $primaryDomain = $property->primaryDomainModel();
+
+        if ($primaryDomain === null) {
+            return [
+                'status' => 'fail',
+                'verdict' => 'missing_primary_domain',
+                'summary' => 'Property does not have a primary domain for external-link inventory.',
+                'evidence' => [
+                    'verdict' => 'missing_primary_domain',
+                    'property_slug' => $property->slug,
+                ],
+            ];
+        }
+
+        $refresh = $healthCheckRunner->run($primaryDomain, 'external_links');
+        $latestCheck = $primaryDomain->checks()
+            ->where('check_type', 'external_links')
+            ->latest('finished_at')
+            ->latest('created_at')
+            ->first();
+
+        if (! $latestCheck instanceof DomainCheck) {
+            return [
+                'status' => 'fail',
+                'verdict' => 'external_link_inventory_refresh_failed',
+                'summary' => 'External-link inventory crawl did not produce a persisted result.',
+                'evidence' => [
+                    'verdict' => 'external_link_inventory_refresh_failed',
+                    'refresh_status' => $refresh['status'],
+                    'refresh_reason' => $refresh['reason'] ?? null,
+                ],
+            ];
+        }
+
+        $payload = is_array($latestCheck->payload) ? $latestCheck->payload : [];
+        $pagesScanned = is_numeric($payload['pages_scanned'] ?? null)
+            ? (int) $payload['pages_scanned']
+            : 0;
+        $pageFailuresCount = is_numeric($payload['page_failures_count'] ?? null)
+            ? (int) $payload['page_failures_count']
+            : 0;
+        $externalLinks = collect(is_array($payload['external_links'] ?? null) ? $payload['external_links'] : [])
+            ->filter(fn (mixed $item): bool => is_array($item))
+            ->map(function (array $item): array {
+                $foundOnPages = collect(is_array($item['found_on_pages'] ?? null) ? $item['found_on_pages'] : [])
+                    ->filter(fn (mixed $page): bool => is_string($page) && $page !== '')
+                    ->values()
+                    ->all();
+
+                return [
+                    'url' => is_string($item['url'] ?? null) ? $item['url'] : null,
+                    'host' => is_string($item['host'] ?? null) ? $item['host'] : null,
+                    'relationship' => is_string($item['relationship'] ?? null) ? $item['relationship'] : 'external',
+                    'found_on' => is_string($item['found_on'] ?? null) ? $item['found_on'] : ($foundOnPages[0] ?? null),
+                    'found_on_pages' => $foundOnPages,
+                ];
+            })
+            ->filter(fn (array $item): bool => $item['url'] !== null)
+            ->values();
+        $reviewableLinks = $externalLinks
+            ->filter(fn (array $item): bool => $item['relationship'] === 'external')
+            ->values();
+        $uniqueHosts = $reviewableLinks
+            ->pluck('host')
+            ->filter(fn (mixed $host): bool => is_string($host) && $host !== '')
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        if ($latestCheck->status === 'unknown' || $pagesScanned === 0) {
+            return [
+                'status' => 'fail',
+                'verdict' => 'inventory_unverified',
+                'summary' => 'External-link inventory could not verify any live pages.',
+                'evidence' => [
+                    'verdict' => 'inventory_unverified',
+                    'refresh_status' => $refresh['status'],
+                    'refresh_reason' => $refresh['reason'] ?? null,
+                    'pages_scanned' => $pagesScanned,
+                    'page_failures_count' => $pageFailuresCount,
+                    'error_message' => $latestCheck->error_message,
+                ],
+            ];
+        }
+
+        if ($reviewableLinks->isEmpty()) {
+            return [
+                'status' => 'ok',
+                'verdict' => 'external_links_clear',
+                'summary' => 'Deep audit inventory did not find off-host links that need review.',
+                'evidence' => [
+                    'verdict' => 'external_links_clear',
+                    'pages_scanned' => $pagesScanned,
+                    'page_failures_count' => $pageFailuresCount,
+                    'reviewable_external_links_count' => 0,
+                    'reviewable_unique_hosts_count' => 0,
+                    'external_links' => [],
+                    'unique_hosts' => [],
+                ],
+            ];
+        }
+
+        return [
+            'status' => 'fail',
+            'verdict' => 'external_links_detected',
+            'summary' => sprintf(
+                'Deep audit inventory found %d off-host link(s) across %d unique host(s).',
+                $reviewableLinks->count(),
+                count($uniqueHosts)
+            ),
+            'evidence' => [
+                'verdict' => 'external_links_detected',
+                'pages_scanned' => $pagesScanned,
+                'page_failures_count' => $pageFailuresCount,
+                'reviewable_external_links_count' => $reviewableLinks->count(),
+                'reviewable_unique_hosts_count' => count($uniqueHosts),
+                'external_links' => $reviewableLinks->all(),
+                'unique_hosts' => $uniqueHosts,
+            ],
+        ];
+    }
+
+    /**
+     * @return array{
+     *   status: 'ok'|'fail',
+     *   verdict: string,
+     *   summary: string,
+     *   evidence: array<string, mixed>
+     * }
+     */
     public function auditRedirectPolicy(WebProperty $property, int $timeout = 10): array
     {
         $expectedOrigin = $this->expectedOrigin($property);

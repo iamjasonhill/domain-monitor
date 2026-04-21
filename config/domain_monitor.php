@@ -898,6 +898,7 @@ return [
             'issue_type' => 'cleanup',
             'checks' => [
                 'broken_links',
+                'external_links',
             ],
         ],
     ],
