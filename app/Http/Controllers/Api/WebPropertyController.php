@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\WebPropertyHealthSummaryResource;
 use App\Http\Resources\WebPropertyResource;
 use App\Http\Resources\WebPropertySummaryResource;
+use App\Models\MonitoringFinding;
 use App\Models\WebProperty;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -110,6 +111,10 @@ class WebPropertyController extends Controller
                 'conversionSurfaces.domain',
                 'conversionSurfaces.analyticsSource',
                 'conversionSurfaces.eventContractAssignment.eventContract',
+                'monitoringFindings' => fn ($query) => $query
+                    ->where('status', MonitoringFinding::STATUS_OPEN)
+                    ->with('domain:id,domain')
+                    ->orderByDesc('last_detected_at'),
                 'seoBaselines' => fn ($query) => $query
                     ->orderByDesc('captured_at')
                     ->orderByDesc('created_at')

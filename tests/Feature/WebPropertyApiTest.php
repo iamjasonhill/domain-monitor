@@ -9,6 +9,7 @@ use App\Models\DomainAlert;
 use App\Models\DomainCheck;
 use App\Models\DomainSeoBaseline;
 use App\Models\DomainTag;
+use App\Models\MonitoringFinding;
 use App\Models\PropertyAnalyticsSource;
 use App\Models\PropertyRepository;
 use App\Models\SearchConsoleIssueSnapshot;
@@ -300,6 +301,54 @@ class WebPropertyApiTest extends TestCase
             'auto_resolve' => false,
         ]);
 
+        MonitoringFinding::factory()->create([
+            'issue_id' => 'dm:test:moveroo-ga4',
+            'lane' => 'marketing_integrity',
+            'finding_type' => 'marketing.ga4_install',
+            'issue_type' => 'regression',
+            'scope_type' => 'web_property',
+            'domain_id' => $primaryDomain->id,
+            'web_property_id' => $property->id,
+            'status' => MonitoringFinding::STATUS_OPEN,
+            'title' => 'GA4 install mismatch on live property',
+            'summary' => 'Expected measurement ID is missing from the homepage.',
+            'first_detected_at' => now()->subHours(2),
+            'last_detected_at' => now()->subMinutes(5),
+            'recovered_at' => null,
+        ]);
+
+        MonitoringFinding::factory()->create([
+            'issue_id' => 'dm:test:moveroo-agent',
+            'lane' => 'seo_agent_readiness',
+            'finding_type' => 'seo.agent_readiness',
+            'issue_type' => 'readiness_gap',
+            'scope_type' => 'web_property',
+            'domain_id' => $redirectDomain->id,
+            'web_property_id' => $property->id,
+            'status' => MonitoringFinding::STATUS_OPEN,
+            'title' => 'Agent-readiness files missing on live property',
+            'summary' => 'llms.txt is missing.',
+            'first_detected_at' => now()->subHours(3),
+            'last_detected_at' => now()->subMinutes(10),
+            'recovered_at' => null,
+        ]);
+
+        MonitoringFinding::factory()->create([
+            'issue_id' => 'dm:test:moveroo-old',
+            'lane' => 'critical_live',
+            'finding_type' => 'critical.ssl',
+            'issue_type' => 'incident',
+            'scope_type' => 'web_property',
+            'domain_id' => $primaryDomain->id,
+            'web_property_id' => $property->id,
+            'status' => MonitoringFinding::STATUS_RECOVERED,
+            'title' => 'Recovered SSL issue',
+            'summary' => 'Recovered.',
+            'first_detected_at' => now()->subDay(),
+            'last_detected_at' => now()->subHours(6),
+            'recovered_at' => now()->subHours(5),
+        ]);
+
         $response = $this->withHeaders([
             'Authorization' => 'Bearer test-api-key',
         ])->getJson('/api/web-properties-summary');
@@ -345,6 +394,17 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.health_summary.checks.uptime', 'ok')
             ->assertJsonPath('web_properties.0.health_summary.checks.http', 'ok')
             ->assertJsonPath('web_properties.0.health_summary.checks.ssl', 'warn')
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings_count', 2)
+            ->assertJsonPath('web_properties.0.monitoring_summary.must_fix_count', 1)
+            ->assertJsonPath('web_properties.0.monitoring_summary.should_fix_count', 1)
+            ->assertJsonPath('web_properties.0.monitoring_summary.lane_counts.marketing_integrity', 1)
+            ->assertJsonPath('web_properties.0.monitoring_summary.lane_counts.seo_agent_readiness', 1)
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings.0.issue_class', 'marketing.ga4_install')
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings.0.severity', 'must_fix')
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings.0.domain', 'moveroo.com.au')
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings.1.issue_class', 'seo.agent_readiness')
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings.1.severity', 'should_fix')
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings.1.domain', 'www.moveroo.com.au')
             ->assertJsonPath('web_properties.0.control_state', 'controlled')
             ->assertJsonPath('web_properties.0.execution_surface', 'astro_repo_controlled')
             ->assertJsonPath('web_properties.0.fleet_managed', true)
@@ -552,6 +612,14 @@ class WebPropertyApiTest extends TestCase
                         'target_platform',
                         'astro_cutover_at',
                     ],
+                    'monitoring_summary' => [
+                        'open_findings_count',
+                        'must_fix_count',
+                        'should_fix_count',
+                        'latest_detected_at',
+                        'lane_counts',
+                        'open_findings',
+                    ],
                     'conversion_links' => [
                         'scanned_at',
                         'current' => [
@@ -608,6 +676,12 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.platform_migration.current_platform', $property->platform)
             ->assertJsonPath('web_properties.0.platform_migration.target_platform', null)
             ->assertJsonPath('web_properties.0.platform_migration.astro_cutover_at', null)
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings_count', 0)
+            ->assertJsonPath('web_properties.0.monitoring_summary.must_fix_count', 0)
+            ->assertJsonPath('web_properties.0.monitoring_summary.should_fix_count', 0)
+            ->assertJsonPath('web_properties.0.monitoring_summary.latest_detected_at', null)
+            ->assertJsonPath('web_properties.0.monitoring_summary.lane_counts', [])
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings', [])
             ->assertJsonPath('web_properties.0.conversion_links.scanned_at', null)
             ->assertJsonPath('web_properties.0.conversion_links.current.household_quote', null)
             ->assertJsonPath('web_properties.0.conversion_links.current.household_booking', null)
@@ -657,6 +731,14 @@ class WebPropertyApiTest extends TestCase
                         'current_platform',
                         'target_platform',
                         'astro_cutover_at',
+                    ],
+                    'monitoring_summary' => [
+                        'open_findings_count',
+                        'must_fix_count',
+                        'should_fix_count',
+                        'latest_detected_at',
+                        'lane_counts',
+                        'open_findings',
                     ],
                     'conversion_links' => [
                         'scanned_at',
@@ -714,6 +796,12 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('data.platform_migration.current_platform', $property->platform)
             ->assertJsonPath('data.platform_migration.target_platform', null)
             ->assertJsonPath('data.platform_migration.astro_cutover_at', null)
+            ->assertJsonPath('data.monitoring_summary.open_findings_count', 0)
+            ->assertJsonPath('data.monitoring_summary.must_fix_count', 0)
+            ->assertJsonPath('data.monitoring_summary.should_fix_count', 0)
+            ->assertJsonPath('data.monitoring_summary.latest_detected_at', null)
+            ->assertJsonPath('data.monitoring_summary.lane_counts', [])
+            ->assertJsonPath('data.monitoring_summary.open_findings', [])
             ->assertJsonPath('data.conversion_links.scanned_at', null)
             ->assertJsonPath('data.conversion_links.current.household_quote', null)
             ->assertJsonPath('data.conversion_links.current.household_booking', null)
