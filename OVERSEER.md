@@ -13,7 +13,7 @@ Supporting evidence confirmed during issue `#131`:
 ## Related Prototype Status
 
 Related local folder reviewed:
-`/Users/jasonhill/Projects/non-laravel-projects/domain-manage-project`
+`domain-manage-project` in the local non-Laravel projects area
 
 Classification:
 `domain-manage-project` is operationally obsolete as a controller and should not be treated as a second source of truth.
@@ -42,4 +42,4 @@ What remains open:
 - Trigger: issue `#131`
 - What changed: created `OVERSEER.md` and documented `domain-monitor` as the canonical active controller for this department
 - What was fixed: removed ambiguity between this repo and the local `domain-manage-project` prototype by classifying the prototype as operationally obsolete
-- What remains open: confirm whether any Render setup notes are worth copying first, then archive or remove `/Users/jasonhill/Projects/non-laravel-projects/domain-manage-project`
+- What remains open: confirm whether any Render setup notes are worth copying first, then archive or remove the local `domain-manage-project` folder
