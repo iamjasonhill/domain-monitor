@@ -169,11 +169,14 @@ php artisan migrate --force
 php artisan storage:link
 php artisan config:cache
 php artisan route:cache
-php artisan view:cache
 php artisan event:cache
 npm ci
 npm run build
 ```
+
+This project intentionally skips `php artisan view:cache` on Forge because the
+shared compiled views directory has produced transient rename failures during
+zero-downtime deployments. Blade views will still compile on demand.
 
 ## Post-Deployment Steps
 

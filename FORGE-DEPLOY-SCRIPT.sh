@@ -25,11 +25,13 @@ $FORGE_PHP artisan storage:link
 # Apply schema changes before the new release goes live.
 $FORGE_PHP artisan migrate --force
 
-# Rebuild framework caches for the new release.
+# Rebuild framework caches for the new release. We intentionally skip Blade
+# precompilation here because Forge zero-downtime deploys share the compiled
+# views directory across releases, and `view:cache` has shown transient rename
+# failures there while views still compile on demand safely in production.
 $FORGE_PHP artisan optimize:clear
 $FORGE_PHP artisan config:cache
 $FORGE_PHP artisan route:cache
-$FORGE_PHP artisan view:cache
 $FORGE_PHP artisan event:cache
 
 # Switch the current symlink to the new release.
