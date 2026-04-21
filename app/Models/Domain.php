@@ -208,6 +208,14 @@ class Domain extends Model
     }
 
     /**
+     * @return HasMany<MonitoringFinding, $this>
+     */
+    public function monitoringFindings(): HasMany
+    {
+        return $this->hasMany(MonitoringFinding::class)->orderByDesc('last_detected_at');
+    }
+
+    /**
      * @return HasOne<DomainCheck, $this>
      */
     public function latestSeoCheck(): HasOne

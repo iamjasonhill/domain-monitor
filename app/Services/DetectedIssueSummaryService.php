@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Domain;
 use App\Models\DomainCheck;
+use App\Models\MonitoringFinding;
 use App\Models\WebProperty;
 use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Collection;
@@ -75,6 +76,7 @@ class DetectedIssueSummaryService
         $brokenLinksEvidence = $this->brokenLinksEvidenceMapForQueueItems($queueItems);
         $issues = $this->flattenIssues($queueSnapshot['must_fix'] ?? [], 'must_fix', $issueEvidence, $brokenLinksEvidence)
             ->concat($this->flattenIssues($queueSnapshot['should_fix'] ?? [], 'should_fix', $issueEvidence, $brokenLinksEvidence))
+            ->concat($this->monitoringFindingIssues())
             ->pipe(function (Collection $issues) use ($includeExpectedExclusions, $includeSuppressed): Collection {
                 $issueIds = $issues
                     ->pluck('issue_id')
@@ -219,6 +221,75 @@ class DetectedIssueSummaryService
         return collect($items)
             ->flatMap(fn (array $item): array => $this->makeIssues($item, $severity, $issueEvidence, $brokenLinksEvidence))
             ->values();
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function monitoringFindingIssues(): Collection
+    {
+        $issues = MonitoringFinding::query()
+            ->where('status', MonitoringFinding::STATUS_OPEN)
+            ->with([
+                'domain:id,domain',
+                'webProperty:id,slug,name,production_url,primary_domain_id',
+                'webProperty.propertyDomains.domain:id,domain',
+            ])
+            ->orderByDesc('last_detected_at')
+            ->get()
+            ->map(function (MonitoringFinding $finding): array {
+                $property = $finding->webProperty;
+                $severity = in_array($finding->issue_type, ['incident', 'regression'], true)
+                    ? 'must_fix'
+                    : 'should_fix';
+
+                return [
+                    'issue_id' => $finding->issue_id,
+                    'property_slug' => $property?->slug,
+                    'property_name' => $property?->name,
+                    'domain' => ($finding->domain instanceof Domain ? $finding->domain->domain : null) ?? $property?->primaryDomainName(),
+                    'issue_class' => $finding->finding_type,
+                    'severity' => $severity,
+                    'detector' => 'domain_monitor.monitoring_lane',
+                    'status' => 'open',
+                    'detected_at' => $finding->last_detected_at instanceof \Illuminate\Support\Carbon
+                        ? $finding->last_detected_at->toIso8601String()
+                        : null,
+                    'rollout_scope' => 'property_only',
+                    'control_id' => null,
+                    'platform_profile' => null,
+                    'host_profile' => null,
+                    'control_profile' => null,
+                    'control_state' => null,
+                    'execution_surface' => 'monitoring_lane',
+                    'fleet_managed' => false,
+                    'controller_repo' => null,
+                    'controller_repo_url' => null,
+                    'conversion_links' => $property?->conversionLinkSummary(),
+                    'canonical_origin' => $property?->canonicalOriginSummary(),
+                    'site_identity' => $property?->siteIdentitySummary(),
+                    'evidence' => [
+                        'primary_reasons' => [$finding->summary],
+                        'secondary_reasons' => [],
+                        'related_issue_classes' => [$finding->finding_type],
+                        'coverage_required' => false,
+                        'coverage_status' => null,
+                        'coverage_gap' => false,
+                        'property_match_confidence' => $property instanceof WebProperty ? 'high' : 'none',
+                        'baseline_surface' => null,
+                        'source_domain_id' => $finding->domain_id,
+                        'lane' => $finding->lane,
+                        'finding_type' => $finding->finding_type,
+                        'issue_type' => $finding->issue_type,
+                        'summary' => $finding->summary,
+                        'details' => $finding->evidence ?? [],
+                    ],
+                ];
+            })
+            ->values();
+
+        /** @var Collection<int, array<string, mixed>> $issues */
+        return $issues;
     }
 
     /**
