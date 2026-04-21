@@ -147,6 +147,70 @@ class RefreshSearchConsoleLiveRechecksCommandTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_it_does_not_mark_query_variant_present_when_only_base_url_exists_in_sitemap(): void
+    {
+        $property = $this->makeProperty('query-variant-live-rechecks-site', 'query-variant.example.au');
+        $domain = $property->primaryDomainModel();
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain?->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'source_issue_label' => 'Page with redirect',
+            'capture_method' => 'gsc_drilldown_zip',
+            'source_report' => 'search_console_page_indexing_drilldown',
+            'source_property' => 'sc-domain:query-variant.example.au',
+            'captured_at' => now()->subDay(),
+            'captured_by' => 'test',
+            'affected_url_count' => 1,
+            'sample_urls' => [
+                'https://query-variant.example.au/?elementor_library=default-kit',
+            ],
+            'normalized_payload' => [
+                'affected_urls' => [
+                    'https://query-variant.example.au/?elementor_library=default-kit',
+                ],
+            ],
+        ]);
+
+        Http::fake([
+            'https://query-variant.example.au/sitemap.xml' => Http::response('', 404),
+            'https://query-variant.example.au/sitemaps.xml' => Http::response('', 404),
+            'https://query-variant.example.au/sitemap_index.xml' => Http::response(<<<'XML'
+                <?xml version="1.0" encoding="UTF-8"?>
+                <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+                    <sitemap><loc>https://query-variant.example.au/page-sitemap.xml</loc></sitemap>
+                </sitemapindex>
+            XML, 200),
+            'https://query-variant.example.au/page-sitemap.xml' => Http::response(<<<'XML'
+                <?xml version="1.0" encoding="UTF-8"?>
+                <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+                    <url><loc>https://query-variant.example.au/</loc></url>
+                </urlset>
+            XML, 200),
+        ]);
+
+        $exitCode = Artisan::call('analytics:refresh-search-console-live-rechecks', [
+            '--property' => $property->slug,
+        ]);
+
+        $this->assertSame(0, $exitCode);
+
+        $liveSnapshot = SearchConsoleIssueSnapshot::query()
+            ->where('web_property_id', $property->id)
+            ->where('issue_class', 'page_with_redirect_in_sitemap')
+            ->where('capture_method', 'gsc_live_recheck')
+            ->latest('captured_at')
+            ->first();
+
+        $this->assertInstanceOf(SearchConsoleIssueSnapshot::class, $liveSnapshot);
+        $this->assertSame(
+            false,
+            data_get($liveSnapshot->issueEvidence(), 'live_sitemap_checks.0.present_in_current_sitemap')
+        );
+        $this->assertNull(data_get($liveSnapshot->issueEvidence(), 'live_sitemap_checks.0.matched_sitemap'));
+    }
+
     private function makeProperty(string $slug, string $domainName): WebProperty
     {
         $domain = Domain::factory()->create([
