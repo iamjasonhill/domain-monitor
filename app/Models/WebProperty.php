@@ -6,6 +6,7 @@ use App\Services\PropertyExecutionReadinessResolver;
 use App\Services\WebPropertyAnalyticsSummaryBuilder;
 use App\Services\WebPropertyCanonicalOriginSummaryBuilder;
 use App\Services\WebPropertyGscEvidenceSummaryBuilder;
+use App\Services\WebPropertyMonitoringSummaryBuilder;
 use App\Services\WebPropertyPlatformMigrationSummaryBuilder;
 use App\Services\WebPropertySeoBaselineSummaryBuilder;
 use App\Services\WebPropertySiteIdentitySummaryBuilder;
@@ -968,6 +969,7 @@ class WebProperty extends Model
             ],
             'conversion_surfaces' => $this->conversionSurfaceSummaries(),
             'health_summary' => $this->healthSummary(),
+            'monitoring_summary' => $this->monitoringSummary(),
             'deployment_summary' => $this->deploymentSummary(),
             'tags' => $this->tagSummaries(),
             'control_state' => $executionReadiness['control_state'],
@@ -1089,6 +1091,32 @@ class WebProperty extends Model
     public function seoBaselineSummary(): array
     {
         return app(WebPropertySeoBaselineSummaryBuilder::class)->build($this);
+    }
+
+    /**
+     * @return array{
+     *   open_findings_count: int,
+     *   must_fix_count: int,
+     *   should_fix_count: int,
+     *   latest_detected_at: string|null,
+     *   lane_counts: array<string, int>,
+     *   open_findings: array<int, array{
+     *     issue_id: string,
+     *     issue_class: string,
+     *     severity: string,
+     *     lane: string,
+     *     issue_type: string,
+     *     title: string,
+     *     summary: string|null,
+     *     status: string,
+     *     detected_at: string|null,
+     *     domain: string|null
+     *   }>
+     * }
+     */
+    public function monitoringSummary(): array
+    {
+        return app(WebPropertyMonitoringSummaryBuilder::class)->build($this);
     }
 
     /**
