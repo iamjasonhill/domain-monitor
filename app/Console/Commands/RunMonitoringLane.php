@@ -222,14 +222,14 @@ class RunMonitoringLane extends Command
                 'issue_type' => 'regression',
                 'audit' => $siteScanner->auditIndexability($property, $timeout),
             ],
-        ];
-
-        if ($expectedMeasurementId !== null) {
-            $audits['marketing.ga4_install'] = [
+            'marketing.ga4_install' => [
                 'title' => 'GA4 install mismatch on live property',
                 'issue_type' => 'regression',
                 'audit' => $ga4Scanner->auditPropertyHomepage($property, $timeout),
-            ];
+            ],
+        ];
+
+        if ($expectedMeasurementId !== null) {
             $audits['marketing.conversion_surface_ga4'] = [
                 'title' => 'GA4 mismatch on conversion surfaces',
                 'issue_type' => 'regression',

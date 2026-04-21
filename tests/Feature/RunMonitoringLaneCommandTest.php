@@ -206,7 +206,7 @@ class RunMonitoringLaneCommandTest extends TestCase
         $this->assertSame('quotes.brand.example.au', data_get($conversionFinding->evidence, 'failing_surfaces.0.hostname'));
     }
 
-    public function test_marketing_integrity_lane_skips_properties_without_an_active_primary_ga4_source(): void
+    public function test_marketing_integrity_lane_flags_properties_without_an_active_primary_ga4_source(): void
     {
         config()->set('services.brain.base_url', 'https://brain.example.test');
         config()->set('services.brain.api_key', 'test-key');
@@ -268,7 +268,17 @@ class RunMonitoringLaneCommandTest extends TestCase
 
         $brain = Mockery::mock(BrainEventClient::class);
         $this->instance(BrainEventClient::class, $brain);
-        $brain->shouldNotReceive('sendAsync');
+        /** @var Mockery\Expectation $updatedExpectation */
+        $updatedExpectation = $brain->shouldReceive('sendAsync');
+        $updatedExpectation->once()->withArgs(function (string $eventType, array $payload): bool {
+            $this->assertSame('domain_monitor.finding.updated', $eventType);
+            $this->assertSame('marketing.ga4_install', $payload['finding_type']);
+            $this->assertSame('regression', $payload['issue_type']);
+            $this->assertSame('missing_expected_measurement_id', data_get($payload, 'evidence.verdict'));
+            $this->assertSame(['G-ACTIVE999'], data_get($payload, 'evidence.detected_measurement_ids'));
+
+            return true;
+        });
 
         $this->assertSame(0, Artisan::call('monitoring:run-lane', [
             'lane' => 'marketing_integrity',
@@ -282,7 +292,16 @@ class RunMonitoringLaneCommandTest extends TestCase
                 'marketing.ga4_install'
             ),
             'status' => MonitoringFinding::STATUS_OPEN,
+            'summary' => 'Property does not have an active GA4 measurement ID configured in domain-monitor.',
         ]);
+
+        $finding = MonitoringFinding::query()
+            ->where('web_property_id', $property->id)
+            ->where('finding_type', 'marketing.ga4_install')
+            ->firstOrFail();
+
+        $this->assertSame('missing_expected_measurement_id', data_get($finding->evidence, 'verdict'));
+        $this->assertSame(['G-ACTIVE999'], data_get($finding->evidence, 'detected_measurement_ids'));
 
         $this->assertDatabaseHas('property_analytics_sources', [
             'id' => $primarySource->id,
@@ -369,6 +388,15 @@ class RunMonitoringLaneCommandTest extends TestCase
 
         $brain = Mockery::mock(BrainEventClient::class);
         $this->instance(BrainEventClient::class, $brain);
+        /** @var Mockery\Expectation $ga4Expectation */
+        $ga4Expectation = $brain->shouldReceive('sendAsync');
+        $ga4Expectation->once()->withArgs(function (string $eventType, array $payload): bool {
+            $this->assertSame('domain_monitor.finding.opened', $eventType);
+            $this->assertSame('marketing.ga4_install', $payload['finding_type']);
+            $this->assertSame('missing_expected_measurement_id', data_get($payload, 'evidence.verdict'));
+
+            return true;
+        });
         /** @var Mockery\Expectation $quoteHandoffExpectation */
         $quoteHandoffExpectation = $brain->shouldReceive('sendAsync');
         $quoteHandoffExpectation->once()->withArgs(function (string $eventType, array $payload): bool {
@@ -392,7 +420,11 @@ class RunMonitoringLaneCommandTest extends TestCase
         $this->assertSame(MonitoringFinding::STATUS_OPEN, $finding->status);
         $this->assertSame('wrong_handoff_target', data_get($finding->evidence, 'verdict'));
         $this->assertSame('household_quote', data_get($finding->evidence, 'mismatches.0.slot'));
-        $this->assertNull(MonitoringFinding::query()->where('finding_type', 'marketing.ga4_install')->first());
+        $this->assertDatabaseHas('monitoring_findings', [
+            'web_property_id' => $property->id,
+            'finding_type' => 'marketing.ga4_install',
+            'status' => MonitoringFinding::STATUS_OPEN,
+        ]);
     }
 
     public function test_marketing_integrity_lane_does_not_run_quote_handoff_for_moveroo_subdomain_only_targets(): void
@@ -415,13 +447,26 @@ class RunMonitoringLaneCommandTest extends TestCase
 
         $brain = Mockery::mock(BrainEventClient::class);
         $this->instance(BrainEventClient::class, $brain);
-        $brain->shouldNotReceive('sendAsync');
+        /** @var Mockery\Expectation $ga4Expectation */
+        $ga4Expectation = $brain->shouldReceive('sendAsync');
+        $ga4Expectation->once()->withArgs(function (string $eventType, array $payload): bool {
+            $this->assertSame('domain_monitor.finding.opened', $eventType);
+            $this->assertSame('marketing.ga4_install', $payload['finding_type']);
+            $this->assertSame('missing_expected_measurement_id', data_get($payload, 'evidence.verdict'));
+
+            return true;
+        });
 
         $this->assertSame(0, Artisan::call('monitoring:run-lane', [
             'lane' => 'marketing_integrity',
             '--property' => $property->slug,
         ]));
 
+        $this->assertDatabaseHas('monitoring_findings', [
+            'web_property_id' => $property->id,
+            'finding_type' => 'marketing.ga4_install',
+            'status' => MonitoringFinding::STATUS_OPEN,
+        ]);
         $this->assertNull(MonitoringFinding::query()
             ->where('web_property_id', $property->id)
             ->where('finding_type', 'marketing.quote_handoff_integrity')
