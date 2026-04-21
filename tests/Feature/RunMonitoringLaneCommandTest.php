@@ -8,6 +8,10 @@ use App\Models\PropertyAnalyticsSource;
 use App\Models\WebProperty;
 use App\Models\WebPropertyConversionSurface;
 use App\Models\WebPropertyDomain;
+use App\Services\HttpHealthCheck;
+use App\Services\PropertySiteSignalScanner;
+use App\Services\SslHealthCheck;
+use App\Services\UptimeHealthCheck;
 use Brain\Client\BrainEventClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -404,6 +408,34 @@ class RunMonitoringLaneCommandTest extends TestCase
             'canonical_origin_policy' => 'known',
         ])->save();
 
+        $this->mockCriticalLiveHealthChecks(
+            uptime: [
+                'is_valid' => true,
+                'status_code' => 200,
+                'duration_ms' => 10,
+                'error_message' => null,
+                'payload' => ['url' => 'https://redirect.example.au', 'status_code' => 200, 'duration_ms' => 10],
+            ],
+            http: [
+                'status_code' => 200,
+                'duration_ms' => 11,
+                'is_up' => true,
+                'error_message' => null,
+                'payload' => ['url' => 'https://redirect.example.au', 'headers' => [], 'redirected' => false],
+            ],
+            ssl: [
+                'is_valid' => true,
+                'expires_at' => now()->addDays(30)->toIso8601String(),
+                'days_until_expiry' => 30,
+                'issuer' => 'Example CA',
+                'protocol' => 'TLSv1.3',
+                'cipher' => 'TLS_AES_256_GCM_SHA384',
+                'chain' => [],
+                'error_message' => null,
+                'payload' => ['domain' => 'redirect.example.au', 'days_until_expiry' => 30],
+            ],
+        );
+
         Http::fake([
             'http://redirect.example.au/' => Http::response(
                 'ok',
@@ -441,6 +473,104 @@ class RunMonitoringLaneCommandTest extends TestCase
 
         $this->assertSame(MonitoringFinding::STATUS_OPEN, $finding->status);
         $this->assertSame('http_upgrade_failed', data_get($finding->evidence, 'verdict'));
+    }
+
+    public function test_critical_live_lane_reports_uptime_http_and_ssl_failures(): void
+    {
+        config()->set('services.brain.base_url', 'https://brain.example.test');
+        config()->set('services.brain.api_key', 'test-key');
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $property = $this->makeProperty('critical-live.example.au', 'Critical Live');
+        $property->forceFill([
+            'canonical_origin_scheme' => 'https',
+            'canonical_origin_host' => 'critical-live.example.au',
+            'canonical_origin_policy' => 'known',
+        ])->save();
+
+        $this->mockCriticalLiveHealthChecks(
+            uptime: [
+                'is_valid' => false,
+                'status_code' => null,
+                'duration_ms' => 20,
+                'error_message' => 'Connection timed out',
+                'payload' => ['url' => 'https://critical-live.example.au', 'error_type' => 'exception', 'duration_ms' => 20],
+            ],
+            http: [
+                'status_code' => 503,
+                'duration_ms' => 25,
+                'is_up' => false,
+                'error_message' => 'HTTP 503',
+                'payload' => ['url' => 'https://critical-live.example.au', 'headers' => [], 'redirected' => false],
+            ],
+            ssl: [
+                'is_valid' => false,
+                'expires_at' => null,
+                'days_until_expiry' => null,
+                'issuer' => null,
+                'protocol' => null,
+                'cipher' => null,
+                'chain' => [],
+                'error_message' => 'ssl connect failed',
+                'payload' => ['domain' => 'critical-live.example.au', 'error_type' => 'connection'],
+            ],
+        );
+
+        Http::fake([
+            'http://critical-live.example.au/' => Http::response(
+                '',
+                200,
+                ['X-Guzzle-Redirect-History' => ['https://critical-live.example.au/'], 'X-Guzzle-Redirect-Status-History' => ['301']]
+            ),
+            'https://www.critical-live.example.au/' => Http::response(
+                '',
+                200,
+                ['X-Guzzle-Redirect-History' => ['https://critical-live.example.au/'], 'X-Guzzle-Redirect-Status-History' => ['301']]
+            ),
+        ]);
+
+        $brain = Mockery::mock(BrainEventClient::class);
+        $this->instance(BrainEventClient::class, $brain);
+        /** @var Mockery\Expectation $criticalLiveExpectation */
+        $criticalLiveExpectation = $brain->shouldReceive('sendAsync');
+        $criticalLiveExpectation->times(3)->withArgs(
+            fn (string $eventType, array $payload): bool => $eventType === 'domain_monitor.finding.opened'
+                && in_array($payload['finding_type'], ['critical.uptime', 'critical.http_response', 'critical.ssl'], true)
+                && $payload['issue_type'] === 'incident'
+        );
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'critical_live',
+            '--property' => $property->slug,
+        ]));
+
+        $this->assertDatabaseHas('monitoring_findings', [
+            'web_property_id' => $property->id,
+            'finding_type' => 'critical.uptime',
+            'status' => MonitoringFinding::STATUS_OPEN,
+        ]);
+        $this->assertDatabaseHas('monitoring_findings', [
+            'web_property_id' => $property->id,
+            'finding_type' => 'critical.http_response',
+            'status' => MonitoringFinding::STATUS_OPEN,
+        ]);
+        $this->assertDatabaseHas('monitoring_findings', [
+            'web_property_id' => $property->id,
+            'finding_type' => 'critical.ssl',
+            'status' => MonitoringFinding::STATUS_OPEN,
+        ]);
+
+        $issues = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues')
+            ->assertOk()
+            ->json('issues');
+
+        $this->assertIsArray($issues);
+        $criticalIssue = collect($issues)->firstWhere('issue_class', 'critical.uptime');
+
+        $this->assertIsArray($criticalIssue);
+        $this->assertSame('must_fix', $criticalIssue['severity']);
     }
 
     private function makeProperty(string $domainName, string $name): WebProperty
@@ -498,5 +628,33 @@ class RunMonitoringLaneCommandTest extends TestCase
         }
 
         return sprintf('<html><head>%s</head><body>Body</body></html>', $head);
+    }
+
+    /**
+     * @param  array<string, mixed>  $uptime
+     * @param  array<string, mixed>  $http
+     * @param  array<string, mixed>  $ssl
+     */
+    private function mockCriticalLiveHealthChecks(array $uptime, array $http, array $ssl): void
+    {
+        $uptimeHealthCheck = Mockery::mock(UptimeHealthCheck::class);
+        /** @var Mockery\Expectation $uptimeExpectation */
+        $uptimeExpectation = $uptimeHealthCheck->shouldReceive('check');
+        $uptimeExpectation->andReturn($uptime);
+        $this->instance(UptimeHealthCheck::class, $uptimeHealthCheck);
+
+        $httpHealthCheck = Mockery::mock(HttpHealthCheck::class);
+        /** @var Mockery\Expectation $httpExpectation */
+        $httpExpectation = $httpHealthCheck->shouldReceive('check');
+        $httpExpectation->andReturn($http);
+        $this->instance(HttpHealthCheck::class, $httpHealthCheck);
+
+        $sslHealthCheck = Mockery::mock(SslHealthCheck::class);
+        /** @var Mockery\Expectation $sslExpectation */
+        $sslExpectation = $sslHealthCheck->shouldReceive('check');
+        $sslExpectation->andReturn($ssl);
+        $this->instance(SslHealthCheck::class, $sslHealthCheck);
+
+        app()->forgetInstance(PropertySiteSignalScanner::class);
     }
 }

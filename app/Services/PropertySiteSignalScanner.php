@@ -12,6 +12,189 @@ use Illuminate\Support\Str;
 
 class PropertySiteSignalScanner
 {
+    public function __construct(
+        private readonly UptimeHealthCheck $uptimeHealthCheck,
+        private readonly HttpHealthCheck $httpHealthCheck,
+        private readonly SslHealthCheck $sslHealthCheck,
+    ) {}
+
+    /**
+     * @return array{
+     *   status: 'ok'|'fail',
+     *   verdict: string,
+     *   summary: string,
+     *   evidence: array<string, mixed>
+     * }
+     */
+    public function auditUptime(WebProperty $property, int $timeout = 10): array
+    {
+        $domain = $property->primaryDomainName();
+
+        if (! is_string($domain) || trim($domain) === '') {
+            return [
+                'status' => 'fail',
+                'verdict' => 'missing_primary_domain',
+                'summary' => 'Property does not have a primary domain for uptime monitoring.',
+                'evidence' => [
+                    'verdict' => 'missing_primary_domain',
+                    'property_slug' => $property->slug,
+                ],
+            ];
+        }
+
+        $result = $this->uptimeHealthCheck->check($domain, max(1, min($timeout, 10)));
+
+        if ($result['is_valid']) {
+            return [
+                'status' => 'ok',
+                'verdict' => 'uptime_ok',
+                'summary' => 'Root uptime probe succeeded.',
+                'evidence' => [
+                    'verdict' => 'uptime_ok',
+                    'domain' => $domain,
+                    'details' => $result['payload'],
+                ],
+            ];
+        }
+
+        return [
+            'status' => 'fail',
+            'verdict' => 'uptime_failed',
+            'summary' => 'Root uptime probe failed for the primary domain.',
+            'evidence' => [
+                'verdict' => 'uptime_failed',
+                'domain' => $domain,
+                'details' => $result['payload'],
+                'error_message' => $result['error_message'],
+                'status_code' => $result['status_code'],
+            ],
+        ];
+    }
+
+    /**
+     * @return array{
+     *   status: 'ok'|'fail',
+     *   verdict: string,
+     *   summary: string,
+     *   evidence: array<string, mixed>
+     * }
+     */
+    public function auditHttpResponse(WebProperty $property, int $timeout = 10): array
+    {
+        $domain = $property->primaryDomainName();
+
+        if (! is_string($domain) || trim($domain) === '') {
+            return [
+                'status' => 'fail',
+                'verdict' => 'missing_primary_domain',
+                'summary' => 'Property does not have a primary domain for HTTP monitoring.',
+                'evidence' => [
+                    'verdict' => 'missing_primary_domain',
+                    'property_slug' => $property->slug,
+                ],
+            ];
+        }
+
+        $result = $this->httpHealthCheck->check($domain, $timeout);
+        $statusCode = $result['status_code'];
+        $isHealthy = $result['is_up']
+            && is_int($statusCode)
+            && $statusCode >= 200
+            && $statusCode < 400;
+
+        if ($isHealthy) {
+            return [
+                'status' => 'ok',
+                'verdict' => 'http_ok',
+                'summary' => 'Root HTTP response succeeded for the primary domain.',
+                'evidence' => [
+                    'verdict' => 'http_ok',
+                    'domain' => $domain,
+                    'details' => $result['payload'],
+                    'status_code' => $statusCode,
+                ],
+            ];
+        }
+
+        $verdict = is_int($statusCode) && $statusCode >= 400 && $statusCode < 500
+            ? 'http_client_error'
+            : 'http_unavailable';
+
+        return [
+            'status' => 'fail',
+            'verdict' => $verdict,
+            'summary' => 'Root HTTP response is failing or returning an unexpected status for the primary domain.',
+            'evidence' => [
+                'verdict' => $verdict,
+                'domain' => $domain,
+                'details' => $result['payload'],
+                'error_message' => $result['error_message'],
+                'status_code' => $statusCode,
+            ],
+        ];
+    }
+
+    /**
+     * @return array{
+     *   status: 'ok'|'fail',
+     *   verdict: string,
+     *   summary: string,
+     *   evidence: array<string, mixed>
+     * }
+     */
+    public function auditSsl(WebProperty $property, int $timeout = 10): array
+    {
+        $domain = $property->primaryDomainName();
+
+        if (! is_string($domain) || trim($domain) === '') {
+            return [
+                'status' => 'fail',
+                'verdict' => 'missing_primary_domain',
+                'summary' => 'Property does not have a primary domain for SSL monitoring.',
+                'evidence' => [
+                    'verdict' => 'missing_primary_domain',
+                    'property_slug' => $property->slug,
+                ],
+            ];
+        }
+
+        $result = $this->sslHealthCheck->check($domain, $timeout);
+        $daysUntilExpiry = $result['days_until_expiry'];
+        $isExpiringSoon = is_int($daysUntilExpiry) && $daysUntilExpiry <= 7;
+
+        if ($result['is_valid'] && ! $isExpiringSoon) {
+            return [
+                'status' => 'ok',
+                'verdict' => 'ssl_ok',
+                'summary' => 'SSL certificate looks healthy for the primary domain.',
+                'evidence' => [
+                    'verdict' => 'ssl_ok',
+                    'domain' => $domain,
+                    'details' => $result['payload'],
+                    'days_until_expiry' => $daysUntilExpiry,
+                ],
+            ];
+        }
+
+        $verdict = $isExpiringSoon ? 'ssl_expiring_soon' : 'ssl_invalid';
+        $summary = $isExpiringSoon
+            ? 'SSL certificate is expiring soon on the primary domain.'
+            : 'SSL certificate is invalid or unavailable on the primary domain.';
+
+        return [
+            'status' => 'fail',
+            'verdict' => $verdict,
+            'summary' => $summary,
+            'evidence' => [
+                'verdict' => $verdict,
+                'domain' => $domain,
+                'details' => $result['payload'],
+                'error_message' => $result['error_message'],
+                'days_until_expiry' => $daysUntilExpiry,
+            ],
+        ];
+    }
+
     /**
      * @return array{
      *   status: 'ok'|'fail',

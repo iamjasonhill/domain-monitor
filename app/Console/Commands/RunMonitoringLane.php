@@ -61,6 +61,21 @@ class RunMonitoringLane extends Command
             $primaryDomain = $property->primaryDomainModel();
             $audits = match ($lane) {
                 'critical_live' => [
+                    'critical.uptime' => [
+                        'title' => 'Root uptime failure on live property',
+                        'issue_type' => 'incident',
+                        'audit' => $siteScanner->auditUptime($property, $timeout),
+                    ],
+                    'critical.http_response' => [
+                        'title' => 'Root HTTP response failure on live property',
+                        'issue_type' => 'incident',
+                        'audit' => $siteScanner->auditHttpResponse($property, $timeout),
+                    ],
+                    'critical.ssl' => [
+                        'title' => 'SSL certificate failure on live property',
+                        'issue_type' => 'incident',
+                        'audit' => $siteScanner->auditSsl($property, $timeout),
+                    ],
                     'critical.redirect_policy' => [
                         'title' => 'Root redirect policy mismatch on live property',
                         'issue_type' => 'incident',
@@ -179,6 +194,15 @@ class RunMonitoringLane extends Command
             ->filter(function (WebProperty $property) use ($lane): bool {
                 if ($lane === 'marketing_integrity') {
                     return $this->expectedMeasurementId($property) !== null;
+                }
+
+                if ($lane === 'critical_live') {
+                    $primaryDomain = $property->primaryDomainModel();
+
+                    return $primaryDomain !== null
+                        && $primaryDomain->monitoringSkipReason('uptime') === null
+                        && $primaryDomain->monitoringSkipReason('http') === null
+                        && $primaryDomain->monitoringSkipReason('ssl') === null;
                 }
 
                 return $property->production_url !== null || $property->primaryDomainName() !== null;
