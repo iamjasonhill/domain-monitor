@@ -8,6 +8,7 @@ use App\Models\PropertyAnalyticsSource;
 use App\Models\WebProperty;
 use App\Models\WebPropertyConversionSurface;
 use App\Models\WebPropertyDomain;
+use App\Services\BrokenLinkHealthCheck;
 use App\Services\HttpHealthCheck;
 use App\Services\PropertySiteSignalScanner;
 use App\Services\SslHealthCheck;
@@ -257,9 +258,11 @@ class RunMonitoringLaneCommandTest extends TestCase
 
         Http::fake([
             'https://inactive-primary.example.au/' => Http::response(
-                "<script async src=\"https://www.googletagmanager.com/gtag/js?id=G-ACTIVE999\"></script><script>gtag('config','G-ACTIVE999');</script>",
+                "<html><head><link rel=\"canonical\" href=\"https://inactive-primary.example.au/\" /><script async src=\"https://www.googletagmanager.com/gtag/js?id=G-ACTIVE999\"></script><script>gtag('config','G-ACTIVE999');</script></head><body>Body</body></html>",
                 200
             ),
+            'https://inactive-primary.example.au/robots.txt' => Http::response("User-agent: *\nAllow: /\nSitemap: https://inactive-primary.example.au/sitemap.xml\n", 200),
+            'https://inactive-primary.example.au/sitemap.xml' => Http::response('<urlset></urlset>', 200),
         ]);
 
         $brain = Mockery::mock(BrainEventClient::class);
@@ -337,6 +340,58 @@ class RunMonitoringLaneCommandTest extends TestCase
         $this->assertSame(MonitoringFinding::STATUS_OPEN, $finding->status);
         $this->assertSame('missing_canonical', data_get($finding->evidence, 'verdict'));
         $this->assertSame(['missing_canonical', 'homepage_noindex', 'sitemap_not_referenced'], data_get($finding->evidence, 'problems'));
+    }
+
+    public function test_marketing_integrity_lane_reports_quote_handoff_mismatches_without_requiring_ga4(): void
+    {
+        config()->set('services.brain.base_url', 'https://brain.example.test');
+        config()->set('services.brain.api_key', 'test-key');
+
+        $property = $this->makeProperty('handoff.example.au', 'Handoff Example');
+        $property->forceFill([
+            'target_household_quote_url' => 'https://quotes.handoff.example.au/quote/household',
+            'target_vehicle_quote_url' => 'https://quotes.handoff.example.au/quote/vehicle',
+        ])->save();
+
+        Http::fake([
+            'https://handoff.example.au' => Http::response($this->homepageHtml(
+                canonical: 'https://handoff.example.au/',
+                body: '<nav><a href="https://legacy.example.au/start-quote">Moving quote</a><a href="https://quotes.handoff.example.au/quote/vehicle">Car quote</a></nav>'
+            ), 200),
+            'https://handoff.example.au/' => Http::response($this->homepageHtml(
+                canonical: 'https://handoff.example.au/',
+                body: '<nav><a href="https://legacy.example.au/start-quote">Moving quote</a><a href="https://quotes.handoff.example.au/quote/vehicle">Car quote</a></nav>'
+            ), 200),
+            'https://handoff.example.au/robots.txt' => Http::response("User-agent: *\nAllow: /\nSitemap: https://handoff.example.au/sitemap.xml\n", 200),
+            'https://handoff.example.au/sitemap.xml' => Http::response('<urlset></urlset>', 200),
+        ]);
+
+        $brain = Mockery::mock(BrainEventClient::class);
+        $this->instance(BrainEventClient::class, $brain);
+        /** @var Mockery\Expectation $quoteHandoffExpectation */
+        $quoteHandoffExpectation = $brain->shouldReceive('sendAsync');
+        $quoteHandoffExpectation->once()->withArgs(function (string $eventType, array $payload): bool {
+            $this->assertSame('domain_monitor.finding.opened', $eventType);
+            $this->assertSame('marketing.quote_handoff_integrity', $payload['finding_type']);
+            $this->assertSame('regression', $payload['issue_type']);
+
+            return true;
+        });
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'marketing_integrity',
+            '--property' => $property->slug,
+        ]));
+
+        $finding = MonitoringFinding::query()
+            ->where('web_property_id', $property->id)
+            ->where('finding_type', 'marketing.quote_handoff_integrity')
+            ->firstOrFail();
+
+        $this->assertSame(MonitoringFinding::STATUS_OPEN, $finding->status);
+        $this->assertSame('wrong_handoff_target', data_get($finding->evidence, 'verdict'));
+        $this->assertSame('household_quote', data_get($finding->evidence, 'mismatches.0.slot'));
+        $this->assertNull(MonitoringFinding::query()->where('finding_type', 'marketing.ga4_install')->first());
     }
 
     public function test_seo_agent_readiness_lane_reports_missing_structured_data_and_agent_files(): void
@@ -573,6 +628,102 @@ class RunMonitoringLaneCommandTest extends TestCase
         $this->assertSame('must_fix', $criticalIssue['severity']);
     }
 
+    public function test_deep_audit_lane_opens_broken_links_findings_and_dedupes_issue_surface(): void
+    {
+        config()->set('services.brain.base_url', 'https://brain.example.test');
+        config()->set('services.brain.api_key', 'test-key');
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $property = $this->makeProperty('deep-audit.example.au', 'Deep Audit');
+
+        $brokenLinkHealthCheck = Mockery::mock(BrokenLinkHealthCheck::class);
+        /** @var Mockery\Expectation $brokenLinksExpectation */
+        $brokenLinksExpectation = $brokenLinkHealthCheck->shouldReceive('check');
+        $brokenLinksExpectation->once()->andReturn([
+            'is_valid' => false,
+            'verified' => true,
+            'broken_links_count' => 2,
+            'pages_scanned' => 8,
+            'broken_links' => [
+                [
+                    'url' => 'https://deep-audit.example.au/missing-page/',
+                    'status' => 404,
+                    'found_on' => 'https://deep-audit.example.au/services/',
+                ],
+                [
+                    'url' => 'https://deep-audit.example.au/old-booking/',
+                    'status' => 410,
+                    'found_on' => 'https://deep-audit.example.au/contact/',
+                ],
+            ],
+            'error_message' => null,
+            'payload' => [
+                'broken_links_count' => 2,
+                'pages_scanned' => 8,
+                'broken_links' => [
+                    [
+                        'url' => 'https://deep-audit.example.au/missing-page/',
+                        'status' => 404,
+                        'found_on' => 'https://deep-audit.example.au/services/',
+                    ],
+                    [
+                        'url' => 'https://deep-audit.example.au/old-booking/',
+                        'status' => 410,
+                        'found_on' => 'https://deep-audit.example.au/contact/',
+                    ],
+                ],
+                'duration_ms' => 18,
+            ],
+        ]);
+        $this->instance(BrokenLinkHealthCheck::class, $brokenLinkHealthCheck);
+
+        $brain = Mockery::mock(BrainEventClient::class);
+        $this->instance(BrainEventClient::class, $brain);
+        /** @var Mockery\Expectation $deepAuditExpectation */
+        $deepAuditExpectation = $brain->shouldReceive('sendAsync');
+        $deepAuditExpectation->once()->withArgs(function (string $eventType, array $payload): bool {
+            $this->assertSame('domain_monitor.finding.opened', $eventType);
+            $this->assertSame('seo.broken_links', $payload['finding_type']);
+            $this->assertSame('cleanup', $payload['issue_type']);
+
+            return true;
+        });
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'deep_audit',
+            '--property' => $property->slug,
+        ]));
+
+        $primaryDomain = $property->primaryDomainModel();
+        $this->assertInstanceOf(Domain::class, $primaryDomain);
+
+        $this->assertDatabaseHas('domain_checks', [
+            'domain_id' => $primaryDomain->id,
+            'check_type' => 'broken_links',
+            'status' => 'fail',
+        ]);
+        $this->assertDatabaseHas('monitoring_findings', [
+            'web_property_id' => $property->id,
+            'finding_type' => 'seo.broken_links',
+            'status' => MonitoringFinding::STATUS_OPEN,
+        ]);
+
+        $issues = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues')
+            ->assertOk()
+            ->json('issues');
+
+        $this->assertIsArray($issues);
+        $this->assertSame(1, collect($issues)->where('issue_class', 'seo.broken_links')->count());
+
+        /** @var array<string, mixed>|null $brokenLinksIssue */
+        $brokenLinksIssue = collect($issues)->firstWhere('issue_class', 'seo.broken_links');
+        $this->assertIsArray($brokenLinksIssue);
+        $this->assertSame('domain_monitor.monitoring_lane', $brokenLinksIssue['detector']);
+        $this->assertSame(2, data_get($brokenLinksIssue, 'evidence.broken_links_count'));
+    }
+
     private function makeProperty(string $domainName, string $name): WebProperty
     {
         $domain = Domain::factory()->create([
@@ -604,7 +755,8 @@ class RunMonitoringLaneCommandTest extends TestCase
         ?string $canonical = null,
         ?string $measurementId = null,
         ?string $metaRobots = null,
-        bool $includeStructuredData = false
+        bool $includeStructuredData = false,
+        string $body = 'Body'
     ): string {
         $head = '<title>Test Page</title>';
 
@@ -627,7 +779,7 @@ class RunMonitoringLaneCommandTest extends TestCase
             $head .= '<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"Example"}</script>';
         }
 
-        return sprintf('<html><head>%s</head><body>Body</body></html>', $head);
+        return sprintf('<html><head>%s</head><body>%s</body></html>', $head, $body);
     }
 
     /**

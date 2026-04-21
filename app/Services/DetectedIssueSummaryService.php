@@ -94,6 +94,7 @@ class DetectedIssueSummaryService
                         && (bool) data_get($issue, 'verification.is_currently_suppressed', false))
                     ->reject(fn (array $issue): bool => ! $includeExpectedExclusions
                         && is_array(data_get($issue, 'evidence.expected_exclusion')))
+                    ->pipe(fn (Collection $issues): Collection => $this->deduplicateIssues($issues))
                     ->values();
             })
             ->values();
@@ -239,6 +240,7 @@ class DetectedIssueSummaryService
             ->get()
             ->map(function (MonitoringFinding $finding): array {
                 $property = $finding->webProperty;
+                $findingEvidence = is_array($finding->evidence) ? $finding->evidence : [];
                 $severity = in_array($finding->issue_type, ['incident', 'regression'], true)
                     ? 'must_fix'
                     : 'should_fix';
@@ -282,7 +284,8 @@ class DetectedIssueSummaryService
                         'finding_type' => $finding->finding_type,
                         'issue_type' => $finding->issue_type,
                         'summary' => $finding->summary,
-                        'details' => $finding->evidence ?? [],
+                        ...$findingEvidence,
+                        'details' => $findingEvidence,
                     ],
                 ];
             })
@@ -290,6 +293,40 @@ class DetectedIssueSummaryService
 
         /** @var Collection<int, array<string, mixed>> $issues */
         return $issues;
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $issues
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function deduplicateIssues(Collection $issues): Collection
+    {
+        return $issues
+            ->groupBy(fn (array $issue): string => (string) ($issue['issue_id'] ?? ''))
+            ->map(function (Collection $group): array {
+                /** @var array<string, mixed> $preferred */
+                $preferred = $group
+                    ->sortByDesc(fn (array $issue): int => $this->issuePreferenceScore($issue))
+                    ->first();
+
+                return $preferred;
+            })
+            ->values();
+    }
+
+    /**
+     * @param  array<string, mixed>  $issue
+     */
+    private function issuePreferenceScore(array $issue): int
+    {
+        $detector = is_string($issue['detector'] ?? null) ? $issue['detector'] : '';
+        $detectedAt = is_string($issue['detected_at'] ?? null) ? strtotime($issue['detected_at']) : false;
+
+        return match ($detector) {
+            'domain_monitor.monitoring_lane' => 2_000_000_000 + (is_int($detectedAt) ? $detectedAt : 0),
+            'domain_monitor.priority_queue' => 1_000_000_000 + (is_int($detectedAt) ? $detectedAt : 0),
+            default => is_int($detectedAt) ? $detectedAt : 0,
+        };
     }
 
     /**
