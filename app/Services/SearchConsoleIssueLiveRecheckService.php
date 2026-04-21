@@ -388,7 +388,7 @@ class SearchConsoleIssueLiveRecheckService
         $uncheckableUrls = [];
 
         foreach ($candidateUrls as $url) {
-            $normalizedUrl = $this->normalizeComparableUrl($url);
+            $normalizedUrl = $this->normalizeComparableUrl($url, includeQuery: true);
 
             if ($normalizedUrl === null) {
                 $uncheckableUrls[$url] = true;
@@ -437,7 +437,7 @@ class SearchConsoleIssueLiveRecheckService
             }
 
             foreach ($document['urls'] as $url) {
-                $normalizedUrl = $this->normalizeComparableUrl($url);
+                $normalizedUrl = $this->normalizeComparableUrl($url, includeQuery: true);
 
                 if ($normalizedUrl === null || ! isset($candidateMap[$normalizedUrl])) {
                     continue;
@@ -754,7 +754,7 @@ class SearchConsoleIssueLiveRecheckService
         return $sanitizedUrl.($path !== '' ? $path : '/');
     }
 
-    private function normalizeComparableUrl(?string $url): ?string
+    private function normalizeComparableUrl(?string $url, bool $includeQuery = false): ?string
     {
         if (! is_string($url) || $url === '') {
             return null;
@@ -773,8 +773,19 @@ class SearchConsoleIssueLiveRecheckService
         }
 
         $path = (string) ($parts['path'] ?? '/');
+        $normalizedUrl .= ($path !== '' ? $path : '/');
 
-        return $normalizedUrl.($path !== '' ? $path : '/');
+        if (! $includeQuery) {
+            return $normalizedUrl;
+        }
+
+        $query = isset($parts['query']) ? trim((string) $parts['query']) : '';
+
+        if ($query === '') {
+            return $normalizedUrl;
+        }
+
+        return $normalizedUrl.'?'.$query;
     }
 
     private function hostResolvesPublicly(string $host): bool
