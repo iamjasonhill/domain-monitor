@@ -24,20 +24,47 @@ class Ga4SignalScanner
     public function auditPropertyHomepage(WebProperty $property, int $timeout = 10): array
     {
         $expectedMeasurementId = $this->expectedMeasurementId($property->primaryAnalyticsSource('ga4'));
+        $candidateUrls = $this->candidateUrlsForProperty($property);
 
         if ($expectedMeasurementId === null) {
+            $probe = $this->firstSuccessfulProbe($candidateUrls, $timeout);
+
+            if ($probe === null) {
+                return [
+                    'status' => 'fail',
+                    'verdict' => 'missing_expected_measurement_id',
+                    'summary' => 'Property does not have an active GA4 measurement ID configured in domain-monitor, and no live page could be fetched to verify the current install.',
+                    'evidence' => [
+                        'verdict' => 'missing_expected_measurement_id',
+                        'expected_measurement_id' => null,
+                        'detected_measurement_ids' => [],
+                        'detected_script_hosts' => [],
+                        'best_url' => null,
+                        'urls' => $candidateUrls->all(),
+                    ],
+                ];
+            }
+
+            $analysis = $this->analyzeHtml($probe['html'], $probe['url'], $timeout);
+            $summary = $analysis['measurement_ids'] === []
+                ? 'Property does not have an active GA4 measurement ID configured in domain-monitor, and no GA4 measurement ID was detected on the live page.'
+                : 'Property does not have an active GA4 measurement ID configured in domain-monitor.';
+
             return [
-                'status' => 'skipped',
+                'status' => 'fail',
                 'verdict' => 'missing_expected_measurement_id',
-                'summary' => 'Property does not have an active GA4 measurement ID configured.',
+                'summary' => $summary,
                 'evidence' => [
                     'verdict' => 'missing_expected_measurement_id',
-                    'urls' => [],
+                    'expected_measurement_id' => null,
+                    'detected_measurement_ids' => $analysis['measurement_ids'],
+                    'detected_script_hosts' => $analysis['tracker_hosts'],
+                    'best_url' => $probe['url'],
+                    'urls' => $candidateUrls->all(),
                 ],
             ];
         }
 
-        $candidateUrls = $this->candidateUrlsForProperty($property);
         $probe = $this->firstSuccessfulProbe($candidateUrls, $timeout);
 
         if ($probe === null) {

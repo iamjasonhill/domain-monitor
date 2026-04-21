@@ -19,6 +19,13 @@ class MonitoringFindingFactory extends Factory
     {
         $firstDetectedAt = fake()->dateTimeBetween('-7 days', '-1 day');
         $lastDetectedAt = (clone $firstDetectedAt)->modify('+'.fake()->numberBetween(1, 48).' hours');
+        $status = fake()->randomElement([MonitoringFinding::STATUS_OPEN, MonitoringFinding::STATUS_RECOVERED]);
+        $now = now();
+        $recoveredAt = null;
+
+        if ($status === MonitoringFinding::STATUS_RECOVERED && $lastDetectedAt <= $now) {
+            $recoveredAt = fake()->dateTimeBetween($lastDetectedAt, $now);
+        }
 
         return [
             'issue_id' => 'dm:'.fake()->uuid().':'.fake()->lexify('????????????????'),
@@ -33,14 +40,14 @@ class MonitoringFindingFactory extends Factory
             'scope_type' => 'web_property',
             'domain_id' => \App\Models\Domain::factory(),
             'web_property_id' => \App\Models\WebProperty::factory(),
-            'status' => fake()->randomElement([\App\Models\MonitoringFinding::STATUS_OPEN, \App\Models\MonitoringFinding::STATUS_RECOVERED]),
+            'status' => $status,
             'title' => fake()->sentence(6),
             'summary' => fake()->sentence(),
             'first_detected_at' => $firstDetectedAt,
             'last_detected_at' => $lastDetectedAt,
-            'recovered_at' => fake()->optional()->dateTimeBetween($lastDetectedAt, 'now'),
+            'recovered_at' => $recoveredAt,
             'evidence' => [
-                'verdict' => fake()->randomElement(['missing_ga4', 'wrong_measurement_id', 'duplicate_streams']),
+                'verdict' => fake()->randomElement(['missing_expected_measurement_id', 'missing_ga4', 'wrong_measurement_id', 'duplicate_streams']),
             ],
         ];
     }
