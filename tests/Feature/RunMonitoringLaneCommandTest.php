@@ -39,7 +39,9 @@ class RunMonitoringLaneCommandTest extends TestCase
         ]);
 
         Http::fake([
-            'https://tracked.example.au/' => Http::response('<html><head><title>No GA4</title></head><body>Missing</body></html>', 200),
+            'https://tracked.example.au/' => Http::response($this->homepageHtml(canonical: 'https://tracked.example.au/'), 200),
+            'https://tracked.example.au/robots.txt' => Http::response("User-agent: *\nAllow: /\nSitemap: https://tracked.example.au/sitemap.xml\n", 200),
+            'https://tracked.example.au/sitemap.xml' => Http::response('<urlset></urlset>', 200),
         ]);
 
         $brain = Mockery::mock(BrainEventClient::class);
@@ -162,12 +164,17 @@ class RunMonitoringLaneCommandTest extends TestCase
         ]);
 
         Http::fake([
-            'https://brand.example.au/' => Http::response(
-                "<script async src=\"https://www.googletagmanager.com/gtag/js?id=G-EXPECTED999\"></script><script>gtag('config','G-EXPECTED999');</script>",
-                200
-            ),
+            'https://brand.example.au/' => Http::response($this->homepageHtml(
+                canonical: 'https://brand.example.au/',
+                measurementId: 'G-EXPECTED999'
+            ), 200),
+            'https://brand.example.au/robots.txt' => Http::response("User-agent: *\nAllow: /\nSitemap: https://brand.example.au/sitemap.xml\n", 200),
+            'https://brand.example.au/sitemap.xml' => Http::response('<urlset></urlset>', 200),
             'https://quotes.brand.example.au/' => Http::response(
-                "<script async src=\"https://www.googletagmanager.com/gtag/js?id=G-WRONG000\"></script><script>gtag('config','G-WRONG000');</script>",
+                $this->homepageHtml(
+                    canonical: 'https://quotes.brand.example.au/',
+                    measurementId: 'G-WRONG000'
+                ),
                 200
             ),
         ]);
@@ -276,6 +283,166 @@ class RunMonitoringLaneCommandTest extends TestCase
         ]);
     }
 
+    public function test_marketing_integrity_lane_reports_indexability_failures(): void
+    {
+        config()->set('services.brain.base_url', 'https://brain.example.test');
+        config()->set('services.brain.api_key', 'test-key');
+
+        $property = $this->makeProperty('indexability.example.au', 'Indexability Example');
+        PropertyAnalyticsSource::create([
+            'web_property_id' => $property->id,
+            'provider' => 'ga4',
+            'external_id' => 'G-INDEX001',
+            'external_name' => 'Indexability Example',
+            'provider_config' => [
+                'measurement_id' => 'G-INDEX001',
+            ],
+            'is_primary' => true,
+            'status' => 'active',
+        ]);
+
+        Http::fake([
+            'https://indexability.example.au/' => Http::response(
+                $this->homepageHtml(measurementId: 'G-INDEX001', metaRobots: 'noindex,follow'),
+                200
+            ),
+            'https://indexability.example.au/robots.txt' => Http::response("User-agent: *\nAllow: /\n", 200),
+        ]);
+
+        $brain = Mockery::mock(BrainEventClient::class);
+        $this->instance(BrainEventClient::class, $brain);
+        /** @var Mockery\Expectation $indexabilityExpectation */
+        $indexabilityExpectation = $brain->shouldReceive('sendAsync');
+        $indexabilityExpectation->once()->withArgs(function (string $eventType, array $payload): bool {
+            $this->assertSame('domain_monitor.finding.opened', $eventType);
+            $this->assertSame('marketing.indexability', $payload['finding_type']);
+
+            return true;
+        });
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'marketing_integrity',
+            '--property' => $property->slug,
+        ]));
+
+        $finding = MonitoringFinding::query()
+            ->where('web_property_id', $property->id)
+            ->where('finding_type', 'marketing.indexability')
+            ->firstOrFail();
+
+        $this->assertSame(MonitoringFinding::STATUS_OPEN, $finding->status);
+        $this->assertSame('missing_canonical', data_get($finding->evidence, 'verdict'));
+        $this->assertSame(['missing_canonical', 'homepage_noindex', 'sitemap_not_referenced'], data_get($finding->evidence, 'problems'));
+    }
+
+    public function test_seo_agent_readiness_lane_reports_missing_structured_data_and_agent_files(): void
+    {
+        config()->set('services.brain.base_url', 'https://brain.example.test');
+        config()->set('services.brain.api_key', 'test-key');
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $property = $this->makeProperty('readiness.example.au', 'Readiness Example');
+
+        Http::fake([
+            'https://readiness.example.au/' => Http::response($this->homepageHtml(canonical: 'https://readiness.example.au/'), 200),
+            'https://readiness.example.au/robots.txt' => Http::response("User-agent: *\nAllow: /\n", 200),
+            'https://readiness.example.au/sitemap.xml' => Http::response('<urlset></urlset>', 200),
+            'https://readiness.example.au/llms.txt' => Http::response('missing', 404),
+        ]);
+
+        $brain = Mockery::mock(BrainEventClient::class);
+        $this->instance(BrainEventClient::class, $brain);
+        /** @var Mockery\Expectation $seoReadinessExpectation */
+        $seoReadinessExpectation = $brain->shouldReceive('sendAsync');
+        $seoReadinessExpectation->twice()->withArgs(
+            fn (string $eventType, array $payload): bool => $eventType === 'domain_monitor.finding.opened'
+                && in_array($payload['finding_type'], ['seo.structured_data', 'seo.agent_readiness'], true)
+        );
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'seo_agent_readiness',
+            '--property' => $property->slug,
+        ]));
+
+        $structuredDataFinding = MonitoringFinding::query()
+            ->where('web_property_id', $property->id)
+            ->where('finding_type', 'seo.structured_data')
+            ->firstOrFail();
+
+        $agentFinding = MonitoringFinding::query()
+            ->where('web_property_id', $property->id)
+            ->where('finding_type', 'seo.agent_readiness')
+            ->firstOrFail();
+
+        $this->assertSame(MonitoringFinding::STATUS_OPEN, $structuredDataFinding->status);
+        $this->assertSame(MonitoringFinding::STATUS_OPEN, $agentFinding->status);
+        $this->assertSame(['llms.txt'], data_get($agentFinding->evidence, 'missing_files'));
+
+        $issues = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues')
+            ->assertOk()
+            ->json('issues');
+
+        $this->assertIsArray($issues);
+        /** @var array<int, array<string, mixed>> $issues */
+        $matchingIssue = collect($issues)->firstWhere('issue_id', $structuredDataFinding->issue_id);
+
+        $this->assertIsArray($matchingIssue);
+        $this->assertSame('should_fix', $matchingIssue['severity']);
+    }
+
+    public function test_critical_live_lane_reports_redirect_policy_mismatches(): void
+    {
+        config()->set('services.brain.base_url', 'https://brain.example.test');
+        config()->set('services.brain.api_key', 'test-key');
+
+        $property = $this->makeProperty('redirect.example.au', 'Redirect Example');
+        $property->forceFill([
+            'canonical_origin_scheme' => 'https',
+            'canonical_origin_host' => 'redirect.example.au',
+            'canonical_origin_policy' => 'known',
+        ])->save();
+
+        Http::fake([
+            'http://redirect.example.au/' => Http::response(
+                'ok',
+                200,
+                ['X-Guzzle-Redirect-History' => [], 'X-Guzzle-Redirect-Status-History' => []]
+            ),
+            'https://www.redirect.example.au/' => Http::response(
+                'ok',
+                200,
+                ['X-Guzzle-Redirect-History' => [], 'X-Guzzle-Redirect-Status-History' => []]
+            ),
+        ]);
+
+        $brain = Mockery::mock(BrainEventClient::class);
+        $this->instance(BrainEventClient::class, $brain);
+        /** @var Mockery\Expectation $criticalLiveExpectation */
+        $criticalLiveExpectation = $brain->shouldReceive('sendAsync');
+        $criticalLiveExpectation->once()->withArgs(function (string $eventType, array $payload): bool {
+            $this->assertSame('domain_monitor.finding.opened', $eventType);
+            $this->assertSame('critical.redirect_policy', $payload['finding_type']);
+            $this->assertSame('incident', $payload['issue_type']);
+
+            return true;
+        });
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'critical_live',
+            '--property' => $property->slug,
+        ]));
+
+        $finding = MonitoringFinding::query()
+            ->where('web_property_id', $property->id)
+            ->where('finding_type', 'critical.redirect_policy')
+            ->firstOrFail();
+
+        $this->assertSame(MonitoringFinding::STATUS_OPEN, $finding->status);
+        $this->assertSame('http_upgrade_failed', data_get($finding->evidence, 'verdict'));
+    }
+
     private function makeProperty(string $domainName, string $name): WebProperty
     {
         $domain = Domain::factory()->create([
@@ -301,5 +468,35 @@ class RunMonitoringLaneCommandTest extends TestCase
         ]);
 
         return $property;
+    }
+
+    private function homepageHtml(
+        ?string $canonical = null,
+        ?string $measurementId = null,
+        ?string $metaRobots = null,
+        bool $includeStructuredData = false
+    ): string {
+        $head = '<title>Test Page</title>';
+
+        if ($canonical !== null) {
+            $head .= sprintf('<link rel="canonical" href="%s" />', $canonical);
+        }
+
+        if ($metaRobots !== null) {
+            $head .= sprintf('<meta name="robots" content="%s" />', $metaRobots);
+        }
+
+        if ($measurementId !== null) {
+            $head .= sprintf(
+                '<script async src="https://www.googletagmanager.com/gtag/js?id=%1$s"></script><script>gtag("config","%1$s");</script>',
+                $measurementId
+            );
+        }
+
+        if ($includeStructuredData) {
+            $head .= '<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"Example"}</script>';
+        }
+
+        return sprintf('<html><head>%s</head><body>Body</body></html>', $head);
     }
 }

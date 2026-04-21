@@ -6,9 +6,11 @@ use App\Models\PropertyAnalyticsSource;
 use App\Models\WebProperty;
 use App\Services\Ga4SignalScanner;
 use App\Services\MonitoringFindingManager;
+use App\Services\PropertySiteSignalScanner;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class RunMonitoringLane extends Command
 {
@@ -20,8 +22,11 @@ class RunMonitoringLane extends Command
 
     protected $description = 'Run an explicit monitoring lane and emit deduped findings through the Brain path.';
 
-    public function handle(Ga4SignalScanner $scanner, MonitoringFindingManager $findings): int
-    {
+    public function handle(
+        Ga4SignalScanner $ga4Scanner,
+        PropertySiteSignalScanner $siteScanner,
+        MonitoringFindingManager $findings
+    ): int {
         $lane = (string) $this->argument('lane');
         $timeout = max(1, (int) $this->option('timeout'));
         $laneConfig = config('domain_monitor.monitoring_lanes.'.$lane);
@@ -32,16 +37,10 @@ class RunMonitoringLane extends Command
             return self::FAILURE;
         }
 
-        if ($lane !== 'marketing_integrity') {
-            $this->warn(sprintf('Lane [%s] is configured but does not have runnable checks yet.', $lane));
-
-            return self::SUCCESS;
-        }
-
-        $properties = $this->marketingIntegrityProperties();
+        $properties = $this->laneProperties($lane);
 
         if ($properties->isEmpty()) {
-            $this->warn('No active GA4-linked properties matched the requested lane scope.');
+            $this->warn(sprintf('No active properties matched the requested [%s] lane scope.', $lane));
 
             return self::SUCCESS;
         }
@@ -60,41 +59,70 @@ class RunMonitoringLane extends Command
             ]);
 
             $primaryDomain = $property->primaryDomainModel();
+            $audits = match ($lane) {
+                'critical_live' => [
+                    'critical.redirect_policy' => [
+                        'title' => 'Root redirect policy mismatch on live property',
+                        'issue_type' => 'incident',
+                        'audit' => $siteScanner->auditRedirectPolicy($property, $timeout),
+                    ],
+                ],
+                'marketing_integrity' => [
+                    'marketing.ga4_install' => [
+                        'title' => 'GA4 install mismatch on live property',
+                        'issue_type' => 'regression',
+                        'audit' => $ga4Scanner->auditPropertyHomepage($property, $timeout),
+                    ],
+                    'marketing.conversion_surface_ga4' => [
+                        'title' => 'GA4 mismatch on conversion surfaces',
+                        'issue_type' => 'regression',
+                        'audit' => $ga4Scanner->auditConversionSurfaces($property, $timeout),
+                    ],
+                    'marketing.indexability' => [
+                        'title' => 'Homepage indexability mismatch on live property',
+                        'issue_type' => 'regression',
+                        'audit' => $siteScanner->auditIndexability($property, $timeout),
+                    ],
+                ],
+                'seo_agent_readiness' => [
+                    'seo.structured_data' => [
+                        'title' => 'Structured data missing or invalid on homepage',
+                        'issue_type' => 'readiness_gap',
+                        'audit' => $siteScanner->auditStructuredData($property, $timeout),
+                    ],
+                    'seo.agent_readiness' => [
+                        'title' => 'Agent-readiness files missing on live property',
+                        'issue_type' => 'readiness_gap',
+                        'audit' => $siteScanner->auditAgentReadiness($property, $timeout),
+                    ],
+                ],
+                default => [],
+            };
 
-            $homepageAudit = $scanner->auditPropertyHomepage($property, $timeout);
-            $homepageOutcome = $this->syncFinding(
-                findings: $findings,
-                property: $property,
-                findingType: 'marketing.ga4_install',
-                title: 'GA4 install mismatch on live property',
-                audit: $homepageAudit,
-                primaryDomainId: $primaryDomain?->id
-            );
+            $verdicts = [];
 
-            $surfaceAudit = $scanner->auditConversionSurfaces($property, $timeout);
-            $surfaceOutcome = $this->syncFinding(
-                findings: $findings,
-                property: $property,
-                findingType: 'marketing.conversion_surface_ga4',
-                title: 'GA4 mismatch on conversion surfaces',
-                audit: $surfaceAudit,
-                primaryDomainId: $primaryDomain?->id
-            );
+            foreach ($audits as $findingType => $definition) {
+                $outcome = $this->syncFinding(
+                    findings: $findings,
+                    property: $property,
+                    findingType: $findingType,
+                    issueType: (string) $definition['issue_type'],
+                    title: (string) $definition['title'],
+                    audit: (array) $definition['audit'],
+                    primaryDomainId: $primaryDomain?->id
+                );
 
-            $opened += (int) in_array($homepageOutcome, ['opened', 'reopened'], true);
-            $updated += (int) ($homepageOutcome === 'updated');
-            $recovered += (int) ($homepageOutcome === 'recovered');
+                $opened += (int) in_array($outcome, ['opened', 'reopened'], true);
+                $updated += (int) ($outcome === 'updated');
+                $recovered += (int) ($outcome === 'recovered');
+                $verdicts[] = sprintf(
+                    '%s=%s',
+                    Str::afterLast($findingType, '.'),
+                    (string) data_get($definition, 'audit.verdict', 'unknown')
+                );
+            }
 
-            $opened += (int) in_array($surfaceOutcome, ['opened', 'reopened'], true);
-            $updated += (int) ($surfaceOutcome === 'updated');
-            $recovered += (int) ($surfaceOutcome === 'recovered');
-
-            $this->line(sprintf(
-                '[%s] homepage=%s | conversion_surfaces=%s',
-                $property->slug,
-                $homepageAudit['verdict'],
-                $surfaceAudit['verdict']
-            ));
+            $this->line(sprintf('[%s] %s', $property->slug, implode(' | ', $verdicts)));
         }
 
         $this->newLine();
@@ -113,12 +141,12 @@ class RunMonitoringLane extends Command
     /**
      * @return Collection<int, WebProperty>
      */
-    private function marketingIntegrityProperties(): Collection
+    private function laneProperties(string $lane): Collection
     {
         $propertyFilter = $this->optionString('property');
         $domainFilter = $this->optionString('domain');
 
-        return WebProperty::query()
+        $query = WebProperty::query()
             ->where('status', 'active')
             ->with([
                 'primaryDomain',
@@ -127,10 +155,6 @@ class RunMonitoringLane extends Command
                 'conversionSurfaces.analyticsSource',
                 'conversionSurfaces.domain',
             ])
-            ->whereHas('analyticsSources', function (Builder $query): void {
-                $query->where('provider', 'ga4')
-                    ->where('status', 'active');
-            })
             ->when(
                 $propertyFilter,
                 fn (Builder $query) => $query->where('slug', $propertyFilter)
@@ -141,9 +165,24 @@ class RunMonitoringLane extends Command
                     'propertyDomains.domain',
                     fn (Builder $domainQuery) => $domainQuery->where('domain', $domainFilter)
                 )
-            )
+            );
+
+        if ($lane === 'marketing_integrity') {
+            $query->whereHas('analyticsSources', function (Builder $query): void {
+                $query->where('provider', 'ga4')
+                    ->where('status', 'active');
+            });
+        }
+
+        return $query
             ->get()
-            ->filter(fn (WebProperty $property): bool => $this->expectedMeasurementId($property) !== null)
+            ->filter(function (WebProperty $property) use ($lane): bool {
+                if ($lane === 'marketing_integrity') {
+                    return $this->expectedMeasurementId($property) !== null;
+                }
+
+                return $property->production_url !== null || $property->primaryDomainName() !== null;
+            })
             ->values();
     }
 
@@ -154,6 +193,7 @@ class RunMonitoringLane extends Command
         MonitoringFindingManager $findings,
         WebProperty $property,
         string $findingType,
+        string $issueType,
         string $title,
         array $audit,
         ?string $primaryDomainId
@@ -162,8 +202,8 @@ class RunMonitoringLane extends Command
             return $findings->reportPropertyFinding(
                 property: $property,
                 findingType: $findingType,
-                lane: 'marketing_integrity',
-                issueType: 'regression',
+                lane: $this->argument('lane'),
+                issueType: $issueType,
                 title: $title,
                 summary: (string) ($audit['summary'] ?? ''),
                 evidence: $audit['evidence'] ?? [],
@@ -174,7 +214,7 @@ class RunMonitoringLane extends Command
         return $findings->recoverPropertyFinding(
             property: $property,
             findingType: $findingType,
-            lane: 'marketing_integrity',
+            lane: (string) $this->argument('lane'),
             recoverySummary: (string) ($audit['summary'] ?? ''),
             recoveryEvidence: $audit['evidence'] ?? [],
             primaryDomainId: $primaryDomainId
