@@ -790,6 +790,12 @@ Schedule::command('analytics:refresh-matomo-install-audits')
     ->at('08:50')
     ->timezone('UTC');
 
+// Verify live marketing-integrity checks that are not covered by infrastructure-only health checks.
+Schedule::command('monitoring:run-lane marketing_integrity')
+    ->daily()
+    ->at('08:55')
+    ->timezone('UTC');
+
 // Refresh fleet automation coverage after upstream analytics imports have had time to settle.
 Schedule::command('analytics:refresh-automation-coverage')
     ->daily()

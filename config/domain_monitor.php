@@ -850,4 +850,53 @@ return [
             ],
         ],
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Monitoring Lanes
+    |--------------------------------------------------------------------------
+    |
+    | Explicit monitoring lanes keep fast live incidents separate from slower
+    | marketing/readiness audits. The first runnable lane is
+    | marketing_integrity, which verifies live GA4 behavior on property and
+    | conversion-surface hosts and emits deduped findings through Brain.
+    |
+    */
+    'monitoring_lanes' => [
+        'critical_live' => [
+            'cadence' => 'frequent',
+            'issue_type' => 'incident',
+            'checks' => [
+                'uptime',
+                'http',
+                'ssl',
+                'redirect_policy',
+            ],
+        ],
+        'marketing_integrity' => [
+            'cadence' => 'daily',
+            'issue_type' => 'regression',
+            'checks' => [
+                'ga4_install',
+                'conversion_surface_ga4',
+            ],
+        ],
+        'seo_agent_readiness' => [
+            'cadence' => 'daily',
+            'issue_type' => 'readiness_gap',
+            'checks' => [
+                'indexability',
+                'structured_data',
+                'agent_readiness',
+            ],
+        ],
+        'deep_audit' => [
+            'cadence' => 'weekly',
+            'issue_type' => 'cleanup',
+            'checks' => [
+                'broken_links',
+                'external_links',
+            ],
+        ],
+    ],
 ];

@@ -227,6 +227,14 @@ class WebProperty extends Model
     }
 
     /**
+     * @return HasMany<MonitoringFinding, $this>
+     */
+    public function monitoringFindings(): HasMany
+    {
+        return $this->hasMany(MonitoringFinding::class)->orderByDesc('last_detected_at');
+    }
+
+    /**
      * @return HasMany<DomainSeoBaseline, $this>
      */
     public function seoBaselines(): HasMany
