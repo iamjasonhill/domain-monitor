@@ -1006,6 +1006,100 @@ class RunMonitoringLaneCommandTest extends TestCase
             ->first());
     }
 
+    public function test_deep_audit_lane_does_not_open_external_link_inventory_findings_for_gov_au_hosts(): void
+    {
+        config()->set('services.brain.base_url', 'https://brain.example.test');
+        config()->set('services.brain.api_key', 'test-key');
+
+        $property = $this->makeProperty('government-links.example.au', 'Government Links');
+
+        $brokenLinkHealthCheck = Mockery::mock(BrokenLinkHealthCheck::class);
+        /** @var Mockery\Expectation $brokenLinksClearExpectation */
+        $brokenLinksClearExpectation = $brokenLinkHealthCheck->shouldReceive('check');
+        $brokenLinksClearExpectation->once()->andReturn([
+            'is_valid' => true,
+            'verified' => true,
+            'broken_links_count' => 0,
+            'pages_scanned' => 2,
+            'broken_links' => [],
+            'error_message' => null,
+            'payload' => [
+                'broken_links_count' => 0,
+                'pages_scanned' => 2,
+                'broken_links' => [],
+                'duration_ms' => 10,
+            ],
+        ]);
+        $this->instance(BrokenLinkHealthCheck::class, $brokenLinkHealthCheck);
+
+        $externalLinkInventoryHealthCheck = Mockery::mock(ExternalLinkInventoryHealthCheck::class);
+        /** @var Mockery\Expectation $governmentInventoryExpectation */
+        $governmentInventoryExpectation = $externalLinkInventoryHealthCheck->shouldReceive('check');
+        $governmentInventoryExpectation->once()->andReturn([
+            'is_valid' => true,
+            'verified' => true,
+            'external_links_count' => 2,
+            'pages_scanned' => 4,
+            'external_links' => [
+                [
+                    'url' => 'https://www.oaic.gov.au/privacy',
+                    'host' => 'www.oaic.gov.au',
+                    'relationship' => 'external',
+                    'found_on' => 'https://government-links.example.au/privacy/',
+                    'found_on_pages' => ['https://government-links.example.au/privacy/'],
+                ],
+                [
+                    'url' => 'https://www.servicesaustralia.gov.au/',
+                    'host' => 'www.servicesaustralia.gov.au',
+                    'relationship' => 'external',
+                    'found_on' => 'https://government-links.example.au/support/',
+                    'found_on_pages' => ['https://government-links.example.au/support/'],
+                ],
+            ],
+            'error_message' => null,
+            'payload' => [
+                'pages_scanned' => 4,
+                'external_links_count' => 2,
+                'unique_hosts_count' => 2,
+                'page_failures_count' => 0,
+                'external_links' => [
+                    [
+                        'url' => 'https://www.oaic.gov.au/privacy',
+                        'host' => 'www.oaic.gov.au',
+                        'relationship' => 'external',
+                        'found_on' => 'https://government-links.example.au/privacy/',
+                        'found_on_pages' => ['https://government-links.example.au/privacy/'],
+                    ],
+                    [
+                        'url' => 'https://www.servicesaustralia.gov.au/',
+                        'host' => 'www.servicesaustralia.gov.au',
+                        'relationship' => 'external',
+                        'found_on' => 'https://government-links.example.au/support/',
+                        'found_on_pages' => ['https://government-links.example.au/support/'],
+                    ],
+                ],
+                'duration_ms' => 12,
+            ],
+        ]);
+        $this->instance(ExternalLinkInventoryHealthCheck::class, $externalLinkInventoryHealthCheck);
+        app()->forgetInstance(\App\Services\DomainHealthCheckRunner::class);
+
+        $brain = Mockery::mock(BrainEventClient::class);
+        $this->instance(BrainEventClient::class, $brain);
+        $brain->shouldIgnoreMissing();
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'deep_audit',
+            '--property' => $property->slug,
+        ]));
+
+        $this->assertSame(0, MonitoringFinding::query()->count());
+        $this->assertNull(MonitoringFinding::query()
+            ->where('web_property_id', $property->id)
+            ->where('finding_type', 'cleanup.external_links_inventory')
+            ->first());
+    }
+
     private function makeProperty(string $domainName, string $name): WebProperty
     {
         $domain = Domain::factory()->create([
