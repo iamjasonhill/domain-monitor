@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\DomainCheck;
 use App\Models\WebProperty;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
@@ -16,6 +17,7 @@ class PropertySiteSignalScanner
         private readonly UptimeHealthCheck $uptimeHealthCheck,
         private readonly HttpHealthCheck $httpHealthCheck,
         private readonly SslHealthCheck $sslHealthCheck,
+        private readonly PropertyConversionLinkScanner $conversionLinkScanner,
     ) {}
 
     /**
@@ -410,6 +412,192 @@ class PropertySiteSignalScanner
                 'sitemap' => Arr::except($sitemap, ['body']),
                 'llms' => Arr::except($llms, ['body']),
                 'missing_files' => $missing->all(),
+            ],
+        ];
+    }
+
+    /**
+     * @return array{
+     *   status: 'ok'|'fail',
+     *   verdict: string,
+     *   summary: string,
+     *   evidence: array<string, mixed>
+     * }
+     */
+    public function auditQuoteHandoffIntegrity(WebProperty $property): array
+    {
+        try {
+            $scan = $this->conversionLinkScanner->scanForProperty($property);
+        } catch (\Throwable $exception) {
+            return [
+                'status' => 'fail',
+                'verdict' => 'scan_failed',
+                'summary' => 'Could not scan the live homepage to verify quote handoff links.',
+                'evidence' => [
+                    'verdict' => 'scan_failed',
+                    'property_slug' => $property->slug,
+                    'error_message' => $exception->getMessage(),
+                ],
+            ];
+        }
+
+        $targets = $property->conversionLinkSummary()['target'];
+        $current = [
+            'household_quote' => $scan['current_household_quote_url'] ?? null,
+            'household_booking' => $scan['current_household_booking_url'] ?? null,
+            'vehicle_quote' => $scan['current_vehicle_quote_url'] ?? null,
+            'vehicle_booking' => $scan['current_vehicle_booking_url'] ?? null,
+        ];
+        $mismatches = [];
+
+        foreach (['household_quote', 'household_booking', 'vehicle_quote', 'vehicle_booking'] as $slot) {
+            $expectedUrl = $this->normalizedComparableUrl($targets[$slot] ?? null);
+
+            if ($expectedUrl === null) {
+                continue;
+            }
+
+            $detectedUrl = $this->normalizedComparableUrl($current[$slot] ?? null);
+
+            if ($detectedUrl === $expectedUrl) {
+                continue;
+            }
+
+            $mismatches[] = [
+                'slot' => $slot,
+                'expected_url' => $expectedUrl,
+                'detected_url' => $detectedUrl,
+                'expected_host' => $this->hostForComparableUrl($expectedUrl),
+                'detected_host' => $this->hostForComparableUrl($detectedUrl),
+            ];
+        }
+
+        if ($mismatches === []) {
+            return [
+                'status' => 'ok',
+                'verdict' => 'handoff_ok',
+                'summary' => 'Live quote and booking handoff links match the configured targets.',
+                'evidence' => [
+                    'verdict' => 'handoff_ok',
+                    'current' => $current,
+                    'expected' => $targets,
+                    'mismatches' => [],
+                ],
+            ];
+        }
+
+        $verdict = collect($mismatches)
+            ->contains(fn (array $mismatch): bool => $mismatch['detected_url'] === null)
+                ? 'missing_handoff_link'
+                : 'wrong_handoff_target';
+
+        return [
+            'status' => 'fail',
+            'verdict' => $verdict,
+            'summary' => sprintf(
+                '%d live quote or booking handoff link(s) do not match the configured targets.',
+                count($mismatches)
+            ),
+            'evidence' => [
+                'verdict' => $verdict,
+                'current' => $current,
+                'expected' => $targets,
+                'mismatches' => $mismatches,
+            ],
+        ];
+    }
+
+    /**
+     * @return array{
+     *   status: 'ok'|'fail',
+     *   verdict: string,
+     *   summary: string,
+     *   evidence: array<string, mixed>
+     * }
+     */
+    public function auditBrokenLinks(WebProperty $property, DomainHealthCheckRunner $healthCheckRunner): array
+    {
+        $primaryDomain = $property->primaryDomainModel();
+
+        if ($primaryDomain === null) {
+            return [
+                'status' => 'fail',
+                'verdict' => 'missing_primary_domain',
+                'summary' => 'Property does not have a primary domain for broken-link verification.',
+                'evidence' => [
+                    'verdict' => 'missing_primary_domain',
+                    'property_slug' => $property->slug,
+                ],
+            ];
+        }
+
+        $refresh = $healthCheckRunner->run($primaryDomain, 'broken_links');
+        $latestCheck = $primaryDomain->checks()
+            ->where('check_type', 'broken_links')
+            ->latest('finished_at')
+            ->latest('created_at')
+            ->first();
+
+        if (! $latestCheck instanceof DomainCheck) {
+            return [
+                'status' => 'fail',
+                'verdict' => 'broken_links_refresh_failed',
+                'summary' => 'Broken-link crawl did not produce a persisted result.',
+                'evidence' => [
+                    'verdict' => 'broken_links_refresh_failed',
+                    'refresh_status' => $refresh['status'],
+                    'refresh_reason' => $refresh['reason'] ?? null,
+                ],
+            ];
+        }
+
+        $payload = is_array($latestCheck->payload) ? $latestCheck->payload : [];
+        $brokenLinks = is_array($payload['broken_links'] ?? null) ? $payload['broken_links'] : [];
+        $brokenLinksCount = is_numeric($payload['broken_links_count'] ?? null)
+            ? (int) $payload['broken_links_count']
+            : count($brokenLinks);
+        $pagesScanned = is_numeric($payload['pages_scanned'] ?? null)
+            ? (int) $payload['pages_scanned']
+            : 0;
+
+        if ($latestCheck->status === 'unknown' || $pagesScanned === 0) {
+            return [
+                'status' => 'fail',
+                'verdict' => 'crawl_unverified',
+                'summary' => 'Broken-link crawl could not verify any live pages.',
+                'evidence' => [
+                    'verdict' => 'crawl_unverified',
+                    'refresh_status' => $refresh['status'],
+                    'refresh_reason' => $refresh['reason'] ?? null,
+                    'pages_scanned' => $pagesScanned,
+                    'error_message' => $latestCheck->error_message,
+                ],
+            ];
+        }
+
+        if ($brokenLinksCount === 0) {
+            return [
+                'status' => 'ok',
+                'verdict' => 'broken_links_clear',
+                'summary' => 'Deep audit crawl did not find broken links.',
+                'evidence' => [
+                    'verdict' => 'broken_links_clear',
+                    'pages_scanned' => $pagesScanned,
+                    'broken_links_count' => 0,
+                    'broken_links' => [],
+                ],
+            ];
+        }
+
+        return [
+            'status' => 'fail',
+            'verdict' => 'broken_links_detected',
+            'summary' => sprintf('Deep audit crawl found %d broken link(s).', $brokenLinksCount),
+            'evidence' => [
+                'verdict' => 'broken_links_detected',
+                'pages_scanned' => $pagesScanned,
+                'broken_links_count' => $brokenLinksCount,
+                'broken_links' => $brokenLinks,
             ],
         ];
     }
@@ -864,5 +1052,40 @@ class PropertySiteSignalScanner
         }
 
         return $trimmed;
+    }
+
+    private function normalizedComparableUrl(mixed $url): ?string
+    {
+        if (! is_string($url) || trim($url) === '') {
+            return null;
+        }
+
+        $parts = parse_url(trim($url));
+
+        if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'])) {
+            return null;
+        }
+
+        $normalized = strtolower((string) $parts['scheme']).'://'.Str::lower((string) $parts['host']);
+
+        if (isset($parts['port'])) {
+            $normalized .= ':'.$parts['port'];
+        }
+
+        $path = isset($parts['path']) ? (string) $parts['path'] : '';
+        $normalized .= $path !== '' ? rtrim($path, '/') : '';
+
+        return $normalized;
+    }
+
+    private function hostForComparableUrl(?string $url): ?string
+    {
+        if (! is_string($url) || $url === '') {
+            return null;
+        }
+
+        $host = parse_url($url, PHP_URL_HOST);
+
+        return is_string($host) && $host !== '' ? Str::lower($host) : null;
     }
 }

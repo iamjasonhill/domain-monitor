@@ -813,6 +813,13 @@ Schedule::command('monitoring:run-lane critical_live')
     ->hourlyAt(15)
     ->timezone('UTC');
 
+// Run slower broken-link cleanup audits weekly through the monitoring-lane issue flow.
+Schedule::command('monitoring:run-lane deep_audit')
+    ->weekly()
+    ->sundays()
+    ->at('09:30')
+    ->timezone('UTC');
+
 // Refresh a small batch of stale or missing official Search Console API enrichment after analytics coverage settles.
 if ($googleSearchConsoleConfigured) {
     Schedule::command('analytics:refresh-search-console-api-enrichment')

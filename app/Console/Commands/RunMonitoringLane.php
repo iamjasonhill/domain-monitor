@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\PropertyAnalyticsSource;
 use App\Models\WebProperty;
+use App\Services\DomainHealthCheckRunner;
 use App\Services\Ga4SignalScanner;
 use App\Services\MonitoringFindingManager;
 use App\Services\PropertySiteSignalScanner;
@@ -25,7 +26,8 @@ class RunMonitoringLane extends Command
     public function handle(
         Ga4SignalScanner $ga4Scanner,
         PropertySiteSignalScanner $siteScanner,
-        MonitoringFindingManager $findings
+        MonitoringFindingManager $findings,
+        DomainHealthCheckRunner $domainHealthCheckRunner
     ): int {
         $lane = (string) $this->argument('lane');
         $timeout = max(1, (int) $this->option('timeout'));
@@ -59,6 +61,7 @@ class RunMonitoringLane extends Command
             ]);
 
             $primaryDomain = $property->primaryDomainModel();
+            $expectedMeasurementId = $this->expectedMeasurementId($property);
             $audits = match ($lane) {
                 'critical_live' => [
                     'critical.uptime' => [
@@ -82,23 +85,13 @@ class RunMonitoringLane extends Command
                         'audit' => $siteScanner->auditRedirectPolicy($property, $timeout),
                     ],
                 ],
-                'marketing_integrity' => [
-                    'marketing.ga4_install' => [
-                        'title' => 'GA4 install mismatch on live property',
-                        'issue_type' => 'regression',
-                        'audit' => $ga4Scanner->auditPropertyHomepage($property, $timeout),
-                    ],
-                    'marketing.conversion_surface_ga4' => [
-                        'title' => 'GA4 mismatch on conversion surfaces',
-                        'issue_type' => 'regression',
-                        'audit' => $ga4Scanner->auditConversionSurfaces($property, $timeout),
-                    ],
-                    'marketing.indexability' => [
-                        'title' => 'Homepage indexability mismatch on live property',
-                        'issue_type' => 'regression',
-                        'audit' => $siteScanner->auditIndexability($property, $timeout),
-                    ],
-                ],
+                'marketing_integrity' => $this->marketingIntegrityAudits(
+                    property: $property,
+                    ga4Scanner: $ga4Scanner,
+                    siteScanner: $siteScanner,
+                    timeout: $timeout,
+                    expectedMeasurementId: $expectedMeasurementId
+                ),
                 'seo_agent_readiness' => [
                     'seo.structured_data' => [
                         'title' => 'Structured data missing or invalid on homepage',
@@ -111,6 +104,12 @@ class RunMonitoringLane extends Command
                         'audit' => $siteScanner->auditAgentReadiness($property, $timeout),
                     ],
                 ],
+                'deep_audit' => $this->deepAuditAudits(
+                    property: $property,
+                    siteScanner: $siteScanner,
+                    healthCheckRunner: $domainHealthCheckRunner,
+                    primaryDomainId: $primaryDomain?->id
+                ),
                 default => [],
             };
 
@@ -182,20 +181,9 @@ class RunMonitoringLane extends Command
                 )
             );
 
-        if ($lane === 'marketing_integrity') {
-            $query->whereHas('analyticsSources', function (Builder $query): void {
-                $query->where('provider', 'ga4')
-                    ->where('status', 'active');
-            });
-        }
-
         return $query
             ->get()
             ->filter(function (WebProperty $property) use ($lane): bool {
-                if ($lane === 'marketing_integrity') {
-                    return $this->expectedMeasurementId($property) !== null;
-                }
-
                 if ($lane === 'critical_live') {
                     $primaryDomain = $property->primaryDomainModel();
 
@@ -205,9 +193,80 @@ class RunMonitoringLane extends Command
                         && $primaryDomain->monitoringSkipReason('ssl') === null;
                 }
 
+                if ($lane === 'deep_audit') {
+                    $primaryDomain = $property->primaryDomainModel();
+
+                    return $primaryDomain !== null
+                        && $primaryDomain->monitoringSkipReason('broken_links') === null;
+                }
+
                 return $property->production_url !== null || $property->primaryDomainName() !== null;
             })
             ->values();
+    }
+
+    /**
+     * @return array<string, array{title: string, issue_type: string, audit: array<string, mixed>}>
+     */
+    private function marketingIntegrityAudits(
+        WebProperty $property,
+        Ga4SignalScanner $ga4Scanner,
+        PropertySiteSignalScanner $siteScanner,
+        int $timeout,
+        ?string $expectedMeasurementId
+    ): array {
+        $audits = [
+            'marketing.indexability' => [
+                'title' => 'Homepage indexability mismatch on live property',
+                'issue_type' => 'regression',
+                'audit' => $siteScanner->auditIndexability($property, $timeout),
+            ],
+        ];
+
+        if ($expectedMeasurementId !== null) {
+            $audits['marketing.ga4_install'] = [
+                'title' => 'GA4 install mismatch on live property',
+                'issue_type' => 'regression',
+                'audit' => $ga4Scanner->auditPropertyHomepage($property, $timeout),
+            ];
+            $audits['marketing.conversion_surface_ga4'] = [
+                'title' => 'GA4 mismatch on conversion surfaces',
+                'issue_type' => 'regression',
+                'audit' => $ga4Scanner->auditConversionSurfaces($property, $timeout),
+            ];
+        }
+
+        if ($this->hasQuoteHandoffTargets($property)) {
+            $audits['marketing.quote_handoff_integrity'] = [
+                'title' => 'Quote handoff mismatch on live property',
+                'issue_type' => 'regression',
+                'audit' => $siteScanner->auditQuoteHandoffIntegrity($property),
+            ];
+        }
+
+        return $audits;
+    }
+
+    /**
+     * @return array<string, array{title: string, issue_type: string, audit: array<string, mixed>}>
+     */
+    private function deepAuditAudits(
+        WebProperty $property,
+        PropertySiteSignalScanner $siteScanner,
+        DomainHealthCheckRunner $healthCheckRunner,
+        ?string $primaryDomainId
+    ): array {
+        if ($primaryDomainId === null || ! $property->primaryDomainModel()) {
+            return [];
+        }
+
+        return [
+            'seo.broken_links' => [
+                'title' => 'Broken links found during deep audit crawl',
+                'issue_type' => 'cleanup',
+                'audit' => $siteScanner->auditBrokenLinks($property, $healthCheckRunner),
+            ],
+        ];
     }
 
     /**
@@ -256,6 +315,22 @@ class RunMonitoringLane extends Command
         $trimmed = trim($value);
 
         return $trimmed !== '' ? $trimmed : null;
+    }
+
+    private function hasQuoteHandoffTargets(WebProperty $property): bool
+    {
+        foreach ([
+            $property->target_household_quote_url,
+            $property->target_household_booking_url,
+            $property->target_vehicle_quote_url,
+            $property->target_vehicle_booking_url,
+        ] as $value) {
+            if (is_string($value) && trim($value) !== '') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function expectedMeasurementId(WebProperty $property): ?string

@@ -858,9 +858,10 @@ return [
     |
     | Explicit monitoring lanes keep fast live incidents separate from slower
     | marketing/readiness audits. The first runnable lane is
-    | marketing_integrity verifies live GA4 behavior plus homepage
-    | indexability, seo_agent_readiness covers crawl/agent-facing signals,
-    | and critical_live handles redirect hygiene on the preferred root host.
+    | marketing_integrity verifies live GA4 behavior, quote handoff, and
+    | homepage indexability, seo_agent_readiness covers crawl/agent-facing
+    | signals, critical_live handles redirect hygiene on the preferred root
+    | host, and deep_audit currently starts with a deduped broken-links pass.
     |
     */
     'monitoring_lanes' => [
@@ -881,6 +882,7 @@ return [
                 'ga4_install',
                 'conversion_surface_ga4',
                 'indexability',
+                'quote_handoff_integrity',
             ],
         ],
         'seo_agent_readiness' => [
@@ -896,7 +898,6 @@ return [
             'issue_type' => 'cleanup',
             'checks' => [
                 'broken_links',
-                'external_links',
             ],
         ],
     ],
