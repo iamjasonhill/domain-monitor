@@ -673,6 +673,7 @@ class PropertySiteSignalScanner
             ->values();
         $reviewableLinks = $externalLinks
             ->filter(fn (array $item): bool => $item['relationship'] === 'external')
+            ->reject(fn (array $item): bool => $this->isAllowedExternalReferenceHost($item['host'] ?? null))
             ->values();
         $uniqueHosts = $reviewableLinks
             ->pluck('host')
@@ -733,6 +734,18 @@ class PropertySiteSignalScanner
                 'unique_hosts' => $uniqueHosts,
             ],
         ];
+    }
+
+    private function isAllowedExternalReferenceHost(mixed $host): bool
+    {
+        if (! is_string($host) || trim($host) === '') {
+            return false;
+        }
+
+        $normalizedHost = Str::lower(trim($host));
+
+        return $normalizedHost === 'gov.au'
+            || Str::endsWith($normalizedHost, '.gov.au');
     }
 
     /**
