@@ -14,6 +14,8 @@ class WebPropertySummaryResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return $this->resource->brainSummary(includeFullExternalLinks: false);
+        return $this->resource->brainSummary(
+            includeFullExternalLinks: $request->boolean('include_external_links')
+        );
     }
 }

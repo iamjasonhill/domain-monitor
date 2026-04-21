@@ -63,9 +63,12 @@ class WebPropertyController extends Controller
     {
         $validated = $request->validate([
             'fleet_focus' => 'nullable|boolean',
+            'include_external_links' => 'nullable|boolean',
         ]);
 
-        $query = $this->baseQuery(includeExternalLinkDetails: false)->orderBy('name');
+        $includeExternalLinks = (bool) ($validated['include_external_links'] ?? false);
+
+        $query = $this->baseQuery(includeExternalLinkDetails: $includeExternalLinks)->orderBy('name');
         $this->applyFleetFocusFilter($query, $validated);
 
         $properties = $query->get();
