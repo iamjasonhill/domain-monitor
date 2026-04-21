@@ -796,10 +796,21 @@ Schedule::command('monitoring:run-lane marketing_integrity')
     ->at('08:55')
     ->timezone('UTC');
 
+// Verify crawl and agent-facing readiness signals after marketing-integrity scans settle.
+Schedule::command('monitoring:run-lane seo_agent_readiness')
+    ->daily()
+    ->at('09:00')
+    ->timezone('UTC');
+
 // Refresh fleet automation coverage after upstream analytics imports have had time to settle.
 Schedule::command('analytics:refresh-automation-coverage')
     ->daily()
     ->at('09:05')
+    ->timezone('UTC');
+
+// Verify preferred-root redirect policy frequently so live host drift is caught before slower audits run.
+Schedule::command('monitoring:run-lane critical_live')
+    ->hourlyAt(15)
     ->timezone('UTC');
 
 // Refresh a small batch of stale or missing official Search Console API enrichment after analytics coverage settles.
