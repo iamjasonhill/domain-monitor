@@ -117,7 +117,6 @@ class MonitoringFindingManager
         $finding->forceFill([
             'status' => MonitoringFinding::STATUS_RECOVERED,
             'summary' => $recoverySummary,
-            'last_detected_at' => now(),
             'recovered_at' => now(),
             'evidence' => $normalizedEvidence,
         ])->save();

@@ -141,7 +141,7 @@ class RunMonitoringLaneCommandTest extends TestCase
         $primaryDomain = $property->primaryDomainModel();
         $this->assertInstanceOf(Domain::class, $primaryDomain);
 
-        MonitoringFinding::create([
+        MonitoringFinding::factory()->create([
             'issue_id' => app(\App\Services\DetectedIssueIdentityService::class)->makeIssueId(
                 $primaryDomain->id,
                 $property->slug,
@@ -191,6 +191,89 @@ class RunMonitoringLaneCommandTest extends TestCase
         $this->assertSame(MonitoringFinding::STATUS_OPEN, $conversionFinding->status);
         $this->assertSame('wrong_measurement_id', data_get($conversionFinding->evidence, 'verdict'));
         $this->assertSame('quotes.brand.example.au', data_get($conversionFinding->evidence, 'failing_surfaces.0.hostname'));
+    }
+
+    public function test_marketing_integrity_lane_skips_properties_without_an_active_primary_ga4_source(): void
+    {
+        config()->set('services.brain.base_url', 'https://brain.example.test');
+        config()->set('services.brain.api_key', 'test-key');
+
+        $property = $this->makeProperty('inactive-primary.example.au', 'Inactive Primary');
+        $primarySource = PropertyAnalyticsSource::create([
+            'web_property_id' => $property->id,
+            'provider' => 'ga4',
+            'external_id' => 'G-INACTIVE001',
+            'external_name' => 'Inactive Primary',
+            'provider_config' => [
+                'measurement_id' => 'G-INACTIVE001',
+            ],
+            'is_primary' => true,
+            'status' => 'inactive',
+        ]);
+
+        PropertyAnalyticsSource::create([
+            'web_property_id' => $property->id,
+            'provider' => 'ga4',
+            'external_id' => 'G-ACTIVE999',
+            'external_name' => 'Inactive Primary Secondary',
+            'provider_config' => [
+                'measurement_id' => 'G-ACTIVE999',
+            ],
+            'is_primary' => false,
+            'status' => 'active',
+        ]);
+
+        $primaryDomain = $property->primaryDomainModel();
+        $this->assertInstanceOf(Domain::class, $primaryDomain);
+
+        MonitoringFinding::factory()->create([
+            'issue_id' => app(\App\Services\DetectedIssueIdentityService::class)->makeIssueId(
+                $primaryDomain->id,
+                $property->slug,
+                'marketing.ga4_install'
+            ),
+            'lane' => 'marketing_integrity',
+            'finding_type' => 'marketing.ga4_install',
+            'issue_type' => 'regression',
+            'scope_type' => 'web_property',
+            'domain_id' => $primaryDomain->id,
+            'web_property_id' => $property->id,
+            'status' => MonitoringFinding::STATUS_OPEN,
+            'title' => 'GA4 install mismatch on live property',
+            'summary' => 'Existing open finding',
+            'evidence' => ['verdict' => 'missing_ga4'],
+        ]);
+
+        Http::fake([
+            'https://inactive-primary.example.au/' => Http::response(
+                "<script async src=\"https://www.googletagmanager.com/gtag/js?id=G-ACTIVE999\"></script><script>gtag('config','G-ACTIVE999');</script>",
+                200
+            ),
+        ]);
+
+        $brain = Mockery::mock(BrainEventClient::class);
+        $this->instance(BrainEventClient::class, $brain);
+        $brain->shouldNotReceive('sendAsync');
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'marketing_integrity',
+            '--property' => $property->slug,
+        ]));
+
+        $this->assertDatabaseHas('monitoring_findings', [
+            'issue_id' => app(\App\Services\DetectedIssueIdentityService::class)->makeIssueId(
+                $primaryDomain->id,
+                $property->slug,
+                'marketing.ga4_install'
+            ),
+            'status' => MonitoringFinding::STATUS_OPEN,
+        ]);
+
+        $this->assertDatabaseHas('property_analytics_sources', [
+            'id' => $primarySource->id,
+            'status' => 'inactive',
+            'is_primary' => true,
+        ]);
     }
 
     private function makeProperty(string $domainName, string $name): WebProperty

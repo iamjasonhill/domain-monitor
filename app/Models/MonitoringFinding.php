@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
@@ -27,6 +28,9 @@ use Illuminate\Support\Str;
  */
 class MonitoringFinding extends Model
 {
+    /** @use HasFactory<\Database\Factories\MonitoringFindingFactory> */
+    use HasFactory;
+
     public const STATUS_OPEN = 'open';
 
     public const STATUS_RECOVERED = 'recovered';

@@ -232,7 +232,7 @@ class DetectedIssueSummaryService
             ->where('status', MonitoringFinding::STATUS_OPEN)
             ->with([
                 'domain:id,domain',
-                'webProperty:id,slug,name,production_url,primary_domain_id',
+                'webProperty',
                 'webProperty.propertyDomains.domain:id,domain',
             ])
             ->orderByDesc('last_detected_at')

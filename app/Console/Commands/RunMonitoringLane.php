@@ -198,7 +198,7 @@ class RunMonitoringLane extends Command
     {
         $source = $property->primaryAnalyticsSource('ga4');
 
-        if (! $source instanceof PropertyAnalyticsSource) {
+        if (! $source instanceof PropertyAnalyticsSource || $source->status !== 'active') {
             return null;
         }
 
