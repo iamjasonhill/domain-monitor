@@ -319,11 +319,12 @@ class RunMonitoringLane extends Command
 
     private function hasQuoteHandoffTargets(WebProperty $property): bool
     {
-        $targets = $property->conversionLinkSummary()['target'];
-
-        foreach (['household_quote', 'household_booking', 'vehicle_quote', 'vehicle_booking', 'moveroo_subdomain'] as $key) {
-            $value = $targets[$key] ?? null;
-
+        foreach ([
+            $property->target_household_quote_url,
+            $property->target_household_booking_url,
+            $property->target_vehicle_quote_url,
+            $property->target_vehicle_booking_url,
+        ] as $value) {
             if (is_string($value) && trim($value) !== '') {
                 return true;
             }

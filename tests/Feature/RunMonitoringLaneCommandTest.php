@@ -394,6 +394,39 @@ class RunMonitoringLaneCommandTest extends TestCase
         $this->assertNull(MonitoringFinding::query()->where('finding_type', 'marketing.ga4_install')->first());
     }
 
+    public function test_marketing_integrity_lane_does_not_run_quote_handoff_for_moveroo_subdomain_only_targets(): void
+    {
+        config()->set('services.brain.base_url', 'https://brain.example.test');
+        config()->set('services.brain.api_key', 'test-key');
+
+        $property = $this->makeProperty('subdomain-only.example.au', 'Subdomain Only');
+        $property->forceFill([
+            'target_moveroo_subdomain_url' => 'https://quotes.subdomain-only.example.au',
+        ])->save();
+
+        Http::fake([
+            'https://subdomain-only.example.au/' => Http::response($this->homepageHtml(
+                canonical: 'https://subdomain-only.example.au/'
+            ), 200),
+            'https://subdomain-only.example.au/robots.txt' => Http::response("User-agent: *\nAllow: /\nSitemap: https://subdomain-only.example.au/sitemap.xml\n", 200),
+            'https://subdomain-only.example.au/sitemap.xml' => Http::response('<urlset></urlset>', 200),
+        ]);
+
+        $brain = Mockery::mock(BrainEventClient::class);
+        $this->instance(BrainEventClient::class, $brain);
+        $brain->shouldNotReceive('sendAsync');
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'marketing_integrity',
+            '--property' => $property->slug,
+        ]));
+
+        $this->assertNull(MonitoringFinding::query()
+            ->where('web_property_id', $property->id)
+            ->where('finding_type', 'marketing.quote_handoff_integrity')
+            ->first());
+    }
+
     public function test_seo_agent_readiness_lane_reports_missing_structured_data_and_agent_files(): void
     {
         config()->set('services.brain.base_url', 'https://brain.example.test');
