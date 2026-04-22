@@ -164,8 +164,8 @@ Recommended fields:
 
 Examples for `local_path`:
 
-- `/Users/jasonhill/Projects/websites/moveroo-website-astro`
-- `/Users/jasonhill/Projects/websites/moving-again-astro`
+- `/Users/jasonhill/Projects/Business/websites/moveroo-website-astro`
+- `/Users/jasonhill/Projects/Business/websites/moving-again-astro`
 
 ### 5. Analytics Links
 
@@ -328,7 +328,7 @@ Avoid adding dozens of new columns to `domains` for everything else.
 
 1. Create one `web_property` record per real website or app.
 2. Link each property to its primary domain and redirect domains.
-3. Link each property to its local repo path under `/Users/jasonhill/Projects/websites` when applicable.
+3. Link each property to its local repo path under `/Users/jasonhill/Projects/Business/websites` when applicable.
 4. Link each property to Matomo site IDs from the Matomo workspace.
 5. Mark properties missing repo links, analytics, or health coverage.
 

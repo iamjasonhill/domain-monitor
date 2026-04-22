@@ -51,7 +51,7 @@ return new class extends Migration
             'repo_name' => 'moveroo/ma-catrans-program',
             'repo_provider' => 'github',
             'repo_url' => 'https://github.com/moveroo/ma-catrans-program',
-            'local_path' => '/Users/jasonhill/Projects/websites/ma-car-transport-astro',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/ma-car-transport-astro',
             'default_branch' => 'main',
             'deployment_branch' => 'main',
             'framework' => 'Astro',

@@ -16,14 +16,14 @@ class PropertyExecutionReadinessResolverTest extends TestCase
         ]);
         $primaryRepository = new PropertyRepository([
             'repo_name' => 'marketing-site',
-            'local_path' => '/Users/jasonhill/Projects/websites/marketing-site',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/marketing-site',
             'framework' => 'Astro',
             'is_primary' => true,
             'is_controller' => false,
         ]);
         $controllerRepository = new PropertyRepository([
             'repo_name' => 'moveroo/controller-site',
-            'local_path' => '/Users/jasonhill/Projects/websites/controller-site',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/controller-site',
             'framework' => 'Astro',
             'is_primary' => false,
             'is_controller' => true,
@@ -50,7 +50,7 @@ class PropertyExecutionReadinessResolverTest extends TestCase
         ]);
         $repository = new PropertyRepository([
             'repo_name' => 'cartransport-site',
-            'local_path' => '/Users/jasonhill/Projects/websites/cartransport-site',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/cartransport-site',
             'framework' => null,
             'is_primary' => true,
             'is_controller' => true,

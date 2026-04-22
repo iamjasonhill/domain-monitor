@@ -12,8 +12,8 @@ use Illuminate\Support\Str;
 class SyncMmGoogleGa4Command extends Command
 {
     protected $signature = 'analytics:sync-mm-google-ga4
-                            {--config-path=/Users/jasonhill/Projects/2026 Projects/MM-Google/config/sites.json : Path to MM-Google sites.json}
-                            {--workspace-path=/Users/jasonhill/Projects/2026 Projects/MM-Google : Workspace path recorded on analytics source rows}
+                            {--config-path=/Users/jasonhill/Projects/Business/operations/MM-Google/config/sites.json : Path to MM-Google sites.json}
+                            {--workspace-path=/Users/jasonhill/Projects/Business/operations/MM-Google : Workspace path recorded on analytics source rows}
                             {--dry-run : Report changes without writing them}';
 
     protected $description = 'Sync GA4 bindings from MM-Google into property analytics sources';

@@ -104,7 +104,7 @@ class WebPropertyUiTest extends TestCase
             'web_property_id' => $property->id,
             'repo_name' => 'moving-again-astro',
             'repo_provider' => 'local_only',
-            'local_path' => '/Users/jasonhill/Projects/websites/moving-again-astro',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/moving-again-astro',
             'framework' => 'Astro',
             'is_primary' => true,
         ]);

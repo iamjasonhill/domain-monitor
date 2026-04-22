@@ -77,7 +77,7 @@ class SyncMmGoogleGa4CommandTest extends TestCase
 
         $this->assertSame(0, Artisan::call('analytics:sync-mm-google-ga4', [
             '--config-path' => $configPath,
-            '--workspace-path' => '/Users/jasonhill/Projects/2026 Projects/MM-Google',
+            '--workspace-path' => '/Users/jasonhill/Projects/Business/operations/MM-Google',
         ]));
 
         $property->refresh();
@@ -92,7 +92,7 @@ class SyncMmGoogleGa4CommandTest extends TestCase
         $this->assertSame('movingagain.com.au', $ga4->external_name);
         $this->assertFalse($ga4->is_primary);
         $this->assertSame('active', $ga4->status);
-        $this->assertSame('/Users/jasonhill/Projects/2026 Projects/MM-Google', $ga4->workspace_path);
+        $this->assertSame('/Users/jasonhill/Projects/Business/operations/MM-Google', $ga4->workspace_path);
         $this->assertSame('533626872', data_get($ga4->provider_config, 'property_id'));
         $this->assertSame('14399248676', data_get($ga4->provider_config, 'stream_id'));
         $this->assertSame('accounts/328441504', data_get($ga4->provider_config, 'analytics_account'));

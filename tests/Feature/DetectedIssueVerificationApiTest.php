@@ -122,7 +122,7 @@ class DetectedIssueVerificationApiTest extends TestCase
             'repo_name' => 'moveroo/suppressed-broken-links-site',
             'repo_provider' => 'github',
             'repo_url' => 'https://github.com/moveroo/suppressed-broken-links-site',
-            'local_path' => '/Users/jasonhill/Projects/websites/suppressed-broken-links-site',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/suppressed-broken-links-site',
             'framework' => 'Astro',
             'is_primary' => true,
             'is_controller' => true,
@@ -538,7 +538,7 @@ class DetectedIssueVerificationApiTest extends TestCase
         PropertyRepository::create([
             'web_property_id' => $property->id,
             'repo_name' => '_wp-house',
-            'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
             'framework' => 'WordPress',
             'is_primary' => true,
             'is_controller' => true,

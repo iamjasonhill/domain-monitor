@@ -129,7 +129,7 @@ return [
     |
     */
     'web_property_bootstrap' => [
-        'websites_root' => env('DOMAIN_MONITOR_WEBSITES_ROOT', '/Users/jasonhill/Projects/websites'),
+        'websites_root' => env('DOMAIN_MONITOR_WEBSITES_ROOT', '/Users/jasonhill/Projects/Business/websites'),
         'overrides' => [
             'again.com.au' => [
                 'slug' => 'again-com-au',
@@ -137,7 +137,7 @@ return [
                 'property_type' => 'marketing_site',
                 'repository' => [
                     'repo_name' => 'again-com-au-astro',
-                    'local_path' => '/Users/jasonhill/Projects/websites/again-com-au-astro',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/again-com-au-astro',
                     'framework' => 'Astro',
                 ],
             ],
@@ -149,7 +149,7 @@ return [
                     'repo_name' => 'MM-moveroo.com.au',
                     'repo_provider' => 'github',
                     'repo_url' => 'https://github.com/iamjasonhill/moveroowebsite.git',
-                    'local_path' => '/Users/jasonhill/Projects/websites/MM-moveroo.com.au',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/MM-moveroo.com.au',
                     'framework' => 'Astro',
                     'is_controller' => true,
                     'deployment_provider' => 'vercel',
@@ -173,7 +173,7 @@ return [
                     'repo_name' => 'MM-cartransport.au',
                     'repo_provider' => 'github',
                     'repo_url' => 'https://github.com/moveroo/ws-cartranspor-au.git',
-                    'local_path' => '/Users/jasonhill/Projects/websites/MM-cartransport.au',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/MM-cartransport.au',
                     'framework' => 'Astro',
                     'is_controller' => true,
                     'deployment_provider' => 'netlify',
@@ -196,7 +196,7 @@ return [
                     'repo_name' => 'MM-cartransportwithpersonalitems.com.au',
                     'repo_provider' => 'github',
                     'repo_url' => 'https://github.com/iamjasonhill/cartransportwithpersonalitems-astro.git',
-                    'local_path' => '/Users/jasonhill/Projects/websites/MM-cartransportwithpersonalitems.com.au',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/MM-cartransportwithpersonalitems.com.au',
                     'framework' => 'Astro',
                     'is_controller' => true,
                     'deployment_provider' => 'vercel',
@@ -220,7 +220,7 @@ return [
                     'repo_name' => 'MM-discountbackloading.com.au',
                     'repo_provider' => 'github',
                     'repo_url' => 'https://github.com/iamjasonhill/MM-discountbackloading.git',
-                    'local_path' => '/Users/jasonhill/Projects/websites/MM-discountbackloading.com.au',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/MM-discountbackloading.com.au',
                     'framework' => 'Astro',
                     'is_controller' => true,
                     'deployment_provider' => 'vercel',
@@ -241,7 +241,7 @@ return [
                 'property_type' => 'website',
                 'repository' => [
                     'repo_name' => '_wp-house',
-                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
                     'framework' => 'WordPress',
                 ],
                 'analytics_sources' => [
@@ -259,7 +259,7 @@ return [
                 'property_type' => 'website',
                 'repository' => [
                     'repo_name' => '_wp-house',
-                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
                     'framework' => 'WordPress',
                 ],
                 'analytics_sources' => [
@@ -277,7 +277,7 @@ return [
                 'property_type' => 'website',
                 'repository' => [
                     'repo_name' => '_wp-house',
-                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
                     'framework' => 'WordPress',
                 ],
                 'analytics_sources' => [
@@ -295,7 +295,7 @@ return [
                 'property_type' => 'website',
                 'repository' => [
                     'repo_name' => '_wp-house',
-                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
                     'framework' => 'WordPress',
                 ],
                 'analytics_sources' => [
@@ -313,7 +313,7 @@ return [
                 'property_type' => 'website',
                 'repository' => [
                     'repo_name' => '_wp-house',
-                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
                     'framework' => 'WordPress',
                 ],
                 'analytics_sources' => [
@@ -331,7 +331,7 @@ return [
                 'property_type' => 'website',
                 'repository' => [
                     'repo_name' => '_wp-house',
-                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
                     'framework' => 'WordPress',
                 ],
                 'analytics_sources' => [
@@ -351,7 +351,7 @@ return [
                     'repo_name' => 'MM-wemove.com.au',
                     'repo_provider' => 'github',
                     'repo_url' => 'https://github.com/iamjasonhill/MM-wemove.git',
-                    'local_path' => '/Users/jasonhill/Projects/websites/MM-wemove.com.au',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/MM-wemove.com.au',
                     'framework' => 'Astro',
                     'is_controller' => true,
                     'deployment_provider' => 'vercel',
@@ -372,7 +372,7 @@ return [
                 'property_type' => 'website',
                 'repository' => [
                     'repo_name' => '_wp-house',
-                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
                     'framework' => 'WordPress',
                 ],
                 'analytics_sources' => [
@@ -406,7 +406,7 @@ return [
                 'repository' => [
                     'repo_name' => 'laravel',
                     'repo_url' => 'https://github.com/iamjasonhill/laravel',
-                    'local_path' => '/Users/jasonhill/Projects/websites/laravel',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/laravel',
                     'framework' => 'Laravel',
                 ],
             ],
@@ -416,7 +416,7 @@ return [
                 'property_type' => 'website',
                 'repository' => [
                     'repo_name' => '_wp-house',
-                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
                     'framework' => 'WordPress',
                 ],
                 'analytics_sources' => [
@@ -434,7 +434,7 @@ return [
                 'property_type' => 'website',
                 'repository' => [
                     'repo_name' => '_wp-house',
-                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
                     'framework' => 'WordPress',
                 ],
                 'analytics_sources' => [
@@ -452,7 +452,7 @@ return [
                 'property_type' => 'website',
                 'repository' => [
                     'repo_name' => '_wp-house',
-                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
                     'framework' => 'WordPress',
                 ],
                 'analytics_sources' => [
@@ -470,7 +470,7 @@ return [
                 'property_type' => 'website',
                 'repository' => [
                     'repo_name' => '_wp-house',
-                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
                     'framework' => 'WordPress',
                 ],
                 'analytics_sources' => [
@@ -488,7 +488,7 @@ return [
                 'property_type' => 'website',
                 'repository' => [
                     'repo_name' => '_wp-house',
-                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
                     'framework' => 'WordPress',
                 ],
                 'analytics_sources' => [
@@ -506,7 +506,7 @@ return [
                 'property_type' => 'website',
                 'repository' => [
                     'repo_name' => '_wp-house',
-                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
                     'framework' => 'WordPress',
                 ],
                 'analytics_sources' => [
@@ -524,7 +524,7 @@ return [
                 'property_type' => 'website',
                 'repository' => [
                     'repo_name' => '_wp-house',
-                    'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
                     'framework' => 'WordPress',
                 ],
                 'analytics_sources' => [
@@ -544,7 +544,7 @@ return [
                     'repo_name' => 'MM-movingcars.com.au',
                     'repo_provider' => 'github',
                     'repo_url' => 'https://github.com/iamjasonhill/astrosites2026.git',
-                    'local_path' => '/Users/jasonhill/Projects/websites/MM-movingcars.com.au',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/MM-movingcars.com.au',
                     'framework' => 'Astro',
                     'is_controller' => true,
                     'deployment_provider' => 'vercel',
@@ -569,7 +569,7 @@ return [
                     'repo_name' => 'MM-movingagain.com.au',
                     'repo_provider' => 'github',
                     'repo_url' => 'https://github.com/iamjasonhill/WS-Moving-Again.git',
-                    'local_path' => '/Users/jasonhill/Projects/websites/MM-movingagain.com.au',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/MM-movingagain.com.au',
                     'framework' => 'Astro',
                     'is_controller' => true,
                     'deployment_provider' => 'vercel',
@@ -595,7 +595,7 @@ return [
                     'repo_name' => 'MM-cartransport.movingagain.com.au',
                     'repo_provider' => 'github',
                     'repo_url' => 'https://github.com/moveroo/ma-catrans-program',
-                    'local_path' => '/Users/jasonhill/Projects/websites/MM-cartransport.movingagain.com.au',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/MM-cartransport.movingagain.com.au',
                     'framework' => 'Astro',
                     'is_controller' => true,
                     'deployment_provider' => 'vercel',
@@ -619,7 +619,7 @@ return [
                     'repo_name' => 'MM-movinginsurance.com.au',
                     'repo_provider' => 'github',
                     'repo_url' => 'https://github.com/iamjasonhill/WS-movinginsurance.git',
-                    'local_path' => '/Users/jasonhill/Projects/websites/MM-movinginsurance.com.au',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/MM-movinginsurance.com.au',
                     'framework' => 'Astro',
                     'is_controller' => true,
                     'deployment_provider' => 'vercel',
@@ -641,7 +641,7 @@ return [
                 'property_type' => 'website',
                 'repository' => [
                     'repo_name' => 'transportnondrivablecars-com-au-php',
-                    'local_path' => '/Users/jasonhill/Projects/websites/transportnondrivablecars-com-au-php',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/transportnondrivablecars-com-au-php',
                     'framework' => 'Custom PHP',
                 ],
                 'analytics_sources' => [

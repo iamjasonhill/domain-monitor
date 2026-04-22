@@ -56,7 +56,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'web_property_id' => $mustFixProperty->id,
             'repo_name' => 'must-fix-site',
             'repo_provider' => 'local_only',
-            'local_path' => '/Users/jasonhill/Projects/websites/must-fix-site',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/must-fix-site',
             'framework' => 'WordPress',
             'is_primary' => true,
         ]);
@@ -100,7 +100,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'web_property_id' => $shouldFixProperty->id,
             'repo_name' => 'should-fix-site-astro',
             'repo_provider' => 'local_only',
-            'local_path' => '/Users/jasonhill/Projects/websites/should-fix-site-astro',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/should-fix-site-astro',
             'framework' => 'Astro',
             'is_primary' => true,
         ]);
@@ -185,7 +185,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'web_property_id' => $emailOnlyProperty->id,
             'repo_name' => 'mail-only-site',
             'repo_provider' => 'local_only',
-            'local_path' => '/Users/jasonhill/Projects/websites/mail-only-site',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/mail-only-site',
             'framework' => 'WordPress',
             'is_primary' => true,
         ]);
@@ -338,7 +338,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'web_property_id' => $canonicalProperty->id,
             'repo_name' => 'zeta-site',
             'repo_provider' => 'local_only',
-            'local_path' => '/Users/jasonhill/Projects/websites/zeta-site',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/zeta-site',
             'framework' => 'WordPress',
             'is_primary' => true,
         ]);
@@ -409,7 +409,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'web_property_id' => $property->id,
             'repo_name' => 'backloading-au',
             'repo_provider' => 'local_only',
-            'local_path' => '/Users/jasonhill/Projects/websites/backloading-au',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/backloading-au',
             'framework' => 'WordPress',
             'is_primary' => true,
         ]);
@@ -481,7 +481,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'web_property_id' => $property->id,
             'repo_name' => 'backloadingremovals',
             'repo_provider' => 'local_only',
-            'local_path' => '/Users/jasonhill/Projects/websites/backloadingremovals',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/backloadingremovals',
             'framework' => 'WordPress',
             'is_primary' => true,
         ]);
@@ -569,7 +569,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'web_property_id' => $property->id,
             'repo_name' => '_wp-house',
             'repo_provider' => 'local_only',
-            'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
             'framework' => 'WordPress',
             'is_primary' => true,
         ]);
@@ -651,7 +651,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'web_property_id' => $blockedProperty->id,
             'repo_name' => 'blocked-by-robots-site',
             'repo_provider' => 'local_only',
-            'local_path' => '/Users/jasonhill/Projects/websites/blocked-by-robots-site',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/blocked-by-robots-site',
             'framework' => 'Astro',
             'is_primary' => true,
         ]);
@@ -712,7 +712,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'web_property_id' => $canonicalProperty->id,
             'repo_name' => 'duplicate-canonical-site',
             'repo_provider' => 'local_only',
-            'local_path' => '/Users/jasonhill/Projects/websites/duplicate-canonical-site',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/duplicate-canonical-site',
             'framework' => 'Astro',
             'is_primary' => true,
         ]);
@@ -802,7 +802,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'web_property_id' => $property->id,
             'repo_name' => 'mixed-priority-site',
             'repo_provider' => 'local_only',
-            'local_path' => '/Users/jasonhill/Projects/websites/mixed-priority-site',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/mixed-priority-site',
             'framework' => 'Astro',
             'is_primary' => true,
         ]);
@@ -902,7 +902,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'web_property_id' => $property->id,
             'repo_name' => 'intentional-admin-queue-site',
             'repo_provider' => 'local_only',
-            'local_path' => '/Users/jasonhill/Projects/websites/intentional-admin-queue-site',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/intentional-admin-queue-site',
             'framework' => 'WordPress',
             'is_primary' => true,
         ]);
@@ -1018,7 +1018,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'web_property_id' => $property->id,
             'repo_name' => 'non-standard-admin-queue-site',
             'repo_provider' => 'local_only',
-            'local_path' => '/Users/jasonhill/Projects/websites/non-standard-admin-queue-site',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/non-standard-admin-queue-site',
             'framework' => 'WordPress',
             'is_primary' => true,
         ]);
@@ -1115,7 +1115,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'web_property_id' => $property->id,
             'repo_name' => 'filtered-404-queue-site',
             'repo_provider' => 'local_only',
-            'local_path' => '/Users/jasonhill/Projects/websites/filtered-404-queue-site',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/filtered-404-queue-site',
             'framework' => 'WordPress',
             'is_primary' => true,
         ]);
@@ -1268,7 +1268,7 @@ class DashboardPriorityQueueApiTest extends TestCase
             'web_property_id' => $property->id,
             'repo_name' => 'resolved-legacy-queue-site',
             'repo_provider' => 'local_only',
-            'local_path' => '/Users/jasonhill/Projects/websites/resolved-legacy-queue-site',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/resolved-legacy-queue-site',
             'framework' => 'WordPress',
             'is_primary' => true,
         ]);

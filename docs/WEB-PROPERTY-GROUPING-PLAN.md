@@ -21,7 +21,7 @@ Production currently has:
 - `4` repository links
 - `1` analytics link
 
-Known website repos in [`/Users/jasonhill/Projects/websites`](/Users/jasonhill/Projects/websites):
+Known website repos in [`/Users/jasonhill/Projects/Business/websites`](/Users/jasonhill/Projects/Business/websites):
 
 - `again-com-au-astro`
 - `cartransport-au-astro`

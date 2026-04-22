@@ -43,7 +43,7 @@ class PromoteWebPropertyControllerCommandTest extends TestCase
             'web_property_id' => $property->id,
             'repo_name' => '_wp-house',
             'repo_provider' => 'local_only',
-            'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
             'framework' => 'WordPress',
             'is_primary' => true,
             'notes' => 'Mapped from shared WordPress house control surface.',
@@ -53,7 +53,7 @@ class PromoteWebPropertyControllerCommandTest extends TestCase
             'slug' => 'wemove-com-au',
             '--repo-name' => 'MM-wemove.com.au',
             '--repo-url' => 'https://github.com/iamjasonhill/MM-wemove.git',
-            '--local-path' => '/Users/jasonhill/Projects/websites/MM-wemove.com.au',
+            '--local-path' => '/Users/jasonhill/Projects/Business/websites/MM-wemove.com.au',
             '--framework' => 'Astro',
             '--platform' => 'Astro',
             '--target-platform' => 'Astro',
@@ -82,7 +82,7 @@ class PromoteWebPropertyControllerCommandTest extends TestCase
 
         $output = Artisan::output();
         $this->assertStringContainsString('Property: wemove.com.au (wemove-com-au)', $output);
-        $this->assertStringContainsString('Promoted controller: MM-wemove.com.au -> /Users/jasonhill/Projects/websites/MM-wemove.com.au', $output);
+        $this->assertStringContainsString('Promoted controller: MM-wemove.com.au -> /Users/jasonhill/Projects/Business/websites/MM-wemove.com.au', $output);
         $this->assertStringContainsString('Repositories to demote:', $output);
         $this->assertStringContainsString('Dry run complete. No changes were written.', $output);
     }
@@ -116,7 +116,7 @@ class PromoteWebPropertyControllerCommandTest extends TestCase
             'web_property_id' => $property->id,
             'repo_name' => '_wp-house',
             'repo_provider' => 'local_only',
-            'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
             'framework' => 'WordPress',
             'is_primary' => true,
             'notes' => 'Mapped from shared WordPress house control surface.',
@@ -126,7 +126,7 @@ class PromoteWebPropertyControllerCommandTest extends TestCase
             'slug' => 'discountbackloading-com-au',
             '--repo-name' => 'MM-discountbackloading.com.au',
             '--repo-url' => 'https://github.com/iamjasonhill/MM-discountbackloading.git',
-            '--local-path' => '/Users/jasonhill/Projects/websites/MM-discountbackloading.com.au',
+            '--local-path' => '/Users/jasonhill/Projects/Business/websites/MM-discountbackloading.com.au',
             '--framework' => 'Astro',
             '--default-branch' => 'main',
             '--deployment-branch' => 'main',
@@ -157,7 +157,7 @@ class PromoteWebPropertyControllerCommandTest extends TestCase
 
         $this->assertSame('github', $astroRepository->repo_provider);
         $this->assertSame('https://github.com/iamjasonhill/MM-discountbackloading.git', $astroRepository->repo_url);
-        $this->assertSame('/Users/jasonhill/Projects/websites/MM-discountbackloading.com.au', $astroRepository->local_path);
+        $this->assertSame('/Users/jasonhill/Projects/Business/websites/MM-discountbackloading.com.au', $astroRepository->local_path);
         $this->assertSame('Astro', $astroRepository->framework);
         $this->assertSame('main', $astroRepository->default_branch);
         $this->assertSame('main', $astroRepository->deployment_branch);
@@ -174,7 +174,7 @@ class PromoteWebPropertyControllerCommandTest extends TestCase
 
         $summary = $property->fresh()->brainSummary(includeFullExternalLinks: false);
         $this->assertSame('MM-discountbackloading.com.au', $summary['controller_repo']);
-        $this->assertSame('/Users/jasonhill/Projects/websites/MM-discountbackloading.com.au', $summary['controller_local_path']);
+        $this->assertSame('/Users/jasonhill/Projects/Business/websites/MM-discountbackloading.com.au', $summary['controller_local_path']);
         $this->assertSame('astro_repo_controlled', $summary['execution_surface']);
 
         $output = Artisan::output();

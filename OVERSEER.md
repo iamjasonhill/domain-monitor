@@ -90,3 +90,10 @@ Why this is the current call:
   - no hard-coded `domain-monitor` value that must remain canonical was changed accidentally
   - live smoke checks confirm the hostname, health routes, and integration metadata behave as expected
 - Best immediate action: `alias-first`, which effectively means defer any canonical rename until dual-name compatibility is verified end to end
+
+### 2026-04-22 17:19:34 AEST
+
+- Trigger: issue `#135`
+- What changed: classified the dirty `main` worktree as one coherent workspace-root relocation, updating absolute local paths from `/Users/jasonhill/Projects/websites` and `/Users/jasonhill/Projects/2026 Projects/MM-Google` to the current `Business` workspace layout across config, docs, migration seed data, and related tests
+- What was fixed: removed old-path residue inside this repo, confirmed the new local roots exist, and verified the touched PHP and focused test slices pass
+- What remains open: no in-repo residue remains; the only remaining decision is the owner-facing merge/close step for this coherent change set

@@ -46,7 +46,7 @@ class DetectedIssueApiPartial404SuppressionTest extends TestCase
             'web_property_id' => $property->id,
             'repo_name' => 'partial-stale-404s-site',
             'repo_provider' => 'local_only',
-            'local_path' => '/Users/jasonhill/Projects/websites/partial-stale-404s-site',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/partial-stale-404s-site',
             'framework' => 'WordPress',
             'is_primary' => true,
         ]);

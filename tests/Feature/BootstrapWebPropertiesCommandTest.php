@@ -306,7 +306,7 @@ class BootstrapWebPropertiesCommandTest extends TestCase
                         'repo_name' => 'moveroo/ma-catrans-program',
                         'repo_provider' => 'github',
                         'repo_url' => 'https://github.com/moveroo/ma-catrans-program',
-                        'local_path' => '/Users/jasonhill/Projects/websites/ma-car-transport-astro',
+                        'local_path' => '/Users/jasonhill/Projects/Business/websites/ma-car-transport-astro',
                         'framework' => 'Astro',
                         'is_controller' => true,
                         'deployment_provider' => 'vercel',
@@ -340,7 +340,7 @@ class BootstrapWebPropertiesCommandTest extends TestCase
             'repo_name' => 'moveroo/ma-catrans-program',
             'repo_provider' => 'github',
             'repo_url' => 'https://github.com/iamjasonhill/cartransport-astro',
-            'local_path' => '/Users/jasonhill/Projects/websites/cartransport-new-astro',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/cartransport-new-astro',
             'framework' => 'Astro',
             'is_primary' => true,
             'is_controller' => false,
@@ -354,7 +354,7 @@ class BootstrapWebPropertiesCommandTest extends TestCase
             ->firstOrFail();
 
         $this->assertSame('https://github.com/moveroo/ma-catrans-program', $repository->repo_url);
-        $this->assertSame('/Users/jasonhill/Projects/websites/ma-car-transport-astro', $repository->local_path);
+        $this->assertSame('/Users/jasonhill/Projects/Business/websites/ma-car-transport-astro', $repository->local_path);
         $this->assertTrue($repository->is_controller);
         $this->assertSame('vercel', $repository->deployment_provider);
     }

@@ -131,7 +131,7 @@ class WebPropertyApiTest extends TestCase
             'repo_name' => 'moveroo/moveroo-website-astro',
             'repo_provider' => 'github',
             'repo_url' => 'https://github.com/moveroo/moveroo-website-astro',
-            'local_path' => '/Users/jasonhill/Projects/websites/moveroo-website-astro',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/moveroo-website-astro',
             'framework' => 'Astro',
             'is_primary' => true,
             'is_controller' => true,
@@ -154,7 +154,7 @@ class WebPropertyApiTest extends TestCase
             'provider' => 'ga4',
             'external_id' => 'G-9F3Y80LEQL',
             'external_name' => 'Moveroo GA4',
-            'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/MM-Google',
+            'workspace_path' => '/Users/jasonhill/Projects/Business/operations/MM-Google',
             'provider_config' => [
                 'property_id' => '457902172',
                 'stream_id' => '9677257871',
@@ -412,7 +412,7 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.fleet_priority', $property->priority)
             ->assertJsonPath('web_properties.0.controller_repo', 'moveroo/moveroo-website-astro')
             ->assertJsonPath('web_properties.0.controller_repo_url', 'https://github.com/moveroo/moveroo-website-astro')
-            ->assertJsonPath('web_properties.0.controller_local_path', '/Users/jasonhill/Projects/websites/moveroo-website-astro')
+            ->assertJsonPath('web_properties.0.controller_local_path', '/Users/jasonhill/Projects/Business/websites/moveroo-website-astro')
             ->assertJsonPath('web_properties.0.deployment_provider', 'vercel')
             ->assertJsonPath('web_properties.0.deployment_project_name', 'moveroo-website')
             ->assertJsonPath('web_properties.0.deployment_project_id', 'prj_moveroo123')
@@ -1251,7 +1251,7 @@ class WebPropertyApiTest extends TestCase
             'web_property_id' => $property->id,
             'repo_name' => '_wp-house',
             'repo_provider' => 'local_only',
-            'local_path' => '/Users/jasonhill/Projects/websites/_wp-house',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
             'framework' => 'WordPress',
             'is_primary' => false,
         ]);
@@ -1300,7 +1300,7 @@ class WebPropertyApiTest extends TestCase
             'repo_name' => 'cartransport-new-astro',
             'repo_provider' => 'github',
             'repo_url' => 'https://github.com/iamjasonhill/cartransport-astro',
-            'local_path' => '/Users/jasonhill/Projects/websites/cartransport-new-astro',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/cartransport-new-astro',
             'framework' => 'Astro',
             'is_primary' => true,
             'deployment_provider' => 'vercel',
@@ -1312,7 +1312,7 @@ class WebPropertyApiTest extends TestCase
             'repo_name' => 'moveroo/ma-catrans-program',
             'repo_provider' => 'github',
             'repo_url' => 'https://github.com/moveroo/ma-catrans-program',
-            'local_path' => '/Users/jasonhill/Projects/websites/ma-car-transport-astro',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/ma-car-transport-astro',
             'framework' => 'Astro',
             'is_primary' => false,
             'is_controller' => true,
@@ -1328,7 +1328,7 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.slug', 'cartransport-movingagain-com-au')
             ->assertJsonPath('web_properties.0.controller_repo', 'moveroo/ma-catrans-program')
             ->assertJsonPath('web_properties.0.controller_repo_url', 'https://github.com/moveroo/ma-catrans-program')
-            ->assertJsonPath('web_properties.0.controller_local_path', '/Users/jasonhill/Projects/websites/ma-car-transport-astro')
+            ->assertJsonPath('web_properties.0.controller_local_path', '/Users/jasonhill/Projects/Business/websites/ma-car-transport-astro')
             ->assertJsonPath('web_properties.0.deployment_provider', 'vercel')
             ->assertJsonPath('web_properties.0.execution_surface', 'astro_repo_controlled')
             ->assertJsonPath('web_properties.0.fleet_managed', true);
@@ -1368,7 +1368,7 @@ class WebPropertyApiTest extends TestCase
             'repo_name' => 'transportnondrivablecars-com-au-php',
             'repo_provider' => 'github',
             'repo_url' => 'https://github.com/iamjasonhill/transportnondrivablecars-com-au-php',
-            'local_path' => '/Users/jasonhill/Projects/websites/transportnondrivablecars-com-au-php',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/transportnondrivablecars-com-au-php',
             'framework' => 'Custom PHP',
             'is_primary' => true,
             'is_controller' => true,
