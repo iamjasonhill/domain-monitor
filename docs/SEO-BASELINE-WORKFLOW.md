@@ -14,7 +14,7 @@ This avoids redesigning or migrating blind when Google already knows something u
 
 ### Matomo Owns Raw SEO/Search Data
 
-Matomo is the raw source for Search Console-derived data:
+Matomo is still the legacy raw source for older Search Console-derived data:
 
 - Search Analytics totals
 - page/query/country/device breakdowns
@@ -37,6 +37,17 @@ It should answer:
 - when was it captured?
 - what did indexation and search visibility look like at that point?
 - do we have enough baseline data to begin a rebuild?
+
+### MM-Google Owns The Replacement Export
+
+MM-Google is the preferred producer of the Search Console coverage/baseline
+replacement export.
+
+It should answer:
+
+- is the Search Console property ready?
+- what domain-level coverage state should Domain Monitor store?
+- what baseline snapshot should Domain Monitor normalize from the export?
 
 ### MM BRAIN Owns Operator Context
 
@@ -91,7 +102,7 @@ Minimum expected import:
 
 ### 3. Capture Manual Search Console Exports If Needed
 
-If Google exposes useful UI-only context that is not yet in Matomo:
+If Google exposes useful UI-only context that is not yet in MM-Google or Domain Monitor:
 
 - export the CSV from Search Console
 - store it as an operator artifact
@@ -105,7 +116,7 @@ This keeps the evidence trail without turning Brain into the raw metrics source.
 
 ### 4. Save The Baseline Snapshot In domain-monitor
 
-Create a normalized baseline snapshot using the imported Matomo data and any manual issue summaries.
+Create a normalized baseline snapshot using the imported MM-Google replacement export and any manual issue summaries.
 
 ### 5. Review Baseline Before Build
 
@@ -142,6 +153,7 @@ These are the fields that matter at the domain level.
 - `date_range_start`
 - `date_range_end`
 - `import_method`
+  - `mm_google_export`
   - `matomo_api`
   - `matomo_plus_manual_csv`
 - `artifact_path`

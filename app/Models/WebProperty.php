@@ -1335,6 +1335,17 @@ class WebProperty extends Model
             ];
         }
 
+        $primaryDomain = $this->primaryDomainModel();
+        $coverage = $primaryDomain instanceof Domain
+            ? ($primaryDomain->relationLoaded('latestSearchConsoleCoverageStatus')
+                ? $primaryDomain->latestSearchConsoleCoverageStatus
+                : $primaryDomain->latestSearchConsoleCoverageStatus()->first())
+            : null;
+
+        if ($coverage instanceof SearchConsoleCoverageStatus) {
+            return $this->searchConsoleCoverageSummaryFromCoverage($coverage);
+        }
+
         $matomoSource = $this->primaryAnalyticsSource('matomo');
         if (! $matomoSource instanceof PropertyAnalyticsSource) {
             return [
@@ -1388,6 +1399,125 @@ class WebProperty extends Model
                 $coverage->property_uri ?? $this->primaryDomainName() ?? $this->slug
             ),
         ];
+    }
+
+    /**
+     * @return array{status: string, label: string, reason: string|null}
+     */
+    private function searchConsoleCoverageSummaryFromCoverage(SearchConsoleCoverageStatus $coverage): array
+    {
+        $rawStatus = $this->searchConsoleCoverageStatusFromRawPayload($coverage->raw_payload);
+
+        if ($coverage->freshnessState() === 'never_imported') {
+            return [
+                'status' => 'needs_import',
+                'label' => 'Needs import',
+                'reason' => $this->searchConsoleCoverageReason($coverage, 'Search Console coverage is mapped but no data has been imported yet'),
+            ];
+        }
+
+        if ($coverage->freshnessState() === 'stale') {
+            return [
+                'status' => 'stale_import',
+                'label' => 'Import stale',
+                'reason' => $this->searchConsoleCoverageReason($coverage, 'Search Console coverage import is stale'),
+            ];
+        }
+
+        if ($coverage->mapping_state === 'not_mapped') {
+            return [
+                'status' => 'needs_property',
+                'label' => 'Needs Search Console',
+                'reason' => $this->searchConsoleCoverageReason($coverage, 'Search Console property is not mapped yet'),
+            ];
+        }
+
+        if ($coverage->mapping_state === 'url_prefix') {
+            return [
+                'status' => 'url_prefix_only',
+                'label' => 'URL prefix only',
+                'reason' => $this->searchConsoleCoverageReason($coverage, 'Search Console is mapped as a URL prefix instead of a domain property'),
+            ];
+        }
+
+        if ($rawStatus === 'search_console_audit_failed') {
+            return [
+                'status' => 'blocked',
+                'label' => 'Audit blocked',
+                'reason' => $this->searchConsoleCoverageReason($coverage, 'MM-Google Search Console audit failed'),
+            ];
+        }
+
+        if (in_array($rawStatus, ['search_console_missing_property', 'search_console_not_configured'], true)) {
+            return [
+                'status' => 'needs_property',
+                'label' => 'Needs Search Console',
+                'reason' => $this->searchConsoleCoverageReason($coverage, 'MM-Google Search Console property is not configured'),
+            ];
+        }
+
+        if (in_array($rawStatus, ['search_console_not_verified', 'search_console_sitemap_expectation_mismatch'], true)) {
+            return [
+                'status' => 'needs_import',
+                'label' => 'Needs import',
+                'reason' => $this->searchConsoleCoverageReason($coverage, 'MM-Google Search Console coverage needs attention before it can be treated as ready'),
+            ];
+        }
+
+        if ($rawStatus === 'search_console_wrong_property_type') {
+            return [
+                'status' => 'url_prefix_only',
+                'label' => 'URL prefix only',
+                'reason' => $this->searchConsoleCoverageReason($coverage, 'MM-Google Search Console only matched a URL prefix property'),
+            ];
+        }
+
+        if ($rawStatus === 'search_console_ready') {
+            return [
+                'status' => 'covered',
+                'label' => 'Covered',
+                'reason' => $this->searchConsoleCoverageReason($coverage, 'MM-Google Search Console coverage is ready'),
+            ];
+        }
+
+        return [
+            'status' => 'covered',
+            'label' => 'Covered',
+            'reason' => $this->searchConsoleCoverageReason(
+                $coverage,
+                sprintf(
+                    'Search Console coverage is fresh for %s',
+                    $coverage->property_uri ?? $this->primaryDomainName() ?? $this->slug
+                )
+            ),
+        ];
+    }
+
+    private function searchConsoleCoverageReason(SearchConsoleCoverageStatus $coverage, string $fallback): string
+    {
+        $sourceLabel = $coverage->source_provider === 'mm-google'
+            ? 'MM-Google'
+            : str($coverage->source_provider)->replace('_', ' ')->title()->toString();
+
+        $subject = $coverage->property_uri ?? $coverage->matomo_main_url ?? $this->primaryDomainName() ?? $this->slug;
+
+        return sprintf('%s evidence for %s: %s', $sourceLabel, $subject, $fallback);
+    }
+
+    private function searchConsoleCoverageStatusFromRawPayload(mixed $rawPayload): ?string
+    {
+        if (! is_array($rawPayload)) {
+            return null;
+        }
+
+        foreach (['coverageStatus', 'coverage_status', 'readinessStatus', 'readiness_status'] as $key) {
+            $value = $rawPayload[$key] ?? null;
+            if (is_string($value) && $value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     /**

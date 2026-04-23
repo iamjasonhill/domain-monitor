@@ -167,23 +167,24 @@ Purpose:
 
 ## Google Search Console Collector
 
-The official Google Search Console collector uses its own runtime credentials on
-the Domain Monitor side. Do not treat repository-local `.env` files as the
-source of truth for these values.
+The official Google Search Console collector still uses its own runtime
+credentials on the Domain Monitor side. Do not treat repository-local `.env`
+files as the source of truth for these values.
 
-### Source Of Truth
+### Preferred Source Of Truth
 
-The durable shared Google Search Console connection currently lives in the live
-Matomo install:
+The preferred durable shared Search Console control-plane now lives in
+MM-Google.
 
 ```text
-Host: 43.250.142.23
-Port: 2683
-User: transpor
-Path: /home/transpor/stats.redirection.com.au
+Export contract: search-console-coverage-baseline-v1
+Source system: mm-google
 ```
 
-Relevant storage on the Matomo side:
+Domain Monitor should consume the MM-Google export and normalize it into its
+own coverage and baseline tables.
+
+Legacy Matomo storage remains useful for recovery and backfill work:
 
 - table `vsb3_plugin_setting`
   - `plugin_name = SearchConsoleIntegration`
@@ -195,9 +196,8 @@ Relevant storage on the Matomo side:
   - `option_name = SearchConsoleIntegration.googleTokens`
   - contains the connected Google `refresh_token` and current `access_token`
 
-This is the preferred place to recover or rotate the Search Console collector
-credentials because it reflects the real connected Google account already in
-use for Search Console operations.
+Use the Matomo side only when you need to recover or rotate an older collector
+or inspect historic legacy imports.
 
 ### Domain Monitor Runtime Variables
 
@@ -222,10 +222,10 @@ The safest live verification sequence is:
    `https://oauth2.googleapis.com/token`
 2. verify the token can list Search Console properties from
    `https://www.googleapis.com/webmasters/v3/sites`
-3. run the Domain Monitor collector command on one property:
+3. run the MM-Google export sync on one property:
 
 ```text
-php artisan analytics:collect-search-console-api-bundle <property-slug> --dry-run
+php artisan analytics:sync-mm-google-search-console-export <export-json-path> --dry-run
 ```
 
 4. once the dry-run output looks correct, run the real import without
@@ -233,9 +233,9 @@ php artisan analytics:collect-search-console-api-bundle <property-slug> --dry-ru
 
 ### Operational Notes
 
-- The collector should reuse the existing Matomo-connected Google account rather
-  than creating a separate ad hoc OAuth app when possible.
+- The collector should reuse the existing connected Google account rather than
+  creating a separate ad hoc OAuth app when possible.
 - Prefer the refresh-token flow over a pasted short-lived access token.
-- If the Matomo Google connection is rotated, update Domain Monitor from the
-  same Matomo source-of-truth path instead of inventing a second credential
+- If the MM-Google export is unavailable, fall back to the legacy Matomo path
+  only long enough to recover the replacement contract.
   store.

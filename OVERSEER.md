@@ -97,3 +97,10 @@ Why this is the current call:
 - What changed: classified the dirty `main` worktree as one coherent workspace-root relocation, updating absolute local paths from `/Users/jasonhill/Projects/websites` and `/Users/jasonhill/Projects/2026 Projects/MM-Google` to the current `Business` workspace layout across config, docs, migration seed data, and related tests
 - What was fixed: removed old-path residue inside this repo, confirmed the new local roots exist, and verified the touched PHP and focused test slices pass
 - What remains open: no in-repo residue remains; the only remaining decision is the owner-facing merge/close step for this coherent change set
+
+### 2026-04-23 13:26:29 AEST
+
+- Trigger: MM-Google Search Console replacement export handoff
+- What changed: wired `domain-monitor` to ingest the MM-Google `search-console-coverage-baseline-v1` export, normalized coverage and baseline records into the existing domain-level tables, and taught `WebProperty` to report MM-Google-backed Search Console coverage as a real status
+- What was fixed: removed the last hard Matomo-only dependency from the Search Console status summary path, added a focused import test, and updated the SEO baseline / API integration docs to treat MM-Google as the preferred producer
+- What remains open: legacy Matomo imports still exist for recovery/backfill, but the active control-plane path should now come from MM-Google export files
