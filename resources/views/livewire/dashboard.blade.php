@@ -97,7 +97,7 @@
         </a>
 
         <!-- Must Fix -->
-        <a href="{{ route('dashboard') }}#must-fix" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+        <a href="{{ route('dashboard') }}#detected-must-fix" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
             <div class="p-6">
                 <div class="flex items-center">
                     <div class="shrink-0 bg-red-700 rounded-md p-3">
@@ -109,7 +109,7 @@
                     <div class="ml-5 min-w-0 flex-1">
                         <dl>
                             <dt class="text-sm font-medium leading-snug text-gray-500 dark:text-gray-400">Must Fix</dt>
-                            <dd class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats['must_fix'] }}</dd>
+                            <dd class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats['detected_must_fix'] }}</dd>
                         </dl>
                     </div>
                 </div>
@@ -173,6 +173,66 @@
             </div>
         </a>
 
+    </div>
+
+    <!-- Detected Issue Feed -->
+    <div id="detected-must-fix" class="mb-8">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
+            <div class="p-6">
+                <div class="flex items-center justify-between gap-4 mb-4">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Detected Must Fix</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Live monitoring, marketing, Search Console, and queue findings that currently rank as urgent.</p>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <div class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats['detected_must_fix'] }}</div>
+                        <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Open Issues</div>
+                    </div>
+                </div>
+
+                @if($detectedMustFixIssues->isNotEmpty())
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        @foreach($detectedMustFixIssues as $issue)
+                            <div class="rounded-lg border border-red-200 dark:border-red-900/60 bg-red-50/50 dark:bg-red-950/20 p-4">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <div class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                                            {{ $issue['domain'] ?? $issue['property_name'] ?? $issue['property_slug'] ?? 'Unknown property' }}
+                                        </div>
+                                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                            {{ $issue['issue_class'] ?? 'detected_issue' }}
+                                            @if(!empty($issue['detector']))
+                                                · {{ $issue['detector'] }}
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                        Must fix
+                                    </span>
+                                </div>
+
+                                <p class="mt-3 text-sm text-gray-700 dark:text-gray-300">
+                                    {{ data_get($issue, 'evidence.primary_reasons.0') ?? data_get($issue, 'evidence.summary') ?? $issue['summary'] ?? 'Detected issue needs review.' }}
+                                </p>
+
+                                <div class="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                    @if(!empty($issue['property_slug']))
+                                        <a href="{{ route('web-properties.show', $issue['property_slug']) }}" wire:navigate class="text-blue-600 dark:text-blue-400 hover:underline">Open property</a>
+                                    @endif
+                                    @if(!empty($issue['detected_at']))
+                                        <span>Detected {{ $issue['detected_at'] }}</span>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="rounded-lg border border-green-200 dark:border-green-900/60 bg-green-50 dark:bg-green-950/20 p-4">
+                        <p class="text-sm text-green-800 dark:text-green-200">No urgent detected issues are currently flagged.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
     </div>
 
     <!-- Priority Queue -->

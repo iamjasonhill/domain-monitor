@@ -310,6 +310,47 @@ class RunMonitoringLaneCommandTest extends TestCase
         ]);
     }
 
+    public function test_marketing_integrity_lane_downgrades_unfetchable_ga4_inventory_gaps(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $property = $this->makeProperty('parked.example.au', 'Parked Example');
+
+        Http::fake([
+            'https://parked.example.au/' => Http::failedConnection(),
+            'https://parked.example.au/robots.txt' => Http::failedConnection(),
+        ]);
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'marketing_integrity',
+            '--property' => $property->slug,
+        ]));
+
+        $finding = MonitoringFinding::query()
+            ->where('web_property_id', $property->id)
+            ->where('finding_type', 'marketing.ga4_install')
+            ->firstOrFail();
+
+        $this->assertSame(MonitoringFinding::STATUS_OPEN, $finding->status);
+        $this->assertSame('cleanup', $finding->issue_type);
+        $this->assertSame('missing_expected_measurement_id', data_get($finding->evidence, 'verdict'));
+        $this->assertNull(data_get($finding->evidence, 'best_url'));
+        $this->assertSame([], data_get($finding->evidence, 'detected_measurement_ids'));
+
+        $issues = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues')
+            ->assertOk()
+            ->json('issues');
+
+        $this->assertIsArray($issues);
+        /** @var array<int, array<string, mixed>> $issues */
+        $matchingIssue = collect($issues)->firstWhere('issue_id', $finding->issue_id);
+
+        $this->assertIsArray($matchingIssue);
+        $this->assertSame('should_fix', $matchingIssue['severity']);
+    }
+
     public function test_marketing_integrity_lane_reports_indexability_failures(): void
     {
         config()->set('services.brain.base_url', 'https://brain.example.test');

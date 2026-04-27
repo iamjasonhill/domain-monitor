@@ -116,13 +116,18 @@ class RunMonitoringLane extends Command
             $verdicts = [];
 
             foreach ($audits as $findingType => $definition) {
+                $audit = (array) $definition['audit'];
                 $outcome = $this->syncFinding(
                     findings: $findings,
                     property: $property,
                     findingType: $findingType,
-                    issueType: (string) $definition['issue_type'],
+                    issueType: $this->issueTypeForAudit(
+                        findingType: $findingType,
+                        defaultIssueType: (string) $definition['issue_type'],
+                        audit: $audit
+                    ),
                     title: (string) $definition['title'],
-                    audit: (array) $definition['audit'],
+                    audit: $audit,
                     primaryDomainId: $primaryDomain?->id
                 );
 
@@ -308,6 +313,34 @@ class RunMonitoringLane extends Command
             recoveryEvidence: $audit['evidence'] ?? [],
             primaryDomainId: $primaryDomainId
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $audit
+     */
+    private function issueTypeForAudit(string $findingType, string $defaultIssueType, array $audit): string
+    {
+        if ($findingType !== 'marketing.ga4_install') {
+            return $defaultIssueType;
+        }
+
+        $evidence = is_array($audit['evidence'] ?? null) ? $audit['evidence'] : [];
+
+        if (($evidence['verdict'] ?? null) !== 'missing_expected_measurement_id') {
+            return $defaultIssueType;
+        }
+
+        $bestUrl = $evidence['best_url'] ?? null;
+        $detectedMeasurementIds = $evidence['detected_measurement_ids'] ?? [];
+
+        if (
+            ! is_string($bestUrl)
+            && (is_countable($detectedMeasurementIds) ? count($detectedMeasurementIds) : 0) === 0
+        ) {
+            return 'cleanup';
+        }
+
+        return $defaultIssueType;
     }
 
     private function optionString(string $name): ?string

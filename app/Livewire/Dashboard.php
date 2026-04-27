@@ -6,6 +6,7 @@ use App\Models\Domain;
 use App\Models\DomainCheck;
 use App\Models\Subdomain;
 use App\Services\DashboardIssueQueueService;
+use App\Services\DetectedIssueSummaryService;
 use App\Services\DomainMonitorSettings;
 use App\Services\ManualCsvBacklogService;
 use Illuminate\Support\Collection;
@@ -60,6 +61,17 @@ class Dashboard extends Component
         $stats['must_fix'] = (int) data_get($queueSnapshot, 'stats.must_fix', 0);
         $stats['should_fix'] = (int) data_get($queueSnapshot, 'stats.should_fix', 0);
 
+        $detectedIssueSnapshot = app(DetectedIssueSummaryService::class)->snapshot();
+        /** @var array<int, array<string, mixed>> $detectedIssueRows */
+        $detectedIssueRows = is_array($detectedIssueSnapshot['issues'] ?? null) ? $detectedIssueSnapshot['issues'] : [];
+        $detectedIssues = collect($detectedIssueRows);
+        $detectedMustFixIssues = $detectedIssues
+            ->where('severity', 'must_fix')
+            ->values();
+
+        $stats['detected_must_fix'] = (int) data_get($detectedIssueSnapshot, 'stats.must_fix', 0);
+        $stats['detected_should_fix'] = (int) data_get($detectedIssueSnapshot, 'stats.should_fix', 0);
+
         $manualCsvBacklog = app(ManualCsvBacklogService::class)->snapshot();
         $manualCsvPendingItems = $manualCsvBacklog['items'];
         $manualCsvPendingStats = $manualCsvBacklog['stats'];
@@ -93,6 +105,7 @@ class Dashboard extends Component
             'stats' => $stats,
             'mustFixDomains' => new Collection($mustFixDomains),
             'shouldFixDomains' => new Collection($shouldFixDomains),
+            'detectedMustFixIssues' => $detectedMustFixIssues->take(8),
             'manualCsvPendingItems' => $manualCsvPendingItems->take(6),
             'manualCsvPendingStats' => $manualCsvPendingStats,
             'unresolvedWebSubdomainDomains' => $unresolvedWebSubdomains->take(8),
