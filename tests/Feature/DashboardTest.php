@@ -9,6 +9,7 @@ use App\Models\DomainAlert;
 use App\Models\DomainCheck;
 use App\Models\DomainSeoBaseline;
 use App\Models\DomainTag;
+use App\Models\MonitoringFinding;
 use App\Models\PropertyAnalyticsSource;
 use App\Models\PropertyRepository;
 use App\Models\SearchConsoleCoverageStatus;
@@ -139,6 +140,56 @@ class DashboardTest extends TestCase
             ->assertSee('Broken links need review')
             ->assertSee('1 issue')
             ->assertDontSee('0 issues');
+    }
+
+    public function test_dashboard_surfaces_monitoring_lane_must_fix_issues(): void
+    {
+        $user = User::factory()->create();
+        $property = $this->makeProperty('quotes-gap.example.au', 'Quotes Gap');
+        $primaryDomain = $property->primaryDomainModel();
+
+        $this->assertNotNull($primaryDomain);
+
+        MonitoringFinding::factory()->create([
+            'issue_id' => app(\App\Services\DetectedIssueIdentityService::class)->makeIssueId(
+                $primaryDomain->id,
+                $property->slug,
+                'marketing.conversion_surface_ga4'
+            ),
+            'lane' => 'marketing_integrity',
+            'finding_type' => 'marketing.conversion_surface_ga4',
+            'issue_type' => 'regression',
+            'scope_type' => 'web_property',
+            'domain_id' => $primaryDomain->id,
+            'web_property_id' => $property->id,
+            'status' => MonitoringFinding::STATUS_OPEN,
+            'title' => 'GA4 mismatch on conversion surfaces',
+            'summary' => '1 conversion surface is not resolving to the expected GA4 measurement ID.',
+            'evidence' => [
+                'verdict' => 'wrong_measurement_id',
+                'primary_reasons' => [
+                    '1 conversion surface is not resolving to the expected GA4 measurement ID.',
+                ],
+            ],
+        ]);
+
+        $response = $this->actingAs($user)->get('/dashboard');
+
+        $response
+            ->assertOk()
+            ->assertSee('Detected Must Fix')
+            ->assertSee('quotes-gap.example.au')
+            ->assertSee('marketing.conversion_surface_ga4')
+            ->assertSee('1 conversion surface is not resolving to the expected GA4 measurement ID.');
+
+        Livewire::test(Dashboard::class)
+            ->assertViewHas('stats', function (array $stats): bool {
+                return $stats['detected_must_fix'] === 1;
+            })
+            ->assertViewHas('detectedMustFixIssues', function (Collection $items): bool {
+                return $items->count() === 1
+                    && $items->first()['issue_class'] === 'marketing.conversion_surface_ga4';
+            });
     }
 
     public function test_dashboard_excludes_domains_marked_as_parked_in_synergy(): void
