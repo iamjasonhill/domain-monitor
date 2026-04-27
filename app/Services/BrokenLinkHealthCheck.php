@@ -131,6 +131,12 @@ class BrokenLinkHealthCheck
             $status = $response->status();
             $contentType = $response->header('Content-Type');
 
+            if ($status === 429) {
+                $this->recordRateLimitedLink($url, $foundOn);
+
+                return;
+            }
+
             if ($status >= 400) {
                 $this->brokenLinks[] = [
                     'url' => $url,
@@ -172,11 +178,7 @@ class BrokenLinkHealthCheck
                 }
 
                 if ($status === 429) {
-                    $this->rateLimitedLinks[] = [
-                        'url' => $url,
-                        'status' => $status,
-                        'found_on' => $foundOn,
-                    ];
+                    $this->recordRateLimitedLink($url, $foundOn);
 
                     return;
                 }
@@ -255,5 +257,14 @@ class BrokenLinkHealthCheck
         $host = $parsed['host'] ?? '';
 
         return $host === $this->host || empty($host); // Empty host implies relative path which is internal
+    }
+
+    private function recordRateLimitedLink(string $url, string $foundOn): void
+    {
+        $this->rateLimitedLinks[] = [
+            'url' => $url,
+            'status' => 429,
+            'found_on' => $foundOn,
+        ];
     }
 }

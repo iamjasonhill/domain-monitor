@@ -76,4 +76,29 @@ class BrokenLinkHealthCheckServiceTest extends TestCase
         $this->assertSame(429, $result['rate_limited_links'][0]['status']);
         $this->assertSame('https://example.com', $result['rate_limited_links'][0]['found_on']);
     }
+
+    public function test_it_treats_rate_limited_internal_links_as_non_broken(): void
+    {
+        Http::fake(function (Request $request) {
+            return match ($request->url()) {
+                'https://example.com' => Http::response(
+                    '<html><body><a href="/quote/vehicle">Quote</a></body></html>',
+                    200,
+                    ['Content-Type' => 'text/html']
+                ),
+                'https://example.com/quote/vehicle' => Http::response('rate limited', 429),
+                default => Http::response('not found', 404),
+            };
+        });
+
+        $result = app(BrokenLinkHealthCheck::class)->check('example.com');
+
+        $this->assertTrue($result['verified']);
+        $this->assertTrue($result['is_valid']);
+        $this->assertSame(0, $result['broken_links_count']);
+        $this->assertSame(1, $result['rate_limited_links_count']);
+        $this->assertSame('https://example.com/quote/vehicle', $result['rate_limited_links'][0]['url']);
+        $this->assertSame(429, $result['rate_limited_links'][0]['status']);
+        $this->assertSame('https://example.com', $result['rate_limited_links'][0]['found_on']);
+    }
 }
