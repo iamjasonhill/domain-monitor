@@ -111,3 +111,10 @@ Why this is the current call:
 - What changed: merged and deployed commit `8a8f54e`, which retuned marketing indexability and parked-domain GA4 findings away from the urgent bucket, added a dashboard `Detected Must Fix` panel backed by the same detected-issues feed as `/api/issues`, and backfilled the one real live GA4 config gap for `backloadingremovals.com.au`
 - What was fixed: reduced detected `must_fix` noise from stale indexability and parked/no-fetch GA domains, made real monitoring-lane `must_fix` findings visible on `/dashboard`, and left the current urgent queue focused on conversion-surface GA mismatches, quote-handoff gaps, redirect-policy issues, one email baseline issue, and one Search Console robots finding
 - What remains open: conversion surfaces still commonly report `G-NG8LKXCLVE` instead of the owning site GA4 ID, several live sites still need quote-handoff link correction, and three redirect-policy findings remain real enough for follow-up triage
+
+### 2026-04-28 09:37 AEST
+
+- Trigger: route the largest remaining detected `must_fix` bucket to its owning application repo
+- What changed: opened `iamjasonhill/moveroocombined#1748` for the 13 conversion-surface GA4 mismatches and the related 12 quote-handoff mismatches surfaced by Domain Monitor
+- What was fixed: moved the common quote/portal-host attribution problem out of chat-only triage and into the Moveroo Combined repo with affected hostnames, expected GA4 IDs, detected default `G-NG8LKXCLVE`, handoff route expectations, and a narrow acceptance checklist
+- What remains open: Moveroo Combined needs to confirm the app-side host/site identity path, emit per-site GA4 IDs where safe, classify marketing-site-only handoff fixes back to Fleet/Bossman, and then Domain Monitor should rerun `marketing_integrity` to verify the urgent bucket shrinks
