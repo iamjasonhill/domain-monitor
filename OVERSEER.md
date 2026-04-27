@@ -104,3 +104,10 @@ Why this is the current call:
 - What changed: wired `domain-monitor` to ingest the MM-Google `search-console-coverage-baseline-v1` export, normalized coverage and baseline records into the existing domain-level tables, and taught `WebProperty` to report MM-Google-backed Search Console coverage as a real status
 - What was fixed: removed the last hard Matomo-only dependency from the Search Console status summary path, added a focused import test, and updated the SEO baseline / API integration docs to treat MM-Google as the preferred producer
 - What remains open: legacy Matomo imports still exist for recovery/backfill, but the active control-plane path should now come from MM-Google export files
+
+### 2026-04-28 09:01 AEST
+
+- Trigger: Bossman daily overseer review after dashboard / parked-domain alert cleanup
+- What changed: merged and deployed commit `8a8f54e`, which retuned marketing indexability and parked-domain GA4 findings away from the urgent bucket, added a dashboard `Detected Must Fix` panel backed by the same detected-issues feed as `/api/issues`, and backfilled the one real live GA4 config gap for `backloadingremovals.com.au`
+- What was fixed: reduced detected `must_fix` noise from stale indexability and parked/no-fetch GA domains, made real monitoring-lane `must_fix` findings visible on `/dashboard`, and left the current urgent queue focused on conversion-surface GA mismatches, quote-handoff gaps, redirect-policy issues, one email baseline issue, and one Search Console robots finding
+- What remains open: conversion surfaces still commonly report `G-NG8LKXCLVE` instead of the owning site GA4 ID, several live sites still need quote-handoff link correction, and three redirect-policy findings remain real enough for follow-up triage
