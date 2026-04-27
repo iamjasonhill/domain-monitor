@@ -237,6 +237,9 @@ class SyncMmGoogleSearchConsoleExport extends Command
         return self::SUCCESS;
     }
 
+    /**
+     * @param  array<string, mixed>  $record
+     */
     private function resolveProperty(array $record): ?WebProperty
     {
         $host = $this->hostFromUrl($record['websiteUrl'] ?? null);
@@ -275,6 +278,9 @@ class SyncMmGoogleSearchConsoleExport extends Command
         return $property->primaryAnalyticsSource('ga4');
     }
 
+    /**
+     * @param  array<string, mixed>  $record
+     */
     private function mappedStateForRecord(array $record): string
     {
         $coverageStatus = $this->stringOrNull($record['coverageStatus'] ?? null);
