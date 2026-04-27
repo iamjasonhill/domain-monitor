@@ -314,6 +314,7 @@ class RunMonitoringLaneCommandTest extends TestCase
     {
         config()->set('services.brain.base_url', 'https://brain.example.test');
         config()->set('services.brain.api_key', 'test-key');
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
 
         $property = $this->makeProperty('indexability.example.au', 'Indexability Example');
         PropertyAnalyticsSource::create([
@@ -343,6 +344,7 @@ class RunMonitoringLaneCommandTest extends TestCase
         $indexabilityExpectation->once()->withArgs(function (string $eventType, array $payload): bool {
             $this->assertSame('domain_monitor.finding.opened', $eventType);
             $this->assertSame('marketing.indexability', $payload['finding_type']);
+            $this->assertSame('cleanup', $payload['issue_type']);
 
             return true;
         });
@@ -358,8 +360,22 @@ class RunMonitoringLaneCommandTest extends TestCase
             ->firstOrFail();
 
         $this->assertSame(MonitoringFinding::STATUS_OPEN, $finding->status);
+        $this->assertSame('cleanup', $finding->issue_type);
         $this->assertSame('missing_canonical', data_get($finding->evidence, 'verdict'));
         $this->assertSame(['missing_canonical', 'homepage_noindex', 'sitemap_not_referenced'], data_get($finding->evidence, 'problems'));
+
+        $issues = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues')
+            ->assertOk()
+            ->json('issues');
+
+        $this->assertIsArray($issues);
+        /** @var array<int, array<string, mixed>> $issues */
+        $matchingIssue = collect($issues)->firstWhere('issue_id', $finding->issue_id);
+
+        $this->assertIsArray($matchingIssue);
+        $this->assertSame('should_fix', $matchingIssue['severity']);
     }
 
     public function test_marketing_integrity_lane_reports_quote_handoff_mismatches_without_requiring_ga4(): void

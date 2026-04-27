@@ -219,7 +219,7 @@ class RunMonitoringLane extends Command
         $audits = [
             'marketing.indexability' => [
                 'title' => 'Homepage indexability mismatch on live property',
-                'issue_type' => 'regression',
+                'issue_type' => 'cleanup',
                 'audit' => $siteScanner->auditIndexability($property, $timeout),
             ],
             'marketing.ga4_install' => [
