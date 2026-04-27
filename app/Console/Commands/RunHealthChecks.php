@@ -18,7 +18,8 @@ class RunHealthChecks extends Command
     protected $signature = 'domains:health-check 
                             {--domain= : Specific domain to check (optional)}
                             {--type=http : Check type (http, ssl, dns, uptime)}
-                            {--all : Check all active domains}';
+                            {--all : Check all active domains}
+                            {--representative-hosts : For --all uptime checks, check one representative domain per hosting IP}';
 
     /**
      * The console command description.
@@ -63,6 +64,17 @@ class RunHealthChecks extends Command
                 ->excludeEmailOnly($excludeEmailOnly)
                 ->get();
 
+            if ($type === 'uptime' && (bool) $this->option('representative-hosts')) {
+                $originalCount = $domains->count();
+                $domains = $this->representativeHostDomains($domains);
+
+                $this->line(sprintf(
+                    'Representative host mode selected %d domain(s) from %d active web domain(s).',
+                    $domains->count(),
+                    $originalCount
+                ));
+            }
+
             if ($domains->isEmpty()) {
                 $this->warn('No active domains found.');
 
@@ -93,6 +105,19 @@ class RunHealthChecks extends Command
         $this->error('Please specify --domain=<domain> or --all');
 
         return Command::FAILURE;
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Domain>  $domains
+     * @return \Illuminate\Support\Collection<int, Domain>
+     */
+    private function representativeHostDomains(\Illuminate\Support\Collection $domains): \Illuminate\Support\Collection
+    {
+        return $domains
+            ->sortBy('domain')
+            ->groupBy(fn (Domain $domain): string => $domain->ip_address ? 'ip:'.$domain->ip_address : 'domain:'.$domain->domain)
+            ->map(fn (\Illuminate\Support\Collection $group): Domain => $group->first())
+            ->values();
     }
 
     /**
