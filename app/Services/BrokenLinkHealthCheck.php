@@ -15,6 +15,9 @@ class BrokenLinkHealthCheck
     /** @var array<int, array{url: string, status: int, found_on: string, error?: string}> */
     private array $brokenLinks = [];
 
+    /** @var array<int, array{url: string, status: int, found_on: string}> */
+    private array $rateLimitedLinks = [];
+
     private int $pagesScanned = 0;
 
     private int $maxPages = 50;
@@ -28,13 +31,14 @@ class BrokenLinkHealthCheck
      *
      * @param  string  $domain  Domain name (with or without protocol)
      * @param  int  $timeout  Timeout in seconds (default 10 per request)
-     * @return array{is_valid: bool, verified: bool, broken_links_count: int, pages_scanned: int, broken_links: array<int, array{url: string, status: int, found_on: string}>, error_message: string|null, payload: array<string, mixed>}
+     * @return array{is_valid: bool, verified: bool, broken_links_count: int, rate_limited_links_count: int, pages_scanned: int, broken_links: array<int, array{url: string, status: int, found_on: string}>, rate_limited_links: array<int, array{url: string, status: int, found_on: string}>, error_message: string|null, payload: array<string, mixed>}
      */
     public function check(string $domain, int $timeout = 10): array
     {
         $startTime = microtime(true);
         $this->visited = [];
         $this->brokenLinks = [];
+        $this->rateLimitedLinks = [];
         $this->pagesScanned = 0;
 
         // Ensure protocol
@@ -51,6 +55,7 @@ class BrokenLinkHealthCheck
 
             $duration = (int) ((microtime(true) - $startTime) * 1000);
             $brokenCount = count($this->brokenLinks);
+            $rateLimitedCount = count($this->rateLimitedLinks);
             $verified = $this->pagesScanned > 0;
             $errorMessage = null;
 
@@ -62,14 +67,18 @@ class BrokenLinkHealthCheck
                 'is_valid' => $brokenCount === 0,
                 'verified' => $verified,
                 'broken_links_count' => $brokenCount,
+                'rate_limited_links_count' => $rateLimitedCount,
                 'pages_scanned' => $this->pagesScanned,
                 'broken_links' => $this->brokenLinks,
+                'rate_limited_links' => $this->rateLimitedLinks,
                 'error_message' => $errorMessage,
                 'payload' => [
                     'domain' => $this->host,
                     'broken_links_count' => $brokenCount,
+                    'rate_limited_links_count' => $rateLimitedCount,
                     'pages_scanned' => $this->pagesScanned,
                     'broken_links' => $this->brokenLinks,
+                    'rate_limited_links' => $this->rateLimitedLinks,
                     'duration_ms' => $duration,
                 ],
             ];
@@ -81,8 +90,10 @@ class BrokenLinkHealthCheck
                 'is_valid' => false,
                 'verified' => false,
                 'broken_links_count' => 0,
+                'rate_limited_links_count' => 0,
                 'pages_scanned' => $this->pagesScanned,
                 'broken_links' => [],
+                'rate_limited_links' => [],
                 'error_message' => 'Check failed: '.$e->getMessage(),
                 'payload' => [
                     'domain' => $this->host,
@@ -119,6 +130,12 @@ class BrokenLinkHealthCheck
             $response = Http::timeout($timeout)->get($url);
             $status = $response->status();
             $contentType = $response->header('Content-Type');
+
+            if ($status === 429) {
+                $this->recordRateLimitedLink($url, $foundOn);
+
+                return;
+            }
 
             if ($status >= 400) {
                 $this->brokenLinks[] = [
@@ -158,6 +175,12 @@ class BrokenLinkHealthCheck
                     /** @var \Illuminate\Http\Client\Response $response */
                     $response = Http::timeout($timeout)->get($url);
                     $status = $response->status();
+                }
+
+                if ($status === 429) {
+                    $this->recordRateLimitedLink($url, $foundOn);
+
+                    return;
                 }
 
                 if ($status >= 400) {
@@ -234,5 +257,14 @@ class BrokenLinkHealthCheck
         $host = $parsed['host'] ?? '';
 
         return $host === $this->host || empty($host); // Empty host implies relative path which is internal
+    }
+
+    private function recordRateLimitedLink(string $url, string $foundOn): void
+    {
+        $this->rateLimitedLinks[] = [
+            'url' => $url,
+            'status' => 429,
+            'found_on' => $foundOn,
+        ];
     }
 }
