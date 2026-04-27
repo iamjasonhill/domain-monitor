@@ -14,7 +14,7 @@ class DomainCheckAlertingService
     /**
      * @var array<int, string>
      */
-    private const array THREE_STRIKE_TYPES = ['http', 'ssl'];
+    private const array THREE_STRIKE_TYPES = ['http', 'ssl', 'uptime'];
 
     /**
      * @var array<int, string>
@@ -32,11 +32,6 @@ class DomainCheckAlertingService
         }
 
         $isFailure = in_array($check->status, self::FAILURE_STATUSES, true);
-
-        // Handle Uptime History (Incident Logging)
-        if ($check->check_type === 'uptime') {
-            $this->handleUptimeIncident($check, $isFailure);
-        }
 
         if (! in_array($check->check_type, self::THREE_STRIKE_TYPES, true)) {
             $check->emitBrainEvent();
@@ -57,6 +52,10 @@ class DomainCheckAlertingService
                         'threshold' => self::THRESHOLD,
                     ]);
 
+                    if ($check->check_type === 'uptime') {
+                        $this->handleUptimeIncident($check, true);
+                    }
+
                     $check->emitBrainEvent();
 
                     $state->alert_active = true;
@@ -66,6 +65,10 @@ class DomainCheckAlertingService
                 $state->save();
 
                 return;
+            }
+
+            if ($check->check_type === 'uptime') {
+                $this->handleUptimeIncident($check, false);
             }
 
             if ($state->alert_active) {

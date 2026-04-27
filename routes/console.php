@@ -643,8 +643,9 @@ Schedule::command('domains:update-ip-info --all --hours=24')
     ->at('03:00')
     ->timezone('UTC');
 
-// Uptime checks - run every 10 minutes for active domains
-Schedule::command('domains:health-check --all --type=uptime')
+// Fast uptime checks monitor one representative hostname per hosting IP to avoid
+// hammering shared servers that host many parked/holding domains.
+Schedule::command('domains:health-check --all --type=uptime --representative-hosts')
     ->everyTenMinutes()
     ->timezone('UTC');
 
