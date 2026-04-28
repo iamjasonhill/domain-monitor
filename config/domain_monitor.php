@@ -392,6 +392,7 @@ return [
                 'notes' => 'Operationally critical removals quoting platform. Apex homepage GA4 is optional because normal quote attribution is handled on branded quote/conversion surfaces.',
                 'analytics_monitoring' => [
                     'homepage_ga4_required' => false,
+                    'quote_handoff_required' => false,
                     'reason' => 'Operational app shell; users should normally enter through branded marketing sites or quote subdomains.',
                 ],
                 'repository' => [
@@ -409,6 +410,7 @@ return [
                 'notes' => 'Legacy vehicle quoting platform attached to the separate Moveroo Cars 2026 runtime. Apex homepage GA4 is optional because normal attribution is handled by vehicle quote/conversion surfaces such as quoting.vehicle.net.au.',
                 'analytics_monitoring' => [
                     'homepage_ga4_required' => false,
+                    'quote_handoff_required' => false,
                     'reason' => 'Operational app shell; users should normally enter through branded marketing sites or vehicle quote subdomains.',
                 ],
                 'repository' => [

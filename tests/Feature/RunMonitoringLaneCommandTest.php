@@ -387,6 +387,71 @@ class RunMonitoringLaneCommandTest extends TestCase
         $this->assertSame('homepage_ga4_not_required', data_get($finding->evidence, 'verdict'));
     }
 
+    public function test_marketing_integrity_lane_recovers_quote_handoff_for_app_shells_with_optional_handoff(): void
+    {
+        config()->set('domain_monitor.web_property_bootstrap.overrides', array_merge(
+            (array) config('domain_monitor.web_property_bootstrap.overrides', []),
+            [
+                'handoff-shell.example.au' => [
+                    'analytics_monitoring' => [
+                        'homepage_ga4_required' => false,
+                        'quote_handoff_required' => false,
+                        'reason' => 'Operational app shell; quote entry is handled elsewhere.',
+                    ],
+                ],
+            ]
+        ));
+
+        $property = $this->makeProperty('handoff-shell.example.au', 'Handoff Shell');
+        $property->forceFill([
+            'property_type' => 'app',
+            'target_household_quote_url' => 'https://quotes.example.au/quote/household',
+        ])->save();
+
+        $primaryDomain = $property->primaryDomainModel();
+        $this->assertInstanceOf(Domain::class, $primaryDomain);
+
+        MonitoringFinding::factory()->create([
+            'issue_id' => app(\App\Services\DetectedIssueIdentityService::class)->makeIssueId(
+                $primaryDomain->id,
+                $property->slug,
+                'marketing.quote_handoff_integrity'
+            ),
+            'lane' => 'marketing_integrity',
+            'finding_type' => 'marketing.quote_handoff_integrity',
+            'issue_type' => 'regression',
+            'scope_type' => 'web_property',
+            'domain_id' => $primaryDomain->id,
+            'web_property_id' => $property->id,
+            'status' => MonitoringFinding::STATUS_OPEN,
+            'title' => 'Quote handoff mismatch on live property',
+            'summary' => 'Old handoff finding',
+            'evidence' => ['verdict' => 'missing_handoff_link'],
+        ]);
+
+        Http::fake([
+            'https://handoff-shell.example.au/' => Http::response($this->homepageHtml(
+                canonical: 'https://handoff-shell.example.au/'
+            ), 200),
+            'https://handoff-shell.example.au/robots.txt' => Http::response("User-agent: *\nAllow: /\nSitemap: https://handoff-shell.example.au/sitemap.xml\n", 200),
+            'https://handoff-shell.example.au/sitemap.xml' => Http::response('<urlset></urlset>', 200),
+        ]);
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'marketing_integrity',
+            '--property' => $property->slug,
+        ]));
+
+        $finding = MonitoringFinding::query()
+            ->where('web_property_id', $property->id)
+            ->where('finding_type', 'marketing.quote_handoff_integrity')
+            ->firstOrFail();
+
+        $this->assertSame(MonitoringFinding::STATUS_RECOVERED, $finding->status);
+        $this->assertSame('Quote handoff checks are intentionally not required for this app-shell property.', $finding->summary);
+        $this->assertSame('quote_handoff_not_required', data_get($finding->evidence, 'verdict'));
+    }
+
     public function test_marketing_integrity_lane_downgrades_unfetchable_ga4_inventory_gaps(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');

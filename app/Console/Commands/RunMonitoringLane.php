@@ -251,6 +251,12 @@ class RunMonitoringLane extends Command
                 'issue_type' => 'regression',
                 'audit' => $siteScanner->auditQuoteHandoffIntegrity($property),
             ];
+        } elseif (! $this->quoteHandoffRequired($property)) {
+            $audits['marketing.quote_handoff_integrity'] = [
+                'title' => 'Quote handoff mismatch on live property',
+                'issue_type' => 'regression',
+                'audit' => $this->optionalQuoteHandoffAudit($property),
+            ];
         }
 
         return $audits;
@@ -361,6 +367,10 @@ class RunMonitoringLane extends Command
 
     private function hasQuoteHandoffTargets(WebProperty $property): bool
     {
+        if (! $this->quoteHandoffRequired($property)) {
+            return false;
+        }
+
         foreach ([
             $property->target_household_quote_url,
             $property->target_household_booking_url,
@@ -373,6 +383,13 @@ class RunMonitoringLane extends Command
         }
 
         return false;
+    }
+
+    private function quoteHandoffRequired(WebProperty $property): bool
+    {
+        $override = $this->domainOverrideForProperty($property);
+
+        return data_get($override, 'analytics_monitoring.quote_handoff_required') !== false;
     }
 
     /**
@@ -403,6 +420,28 @@ class RunMonitoringLane extends Command
                 'reason' => is_string($reason) && trim($reason) !== ''
                     ? trim($reason)
                     : 'Operational app shell; attribution is handled on branded marketing sites or quote/conversion surfaces.',
+                'primary_domain' => $property->primaryDomainName(),
+                'property_type' => $property->property_type,
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function optionalQuoteHandoffAudit(WebProperty $property): array
+    {
+        $override = $this->domainOverrideForProperty($property);
+        $reason = data_get($override, 'analytics_monitoring.reason');
+
+        return [
+            'status' => 'pass',
+            'summary' => 'Quote handoff checks are intentionally not required for this app-shell property.',
+            'evidence' => [
+                'verdict' => 'quote_handoff_not_required',
+                'reason' => is_string($reason) && trim($reason) !== ''
+                    ? trim($reason)
+                    : 'Operational app shell; users should normally enter through branded marketing sites or quote/conversion surfaces.',
                 'primary_domain' => $property->primaryDomainName(),
                 'property_type' => $property->property_type,
             ],
