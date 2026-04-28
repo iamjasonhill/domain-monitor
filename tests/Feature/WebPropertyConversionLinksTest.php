@@ -633,6 +633,63 @@ class WebPropertyConversionLinksTest extends TestCase
         $this->assertSame('https://mymovehub.backloadingremovals.com.au/booking/create', $property->current_household_booking_url);
     }
 
+    public function test_fleet_scan_conversion_links_keeps_backloading_services_quote_and_booking_slots_separate(): void
+    {
+        config()->set('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+
+        $tag = DomainTag::firstOrCreate(
+            ['name' => 'fleet.live'],
+            [
+                'priority' => 95,
+                'color' => '#2563EB',
+            ]
+        );
+
+        $domain = Domain::factory()->create([
+            'domain' => 'backloading-services.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'backloading-services-com-au',
+            'name' => 'Backloading Services',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://backloading-services.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        $domain->tags()->syncWithoutDetaching([$tag->id]);
+
+        Http::fake([
+            'https://backloading-services.com.au' => Http::response(<<<'HTML'
+                <html>
+                    <body>
+                        <header>
+                            <a href="https://mymovehub.backloading-services.com.au/quote/household">Household Quote</a>
+                            <a href="https://mymovehub.backloading-services.com.au/booking/create">Book Your Move</a>
+                            <a href="https://mymovehub.backloading-services.com.au/contact">Contact</a>
+                            <a href="https://mymovehub.backloading-services.com.au/quote/vehicle">Vehicle Quote</a>
+                        </header>
+                    </body>
+                </html>
+            HTML),
+        ]);
+
+        $this->assertSame(0, Artisan::call('fleet:scan-conversion-links', ['propertySlug' => 'backloading-services-com-au']));
+
+        $property->refresh();
+
+        $this->assertSame('https://mymovehub.backloading-services.com.au/quote/household', $property->current_household_quote_url);
+        $this->assertSame('https://mymovehub.backloading-services.com.au/booking/create', $property->current_household_booking_url);
+        $this->assertSame('https://mymovehub.backloading-services.com.au/quote/vehicle', $property->current_vehicle_quote_url);
+    }
+
     public function test_fleet_scan_conversion_links_clears_previous_values_when_a_bucket_is_missing(): void
     {
         config()->set('domain_monitor.fleet_focus.tag_name', 'fleet.live');

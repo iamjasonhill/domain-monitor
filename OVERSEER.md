@@ -139,3 +139,10 @@ Why this is the current call:
 - What changed: added a derived `hostname_link_policy` block to the existing web property summary export, backed by a new builder that classifies marketing domains, quote or portal hosts, and operational app-shell apexes from the current Domain Monitor property targets and conversion surfaces; also documented the new field in the API integration guide and added focused API coverage
 - What was fixed: Domain Monitor can now emit one consistent hostname-level policy for expected household quote, vehicle quote, booking, contact, and customer portal links, including `required` or `optional` or `suppressed` or `unknown` slot statuses and explicit app-shell suppression for apex domains like `removalist.net`
 - What remains: the issue is implemented in-repo but still needs the usual commit or push or consumer adoption step before the linked Moveroo admin screen can rely on it end to end
+
+### 2026-04-28 13:08:41 AEST
+
+- Trigger: Fleet issue `#20` follow-up on the remaining `backloading-services.com.au` handoff mismatch
+- What changed: verified the live homepage still exposes distinct household quote, booking, contact, and vehicle quote links on `mymovehub.backloading-services.com.au`; also reproduced the current scanner result locally and added a focused regression test so this header pattern keeps classifying quote and booking into separate slots
+- What was fixed: ruled out the current Domain Monitor scanner as the cause of the `backloading-services.com.au` mismatch, because the live page and scanner both resolve `household_quote` to `/quote/household` and `household_booking` to `/booking/create`
+- What remains open: production Domain Monitor should be rerun against the live property or its stored finding refreshed, because any remaining `backloading-services.com.au` handoff alert now looks like stale production state or an outdated issue note rather than a live website bug
