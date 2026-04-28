@@ -420,7 +420,7 @@ class RunMonitoringLane extends Command
             return [];
         }
 
-        $override = config('domain_monitor.overrides.'.mb_strtolower(trim($domain)));
+        $override = config('domain_monitor.web_property_bootstrap.overrides.'.mb_strtolower(trim($domain)));
 
         return is_array($override) ? $override : [];
     }

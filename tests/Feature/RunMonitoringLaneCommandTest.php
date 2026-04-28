@@ -314,7 +314,7 @@ class RunMonitoringLaneCommandTest extends TestCase
     {
         config()->set('services.brain.base_url', 'https://brain.example.test');
         config()->set('services.brain.api_key', 'test-key');
-        config()->set('domain_monitor.overrides.app-shell.example.au.analytics_monitoring', [
+        config()->set('domain_monitor.web_property_bootstrap.overrides.app-shell.example.au.analytics_monitoring', [
             'homepage_ga4_required' => false,
             'reason' => 'Operational app shell; quote attribution is handled by subdomains.',
         ]);
