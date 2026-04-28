@@ -118,3 +118,10 @@ Why this is the current call:
 - What changed: opened `iamjasonhill/moveroocombined#1748` for the 13 conversion-surface GA4 mismatches and the related 12 quote-handoff mismatches surfaced by Domain Monitor
 - What was fixed: moved the common quote/portal-host attribution problem out of chat-only triage and into the Moveroo Combined repo with affected hostnames, expected GA4 IDs, detected default `G-NG8LKXCLVE`, handoff route expectations, and a narrow acceptance checklist
 - What remains open: Moveroo Combined needs to confirm the app-side host/site identity path, emit per-site GA4 IDs where safe, classify marketing-site-only handoff fixes back to Fleet/Bossman, and then Domain Monitor should rerun `marketing_integrity` to verify the urgent bucket shrinks
+
+### 2026-04-28 11:18 AEST
+
+- Trigger: verify Moveroo Combined issue `#1748` after PR `#1750` merged
+- What changed: reran `marketing_integrity` for the affected quote/conversion domains and refreshed the detected issue snapshot
+- What was fixed: `marketing.conversion_surface_ga4` dropped from 13 urgent findings to 0, confirming the Moveroo Combined app-side quote-host GA4 fallback issue is resolved
+- What remains open: 12 `marketing.quote_handoff_integrity` findings remain on marketing sites; those are now routed to Fleet as `iamjasonhill/MM-fleet-program#20` rather than left on the Moveroo Combined app issue
