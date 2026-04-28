@@ -227,11 +227,14 @@ class RunMonitoringLane extends Command
                 'issue_type' => 'cleanup',
                 'audit' => $siteScanner->auditIndexability($property, $timeout),
             ],
-            'marketing.ga4_install' => [
-                'title' => 'GA4 install mismatch on live property',
-                'issue_type' => 'regression',
-                'audit' => $ga4Scanner->auditPropertyHomepage($property, $timeout),
-            ],
+        ];
+
+        $audits['marketing.ga4_install'] = [
+            'title' => 'GA4 install mismatch on live property',
+            'issue_type' => 'regression',
+            'audit' => $this->homepageGa4Required($property)
+                ? $ga4Scanner->auditPropertyHomepage($property, $timeout)
+                : $this->optionalHomepageGa4Audit($property),
         ];
 
         if ($expectedMeasurementId !== null) {
@@ -370,6 +373,56 @@ class RunMonitoringLane extends Command
         }
 
         return false;
+    }
+
+    /**
+     * Some apex domains are operational application shells, not acquisition
+     * pages. Their quote attribution is intentionally owned by branded
+     * marketing sites or quote/conversion subdomains.
+     */
+    private function homepageGa4Required(WebProperty $property): bool
+    {
+        $override = $this->domainOverrideForProperty($property);
+
+        return data_get($override, 'analytics_monitoring.homepage_ga4_required') !== false;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function optionalHomepageGa4Audit(WebProperty $property): array
+    {
+        $override = $this->domainOverrideForProperty($property);
+        $reason = data_get($override, 'analytics_monitoring.reason');
+
+        return [
+            'status' => 'pass',
+            'summary' => 'Homepage GA4 is intentionally not required for this app-shell property.',
+            'evidence' => [
+                'verdict' => 'homepage_ga4_not_required',
+                'reason' => is_string($reason) && trim($reason) !== ''
+                    ? trim($reason)
+                    : 'Operational app shell; attribution is handled on branded marketing sites or quote/conversion surfaces.',
+                'primary_domain' => $property->primaryDomainName(),
+                'property_type' => $property->property_type,
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function domainOverrideForProperty(WebProperty $property): array
+    {
+        $domain = $property->primaryDomainName();
+
+        if (! is_string($domain) || trim($domain) === '') {
+            return [];
+        }
+
+        $override = config('domain_monitor.overrides.'.mb_strtolower(trim($domain)));
+
+        return is_array($override) ? $override : [];
     }
 
     private function expectedMeasurementId(WebProperty $property): ?string

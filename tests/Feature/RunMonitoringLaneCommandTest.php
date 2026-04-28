@@ -310,6 +310,76 @@ class RunMonitoringLaneCommandTest extends TestCase
         ]);
     }
 
+    public function test_marketing_integrity_lane_recovers_ga4_install_for_app_shells_with_optional_homepage_ga4(): void
+    {
+        config()->set('services.brain.base_url', 'https://brain.example.test');
+        config()->set('services.brain.api_key', 'test-key');
+        config()->set('domain_monitor.overrides.app-shell.example.au.analytics_monitoring', [
+            'homepage_ga4_required' => false,
+            'reason' => 'Operational app shell; quote attribution is handled by subdomains.',
+        ]);
+
+        $property = $this->makeProperty('app-shell.example.au', 'App Shell');
+        $property->forceFill([
+            'property_type' => 'app',
+        ])->save();
+
+        $primaryDomain = $property->primaryDomainModel();
+        $this->assertInstanceOf(Domain::class, $primaryDomain);
+
+        MonitoringFinding::factory()->create([
+            'issue_id' => app(\App\Services\DetectedIssueIdentityService::class)->makeIssueId(
+                $primaryDomain->id,
+                $property->slug,
+                'marketing.ga4_install'
+            ),
+            'lane' => 'marketing_integrity',
+            'finding_type' => 'marketing.ga4_install',
+            'issue_type' => 'regression',
+            'scope_type' => 'web_property',
+            'domain_id' => $primaryDomain->id,
+            'web_property_id' => $property->id,
+            'status' => MonitoringFinding::STATUS_OPEN,
+            'title' => 'GA4 install mismatch on live property',
+            'summary' => 'Old missing GA4 finding',
+            'evidence' => ['verdict' => 'missing_ga4'],
+        ]);
+
+        Http::fake([
+            'https://app-shell.example.au/' => Http::response($this->homepageHtml(
+                canonical: 'https://app-shell.example.au/'
+            ), 200),
+            'https://app-shell.example.au/robots.txt' => Http::response("User-agent: *\nAllow: /\nSitemap: https://app-shell.example.au/sitemap.xml\n", 200),
+            'https://app-shell.example.au/sitemap.xml' => Http::response('<urlset></urlset>', 200),
+        ]);
+
+        $brain = Mockery::mock(BrainEventClient::class);
+        $this->instance(BrainEventClient::class, $brain);
+        /** @var Mockery\Expectation $recoveredExpectation */
+        $recoveredExpectation = $brain->shouldReceive('sendAsync');
+        $recoveredExpectation->once()->withArgs(function (string $eventType, array $payload): bool {
+            $this->assertSame('domain_monitor.finding.recovered', $eventType);
+            $this->assertSame('marketing.ga4_install', $payload['finding_type']);
+            $this->assertSame('homepage_ga4_not_required', data_get($payload, 'evidence.verdict'));
+
+            return true;
+        });
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'marketing_integrity',
+            '--property' => $property->slug,
+        ]));
+
+        $finding = MonitoringFinding::query()
+            ->where('web_property_id', $property->id)
+            ->where('finding_type', 'marketing.ga4_install')
+            ->firstOrFail();
+
+        $this->assertSame(MonitoringFinding::STATUS_RECOVERED, $finding->status);
+        $this->assertSame('Homepage GA4 is intentionally not required for this app-shell property.', $finding->summary);
+        $this->assertSame('homepage_ga4_not_required', data_get($finding->evidence, 'verdict'));
+    }
+
     public function test_marketing_integrity_lane_downgrades_unfetchable_ga4_inventory_gaps(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');

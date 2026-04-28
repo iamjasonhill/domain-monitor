@@ -387,9 +387,13 @@ return [
             'removalist.net' => [
                 'slug' => 'removalist-net',
                 'name' => 'removalist.net',
-                'property_type' => 'website',
+                'property_type' => 'app',
                 'priority' => 100,
-                'notes' => 'Operationally critical removals quoting platform. Keep alerts, analytics, and infrastructure issues highly visible.',
+                'notes' => 'Operationally critical removals quoting platform. Apex homepage GA4 is optional because normal quote attribution is handled on branded quote/conversion surfaces.',
+                'analytics_monitoring' => [
+                    'homepage_ga4_required' => false,
+                    'reason' => 'Operational app shell; users should normally enter through branded marketing sites or quote subdomains.',
+                ],
                 'repository' => [
                     'repo_name' => 'moveroocombined',
                     'repo_url' => 'https://github.com/iamjasonhill/moveroocombined',
@@ -400,9 +404,13 @@ return [
             'vehicle.net.au' => [
                 'slug' => 'vehicle-net-au',
                 'name' => 'vehicle.net.au',
-                'property_type' => 'website',
+                'property_type' => 'app',
                 'priority' => 95,
-                'notes' => 'Legacy vehicle quoting platform attached to the separate Moveroo Cars 2026 runtime. Phase-out is in progress, so keep health visibility high but do not normalize this surface onto the maintained removals runtime.',
+                'notes' => 'Legacy vehicle quoting platform attached to the separate Moveroo Cars 2026 runtime. Apex homepage GA4 is optional because normal attribution is handled by vehicle quote/conversion surfaces such as quoting.vehicle.net.au.',
+                'analytics_monitoring' => [
+                    'homepage_ga4_required' => false,
+                    'reason' => 'Operational app shell; users should normally enter through branded marketing sites or vehicle quote subdomains.',
+                ],
                 'repository' => [
                     'repo_name' => 'laravel',
                     'repo_url' => 'https://github.com/iamjasonhill/laravel',
