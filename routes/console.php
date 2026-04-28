@@ -803,6 +803,13 @@ Schedule::command('monitoring:run-lane seo_agent_readiness')
     ->at('09:00')
     ->timezone('UTC');
 
+// Verify a narrow weekly Fleet Astro technical SEO baseline on live repository-controlled sites.
+Schedule::command('monitoring:run-lane fleet_astro_technical_seo')
+    ->weekly()
+    ->sundays()
+    ->at('09:10')
+    ->timezone('UTC');
+
 // Refresh fleet automation coverage after upstream analytics imports have had time to settle.
 Schedule::command('analytics:refresh-automation-coverage')
     ->daily()

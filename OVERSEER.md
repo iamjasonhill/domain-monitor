@@ -54,6 +54,22 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-04-28 19:18 AEST
+
+- Trigger: Bossman asked whether Fleet's Astro technical SEO standard should be
+  verified here rather than rewritten in `MM-Google`
+- What changed: added
+  [`/Users/jasonhill/Projects/Business/operations/domain-monitor/docs/FLEET-ASTRO-TECHNICAL-SEO-MONITORING-PLAN.md`](/Users/jasonhill/Projects/Business/operations/domain-monitor/docs/FLEET-ASTRO-TECHNICAL-SEO-MONITORING-PLAN.md)
+  to record the ownership split between Fleet, `MM-Google`, and
+  `domain-monitor`, and to define the first narrow weekly verification slice
+- What was fixed: made it explicit that `domain-monitor` should verify live
+  technical SEO drift against the Fleet Astro baseline instead of inventing a
+  parallel standards framework
+- What remains open: open and execute a repo issue for the first weekly
+  verification slice, starting with low-noise checks like PageSpeed snapshots,
+  robots, sitemap, canonical presence, key-route indexability, and redirect
+  sanity
+
 ### 2026-04-22 07:35:43 AEST
 
 - Trigger: issue `#131`
@@ -153,3 +169,10 @@ Why this is the current call:
 - What changed: used direct SSH access to the production host at `/home/forge/monitor.again.com.au/current` and reran `php artisan domains:refresh-should-fix`, `php artisan monitoring:run-lane critical_live --timeout=15`, and `php artisan monitoring:run-lane marketing_integrity --timeout=15`; `critical_live` finished with `0` findings opened, `3` updated, and `1` recovered, while `marketing_integrity` finished with `0` opened, `2` updated, and `5` recovered
 - What was fixed: refreshed the live queue from production rather than the empty local database, confirmed the urgent dashboard bucket is now `must_fix_count = 0`, and re-exposed the current queue through the usual production dashboard helper with `should_fix_count = 44`
 - What remains: the live queue is now dominated by should-fix follow-up rather than urgent breakage; the main remaining review cluster is security headers plus SEO on a smaller set of domains, along with email-security plus security-headers review on several quote or portal subdomains, while redirect-policy review still remains worth watching on hosts like `redirection.com.au`, `vehicle.net.au`, and `cartransport.movingagain.com.au`
+
+### 2026-04-28 19:24:07 AEST
+
+- Issue or trigger: issue `#150` to add the first weekly Fleet Astro technical SEO verification slice in `domain-monitor`
+- What changed: added a new `fleet_astro_technical_seo` monitoring lane with weekly scheduling, scoped it to Fleet-focus properties whose execution surface resolves to `astro_repo_controlled`, and wired the lane to reuse the existing live `indexability` and `redirect_policy` audits under dedicated Fleet technical SEO finding keys
+- What was fixed: Domain Monitor can now surface Fleet Astro homepage technical SEO drift through the usual monitoring-finding issue flow without broadening into a crawler or build-lint path, and the focused lane test coverage now guards against WordPress or non-Fleet properties leaking into this weekly slice
+- What remains: this first slice does not implement PageSpeed snapshots or repeated-failure streak logic yet, so any later expansion should stay tied to the Fleet standard and add noise-control deliberately rather than broadening the lane ad hoc

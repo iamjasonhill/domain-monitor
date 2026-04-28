@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Domain;
+use App\Models\DomainTag;
 use App\Models\MonitoringFinding;
 use App\Models\PropertyAnalyticsSource;
+use App\Models\PropertyRepository;
 use App\Models\WebProperty;
 use App\Models\WebPropertyConversionSurface;
 use App\Models\WebPropertyDomain;
@@ -729,6 +731,103 @@ class RunMonitoringLaneCommandTest extends TestCase
         $this->assertSame('should_fix', $matchingIssue['severity']);
     }
 
+    public function test_fleet_astro_technical_seo_lane_only_runs_for_fleet_astro_properties(): void
+    {
+        config()->set('services.brain.base_url', 'https://brain.example.test');
+        config()->set('services.brain.api_key', 'test-key');
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        config()->set('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+
+        $fleetAstroProperty = $this->makeProperty('fleet-astro.example.au', 'Fleet Astro');
+        $fleetAstroProperty->forceFill([
+            'canonical_origin_scheme' => 'https',
+            'canonical_origin_host' => 'fleet-astro.example.au',
+            'canonical_origin_policy' => 'known',
+        ])->save();
+        $this->attachFleetFocusTag($fleetAstroProperty);
+        $this->attachControllerRepository($fleetAstroProperty, 'fleet-astro', 'Astro');
+
+        $fleetWordpressProperty = $this->makeProperty('fleet-wordpress.example.au', 'Fleet WordPress');
+        $this->attachFleetFocusTag($fleetWordpressProperty);
+        $this->attachControllerRepository($fleetWordpressProperty, '_wp-house', 'WordPress');
+
+        $nonFleetAstroProperty = $this->makeProperty('non-fleet-astro.example.au', 'Non Fleet Astro');
+        $this->attachControllerRepository($nonFleetAstroProperty, 'non-fleet-astro', 'Astro');
+
+        Http::fake([
+            'https://fleet-astro.example.au/' => Http::response(
+                $this->homepageHtml(metaRobots: 'noindex,follow'),
+                200
+            ),
+            'https://fleet-astro.example.au/robots.txt' => Http::response("User-agent: *\nAllow: /\n", 200),
+            'http://fleet-astro.example.au/' => Http::response(
+                'ok',
+                200,
+                ['X-Guzzle-Redirect-History' => [], 'X-Guzzle-Redirect-Status-History' => []]
+            ),
+            'https://www.fleet-astro.example.au/' => Http::response(
+                'ok',
+                200,
+                ['X-Guzzle-Redirect-History' => [], 'X-Guzzle-Redirect-Status-History' => []]
+            ),
+        ]);
+
+        $brain = Mockery::mock(BrainEventClient::class);
+        $this->instance(BrainEventClient::class, $brain);
+        /** @var Mockery\Expectation $fleetTechnicalSeoExpectation */
+        $fleetTechnicalSeoExpectation = $brain->shouldReceive('sendAsync');
+        $fleetTechnicalSeoExpectation->twice()->withArgs(function (string $eventType, array $payload): bool {
+            $this->assertSame('domain_monitor.finding.opened', $eventType);
+            $this->assertContains($payload['finding_type'], [
+                'fleet_technical_seo.indexability',
+                'fleet_technical_seo.redirect_policy',
+            ]);
+            $this->assertSame('cleanup', $payload['issue_type']);
+
+            return true;
+        });
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'fleet_astro_technical_seo',
+        ]));
+
+        $this->assertDatabaseHas('monitoring_findings', [
+            'web_property_id' => $fleetAstroProperty->id,
+            'finding_type' => 'fleet_technical_seo.indexability',
+            'issue_type' => 'cleanup',
+            'status' => MonitoringFinding::STATUS_OPEN,
+        ]);
+        $this->assertDatabaseHas('monitoring_findings', [
+            'web_property_id' => $fleetAstroProperty->id,
+            'finding_type' => 'fleet_technical_seo.redirect_policy',
+            'issue_type' => 'cleanup',
+            'status' => MonitoringFinding::STATUS_OPEN,
+        ]);
+        $this->assertDatabaseMissing('monitoring_findings', [
+            'web_property_id' => $fleetWordpressProperty->id,
+            'lane' => 'fleet_astro_technical_seo',
+        ]);
+        $this->assertDatabaseMissing('monitoring_findings', [
+            'web_property_id' => $nonFleetAstroProperty->id,
+            'lane' => 'fleet_astro_technical_seo',
+        ]);
+
+        $issues = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues')
+            ->assertOk()
+            ->json('issues');
+
+        $this->assertIsArray($issues);
+        /** @var array<int, array<string, mixed>> $issues */
+        $matchingIssue = collect($issues)->firstWhere('issue_class', 'fleet_technical_seo.indexability');
+
+        $this->assertIsArray($matchingIssue);
+        $this->assertSame('should_fix', $matchingIssue['severity']);
+        $this->assertSame('monitoring_lane', $matchingIssue['execution_surface']);
+        $this->assertSame('fleet_astro_technical_seo', data_get($matchingIssue, 'evidence.lane'));
+    }
+
     public function test_critical_live_lane_reports_redirect_policy_mismatches(): void
     {
         config()->set('services.brain.base_url', 'https://brain.example.test');
@@ -1369,6 +1468,36 @@ class RunMonitoringLaneCommandTest extends TestCase
         ]);
 
         return $property;
+    }
+
+    private function attachFleetFocusTag(WebProperty $property): void
+    {
+        $tagName = (string) config('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+        $tag = DomainTag::query()->firstOrCreate(
+            ['name' => $tagName],
+            ['priority' => 100, 'color' => '#2563eb']
+        );
+
+        $primaryDomain = $property->primaryDomainModel();
+        $this->assertInstanceOf(Domain::class, $primaryDomain);
+
+        $primaryDomain->tags()->syncWithoutDetaching([$tag->id]);
+    }
+
+    private function attachControllerRepository(WebProperty $property, string $repoName, string $framework): void
+    {
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => $repoName,
+            'repo_provider' => 'github',
+            'repo_url' => sprintf('https://github.com/example/%s.git', $repoName),
+            'local_path' => sprintf('/Users/jasonhill/Projects/Business/websites/%s', $repoName),
+            'default_branch' => 'main',
+            'deployment_branch' => 'main',
+            'framework' => $framework,
+            'is_primary' => true,
+            'is_controller' => true,
+        ]);
     }
 
     private function homepageHtml(

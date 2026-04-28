@@ -870,7 +870,8 @@ return [
     | marketing/readiness audits. The first runnable lane is
     | marketing_integrity verifies live GA4 behavior, quote handoff, and
     | homepage indexability, seo_agent_readiness covers crawl/agent-facing
-    | signals, critical_live handles redirect hygiene on the preferred root
+    | signals, fleet_astro_technical_seo adds a weekly Fleet-scoped Astro
+    | baseline, critical_live handles redirect hygiene on the preferred root
     | host, and deep_audit currently starts with a deduped broken-links pass.
     |
     */
@@ -901,6 +902,18 @@ return [
             'checks' => [
                 'structured_data',
                 'agent_readiness',
+            ],
+        ],
+        'fleet_astro_technical_seo' => [
+            'cadence' => 'weekly',
+            'issue_type' => 'cleanup',
+            'checks' => [
+                'indexability',
+                'redirect_policy',
+            ],
+            'scope' => [
+                'fleet_focus' => true,
+                'execution_surface' => 'astro_repo_controlled',
             ],
         ],
         'deep_audit' => [

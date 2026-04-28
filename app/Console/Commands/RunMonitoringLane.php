@@ -39,7 +39,11 @@ class RunMonitoringLane extends Command
             return self::FAILURE;
         }
 
-        $properties = $this->laneProperties($lane);
+        /** @var array<string, mixed> $laneConfig */
+        $properties = $this->laneProperties(
+            lane: $lane,
+            laneConfig: $laneConfig
+        );
 
         if ($properties->isEmpty()) {
             $this->warn(sprintf('No active properties matched the requested [%s] lane scope.', $lane));
@@ -104,6 +108,11 @@ class RunMonitoringLane extends Command
                         'audit' => $siteScanner->auditAgentReadiness($property, $timeout),
                     ],
                 ],
+                'fleet_astro_technical_seo' => $this->fleetAstroTechnicalSeoAudits(
+                    property: $property,
+                    siteScanner: $siteScanner,
+                    timeout: $timeout
+                ),
                 'deep_audit' => $this->deepAuditAudits(
                     property: $property,
                     siteScanner: $siteScanner,
@@ -158,9 +167,10 @@ class RunMonitoringLane extends Command
     }
 
     /**
+     * @param  array<string, mixed>  $laneConfig
      * @return Collection<int, WebProperty>
      */
-    private function laneProperties(string $lane): Collection
+    private function laneProperties(string $lane, array $laneConfig): Collection
     {
         $propertyFilter = $this->optionString('property');
         $domainFilter = $this->optionString('domain');
@@ -171,6 +181,7 @@ class RunMonitoringLane extends Command
                 'primaryDomain',
                 'propertyDomains.domain',
                 'analyticsSources',
+                'repositories',
                 'conversionSurfaces.analyticsSource',
                 'conversionSurfaces.domain',
             ])
@@ -188,7 +199,7 @@ class RunMonitoringLane extends Command
 
         return $query
             ->get()
-            ->filter(function (WebProperty $property) use ($lane): bool {
+            ->filter(function (WebProperty $property) use ($lane, $laneConfig): bool {
                 if ($lane === 'critical_live') {
                     $primaryDomain = $property->primaryDomainModel();
 
@@ -206,7 +217,11 @@ class RunMonitoringLane extends Command
                         && $primaryDomain->monitoringSkipReason('external_links') === null;
                 }
 
-                return $property->production_url !== null || $property->primaryDomainName() !== null;
+                if ($property->production_url === null && $property->primaryDomainName() === null) {
+                    return false;
+                }
+
+                return $this->matchesLaneScope($property, $laneConfig);
             })
             ->values();
     }
@@ -290,6 +305,28 @@ class RunMonitoringLane extends Command
     }
 
     /**
+     * @return array<string, array{title: string, issue_type: string, audit: array<string, mixed>}>
+     */
+    private function fleetAstroTechnicalSeoAudits(
+        WebProperty $property,
+        PropertySiteSignalScanner $siteScanner,
+        int $timeout
+    ): array {
+        return [
+            'fleet_technical_seo.indexability' => [
+                'title' => 'Fleet Astro technical SEO indexability drift detected',
+                'issue_type' => 'cleanup',
+                'audit' => $siteScanner->auditIndexability($property, $timeout),
+            ],
+            'fleet_technical_seo.redirect_policy' => [
+                'title' => 'Fleet Astro preferred-root redirect drift detected',
+                'issue_type' => 'cleanup',
+                'audit' => $siteScanner->auditRedirectPolicy($property, $timeout),
+            ],
+        ];
+    }
+
+    /**
      * @param  array<string, mixed>  $audit
      */
     private function syncFinding(
@@ -350,6 +387,30 @@ class RunMonitoringLane extends Command
         }
 
         return $defaultIssueType;
+    }
+
+    /**
+     * @param  array<string, mixed>  $laneConfig
+     */
+    private function matchesLaneScope(WebProperty $property, array $laneConfig): bool
+    {
+        $scope = $laneConfig['scope'] ?? null;
+
+        if (! is_array($scope)) {
+            return true;
+        }
+
+        if (($scope['fleet_focus'] ?? false) === true && ! $property->isFleetFocus()) {
+            return false;
+        }
+
+        $executionSurface = $scope['execution_surface'] ?? null;
+
+        if (! is_string($executionSurface) || trim($executionSurface) === '') {
+            return true;
+        }
+
+        return ($property->executionReadinessSummary()['execution_surface'] ?? null) === trim($executionSurface);
     }
 
     private function optionString(string $name): ?string
