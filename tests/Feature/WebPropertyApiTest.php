@@ -387,6 +387,7 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.conversion_surfaces.0.runtime.path', '/Users/jasonhill/Projects/laravel-projects/Moveroo Removals 2026')
             ->assertJsonPath('web_properties.0.conversion_surfaces.0.analytics.measurement_id', 'G-9F3Y80LEQL')
             ->assertJsonPath('web_properties.0.conversion_surfaces.0.event_contract.contract.key', 'shared-ga4-baseline-v1')
+            ->assertJsonPath('web_properties.0.hostname_link_policy.owning_marketing_domain', 'moveroo.com.au')
             ->assertJsonPath('web_properties.0.analytics.enabled', true)
             ->assertJsonPath('web_properties.0.analytics.provider', 'matomo')
             ->assertJsonPath('web_properties.0.analytics.config.base_url', 'https://stats.redirection.com.au')
@@ -468,6 +469,94 @@ class WebPropertyApiTest extends TestCase
         $this->assertFalse($quotingSummary['email_expected']);
         $this->assertFalse($quotingSummary['email_sending_expected']);
         $this->assertFalse($quotingSummary['email_receiving_expected']);
+
+        /** @var array<int, array<string, mixed>> $hostnamePolicy */
+        $hostnamePolicy = $response->json('web_properties.0.hostname_link_policy.hostnames') ?? [];
+        $marketingPolicy = collect($hostnamePolicy)->firstWhere('hostname', 'moveroo.com.au');
+        $portalPolicy = collect($hostnamePolicy)->firstWhere('hostname', 'wemove.moveroo.com.au');
+        $bookingPolicy = collect($hostnamePolicy)->firstWhere('hostname', 'removalist.net');
+
+        $this->assertIsArray($marketingPolicy);
+        $this->assertSame('marketing_domain', $marketingPolicy['role']);
+        $this->assertSame('normal_marketing_site', $marketingPolicy['property_kind']);
+        $this->assertSame('Astro repo', data_get($marketingPolicy, 'controller_owner'));
+        $this->assertSame('required', data_get($marketingPolicy, 'expected_links.household_quote.status'));
+        $this->assertSame('https://quote.moveroo.com.au/household', data_get($marketingPolicy, 'expected_links.household_quote.url'));
+        $this->assertSame('required', data_get($marketingPolicy, 'expected_links.vehicle_quote.status'));
+        $this->assertSame('https://quote.moveroo.com.au/vehicle', data_get($marketingPolicy, 'expected_links.vehicle_quote.url'));
+        $this->assertSame('required', data_get($marketingPolicy, 'expected_links.contact.status'));
+        $this->assertSame('optional', data_get($marketingPolicy, 'expected_links.customer_portal.status'));
+
+        $this->assertIsArray($portalPolicy);
+        $this->assertSame('quote_conversion_surface', $portalPolicy['property_kind']);
+        $this->assertSame('required', data_get($portalPolicy, 'expected_links.customer_portal.status'));
+        $this->assertSame('https://wemove.moveroo.com.au', data_get($portalPolicy, 'expected_links.customer_portal.url'));
+        $this->assertSame('required', data_get($portalPolicy, 'expected_links.contact.status'));
+        $this->assertSame('https://wemove.moveroo.com.au/contact', data_get($portalPolicy, 'expected_links.contact.url'));
+
+        $this->assertIsArray($bookingPolicy);
+        $this->assertSame('operational_app_shell_apex', $bookingPolicy['property_kind']);
+        $this->assertSame('required', data_get($bookingPolicy, 'expected_links.booking.status'));
+        $this->assertSame('https://removalist.net/booking/create', data_get($bookingPolicy, 'expected_links.booking.url'));
+        $this->assertSame('suppressed', data_get($bookingPolicy, 'expected_links.household_quote.status'));
+    }
+
+    public function test_web_properties_summary_represents_operational_app_shell_apex_without_marketing_handoffs(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $primaryDomain = Domain::factory()->create([
+            'domain' => 'removalist.net',
+            'platform' => 'Laravel',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'removalist-app-shell',
+            'name' => 'Removalist App Shell',
+            'site_key' => 'removalist',
+            'property_type' => 'app',
+            'status' => 'active',
+            'platform' => 'Laravel',
+            'primary_domain_id' => $primaryDomain->id,
+            'production_url' => 'https://removalist.net',
+            'canonical_origin_scheme' => 'https',
+            'canonical_origin_host' => 'removalist.net',
+            'canonical_origin_policy' => 'known',
+            'target_household_quote_url' => null,
+            'target_vehicle_quote_url' => null,
+            'target_household_booking_url' => 'https://removalist.net/booking/create',
+            'target_vehicle_booking_url' => null,
+            'target_moveroo_subdomain_url' => null,
+            'target_contact_us_page_url' => null,
+            'target_legacy_bookings_replacement_url' => 'https://removalist.net/booking/create',
+            'target_legacy_payments_replacement_url' => null,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $primaryDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/web-properties-summary');
+
+        $response->assertOk();
+
+        /** @var array<int, array<string, mixed>> $policies */
+        $policies = $response->json('web_properties.0.hostname_link_policy.hostnames') ?? [];
+        $marketingPolicy = collect($policies)->firstWhere('hostname', 'removalist.net');
+
+        $this->assertIsArray($marketingPolicy);
+        $this->assertSame('marketing_domain', $marketingPolicy['role']);
+        $this->assertSame('operational_app_shell_apex', $marketingPolicy['property_kind']);
+        $this->assertSame('suppressed', data_get($marketingPolicy, 'expected_links.household_quote.status'));
+        $this->assertSame('suppressed', data_get($marketingPolicy, 'expected_links.vehicle_quote.status'));
+        $this->assertSame('required', data_get($marketingPolicy, 'expected_links.booking.status'));
+        $this->assertSame('https://removalist.net/booking/create', data_get($marketingPolicy, 'expected_links.booking.url'));
+        $this->assertSame('suppressed', data_get($marketingPolicy, 'expected_links.contact.status'));
     }
 
     public function test_web_properties_summary_can_filter_to_fleet_focus_properties(): void

@@ -72,7 +72,30 @@ Selected property fields now include:
 - `deployment_project_name`
 - `deployment_project_id`
 - `conversion_surfaces`
+- `hostname_link_policy`
 - `event_architecture`
+
+`hostname_link_policy` is the canonical hostname-level export for quote,
+booking, contact, and customer-portal link expectations. It is derived from the
+stored property targets plus known conversion surfaces, and uses per-slot
+statuses:
+
+- `required`
+- `optional`
+- `suppressed`
+- `unknown`
+
+Each hostname row includes:
+
+- `hostname`
+- `role`
+- `property_kind`
+- `controller_owner`
+- `expected_links.household_quote`
+- `expected_links.vehicle_quote`
+- `expected_links.booking`
+- `expected_links.contact`
+- `expected_links.customer_portal`
 
 ### Runtime Analytics Contexts
 

@@ -132,3 +132,10 @@ Why this is the current call:
 - What changed: classified both apex domains as operational app-shell properties and added explicit monitoring policy so homepage GA4 and quote-handoff checks are not required on those apex shells
 - What was fixed: production `marketing_integrity` reruns now recover/suppress `marketing.ga4_install` and `marketing.quote_handoff_integrity` for the two app-shell apex domains while preserving conversion-surface GA4 checks for the real quote subdomains
 - What remains open: `vehicle.net.au` still has a separate `critical.redirect_policy` must-fix finding, and Fleet `#20` should continue with the remaining 10 marketing-site quote handoff fixes rather than chasing the two app shells
+
+### 2026-04-28 12:27:09 AEST
+
+- Issue or trigger: issue `#149` to expose a canonical hostname link policy that Moveroo hostname admin can consume
+- What changed: added a derived `hostname_link_policy` block to the existing web property summary export, backed by a new builder that classifies marketing domains, quote or portal hosts, and operational app-shell apexes from the current Domain Monitor property targets and conversion surfaces; also documented the new field in the API integration guide and added focused API coverage
+- What was fixed: Domain Monitor can now emit one consistent hostname-level policy for expected household quote, vehicle quote, booking, contact, and customer portal links, including `required` or `optional` or `suppressed` or `unknown` slot statuses and explicit app-shell suppression for apex domains like `removalist.net`
+- What remains: the issue is implemented in-repo but still needs the usual commit or push or consumer adoption step before the linked Moveroo admin screen can rely on it end to end

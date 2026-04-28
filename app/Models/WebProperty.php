@@ -6,6 +6,7 @@ use App\Services\PropertyExecutionReadinessResolver;
 use App\Services\WebPropertyAnalyticsSummaryBuilder;
 use App\Services\WebPropertyCanonicalOriginSummaryBuilder;
 use App\Services\WebPropertyGscEvidenceSummaryBuilder;
+use App\Services\WebPropertyHostnameLinkPolicyBuilder;
 use App\Services\WebPropertyMonitoringSummaryBuilder;
 use App\Services\WebPropertyPlatformMigrationSummaryBuilder;
 use App\Services\WebPropertySeoBaselineSummaryBuilder;
@@ -968,6 +969,7 @@ class WebProperty extends Model
                 'contracts' => $eventContracts,
             ],
             'conversion_surfaces' => $this->conversionSurfaceSummaries(),
+            'hostname_link_policy' => $this->hostnameLinkPolicySummary(),
             'health_summary' => $this->healthSummary(),
             'monitoring_summary' => $this->monitoringSummary(),
             'deployment_summary' => $this->deploymentSummary(),
@@ -1000,6 +1002,17 @@ class WebProperty extends Model
     public function siteIdentitySummary(): array
     {
         return app(WebPropertySiteIdentitySummaryBuilder::class)->build($this);
+    }
+
+    /**
+     * @return array{
+     *   owning_marketing_domain: string|null,
+     *   hostnames: array<int, array<string, mixed>>
+     * }
+     */
+    public function hostnameLinkPolicySummary(): array
+    {
+        return app(WebPropertyHostnameLinkPolicyBuilder::class)->build($this);
     }
 
     public function siteKey(): ?string
