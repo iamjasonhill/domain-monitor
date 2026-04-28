@@ -314,10 +314,17 @@ class RunMonitoringLaneCommandTest extends TestCase
     {
         config()->set('services.brain.base_url', 'https://brain.example.test');
         config()->set('services.brain.api_key', 'test-key');
-        config()->set('domain_monitor.web_property_bootstrap.overrides.app-shell.example.au.analytics_monitoring', [
-            'homepage_ga4_required' => false,
-            'reason' => 'Operational app shell; quote attribution is handled by subdomains.',
-        ]);
+        config()->set('domain_monitor.web_property_bootstrap.overrides', array_merge(
+            (array) config('domain_monitor.web_property_bootstrap.overrides', []),
+            [
+                'app-shell.example.au' => [
+                    'analytics_monitoring' => [
+                        'homepage_ga4_required' => false,
+                        'reason' => 'Operational app shell; quote attribution is handled by subdomains.',
+                    ],
+                ],
+            ]
+        ));
 
         $property = $this->makeProperty('app-shell.example.au', 'App Shell');
         $property->forceFill([
