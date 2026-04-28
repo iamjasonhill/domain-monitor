@@ -125,3 +125,10 @@ Why this is the current call:
 - What changed: reran `marketing_integrity` for the affected quote/conversion domains and refreshed the detected issue snapshot
 - What was fixed: `marketing.conversion_surface_ga4` dropped from 13 urgent findings to 0, confirming the Moveroo Combined app-side quote-host GA4 fallback issue is resolved
 - What remains open: 12 `marketing.quote_handoff_integrity` findings remain on marketing sites; those are now routed to Fleet as `iamjasonhill/MM-fleet-program#20` rather than left on the Moveroo Combined app issue
+
+### 2026-04-28 12:04 AEST
+
+- Trigger: Fleet issue `#20` surfaced GA4 and handoff noise on `removalist.net` and `vehicle.net.au`
+- What changed: classified both apex domains as operational app-shell properties and added explicit monitoring policy so homepage GA4 and quote-handoff checks are not required on those apex shells
+- What was fixed: production `marketing_integrity` reruns now recover/suppress `marketing.ga4_install` and `marketing.quote_handoff_integrity` for the two app-shell apex domains while preserving conversion-surface GA4 checks for the real quote subdomains
+- What remains open: `vehicle.net.au` still has a separate `critical.redirect_policy` must-fix finding, and Fleet `#20` should continue with the remaining 10 marketing-site quote handoff fixes rather than chasing the two app shells
