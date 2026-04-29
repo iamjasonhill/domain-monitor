@@ -7,6 +7,7 @@ use App\Models\PropertyAnalyticsSource;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
@@ -17,6 +18,8 @@ class SyncMmGoogleGa4CommandTest extends TestCase
 
     public function test_it_syncs_ga4_bindings_from_mm_google_without_replacing_existing_primary_source(): void
     {
+        Carbon::setTestNow('2026-04-29T05:15:00+10:00');
+
         $domain = Domain::factory()->create([
             'domain' => 'movingagain.com.au',
             'is_active' => true,
@@ -97,7 +100,13 @@ class SyncMmGoogleGa4CommandTest extends TestCase
         $this->assertSame('14399248676', data_get($ga4->provider_config, 'stream_id'));
         $this->assertSame('accounts/328441504', data_get($ga4->provider_config, 'analytics_account'));
         $this->assertSame('mm-brain-2026', data_get($ga4->provider_config, 'bigquery_project'));
+        $this->assertSame('MM-Google', data_get($ga4->provider_config, 'source_system'));
+        $this->assertSame('switch_ready', data_get($ga4->provider_config, 'provisioning_state'));
+        $this->assertTrue(data_get($ga4->provider_config, 'switch_ready'));
+        $this->assertSame('2026-04-29T05:15:00+10:00', data_get($ga4->provider_config, 'last_synced_at'));
         $this->assertSame(['production', 'brand:movingagain'], data_get($ga4->provider_config, 'tags'));
+
+        Carbon::setTestNow();
     }
 
     public function test_it_reports_changes_without_writing_them_in_dry_run_mode(): void
@@ -149,5 +158,67 @@ class SyncMmGoogleGa4CommandTest extends TestCase
             'web_property_id' => $property->id,
             'provider' => 'ga4',
         ]);
+    }
+
+    public function test_it_marks_ga4_sources_as_planned_when_mm_google_has_no_measurement_id_yet(): void
+    {
+        Carbon::setTestNow('2026-04-29T05:20:00+10:00');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'supercheapcartransport.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'supercheapcartransport-com-au',
+            'name' => 'Super Cheap Car Transport',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://supercheapcartransport.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        $configPath = storage_path('framework/testing/mm-google-sites-planned.json');
+        File::ensureDirectoryExists(dirname($configPath));
+        $configJson = json_encode([
+            'sites' => [
+                [
+                    'key' => 'supercheapcartransport',
+                    'displayName' => 'Super Cheap Car Transport',
+                    'websiteUrl' => 'https://supercheapcartransport.com.au',
+                    'analyticsAccount' => 'accounts/52062521',
+                    'bigQueryProject' => 'mm-brain-2026',
+                    'propertyId' => '399513187',
+                    'streamId' => '5910310919',
+                    'readinessStatus' => 'provisioning',
+                ],
+            ],
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        $this->assertIsString($configJson);
+        File::put($configPath, $configJson);
+
+        $this->assertSame(0, Artisan::call('analytics:sync-mm-google-ga4', [
+            '--config-path' => $configPath,
+            '--workspace-path' => '/Users/jasonhill/Projects/Business/operations/MM-Google',
+        ]));
+
+        $ga4 = PropertyAnalyticsSource::query()
+            ->where('web_property_id', $property->id)
+            ->where('provider', 'ga4')
+            ->firstOrFail();
+
+        $this->assertSame('planned', $ga4->status);
+        $this->assertNull(data_get($ga4->provider_config, 'measurement_id'));
+        $this->assertSame('MM-Google', data_get($ga4->provider_config, 'source_system'));
+        $this->assertSame('provisioning', data_get($ga4->provider_config, 'provisioning_state'));
+        $this->assertFalse(data_get($ga4->provider_config, 'switch_ready'));
+        $this->assertSame('2026-04-29T05:20:00+10:00', data_get($ga4->provider_config, 'last_synced_at'));
+
+        Carbon::setTestNow();
     }
 }

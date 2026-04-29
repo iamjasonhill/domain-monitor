@@ -176,6 +176,30 @@ class WebPropertySummaryBuildersTest extends TestCase
             'enabled' => false,
             'provider' => null,
             'config' => [],
+            'ga4' => [
+                'provider' => 'ga4',
+                'property_slug' => null,
+                'domain' => null,
+                'site_key' => null,
+                'source_system' => null,
+                'measurement_id' => null,
+                'property_id' => null,
+                'stream_id' => null,
+                'status' => 'missing',
+                'label' => 'Missing',
+                'reason' => 'No GA4 binding is stored for this property yet.',
+                'switch_ready' => null,
+                'provisioning_state' => null,
+                'external_name' => null,
+                'last_synced_at' => null,
+                'last_verified_at' => null,
+                'last_live_check_at' => null,
+                'detection' => [
+                    'verdict' => null,
+                    'detected_measurement_ids' => [],
+                    'issue_id' => null,
+                ],
+            ],
         ], $summary);
     }
 
@@ -203,6 +227,30 @@ class WebPropertySummaryBuildersTest extends TestCase
             'config' => [
                 'base_url' => 'https://stats.redirection.com.au',
                 'site_id' => '13',
+            ],
+            'ga4' => [
+                'provider' => 'ga4',
+                'property_slug' => null,
+                'domain' => null,
+                'site_key' => null,
+                'source_system' => null,
+                'measurement_id' => null,
+                'property_id' => null,
+                'stream_id' => null,
+                'status' => 'missing',
+                'label' => 'Missing',
+                'reason' => 'No GA4 binding is stored for this property yet.',
+                'switch_ready' => null,
+                'provisioning_state' => null,
+                'external_name' => null,
+                'last_synced_at' => null,
+                'last_verified_at' => null,
+                'last_live_check_at' => null,
+                'detection' => [
+                    'verdict' => null,
+                    'detected_measurement_ids' => [],
+                    'issue_id' => null,
+                ],
             ],
         ], $summary);
     }
@@ -241,7 +289,89 @@ class WebPropertySummaryBuildersTest extends TestCase
                 'bigquery_project' => 'mm-brain-2026',
                 'measurement_protocol_secret_name' => 'properties/533626872/dataStreams/14399248676/measurementProtocolSecrets/123',
             ],
+            'ga4' => [
+                'provider' => 'ga4',
+                'property_slug' => null,
+                'domain' => null,
+                'site_key' => null,
+                'source_system' => null,
+                'measurement_id' => 'G-K6VBFJGYYK',
+                'property_id' => '533626872',
+                'stream_id' => '14399248676',
+                'status' => 'configured',
+                'label' => 'Configured',
+                'reason' => 'A GA4 measurement ID is stored for this property.',
+                'switch_ready' => null,
+                'provisioning_state' => null,
+                'external_name' => null,
+                'last_synced_at' => null,
+                'last_verified_at' => null,
+                'last_live_check_at' => null,
+                'detection' => [
+                    'verdict' => null,
+                    'detected_measurement_ids' => [],
+                    'issue_id' => null,
+                ],
+            ],
         ], $summary);
+    }
+
+    public function test_analytics_builder_exposes_ga4_lookup_even_when_matomo_stays_primary(): void
+    {
+        $property = new WebProperty([
+            'slug' => 'supercheapcartransport-com-au',
+            'site_key' => 'supercheapcartransport',
+        ]);
+        $property->setRelation('propertyDomains', collect([
+            $this->domainLink('supercheapcartransport.com.au', 'primary', true),
+        ]));
+
+        $matomo = new PropertyAnalyticsSource([
+            'provider' => 'matomo',
+            'external_id' => '44',
+            'is_primary' => true,
+            'status' => 'active',
+        ]);
+        $matomo->setRelation('latestInstallAudit', new AnalyticsInstallAudit([
+            'expected_tracker_host' => 'stats.redirection.com.au',
+        ]));
+
+        $ga4 = new PropertyAnalyticsSource([
+            'provider' => 'ga4',
+            'external_id' => 'G-SUPERCHEAP1',
+            'external_name' => 'Super Cheap Car Transport GA4',
+            'is_primary' => false,
+            'status' => 'active',
+            'workspace_path' => '/Users/jasonhill/Projects/Business/operations/MM-Google',
+            'provider_config' => [
+                'site_key' => 'supercheapcartransport',
+                'measurement_id' => 'G-SUPERCHEAP1',
+                'property_id' => '111222333',
+                'stream_id' => '444555666',
+                'source_system' => 'MM-Google',
+                'provisioning_state' => 'switch_ready',
+                'switch_ready' => true,
+                'last_synced_at' => '2026-04-29T05:20:00+10:00',
+            ],
+        ]);
+
+        $property->setRelation('analyticsSources', new EloquentCollection([$matomo, $ga4]));
+        $summary = (new WebPropertyAnalyticsSummaryBuilder)->build($property);
+
+        $this->assertSame('matomo', $summary['provider']);
+        $this->assertSame('https://stats.redirection.com.au', $summary['config']['base_url']);
+        $this->assertSame('G-SUPERCHEAP1', $summary['ga4']['measurement_id']);
+        $this->assertSame('111222333', $summary['ga4']['property_id']);
+        $this->assertSame('444555666', $summary['ga4']['stream_id']);
+        $this->assertSame('MM-Google', $summary['ga4']['source_system']);
+        $this->assertTrue($summary['ga4']['switch_ready']);
+        $this->assertSame('switch_ready', $summary['ga4']['provisioning_state']);
+        $this->assertSame('configured', $summary['ga4']['status']);
+        $this->assertSame('Configured', $summary['ga4']['label']);
+        $this->assertSame('2026-04-29T05:20:00+10:00', $summary['ga4']['last_synced_at']);
+        $this->assertNull($summary['ga4']['last_live_check_at']);
+        $this->assertNull($summary['ga4']['detection']['verdict']);
+        $this->assertNull($summary['ga4']['detection']['issue_id']);
     }
 
     public function test_seo_baseline_builder_returns_stable_defaults_without_checkpoints(): void

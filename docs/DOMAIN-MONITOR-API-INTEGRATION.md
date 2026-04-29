@@ -74,6 +74,30 @@ Selected property fields now include:
 - `conversion_surfaces`
 - `hostname_link_policy`
 - `event_architecture`
+- `analytics_sources`
+- `analytics.ga4`
+
+`analytics.ga4` is the Fleet-facing lookup block for website-domain GA4
+rollouts. It stays available even when another provider such as Matomo remains
+the primary historical analytics source for the property.
+
+Selected `analytics.ga4` fields include:
+
+- `property_slug`
+- `domain`
+- `site_key`
+- `measurement_id`
+- `property_id`
+- `stream_id`
+- `source_system`
+- `status`
+- `label`
+- `provisioning_state`
+- `switch_ready`
+- `last_synced_at`
+- `last_live_check_at`
+- `detection.verdict`
+- `detection.issue_id`
 
 `hostname_link_policy` is the canonical hostname-level export for quote,
 booking, contact, and customer-portal link expectations. It is derived from the

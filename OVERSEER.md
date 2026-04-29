@@ -54,6 +54,20 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-04-29 14:26:40 AEST
+
+- Issue or trigger: issue `#151` to make Domain Monitor the Fleet lookup surface for GA4 rollout codes sourced from MM-Google
+- What changed: extended the existing MM-Google GA4 sync so it records `source_system`, `last_synced_at`, `switch_ready`, and `provisioning_state` on GA4 analytics source rows; also expanded `/api/web-properties-summary` so both `analytics_sources` and the normalized `analytics.ga4` block expose GA4 measurement IDs, property and stream IDs, MM-Google provenance, and live detection state where monitoring evidence exists
+- What was fixed: Fleet website domains can now read the expected GA4 code and rollout state directly from Domain Monitor even when Matomo remains the historical primary source, and properties still waiting on a measurement ID now surface as explicit provisioning state instead of disappearing behind Matomo-only summary fields
+- What remains: the in-repo contract is ready, but the live `supercheapcartransport.com.au` example still depends on MM-Google supplying its measurement ID through the upstream sync input before Domain Monitor can show it as switch-ready rather than provisioning
+
+### 2026-04-29 04:57:55 AEST
+
+- Issue or trigger: verify and close issue `#150` during the daily Bossman overseer run
+- What changed: confirmed the Fleet Astro technical SEO weekly lane is already implemented on `main` in commit `5a97123`, rechecked the scheduled lane and focused coverage, and reran `php artisan test tests/Feature/RunMonitoringLaneCommandTest.php --filter=fleet_astro_technical_seo`
+- What was fixed: removed issue drift between GitHub and the repo by verifying the implementation is live in this checkout and ready for the GitHub issue to be closed
+- What remains: no in-repo follow-up is required for issue `#150`; any future expansion should be tracked as a new narrow slice rather than reopening the baseline lane
+
 ### 2026-04-28 19:18 AEST
 
 - Trigger: Bossman asked whether Fleet's Astro technical SEO standard should be

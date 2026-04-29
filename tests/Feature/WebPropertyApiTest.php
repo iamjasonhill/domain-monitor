@@ -156,10 +156,15 @@ class WebPropertyApiTest extends TestCase
             'external_name' => 'Moveroo GA4',
             'workspace_path' => '/Users/jasonhill/Projects/Business/operations/MM-Google',
             'provider_config' => [
+                'site_key' => 'moveroo',
                 'property_id' => '457902172',
                 'stream_id' => '9677257871',
                 'measurement_id' => 'G-9F3Y80LEQL',
                 'bigquery_project' => 'mm-moveroo-analytics',
+                'source_system' => 'MM-Google',
+                'provisioning_state' => 'switch_ready',
+                'switch_ready' => true,
+                'last_synced_at' => '2026-04-29T04:30:00+10:00',
             ],
             'is_primary' => false,
             'status' => 'active',
@@ -315,6 +320,10 @@ class WebPropertyApiTest extends TestCase
             'first_detected_at' => now()->subHours(2),
             'last_detected_at' => now()->subMinutes(5),
             'recovered_at' => null,
+            'evidence' => [
+                'verdict' => 'missing_expected_measurement_id',
+                'detected_measurement_ids' => [],
+            ],
         ]);
 
         MonitoringFinding::factory()->create([
@@ -380,6 +389,14 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.repositories.0.repo_name', 'moveroo/moveroo-website-astro')
             ->assertJsonPath('web_properties.0.analytics_sources.0.external_id', '6')
             ->assertJsonPath('web_properties.0.analytics_sources.0.install_audit.install_verdict', 'installed_match')
+            ->assertJsonPath('web_properties.0.analytics_sources.1.source_system', 'MM-Google')
+            ->assertJsonPath('web_properties.0.analytics_sources.1.last_synced_at', '2026-04-29T04:30:00+10:00')
+            ->assertJsonPath('web_properties.0.analytics_sources.1.ga4_lookup.measurement_id', 'G-9F3Y80LEQL')
+            ->assertJsonPath('web_properties.0.analytics_sources.1.ga4_lookup.property_id', '457902172')
+            ->assertJsonPath('web_properties.0.analytics_sources.1.ga4_lookup.stream_id', '9677257871')
+            ->assertJsonPath('web_properties.0.analytics_sources.1.ga4_lookup.source_system', 'MM-Google')
+            ->assertJsonPath('web_properties.0.analytics_sources.1.ga4_lookup.status', 'live_missing')
+            ->assertJsonPath('web_properties.0.analytics_sources.1.ga4_lookup.detection.verdict', 'missing_expected_measurement_id')
             ->assertJsonPath('web_properties.0.event_architecture.has_contract', true)
             ->assertJsonPath('web_properties.0.event_architecture.contracts.0.contract.key', 'shared-ga4-baseline-v1')
             ->assertJsonPath('web_properties.0.event_architecture.contracts.0.rollout_status', 'defined')
@@ -392,6 +409,22 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.analytics.provider', 'matomo')
             ->assertJsonPath('web_properties.0.analytics.config.base_url', 'https://stats.redirection.com.au')
             ->assertJsonPath('web_properties.0.analytics.config.site_id', '6')
+            ->assertJsonPath('web_properties.0.analytics.ga4.provider', 'ga4')
+            ->assertJsonPath('web_properties.0.analytics.ga4.property_slug', 'moveroo-website')
+            ->assertJsonPath('web_properties.0.analytics.ga4.domain', 'moveroo.com.au')
+            ->assertJsonPath('web_properties.0.analytics.ga4.site_key', 'moveroo')
+            ->assertJsonPath('web_properties.0.analytics.ga4.measurement_id', 'G-9F3Y80LEQL')
+            ->assertJsonPath('web_properties.0.analytics.ga4.property_id', '457902172')
+            ->assertJsonPath('web_properties.0.analytics.ga4.stream_id', '9677257871')
+            ->assertJsonPath('web_properties.0.analytics.ga4.source_system', 'MM-Google')
+            ->assertJsonPath('web_properties.0.analytics.ga4.switch_ready', true)
+            ->assertJsonPath('web_properties.0.analytics.ga4.provisioning_state', 'switch_ready')
+            ->assertJsonPath('web_properties.0.analytics.ga4.status', 'live_missing')
+            ->assertJsonPath('web_properties.0.analytics.ga4.label', 'Live missing')
+            ->assertJsonPath('web_properties.0.analytics.ga4.last_synced_at', '2026-04-29T04:30:00+10:00')
+            ->assertJsonPath('web_properties.0.analytics.ga4.last_live_check_at', MonitoringFinding::query()->where('issue_id', 'dm:test:moveroo-ga4')->firstOrFail()->last_detected_at?->toIso8601String())
+            ->assertJsonPath('web_properties.0.analytics.ga4.detection.verdict', 'missing_expected_measurement_id')
+            ->assertJsonPath('web_properties.0.analytics.ga4.detection.issue_id', 'dm:test:moveroo-ga4')
             ->assertJsonPath('web_properties.0.health_summary.checks.uptime', 'ok')
             ->assertJsonPath('web_properties.0.health_summary.checks.http', 'ok')
             ->assertJsonPath('web_properties.0.health_summary.checks.ssl', 'warn')

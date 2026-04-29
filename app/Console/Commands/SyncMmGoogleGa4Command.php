@@ -6,6 +6,7 @@ use App\Models\PropertyAnalyticsSource;
 use App\Models\WebProperty;
 use Illuminate\Console\Command;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
@@ -54,6 +55,7 @@ class SyncMmGoogleGa4Command extends Command
         $updated = 0;
         $unchanged = 0;
         $unmatched = [];
+        $syncedAt = now();
 
         foreach ($sites as $site) {
             if (! is_array($site)) {
@@ -104,6 +106,7 @@ class SyncMmGoogleGa4Command extends Command
                 $site,
                 $defaults,
                 $workspacePath,
+                $syncedAt,
             );
 
             if (! $source instanceof PropertyAnalyticsSource) {
@@ -261,10 +264,13 @@ class SyncMmGoogleGa4Command extends Command
         array $site,
         array $defaults,
         ?string $workspacePath,
+        Carbon $syncedAt,
     ): array {
         $measurementId = $this->nullableString(Arr::get($site, 'measurementId'));
         $propertyId = $this->nullableString(Arr::get($site, 'propertyId'));
         $streamId = $this->nullableString(Arr::get($site, 'streamId'));
+        $switchReady = $this->switchReadyState($site, $measurementId);
+        $provisioningState = $this->provisioningState($site, $measurementId, $switchReady);
         $hasNonGa4Primary = $property->analyticsSources()
             ->where('is_primary', true)
             ->where('provider', '!=', 'ga4')
@@ -292,10 +298,14 @@ class SyncMmGoogleGa4Command extends Command
                 'industry_category' => $this->nullableString(Arr::get($site, 'industryCategory')) ?? $this->nullableString(Arr::get($defaults, 'industryCategory')),
                 'bigquery_dataset_location' => $this->nullableString(Arr::get($site, 'bigQueryDatasetLocation')) ?? $this->nullableString(Arr::get($defaults, 'bigQueryDatasetLocation')),
                 'provisioning' => $this->normalizedArray(Arr::get($site, 'provisioning')) ?? $this->normalizedArray(Arr::get($defaults, 'provisioning')),
+                'provisioning_state' => $provisioningState,
+                'switch_ready' => $switchReady,
                 'tags' => $this->normalizedList(Arr::get($site, 'tags')),
                 'key_events' => $this->normalizedList(Arr::get($site, 'keyEvents')) ?? $this->normalizedList(Arr::get($defaults, 'keyEvents')),
                 'custom_dimensions' => $this->normalizedArray(Arr::get($site, 'customDimensions')) ?? $this->normalizedArray(Arr::get($defaults, 'customDimensions')),
+                'source_system' => 'MM-Google',
                 'synced_from' => 'MM-Google/config/sites.json',
+                'last_synced_at' => $syncedAt->toIso8601String(),
             ],
             'is_primary' => $hasNonGa4Primary ? false : ($existingSource instanceof PropertyAnalyticsSource ? $existingSource->is_primary : ! $hasExistingPrimary),
             'status' => $measurementId !== null ? 'active' : 'planned',
@@ -327,6 +337,50 @@ class SyncMmGoogleGa4Command extends Command
         $trimmed = trim($value);
 
         return $trimmed !== '' ? $trimmed : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $site
+     */
+    private function switchReadyState(array $site, ?string $measurementId): ?bool
+    {
+        foreach (['switchReady', 'switch_ready'] as $key) {
+            $value = Arr::get($site, $key);
+
+            if (is_bool($value)) {
+                return $value;
+            }
+        }
+
+        $readinessStatus = $this->nullableString(Arr::get($site, 'readinessStatus'))
+            ?? $this->nullableString(Arr::get($site, 'readiness_status'));
+
+        if ($readinessStatus !== null) {
+            return in_array(Str::lower($readinessStatus), ['ready', 'switch_ready', 'switch-ready'], true);
+        }
+
+        return $measurementId !== null ? true : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $site
+     */
+    private function provisioningState(array $site, ?string $measurementId, ?bool $switchReady): string
+    {
+        $explicit = $this->nullableString(Arr::get($site, 'provisioningState'))
+            ?? $this->nullableString(Arr::get($site, 'provisioning_state'))
+            ?? $this->nullableString(Arr::get($site, 'readinessStatus'))
+            ?? $this->nullableString(Arr::get($site, 'readiness_status'));
+
+        if ($explicit !== null) {
+            return Str::snake($explicit, '_');
+        }
+
+        if ($switchReady === true || $measurementId !== null) {
+            return 'switch_ready';
+        }
+
+        return 'provisioning';
     }
 
     /**

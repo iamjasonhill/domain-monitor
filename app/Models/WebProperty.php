@@ -453,6 +453,7 @@ class WebProperty extends Model
     public function analyticsSourceSummaries(): array
     {
         $sources = $this->relationLoaded('analyticsSources') ? $this->analyticsSources : $this->analyticsSources()->get();
+        $analyticsSummary = $this->analyticsSummary();
 
         return $sources->map(fn (PropertyAnalyticsSource $source): array => [
             'id' => $source->id,
@@ -464,6 +465,11 @@ class WebProperty extends Model
             'is_primary' => $source->is_primary,
             'status' => $source->status,
             'notes' => $source->notes,
+            'source_system' => $this->analyticsSourceSystem($source),
+            'last_synced_at' => $this->analyticsSourceLastSyncedAt($source),
+            'ga4_lookup' => $source->provider === 'ga4'
+                ? $analyticsSummary['ga4']
+                : null,
             'install_audit' => $this->analyticsInstallAuditSummaryFor($source),
         ])->values()->all();
     }
@@ -1049,7 +1055,8 @@ class WebProperty extends Model
      * @return array{
      *   enabled: bool,
      *   provider: string|null,
-     *   config: array<string, string|null>
+     *   config: array<string, string|null>,
+     *   ga4: array<string, mixed>
      * }
      */
     public function analyticsSummary(): array
@@ -1859,5 +1866,36 @@ class WebProperty extends Model
             'summary' => $audit->summary,
             'checked_at' => $audit->checked_at?->toIso8601String(),
         ];
+    }
+
+    private function analyticsSourceSystem(PropertyAnalyticsSource $source): ?string
+    {
+        $providerConfig = $source->provider_config;
+
+        if (is_array($providerConfig) && is_string($providerConfig['source_system'] ?? null) && trim((string) $providerConfig['source_system']) !== '') {
+            return trim((string) $providerConfig['source_system']);
+        }
+
+        if (is_string($source->workspace_path) && str_contains($source->workspace_path, 'MM-Google')) {
+            return 'MM-Google';
+        }
+
+        return null;
+    }
+
+    private function analyticsSourceLastSyncedAt(PropertyAnalyticsSource $source): ?string
+    {
+        $providerConfig = $source->provider_config;
+        $value = is_array($providerConfig) ? ($providerConfig['last_synced_at'] ?? null) : null;
+
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return \Illuminate\Support\Carbon::parse($value)->toIso8601String();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }
