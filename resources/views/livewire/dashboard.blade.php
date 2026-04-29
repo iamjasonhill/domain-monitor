@@ -96,7 +96,7 @@
             </div>
         </a>
 
-        <!-- Must Fix -->
+        <!-- Detected Must Fix -->
         <a href="{{ route('dashboard') }}#detected-must-fix" wire:navigate class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg hover:shadow-md transition-shadow cursor-pointer">
             <div class="p-6">
                 <div class="flex items-center">
@@ -108,7 +108,7 @@
                     </div>
                     <div class="ml-5 min-w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium leading-snug text-gray-500 dark:text-gray-400">Must Fix</dt>
+                            <dt class="text-sm font-medium leading-snug text-gray-500 dark:text-gray-400">Detected Must Fix</dt>
                             <dd class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ $stats['detected_must_fix'] }}</dd>
                         </dl>
                     </div>
@@ -241,8 +241,8 @@
             <div class="p-6">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Must Fix</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Hard failures, critical alerts, or compliance issues that should be handled first.</p>
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Priority Queue Must Fix</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Priority-queue-only domain tasks. Use Detected Must Fix above for the broader operator feed that also includes monitoring findings.</p>
                     </div>
                     <a href="{{ route('alerts.index') }}" wire:navigate class="text-sm text-blue-600 dark:text-blue-400 hover:underline">View alerts</a>
                 </div>

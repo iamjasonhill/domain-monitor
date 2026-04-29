@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Domain;
 use App\Models\DomainCheck;
 use App\Models\DomainSeoBaseline;
+use App\Models\DomainTag;
+use App\Models\MonitoringFinding;
 use App\Models\PropertyRepository;
 use App\Models\SearchConsoleIssueSnapshot;
 use App\Models\WebProperty;
@@ -314,7 +316,8 @@ class DetectedIssueApiTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonPath('source_system', 'domain-monitor-issues')
-            ->assertJsonPath('contract_version', 1)
+            ->assertJsonPath('contract_version', 2)
+            ->assertJsonPath('operator_contract.fleet_focus_query', '/api/issues?fleet_focus=1')
             ->assertJsonPath('stats.issue_class_counts.page_with_redirect_in_sitemap', 1)
             ->assertJsonPath('stats.issue_class_counts.blocked_by_robots_in_indexing', 1)
             ->assertJsonPath('stats.issue_class_counts.excluded_by_noindex', 1)
@@ -344,6 +347,7 @@ class DetectedIssueApiTest extends TestCase
         $this->assertNotNull($headersIssue);
         $this->assertSame('page_with_redirect_in_sitemap', $redirectIssue['issue_class']);
         $this->assertSame('must_fix', $redirectIssue['severity']);
+        $this->assertFalse($redirectIssue['is_fleet_focus']);
         $this->assertSame('seo.robots_and_sitemap_consistency', $redirectIssue['control_id']);
         $this->assertSame('domain_only', $redirectIssue['rollout_scope']);
         $this->assertSame('domain_monitor.priority_queue', $redirectIssue['detector']);
@@ -2241,5 +2245,110 @@ class DetectedIssueApiTest extends TestCase
         $this->assertSame('repository_controlled', $issue['execution_surface']);
         $this->assertTrue($issue['fleet_managed']);
         $this->assertSame('transportnondrivablecars-com-au-php', $issue['controller_repo']);
+    }
+
+    public function test_issues_endpoint_can_filter_to_fleet_focus_and_include_monitoring_lane_must_fix_findings(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        config()->set('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+
+        $fleetTag = DomainTag::firstOrCreate(
+            ['name' => 'fleet.live'],
+            ['priority' => 100, 'color' => 'blue']
+        );
+
+        $fleetDomain = Domain::factory()->create([
+            'domain' => 'fleet-monitor.example.com',
+            'is_active' => true,
+            'platform' => 'Astro',
+            'hosting_provider' => 'Vercel',
+        ]);
+        $fleetDomain->tags()->attach($fleetTag->id);
+
+        $fleetProperty = WebProperty::factory()->create([
+            'slug' => 'fleet-monitor-site',
+            'name' => 'Fleet Monitor Site',
+            'property_type' => 'marketing_site',
+            'status' => 'active',
+            'primary_domain_id' => $fleetDomain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $fleetProperty->id,
+            'domain_id' => $fleetDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $fleetProperty->id,
+            'repo_name' => 'fleet-monitor-site',
+            'repo_provider' => 'local_only',
+            'local_path' => '/Users/jasonhill/Projects/Business/websites/fleet-monitor-site',
+            'framework' => 'Astro',
+            'is_primary' => true,
+            'is_controller' => true,
+        ]);
+
+        MonitoringFinding::factory()->create([
+            'issue_id' => app(\App\Services\DetectedIssueIdentityService::class)->makeIssueId(
+                $fleetDomain->id,
+                $fleetProperty->slug,
+                'marketing.quote_handoff_integrity'
+            ),
+            'lane' => 'marketing_integrity',
+            'finding_type' => 'marketing.quote_handoff_integrity',
+            'issue_type' => 'regression',
+            'scope_type' => 'web_property',
+            'domain_id' => $fleetDomain->id,
+            'web_property_id' => $fleetProperty->id,
+            'status' => MonitoringFinding::STATUS_OPEN,
+            'title' => 'Quote handoff mismatch',
+            'summary' => 'Quote handoff is not resolving to the expected Fleet target.',
+            'evidence' => [
+                'primary_reasons' => [
+                    'Quote handoff is not resolving to the expected Fleet target.',
+                ],
+            ],
+        ]);
+
+        $nonFleetDomain = Domain::factory()->create([
+            'domain' => 'non-fleet-queue.example.com',
+            'is_active' => true,
+            'platform' => 'WordPress',
+            'hosting_provider' => 'DreamIT Host',
+        ]);
+
+        DomainCheck::factory()->create([
+            'domain_id' => $nonFleetDomain->id,
+            'check_type' => 'http',
+            'status' => 'fail',
+        ]);
+
+        $priorityQueueResponse = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/dashboard/priority-queue');
+
+        $priorityQueueResponse
+            ->assertOk()
+            ->assertJsonPath('stats_scope.must_fix', 'priority_queue_only')
+            ->assertJsonPath('stats.must_fix', 1);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues?fleet_focus=1');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('contract_version', 2)
+            ->assertJsonPath('filters.fleet_focus', true)
+            ->assertJsonPath('stats.open', 1)
+            ->assertJsonPath('stats.must_fix', 1)
+            ->assertJsonPath('stats.fleet_focus_open', 1)
+            ->assertJsonPath('stats.fleet_focus_must_fix', 1)
+            ->assertJsonPath('issues.0.issue_class', 'marketing.quote_handoff_integrity')
+            ->assertJsonPath('issues.0.detector', 'domain_monitor.monitoring_lane')
+            ->assertJsonPath('issues.0.is_fleet_focus', true)
+            ->assertJsonPath('issues.0.domain', 'fleet-monitor.example.com');
     }
 }

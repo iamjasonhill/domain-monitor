@@ -21,22 +21,35 @@ class DetectedIssueSummaryService
     /**
      * @return array<string, mixed>
      */
-    public function snapshot(): array
+    public function snapshot(?bool $fleetFocus = null): array
     {
-        $snapshotData = $this->buildSnapshotData();
+        $snapshotData = $this->buildSnapshotData(fleetFocus: $fleetFocus);
         $queueSnapshot = $snapshotData['queue_snapshot'];
         $issues = $snapshotData['issues'];
         $mustFix = $issues->where('severity', 'must_fix')->values();
         $shouldFix = $issues->where('severity', 'should_fix')->values();
+        $fleetFocusIssues = $issues->where('is_fleet_focus', true)->values();
+        $fleetFocusMustFix = $fleetFocusIssues->where('severity', 'must_fix')->values();
+        $fleetFocusShouldFix = $fleetFocusIssues->where('severity', 'should_fix')->values();
 
         return [
             'source_system' => 'domain-monitor-issues',
-            'contract_version' => 1,
+            'contract_version' => 2,
             'generated_at' => $queueSnapshot['generated_at'] ?? now()->toIso8601String(),
+            'filters' => [
+                'fleet_focus' => $fleetFocus,
+            ],
+            'operator_contract' => [
+                'canonical_must_fix_feed' => '/api/issues',
+                'fleet_focus_query' => '/api/issues?fleet_focus=1',
+            ],
             'stats' => [
                 'open' => $issues->count(),
                 'must_fix' => $mustFix->count(),
                 'should_fix' => $shouldFix->count(),
+                'fleet_focus_open' => $fleetFocusIssues->count(),
+                'fleet_focus_must_fix' => $fleetFocusMustFix->count(),
+                'fleet_focus_should_fix' => $fleetFocusShouldFix->count(),
                 'issue_class_counts' => $this->countByStringKey($issues, 'issue_class'),
                 'control_counts' => $this->countByStringKey($issues, 'control_id'),
                 'rollout_scope_counts' => $this->countByStringKey($issues, 'rollout_scope'),
@@ -65,8 +78,11 @@ class DetectedIssueSummaryService
     /**
      * @return array{queue_snapshot: array<string, mixed>, issues: Collection<int, array<string, mixed>>}
      */
-    private function buildSnapshotData(bool $includeSuppressed = false, bool $includeExpectedExclusions = false): array
-    {
+    private function buildSnapshotData(
+        bool $includeSuppressed = false,
+        bool $includeExpectedExclusions = false,
+        ?bool $fleetFocus = null,
+    ): array {
         $queueSnapshot = $this->queueService->snapshot($includeExpectedExclusions);
         $queueItems = [
             ...($queueSnapshot['must_fix'] ?? []),
@@ -77,7 +93,7 @@ class DetectedIssueSummaryService
         $issues = $this->flattenIssues($queueSnapshot['must_fix'] ?? [], 'must_fix', $issueEvidence, $brokenLinksEvidence)
             ->concat($this->flattenIssues($queueSnapshot['should_fix'] ?? [], 'should_fix', $issueEvidence, $brokenLinksEvidence))
             ->concat($this->monitoringFindingIssues())
-            ->pipe(function (Collection $issues) use ($includeExpectedExclusions, $includeSuppressed): Collection {
+            ->pipe(function (Collection $issues) use ($fleetFocus, $includeExpectedExclusions, $includeSuppressed): Collection {
                 $issueIds = $issues
                     ->pluck('issue_id')
                     ->filter(fn (mixed $issueId): bool => is_string($issueId) && $issueId !== '')
@@ -95,6 +111,8 @@ class DetectedIssueSummaryService
                     ->reject(fn (array $issue): bool => ! $includeExpectedExclusions
                         && is_array(data_get($issue, 'evidence.expected_exclusion')))
                     ->pipe(fn (Collection $issues): Collection => $this->deduplicateIssues($issues))
+                    ->pipe(fn (Collection $issues): Collection => $this->annotateFleetFocus($issues))
+                    ->pipe(fn (Collection $issues): Collection => $this->filterFleetFocus($issues, $fleetFocus))
                     ->values();
             })
             ->values();
@@ -120,12 +138,16 @@ class DetectedIssueSummaryService
         $conversionLinks = null;
         $canonicalOrigin = null;
         $siteIdentity = null;
+        $isFleetFocus = false;
         $platformProfile = null;
         $baselineSurface = null;
 
         if (is_string($verification->property_slug) && $verification->property_slug !== '') {
             $property = WebProperty::query()
-                ->with(['propertyDomains.domain:id,domain'])
+                ->with([
+                    'primaryDomain.tags',
+                    'propertyDomains.domain.tags',
+                ])
                 ->select([
                     'id',
                     'slug',
@@ -163,6 +185,7 @@ class DetectedIssueSummaryService
                 $conversionLinks = $property->conversionLinkSummary();
                 $canonicalOrigin = $property->canonicalOriginSummary();
                 $siteIdentity = $property->siteIdentitySummary();
+                $isFleetFocus = $property->isFleetFocus();
             }
         }
 
@@ -191,6 +214,7 @@ class DetectedIssueSummaryService
             'control_state' => null,
             'execution_surface' => null,
             'fleet_managed' => false,
+            'is_fleet_focus' => $isFleetFocus,
             'controller_repo' => null,
             'controller_repo_url' => null,
             'conversion_links' => $conversionLinks,
@@ -233,8 +257,8 @@ class DetectedIssueSummaryService
             ->where('status', MonitoringFinding::STATUS_OPEN)
             ->with([
                 'domain:id,domain',
-                'webProperty',
-                'webProperty.propertyDomains.domain:id,domain',
+                'webProperty.primaryDomain.tags',
+                'webProperty.propertyDomains.domain.tags',
             ])
             ->orderByDesc('last_detected_at')
             ->get()
@@ -265,6 +289,7 @@ class DetectedIssueSummaryService
                     'control_state' => null,
                     'execution_surface' => 'monitoring_lane',
                     'fleet_managed' => false,
+                    'is_fleet_focus' => $property?->isFleetFocus() ?? false,
                     'controller_repo' => null,
                     'controller_repo_url' => null,
                     'conversion_links' => $property?->conversionLinkSummary(),
@@ -293,6 +318,126 @@ class DetectedIssueSummaryService
 
         /** @var Collection<int, array<string, mixed>> $issues */
         return $issues;
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $issues
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function annotateFleetFocus(Collection $issues): Collection
+    {
+        if ($issues->isEmpty()) {
+            return $issues;
+        }
+
+        $propertySlugs = $issues
+            ->pluck('property_slug')
+            ->filter(fn (mixed $value): bool => is_string($value) && $value !== '')
+            ->unique()
+            ->values()
+            ->all();
+        $domainIds = $issues
+            ->pluck('evidence.source_domain_id')
+            ->filter(fn (mixed $value): bool => is_string($value) && $value !== '')
+            ->unique()
+            ->values()
+            ->all();
+        $domainNames = $issues
+            ->pluck('domain')
+            ->filter(fn (mixed $value): bool => is_string($value) && $value !== '')
+            ->unique()
+            ->values()
+            ->all();
+
+        $propertiesBySlug = $propertySlugs === []
+            ? collect()
+            : WebProperty::query()
+                ->with([
+                    'primaryDomain.tags',
+                    'propertyDomains.domain.tags',
+                ])
+                ->whereIn('slug', $propertySlugs)
+                ->get()
+                ->keyBy('slug');
+
+        $domains = collect();
+
+        if ($domainIds !== [] || $domainNames !== []) {
+            $domains = Domain::query()
+                ->with('tags')
+                ->where(function ($query) use ($domainIds, $domainNames): void {
+                    if ($domainIds !== []) {
+                        $query->whereIn('id', $domainIds);
+                    }
+
+                    if ($domainNames !== []) {
+                        $method = $domainIds !== [] ? 'orWhereIn' : 'whereIn';
+                        $query->{$method}('domain', $domainNames);
+                    }
+                })
+                ->get();
+        }
+
+        /** @var Collection<string, Domain> $domainsById */
+        $domainsById = $domains->keyBy('id');
+        /** @var Collection<string, Domain> $domainsByName */
+        $domainsByName = $domains->keyBy('domain');
+
+        $annotatedIssues = $issues->map(function (array $issue) use ($domainsById, $domainsByName, $propertiesBySlug): array {
+            $propertySlug = is_string($issue['property_slug'] ?? null) ? $issue['property_slug'] : null;
+            $sourceDomainId = data_get($issue, 'evidence.source_domain_id');
+            $domainName = is_string($issue['domain'] ?? null) ? $issue['domain'] : null;
+            $property = $propertySlug !== null ? $propertiesBySlug->get($propertySlug) : null;
+            $domain = is_string($sourceDomainId)
+                ? $domainsById->get($sourceDomainId)
+                : null;
+
+            if (! $domain instanceof Domain && $domainName !== null) {
+                $domain = $domainsByName->get($domainName);
+            }
+
+            $issue['is_fleet_focus'] = ($property instanceof WebProperty && $property->isFleetFocus())
+                || $this->domainIsFleetFocus($domain);
+
+            return $issue;
+        });
+
+        /** @var Collection<int, array<string, mixed>> $annotatedIssues */
+        return $annotatedIssues;
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $issues
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function filterFleetFocus(Collection $issues, ?bool $fleetFocus): Collection
+    {
+        if ($fleetFocus === null) {
+            return $issues;
+        }
+
+        return $issues
+            ->filter(fn (array $issue): bool => (bool) ($issue['is_fleet_focus'] ?? false) === $fleetFocus)
+            ->values();
+    }
+
+    private function domainIsFleetFocus(?Domain $domain): bool
+    {
+        if (! $domain instanceof Domain) {
+            return false;
+        }
+
+        $tagName = (string) config('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+
+        if ($tagName === '') {
+            return false;
+        }
+
+        $tags = $domain->relationLoaded('tags')
+            ? $domain->tags
+            : $domain->tags()->get();
+
+        return $tags->contains(fn ($tag): bool => $tag->name === $tagName);
     }
 
     /**

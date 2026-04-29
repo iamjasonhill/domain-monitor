@@ -221,6 +221,8 @@ class DashboardPriorityQueueApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('source_system', 'domain-monitor-priority-queue')
             ->assertJsonPath('contract_version', 2)
+            ->assertJsonPath('stats_scope.must_fix', 'priority_queue_only')
+            ->assertJsonPath('stats_scope.should_fix', 'priority_queue_only')
             ->assertJsonPath('stats.must_fix', 1)
             ->assertJsonPath('stats.should_fix', 3)
             ->assertJsonPath('must_fix.0.domain', 'must-fix.example.com')

@@ -29,6 +29,8 @@ class IntegrationMetaApiTest extends TestCase
             ->assertJsonPath('feeds.0.path', '/api/web-properties-summary')
             ->assertJsonPath('feeds.1.path', '/api/runtime/analytics-contexts')
             ->assertJsonPath('feeds.2.path', '/api/issues')
+            ->assertJsonPath('feeds.2.contract_version', 2)
+            ->assertJsonPath('feeds.2.query_parameters.fleet_focus', 'optional boolean filter for Fleet-focused properties only')
             ->assertJsonPath('feeds.4.path', '/api/web-properties/{slug}/astro-cutover')
             ->assertJsonPath('feeds.5.path', '/api/issues/{issue_id}/verification')
             ->assertJsonPath('feeds.6.contract_version', 2);

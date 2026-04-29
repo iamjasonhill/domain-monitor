@@ -78,7 +78,8 @@ class DashboardTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Must Fix')
+            ->assertSee('Detected Must Fix')
+            ->assertSee('Priority Queue Must Fix')
             ->assertSee('Should Fix')
             ->assertSee('Refresh Current Issues')
             ->assertSee('must-fix.example.com')

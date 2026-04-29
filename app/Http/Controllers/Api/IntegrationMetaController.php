@@ -38,13 +38,16 @@ class IntegrationMetaController extends Controller
                 [
                     'path' => '/api/issues',
                     'source_system' => 'domain-monitor-issues',
-                    'contract_version' => 1,
-                    'purpose' => 'normalized detected issue feed',
+                    'contract_version' => 2,
+                    'purpose' => 'canonical operator-facing detected issue feed; use fleet_focus=1 for Fleet must-fix totals',
+                    'query_parameters' => [
+                        'fleet_focus' => 'optional boolean filter for Fleet-focused properties only',
+                    ],
                 ],
                 [
                     'path' => '/api/issues/{issue_id}',
                     'source_system' => 'domain-monitor-issues',
-                    'contract_version' => 1,
+                    'contract_version' => 2,
                     'purpose' => 'detected issue detail',
                 ],
                 [
@@ -69,7 +72,7 @@ class IntegrationMetaController extends Controller
                     'path' => '/api/dashboard/priority-queue',
                     'source_system' => 'domain-monitor-priority-queue',
                     'contract_version' => 2,
-                    'purpose' => 'enriched operational queue context',
+                    'purpose' => 'enriched priority-queue-only operational queue context; do not treat stats.must_fix as total detected must-fix truth',
                     'optional' => true,
                 ],
             ],

@@ -81,6 +81,10 @@ class DashboardIssueQueueService
             'contract_version' => 2,
             'generated_at' => now()->toIso8601String(),
             'recent_failures_hours' => $recentFailuresHours,
+            'stats_scope' => [
+                'must_fix' => 'priority_queue_only',
+                'should_fix' => 'priority_queue_only',
+            ],
             'stats' => $stats,
             'must_fix' => $mustFixDomains->all(),
             'should_fix' => $shouldFixDomains->all(),
