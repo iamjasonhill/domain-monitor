@@ -39,11 +39,17 @@ class SearchConsoleCoverageQueueTest extends TestCase
         ]);
         PropertyAnalyticsSource::create([
             'web_property_id' => $missingProperty->id,
-            'provider' => 'matomo',
-            'external_id' => '31',
+            'provider' => 'ga4',
+            'external_id' => 'G-MISSING01',
             'external_name' => 'Missing SC',
-            'is_primary' => true,
+            'is_primary' => false,
             'status' => 'active',
+            'provider_config' => [
+                'measurement_id' => 'G-MISSING01',
+                'source_system' => 'MM-Google',
+                'switch_ready' => true,
+                'provisioning_state' => 'switch_ready',
+            ],
         ]);
 
         $prefixDomain = Domain::factory()->create([
@@ -66,18 +72,24 @@ class SearchConsoleCoverageQueueTest extends TestCase
         ]);
         $prefixSource = PropertyAnalyticsSource::create([
             'web_property_id' => $prefixProperty->id,
-            'provider' => 'matomo',
-            'external_id' => '32',
+            'provider' => 'ga4',
+            'external_id' => 'G-PREFIX01',
             'external_name' => 'Prefix Site',
-            'is_primary' => true,
+            'is_primary' => false,
             'status' => 'active',
+            'provider_config' => [
+                'measurement_id' => 'G-PREFIX01',
+                'source_system' => 'MM-Google',
+                'switch_ready' => true,
+                'provisioning_state' => 'switch_ready',
+            ],
         ]);
         SearchConsoleCoverageStatus::create([
             'domain_id' => $prefixDomain->id,
             'web_property_id' => $prefixProperty->id,
             'property_analytics_source_id' => $prefixSource->id,
-            'source_provider' => 'matomo',
-            'matomo_site_id' => '32',
+            'source_provider' => 'mm-google',
+            'matomo_site_id' => 'G-PREFIX01',
             'matomo_site_name' => 'Prefix Site',
             'mapping_state' => 'url_prefix',
             'property_uri' => 'https://prefix.example.au/',
@@ -106,18 +118,24 @@ class SearchConsoleCoverageQueueTest extends TestCase
         ]);
         $readySource = PropertyAnalyticsSource::create([
             'web_property_id' => $readyProperty->id,
-            'provider' => 'matomo',
-            'external_id' => '33',
+            'provider' => 'ga4',
+            'external_id' => 'G-READY001',
             'external_name' => 'Ready Site',
-            'is_primary' => true,
+            'is_primary' => false,
             'status' => 'active',
+            'provider_config' => [
+                'measurement_id' => 'G-READY001',
+                'source_system' => 'MM-Google',
+                'switch_ready' => true,
+                'provisioning_state' => 'switch_ready',
+            ],
         ]);
         SearchConsoleCoverageStatus::create([
             'domain_id' => $readyDomain->id,
             'web_property_id' => $readyProperty->id,
             'property_analytics_source_id' => $readySource->id,
-            'source_provider' => 'matomo',
-            'matomo_site_id' => '33',
+            'source_provider' => 'mm-google',
+            'matomo_site_id' => 'G-READY001',
             'matomo_site_name' => 'Ready Site',
             'mapping_state' => 'domain_property',
             'property_uri' => 'sc-domain:ready.example.au',

@@ -1,9 +1,9 @@
 <div class="space-y-6">
     <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
         <div class="p-6">
-            <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Matomo Coverage</h3>
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Legacy Matomo Coverage Archive</h3>
             <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                Review which web properties are eligible for Matomo, which ones are already covered, and which Matomo sites still need to be mapped back to Domain Monitor.
+                Historical Matomo bindings remain here for archive and backfill recovery only. Active Fleet analytics readiness now runs through MM-Google GA4, while this view keeps the older Matomo inventory searchable.
             </p>
         </div>
     </div>
@@ -11,11 +11,11 @@
     <div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4">
         @foreach([
             ['id' => 'eligible', 'label' => 'Eligible'],
-            ['id' => 'needs_binding', 'label' => 'Needs Matomo'],
-            ['id' => 'bound_attention', 'label' => 'Needs Attention'],
-            ['id' => 'covered', 'label' => 'Covered'],
+            ['id' => 'needs_binding', 'label' => 'Legacy Gaps'],
+            ['id' => 'bound_attention', 'label' => 'Legacy Attention'],
+            ['id' => 'covered', 'label' => 'Legacy Covered'],
             ['id' => 'excluded', 'label' => 'Excluded'],
-            ['id' => 'unmapped', 'label' => 'Unmapped Sites'],
+            ['id' => 'unmapped', 'label' => 'Unmapped Legacy Sites'],
         ] as $stat)
             <div class="rounded-lg bg-white dark:bg-gray-800 shadow-xs p-4">
                 <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $stat['label'] }}</div>
@@ -28,13 +28,13 @@
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
             <div class="p-6">
                 <div class="flex items-center justify-between">
-                    <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Needs Matomo Binding</h4>
+                    <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Legacy Binding Gaps</h4>
                     <span class="text-sm text-gray-500 dark:text-gray-400">{{ $needsBinding->count() }} properties</span>
                 </div>
 
                 <div class="mt-4 space-y-3">
                     @if($needsBinding->isEmpty())
-                        <p class="text-sm text-gray-500 dark:text-gray-400">No eligible properties are currently missing a Matomo binding.</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">No legacy Matomo gaps are waiting for archive follow-up right now.</p>
                     @else
                         @foreach($needsBinding as $item)
                             <div class="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/10 p-4">
@@ -58,7 +58,7 @@
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
             <div class="p-6">
                 <div class="flex items-center justify-between">
-                    <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Bound But Needs Attention</h4>
+                    <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Legacy Bindings Needing Attention</h4>
                     <span class="text-sm text-gray-500 dark:text-gray-400">{{ $boundAttention->count() }} properties</span>
                 </div>
 
@@ -99,7 +99,7 @@
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
             <div class="p-6">
                 <div class="flex items-center justify-between">
-                    <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Covered</h4>
+                    <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Legacy Covered</h4>
                     <span class="text-sm text-gray-500 dark:text-gray-400">{{ $covered->count() }} properties</span>
                 </div>
 
@@ -140,7 +140,7 @@
         <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
             <div class="p-6">
                 <div class="flex items-center justify-between">
-                    <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Unmapped Matomo Sites</h4>
+                    <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Unmapped Legacy Matomo Sites</h4>
                     <span class="text-sm text-gray-500 dark:text-gray-400">{{ $unmappedObservations->count() }} sites</span>
                 </div>
 

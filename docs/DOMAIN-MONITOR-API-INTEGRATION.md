@@ -78,8 +78,8 @@ Selected property fields now include:
 - `analytics.ga4`
 
 `analytics.ga4` is the Fleet-facing lookup block for website-domain GA4
-rollouts. It stays available even when another provider such as Matomo remains
-the primary historical analytics source for the property.
+rollouts. It is the active analytics source Fleet should use for current
+launch and cutover decisions.
 
 Selected `analytics.ga4` fields include:
 
@@ -231,7 +231,7 @@ Source system: mm-google
 Domain Monitor should consume the MM-Google export and normalize it into its
 own coverage and baseline tables.
 
-Legacy Matomo storage remains useful for recovery and backfill work:
+Legacy collector storage remains useful only for recovery and backfill work:
 
 - table `vsb3_plugin_setting`
   - `plugin_name = SearchConsoleIntegration`
@@ -243,8 +243,9 @@ Legacy Matomo storage remains useful for recovery and backfill work:
   - `option_name = SearchConsoleIntegration.googleTokens`
   - contains the connected Google `refresh_token` and current `access_token`
 
-Use the Matomo side only when you need to recover or rotate an older collector
-or inspect historic legacy imports.
+Use the legacy collector side only when you need to recover or rotate an older
+collector or inspect historic legacy imports. New Fleet analytics decisions
+should use `analytics.ga4` from Domain Monitor.
 
 ### Domain Monitor Runtime Variables
 
@@ -283,6 +284,7 @@ php artisan analytics:sync-mm-google-search-console-export <export-json-path> --
 - The collector should reuse the existing connected Google account rather than
   creating a separate ad hoc OAuth app when possible.
 - Prefer the refresh-token flow over a pasted short-lived access token.
-- If the MM-Google export is unavailable, fall back to the legacy Matomo path
-  only long enough to recover the replacement contract.
+- If the MM-Google export is unavailable, treat that as an integration outage
+  for active analytics decisions. Use legacy collector paths only long enough
+  to recover the replacement contract.
   store.

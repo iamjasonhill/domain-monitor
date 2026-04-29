@@ -130,6 +130,7 @@ return [
     */
     'web_property_bootstrap' => [
         'websites_root' => env('DOMAIN_MONITOR_WEBSITES_ROOT', '/Users/jasonhill/Projects/Business/websites'),
+        'attach_legacy_matomo_sources' => env('DOMAIN_MONITOR_BOOTSTRAP_LEGACY_MATOMO_SOURCES', false),
         'overrides' => [
             'again.com.au' => [
                 'slug' => 'again-com-au',
@@ -802,7 +803,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | These tags mark which primary domains belong to the fully managed
-    | website fleet, and whether repo/controller, Matomo, and Search Console
+    | website fleet, and whether repo/controller, GA4, and Search Console
     | coverage are complete or still have gaps.
     |
     */
@@ -818,13 +819,13 @@ return [
                 'name' => 'coverage.required',
                 'priority' => 90,
                 'color' => '#2563eb',
-                'description' => 'This domain is in the managed website fleet and should have repository, Matomo, and Search Console coverage.',
+                'description' => 'This domain is in the managed website fleet and should have repository, GA4, and Search Console coverage.',
             ],
             'complete' => [
                 'name' => 'coverage.complete',
                 'priority' => 80,
                 'color' => '#16a34a',
-                'description' => 'This managed domain currently has repository, Matomo, and Search Console coverage in place.',
+                'description' => 'This managed domain currently has repository, GA4, and Search Console coverage in place.',
             ],
             'gap' => [
                 'name' => 'coverage.gap',

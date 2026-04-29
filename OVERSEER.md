@@ -54,6 +54,20 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-04-29 15:16:30 AEST
+
+- Issue or trigger: issue `#152` to retire Matomo-facing Fleet analytics readiness surfaces
+- What changed: switched the active Fleet automation and Search Console readiness model from Matomo to MM-Google GA4, rewired the automation queue, property checklist, dashboard/manual CSV metadata, and search-console queue to show GA4-first readiness labels, and relabeled the old Matomo queue/navigation as a legacy archive rather than an active requirement
+- What was fixed: operators no longer see active `Needs Matomo` readiness states in Fleet-facing queue or checklist surfaces; active readiness now flows from `analytics.ga4`, Search Console fallback copy points to MM-Google GA4 sync instead of Matomo, and the remaining Matomo inventory is clearly presented as archive/backfill-only
+- What remains: the repo-local implementation is complete and focused tests are passing, but the change still needs the usual commit/push/issue-close step and any later cleanup of historical Matomo storage should stay out of scope unless it comes with a safe migration/archive plan
+
+### 2026-04-29 15:00 AEST
+
+- Issue or trigger: Fleet-wide decision that GA4 is now the only active analytics source for rollout decisions
+- What changed: updated the API integration docs and coverage tag descriptions so active Fleet analytics readiness points at GA4 through Domain Monitor instead of Matomo-era coverage wording
+- What was fixed: the current API contract now states that `analytics.ga4` is the Fleet-facing lookup block for active analytics decisions, while legacy collector paths are recovery/backfill-only
+- What remains: deeper UI, queue, model, and legacy import cleanup is tracked in issue `#152`; do not remove historical database/storage paths without a safe migration or archive plan
+
 ### 2026-04-29 14:26:40 AEST
 
 - Issue or trigger: issue `#151` to make Domain Monitor the Fleet lookup surface for GA4 rollout codes sourced from MM-Google

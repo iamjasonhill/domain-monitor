@@ -3,16 +3,18 @@
         <div class="p-6">
             <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Automation Coverage</h3>
             <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                Track the full website automation checklist in one place: controller coverage, Matomo verification, Search Console onboarding, baseline sync, and optional manual CSV evidence.
+                Track the full website automation checklist in one place: controller coverage, MM-Google GA4 readiness, Search Console onboarding, baseline sync, and optional manual CSV evidence.
             </p>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-9 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-11 gap-4">
         @foreach([
             ['id' => 'required', 'label' => 'Required'],
             ['id' => 'needs_controller', 'label' => 'Needs Controller'],
-            ['id' => 'needs_matomo_binding', 'label' => 'Needs Matomo'],
+            ['id' => 'needs_ga4_sync', 'label' => 'Needs GA4'],
+            ['id' => 'ga4_provisioning', 'label' => 'GA4 Provisioning'],
+            ['id' => 'ga4_attention', 'label' => 'GA4 Attention'],
             ['id' => 'needs_search_console_mapping', 'label' => 'Needs SC'],
             ['id' => 'needs_onboarding', 'label' => 'Needs Onboarding'],
             ['id' => 'import_stale', 'label' => 'Import Stale'],
@@ -30,7 +32,9 @@
     @php
         $sections = [
             ['title' => 'Needs Controller', 'items' => $needsController, 'tone' => 'amber'],
-            ['title' => 'Needs Matomo Binding', 'items' => $needsMatomoBinding, 'tone' => 'red'],
+            ['title' => 'Needs GA4 Sync', 'items' => $needsGa4Sync, 'tone' => 'red'],
+            ['title' => 'GA4 Provisioning', 'items' => $ga4Provisioning, 'tone' => 'amber'],
+            ['title' => 'GA4 Attention', 'items' => $ga4Attention, 'tone' => 'red'],
             ['title' => 'Needs Search Console Mapping', 'items' => $needsSearchConsoleMapping, 'tone' => 'blue'],
             ['title' => 'Needs Onboarding', 'items' => $needsOnboarding, 'tone' => 'violet'],
             ['title' => 'Import Stale', 'items' => $importStale, 'tone' => 'red'],
@@ -72,8 +76,10 @@
                                         <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ $item['property']->name }}</div>
                                         <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                             {{ $item['primary_domain'] ?? 'No primary domain' }}
-                                            @if($item['matomo_source'])
-                                                · Matomo {{ $item['matomo_source']->external_id }}
+                                            @if(data_get($item, 'ga4_lookup.measurement_id'))
+                                                · GA4 {{ data_get($item, 'ga4_lookup.measurement_id') }}
+                                            @elseif(data_get($item, 'ga4_lookup.provisioning_state'))
+                                                · {{ str(data_get($item, 'ga4_lookup.provisioning_state'))->replace('_', ' ')->title() }}
                                             @endif
                                         </div>
                                     </div>

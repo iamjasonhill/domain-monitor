@@ -3,7 +3,7 @@
         <div class="p-6">
             <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Search Console Coverage</h3>
             <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                Review which Matomo-backed properties still need Search Console, which ones are still on URL-prefix mappings, and which ones are ready for baseline capture or rebuild work.
+                Review which MM-Google-synced properties still need Search Console, which ones are still on URL-prefix mappings, and which ones are ready for baseline capture or rebuild work.
             </p>
         </div>
     </div>
@@ -66,8 +66,10 @@
                                         <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ $item['property']->name }}</div>
                                         <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                             {{ $item['primary_domain'] ?? 'No primary domain' }}
-                                            @if($item['matomo_source'])
-                                                · Matomo {{ $item['matomo_source']->external_id }}
+                                            @if(data_get($item, 'ga4_lookup.measurement_id'))
+                                                · GA4 {{ data_get($item, 'ga4_lookup.measurement_id') }}
+                                            @elseif(data_get($item, 'ga4_lookup.provisioning_state'))
+                                                · {{ str(data_get($item, 'ga4_lookup.provisioning_state'))->replace('_', ' ')->title() }}
                                             @endif
                                         </div>
                                     </div>
@@ -89,10 +91,10 @@
                                             · Latest data {{ $item['coverage']->latest_metric_date->format('Y-m-d') }}
                                         @endif
                                     </div>
-                                @elseif($item['matomo_source'])
-                                    <div class="mt-2 text-sm">Matomo is linked, but no Search Console mapping has been synced into domain-monitor yet.</div>
+                                @elseif($item['ga4_source'])
+                                    <div class="mt-2 text-sm">MM-Google GA4 is synced, but no Search Console mapping has been synced into Domain Monitor yet.</div>
                                 @else
-                                    <div class="mt-2 text-sm">No Matomo binding exists yet, so Search Console cannot be linked from Matomo.</div>
+                                    <div class="mt-2 text-sm">GA4 is not synced from MM-Google yet, so Search Console cannot be treated as ready for this property.</div>
                                 @endif
 
                                 @if($item['latest_baseline'])

@@ -119,6 +119,22 @@ class WebPropertyUiTest extends TestCase
             'status' => 'active',
         ]);
 
+        PropertyAnalyticsSource::create([
+            'web_property_id' => $property->id,
+            'provider' => 'ga4',
+            'external_id' => 'G-MOVING001',
+            'external_name' => 'Moving Again',
+            'workspace_path' => '/Users/jasonhill/Projects/Business/operations/MM-Google',
+            'is_primary' => false,
+            'status' => 'active',
+            'provider_config' => [
+                'measurement_id' => 'G-MOVING001',
+                'source_system' => 'MM-Google',
+                'switch_ready' => true,
+                'provisioning_state' => 'switch_ready',
+            ],
+        ]);
+
         $source = PropertyAnalyticsSource::query()->where('web_property_id', $property->id)->firstOrFail();
 
         AnalyticsInstallAudit::create([
@@ -203,7 +219,7 @@ class WebPropertyUiTest extends TestCase
         $response->assertSee('cartransport.movingagain.com.au');
         $response->assertSee('Add Owned Subdomain');
         $response->assertSee('Automation Checklist');
-        $response->assertSee('Needs Matomo');
+        $response->assertSee('Needs Search Console');
     }
 
     public function test_web_property_detail_shows_manual_csv_pending_checklist_state(): void
@@ -242,36 +258,26 @@ class WebPropertyUiTest extends TestCase
 
         $source = PropertyAnalyticsSource::create([
             'web_property_id' => $property->id,
-            'provider' => 'matomo',
-            'external_id' => '88',
+            'provider' => 'ga4',
+            'external_id' => 'G-CHECKLIST1',
             'external_name' => 'Checklist Site',
-            'workspace_path' => '/tmp/matomo',
-            'is_primary' => true,
+            'workspace_path' => '/Users/jasonhill/Projects/Business/operations/MM-Google',
+            'is_primary' => false,
             'status' => 'active',
-        ]);
-
-        AnalyticsInstallAudit::create([
-            'property_analytics_source_id' => $source->id,
-            'web_property_id' => $property->id,
-            'provider' => 'matomo',
-            'external_id' => '88',
-            'external_name' => 'Checklist Site',
-            'expected_tracker_host' => 'stats.example.au',
-            'install_verdict' => 'installed_match',
-            'best_url' => 'https://checklist.example.au/',
-            'detected_site_ids' => ['88'],
-            'detected_tracker_hosts' => ['stats.example.au'],
-            'summary' => 'Tracker matches the linked Matomo site.',
-            'checked_at' => now(),
-            'raw_payload' => ['verdict' => 'installed_match'],
+            'provider_config' => [
+                'measurement_id' => 'G-CHECKLIST1',
+                'source_system' => 'MM-Google',
+                'switch_ready' => true,
+                'provisioning_state' => 'switch_ready',
+            ],
         ]);
 
         SearchConsoleCoverageStatus::create([
             'domain_id' => $domain->id,
             'web_property_id' => $property->id,
             'property_analytics_source_id' => $source->id,
-            'source_provider' => 'matomo',
-            'matomo_site_id' => '88',
+            'source_provider' => 'mm-google',
+            'matomo_site_id' => 'G-CHECKLIST1',
             'matomo_site_name' => 'Checklist Site',
             'mapping_state' => 'domain_property',
             'property_uri' => 'sc-domain:checklist.example.au',

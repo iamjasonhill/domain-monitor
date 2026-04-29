@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Livewire\AutomationCoverageQueue;
-use App\Models\AnalyticsInstallAudit;
 use App\Models\Domain;
 use App\Models\DomainSeoBaseline;
 use App\Models\PropertyAnalyticsSource;
@@ -27,44 +26,42 @@ class AutomationCoverageQueueTest extends TestCase
 
         $needsController = $this->makeProperty('no-controller.example.au', 'No Controller');
 
-        $needsMatomo = $this->makeProperty('no-matomo.example.au', 'No Matomo');
-        $this->attachRepository($needsMatomo);
+        $needsGa4 = $this->makeProperty('no-ga4.example.au', 'No GA4');
+        $this->attachRepository($needsGa4);
+
+        $ga4Provisioning = $this->makeProperty('ga4-provisioning.example.au', 'GA4 Provisioning');
+        $this->attachRepository($ga4Provisioning);
+        $this->attachGa4($ga4Provisioning, null, 'planned', 'provisioning');
 
         $prefixProperty = $this->makeProperty('prefix.example.au', 'Prefix Only');
         $this->attachRepository($prefixProperty);
-        $prefixSource = $this->attachMatomo($prefixProperty, '32');
-        $this->attachInstallAudit($prefixProperty, $prefixSource);
+        $prefixSource = $this->attachGa4($prefixProperty, 'G-PREFIX001');
         $this->attachCoverage($prefixProperty, $prefixSource, 'url_prefix', now()->subDay()->toDateString());
 
         $needsOnboarding = $this->makeProperty('needs-onboarding.example.au', 'Needs Onboarding');
         $this->attachRepository($needsOnboarding);
-        $needsOnboardingSource = $this->attachMatomo($needsOnboarding, '33');
-        $this->attachInstallAudit($needsOnboarding, $needsOnboardingSource);
+        $needsOnboardingSource = $this->attachGa4($needsOnboarding, 'G-ONBOARD001');
         $this->attachCoverage($needsOnboarding, $needsOnboardingSource, 'domain_property', null);
 
         $staleProperty = $this->makeProperty('stale.example.au', 'Stale Import');
         $this->attachRepository($staleProperty);
-        $staleSource = $this->attachMatomo($staleProperty, '34');
-        $this->attachInstallAudit($staleProperty, $staleSource);
+        $staleSource = $this->attachGa4($staleProperty, 'G-STALE0001');
         $this->attachCoverage($staleProperty, $staleSource, 'domain_property', now()->subDays(10)->toDateString());
 
         $needsBaseline = $this->makeProperty('baseline.example.au', 'Needs Baseline');
         $this->attachRepository($needsBaseline);
-        $needsBaselineSource = $this->attachMatomo($needsBaseline, '35');
-        $this->attachInstallAudit($needsBaseline, $needsBaselineSource);
+        $needsBaselineSource = $this->attachGa4($needsBaseline, 'G-BASELINE1');
         $this->attachCoverage($needsBaseline, $needsBaselineSource, 'domain_property', now()->subDay()->toDateString());
 
         $csvPending = $this->makeProperty('csv-pending.example.au', 'CSV Pending');
         $this->attachRepository($csvPending);
-        $csvPendingSource = $this->attachMatomo($csvPending, '36');
-        $this->attachInstallAudit($csvPending, $csvPendingSource);
+        $csvPendingSource = $this->attachGa4($csvPending, 'G-CSVPEND01');
         $this->attachCoverage($csvPending, $csvPendingSource, 'domain_property', now()->subDay()->toDateString());
         $this->attachBaseline($csvPending, $csvPendingSource, 'matomo_api');
 
         $complete = $this->makeProperty('complete.example.au', 'Complete Site');
         $this->attachRepository($complete);
-        $completeSource = $this->attachMatomo($complete, '37');
-        $this->attachInstallAudit($complete, $completeSource);
+        $completeSource = $this->attachGa4($complete, 'G-COMPLETE1');
         $this->attachCoverage($complete, $completeSource, 'domain_property', now()->subDay()->toDateString());
         $this->attachBaseline($complete, $completeSource, 'matomo_plus_manual_csv');
 
@@ -92,7 +89,8 @@ class AutomationCoverageQueueTest extends TestCase
         $response->assertOk();
         $response->assertSee('Automation Coverage');
         $response->assertSee('No Controller');
-        $response->assertSee('No Matomo');
+        $response->assertSee('No GA4');
+        $response->assertSee('GA4 Provisioning');
         $response->assertSee('Prefix Only');
         $response->assertSee('Needs Onboarding');
         $response->assertSee('Stale Import');
@@ -106,9 +104,11 @@ class AutomationCoverageQueueTest extends TestCase
 
         Livewire::test(AutomationCoverageQueue::class)
             ->assertViewHas('stats', function (array $stats): bool {
-                return $stats['required'] === 8
+                return $stats['required'] === 9
                     && $stats['needs_controller'] === 1
-                    && $stats['needs_matomo_binding'] === 1
+                    && $stats['needs_ga4_sync'] === 1
+                    && $stats['ga4_provisioning'] === 1
+                    && $stats['ga4_attention'] === 0
                     && $stats['needs_search_console_mapping'] === 1
                     && $stats['needs_onboarding'] === 1
                     && $stats['import_stale'] === 1
@@ -166,31 +166,25 @@ class AutomationCoverageQueueTest extends TestCase
         ]);
     }
 
-    private function attachMatomo(WebProperty $property, string $externalId): PropertyAnalyticsSource
-    {
+    private function attachGa4(
+        WebProperty $property,
+        ?string $measurementId,
+        string $status = 'active',
+        ?string $provisioningState = 'switch_ready'
+    ): PropertyAnalyticsSource {
         return PropertyAnalyticsSource::create([
             'web_property_id' => $property->id,
-            'provider' => 'matomo',
-            'external_id' => $externalId,
+            'provider' => 'ga4',
+            'external_id' => $measurementId ?? 'planned-'.$property->slug,
             'external_name' => $property->name,
-            'is_primary' => true,
-            'status' => 'active',
-        ]);
-    }
-
-    private function attachInstallAudit(WebProperty $property, PropertyAnalyticsSource $source): void
-    {
-        AnalyticsInstallAudit::create([
-            'property_analytics_source_id' => $source->id,
-            'web_property_id' => $property->id,
-            'provider' => 'matomo',
-            'external_id' => $source->external_id,
-            'external_name' => $property->name,
-            'install_verdict' => 'installed_match',
-            'best_url' => 'https://'.$property->primaryDomainName().'/',
-            'summary' => 'Tracker matches the linked Matomo site.',
-            'checked_at' => now(),
-            'raw_payload' => ['verdict' => 'installed_match'],
+            'is_primary' => false,
+            'status' => $status,
+            'provider_config' => [
+                'measurement_id' => $measurementId,
+                'provisioning_state' => $provisioningState,
+                'switch_ready' => $measurementId !== null,
+                'source_system' => 'MM-Google',
+            ],
         ]);
     }
 
@@ -200,7 +194,7 @@ class AutomationCoverageQueueTest extends TestCase
             'domain_id' => $property->primary_domain_id,
             'web_property_id' => $property->id,
             'property_analytics_source_id' => $source->id,
-            'source_provider' => 'matomo',
+            'source_provider' => 'mm-google',
             'matomo_site_id' => $source->external_id,
             'matomo_site_name' => $property->name,
             'mapping_state' => $mappingState,

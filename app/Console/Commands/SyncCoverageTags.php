@@ -399,7 +399,9 @@ class SyncCoverageTags extends Command
 
         $blockingStatuses = [
             'needs_controller',
-            'needs_matomo_binding',
+            'needs_ga4_sync',
+            'ga4_provisioning',
+            'ga4_attention',
             'needs_search_console_mapping',
             'needs_onboarding',
             'import_stale',

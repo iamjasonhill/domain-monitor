@@ -178,8 +178,8 @@ class MatomoCoverageQueueTest extends TestCase
         $response = $this->actingAs($user)->get('/matomo-coverage');
 
         $response->assertOk();
-        $response->assertSee('Matomo Coverage');
-        $response->assertSee('Needs Binding');
+        $response->assertSee('Legacy Matomo Coverage Archive');
+        $response->assertSee('Legacy Binding Gaps');
         $response->assertSee('Needs Attention');
         $response->assertSee('Covered Example');
         $response->assertSee('Needs Binding');

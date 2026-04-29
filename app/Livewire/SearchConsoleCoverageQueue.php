@@ -3,8 +3,6 @@
 namespace App\Livewire;
 
 use App\Models\Domain;
-use App\Models\PropertyAnalyticsSource;
-use App\Models\SearchConsoleCoverageStatus;
 use App\Models\WebProperty;
 use Livewire\Component;
 
@@ -15,8 +13,11 @@ class SearchConsoleCoverageQueue extends Component
         $properties = WebProperty::query()
             ->with([
                 'primaryDomain',
+                'primaryDomain.latestSeoBaseline',
+                'primaryDomain.latestSearchConsoleCoverageStatus',
                 'analyticsSources',
                 'analyticsSources.latestSearchConsoleCoverage',
+                'monitoringFindings',
                 'propertyDomains.domain',
             ])
             ->orderBy('name')
@@ -31,13 +32,17 @@ class SearchConsoleCoverageQueue extends Component
 
         foreach ($properties as $property) {
             $primaryDomain = $property->primaryDomainModel();
-            $matomoSource = $property->primaryAnalyticsSource('matomo');
-            $coverage = $matomoSource?->latestSearchConsoleCoverage;
+            $ga4Source = $property->primaryAnalyticsSource('ga4');
+            $coverage = $primaryDomain->latestSearchConsoleCoverageStatus
+                ?? $ga4Source?->latestSearchConsoleCoverage;
+            $summary = $property->searchConsoleCoverageSummary();
 
             $row = [
                 'property' => $property,
                 'primary_domain' => $primaryDomain?->domain,
-                'matomo_source' => $matomoSource,
+                'ga4_source' => $ga4Source,
+                'ga4_lookup' => $property->analyticsSummary()['ga4'],
+                'summary' => $summary,
                 'coverage' => $coverage,
                 'latest_baseline' => $primaryDomain?->latestSeoBaseline,
             ];
@@ -48,37 +53,15 @@ class SearchConsoleCoverageQueue extends Component
                 continue;
             }
 
-            if (! $matomoSource instanceof PropertyAnalyticsSource) {
-                $needsSearchConsole[] = $row;
-
-                continue;
-            }
-
-            if (! $coverage instanceof SearchConsoleCoverageStatus || $coverage->mapping_state === 'not_mapped') {
-                $needsSearchConsole[] = $row;
-
-                continue;
-            }
-
-            if ($coverage->freshnessState() === 'stale' || $coverage->freshnessState() === 'never_imported') {
-                $staleImports[] = $row;
-
-                continue;
-            }
-
-            if ($coverage->mapping_state === 'url_prefix') {
-                $urlPrefixOnly[] = $row;
-
-                continue;
-            }
-
-            if (! $primaryDomain?->latestSeoBaseline) {
-                $needsBaseline[] = $row;
-
-                continue;
-            }
-
-            $domainPropertyReady[] = $row;
+            match ($summary['status']) {
+                'needs_ga4', 'needs_property' => $needsSearchConsole[] = $row,
+                'url_prefix_only' => $urlPrefixOnly[] = $row,
+                'needs_import', 'stale_import', 'blocked' => $staleImports[] = $row,
+                'covered' => $primaryDomain?->latestSeoBaseline
+                    ? $domainPropertyReady[] = $row
+                    : $needsBaseline[] = $row,
+                default => $excluded[] = $row,
+            };
         }
 
         return view('livewire.search-console-coverage-queue', [

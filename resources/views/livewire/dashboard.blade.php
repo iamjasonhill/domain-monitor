@@ -394,8 +394,10 @@
                                         <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ $item['property']->name }}</div>
                                         <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                             {{ $item['primary_domain'] ?? 'No primary domain' }}
-                                            @if($item['matomo_source'])
-                                                · Matomo {{ $item['matomo_source']->external_id }}
+                                            @if(data_get($item, 'ga4_lookup.measurement_id'))
+                                                · GA4 {{ data_get($item, 'ga4_lookup.measurement_id') }}
+                                            @elseif(data_get($item, 'ga4_lookup.provisioning_state'))
+                                                · {{ str(data_get($item, 'ga4_lookup.provisioning_state'))->replace('_', ' ')->title() }}
                                             @endif
                                         </div>
                                     </div>

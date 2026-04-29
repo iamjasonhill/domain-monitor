@@ -488,6 +488,7 @@ class BootstrapWebProperties extends Command
 
         return collect($sources)
             ->filter(fn ($source) => is_array($source) && ! empty($source['provider']) && ! empty($source['external_id']))
+            ->reject(fn (array $source): bool => $this->isLegacyMatomoSource($source))
             ->map(function (array $source): array {
                 return [
                     'provider' => (string) $source['provider'],
@@ -501,6 +502,18 @@ class BootstrapWebProperties extends Command
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $source
+     */
+    private function isLegacyMatomoSource(array $source): bool
+    {
+        if (($source['provider'] ?? null) !== 'matomo') {
+            return false;
+        }
+
+        return ! (bool) data_get($this->bootstrapConfig, 'attach_legacy_matomo_sources', false);
     }
 
     /**

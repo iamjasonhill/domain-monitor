@@ -37,15 +37,18 @@ class ManualCsvBacklogService
                     return null;
                 }
 
-                $matomoSource = $property->primaryAnalyticsSource('matomo');
+                $primaryDomain = $property->primaryDomainModel();
+                $ga4Source = $property->primaryAnalyticsSource('ga4');
 
                 return [
                     'property' => $property,
                     'automation' => $automation,
                     'primary_domain' => $property->primaryDomainName(),
                     'repository' => $property->repositories->first(),
-                    'matomo_source' => $matomoSource,
-                    'search_console_coverage' => $matomoSource?->latestSearchConsoleCoverage,
+                    'ga4_source' => $ga4Source,
+                    'ga4_lookup' => $property->analyticsSummary()['ga4'],
+                    'search_console_coverage' => $primaryDomain->latestSearchConsoleCoverageStatus
+                        ?? $ga4Source?->latestSearchConsoleCoverage,
                     'latest_baseline' => $property->latestPropertySeoBaselineRecord(),
                 ];
             })

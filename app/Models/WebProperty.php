@@ -1344,6 +1344,46 @@ class WebProperty extends Model
     /**
      * @return array{status: string, label: string, reason: string|null}
      */
+    public function ga4CoverageSummary(): array
+    {
+        $eligibility = $this->coverageEligibility();
+        if (! $eligibility['eligible']) {
+            return [
+                'status' => 'excluded',
+                'label' => 'Excluded',
+                'reason' => $eligibility['reason'],
+            ];
+        }
+
+        $ga4 = $this->analyticsSummary()['ga4'];
+
+        return match ($ga4['status'] ?? null) {
+            'configured' => [
+                'status' => 'covered',
+                'label' => 'Covered',
+                'reason' => $ga4['reason'] ?? 'MM-Google GA4 is synced for this property.',
+            ],
+            'provisioning' => [
+                'status' => 'ga4_provisioning',
+                'label' => 'GA4 provisioning',
+                'reason' => $ga4['reason'] ?? 'MM-Google has matched this property, but GA4 is still provisioning.',
+            ],
+            'live_missing', 'live_wrong', 'needs_attention' => [
+                'status' => 'ga4_attention',
+                'label' => 'Needs attention',
+                'reason' => $ga4['reason'] ?? 'The synced GA4 binding still needs live verification attention.',
+            ],
+            default => [
+                'status' => 'needs_ga4_sync',
+                'label' => 'Needs GA4',
+                'reason' => $ga4['reason'] ?? 'No MM-Google GA4 binding is available for this property yet.',
+            ],
+        };
+    }
+
+    /**
+     * @return array{status: string, label: string, reason: string|null}
+     */
     public function searchConsoleCoverageSummary(): array
     {
         $eligibility = $this->coverageEligibility();
@@ -1366,24 +1406,25 @@ class WebProperty extends Model
             return $this->searchConsoleCoverageSummaryFromCoverage($coverage);
         }
 
-        $matomoSource = $this->primaryAnalyticsSource('matomo');
-        if (! $matomoSource instanceof PropertyAnalyticsSource) {
+        $ga4 = $this->ga4CoverageSummary();
+        if (in_array($ga4['status'], ['needs_ga4_sync', 'ga4_provisioning'], true)) {
             return [
-                'status' => 'needs_matomo',
-                'label' => 'Needs Matomo',
-                'reason' => 'Search Console coverage depends on a primary Matomo binding',
+                'status' => 'needs_ga4',
+                'label' => 'Needs GA4',
+                'reason' => 'Search Console onboarding depends on the MM-Google GA4 sync being ready for this property.',
             ];
         }
 
-        $coverage = $matomoSource->relationLoaded('latestSearchConsoleCoverage')
-            ? $matomoSource->latestSearchConsoleCoverage
-            : $matomoSource->latestSearchConsoleCoverage()->first();
+        $ga4Source = $this->primaryAnalyticsSource('ga4');
+        $coverage = $ga4Source?->relationLoaded('latestSearchConsoleCoverage')
+            ? $ga4Source->latestSearchConsoleCoverage
+            : $ga4Source?->latestSearchConsoleCoverage()->first();
 
         if (! $coverage instanceof SearchConsoleCoverageStatus || $coverage->mapping_state === 'not_mapped') {
             return [
                 'status' => 'needs_property',
                 'label' => 'Needs Search Console',
-                'reason' => 'Matomo is linked but no Search Console property is mapped yet',
+                'reason' => 'MM-Google GA4 is synced but no Search Console property is mapped yet.',
             ];
         }
 
@@ -1555,7 +1596,7 @@ class WebProperty extends Model
         $eligibility = $this->coverageEligibility();
         $checks = [
             'repository' => $this->repositoryCoverageSummary(),
-            'matomo' => $this->matomoCoverageSummary(),
+            'ga4' => $this->ga4CoverageSummary(),
             'search_console' => $this->searchConsoleCoverageSummary(),
         ];
 
@@ -1582,7 +1623,7 @@ class WebProperty extends Model
                 'required' => true,
                 'status' => 'complete',
                 'label' => 'Complete',
-                'reason' => 'repository, Matomo, and Search Console coverage are all in place',
+                'reason' => 'repository, GA4, and Search Console coverage are all in place',
                 'reasons' => [],
                 'checks' => $checks,
             ];
@@ -1715,7 +1756,7 @@ class WebProperty extends Model
         $eligibility = $this->coverageEligibility();
         $checks = [
             'repository' => $this->repositoryCoverageSummary(),
-            'matomo' => $this->matomoCoverageSummary(),
+            'ga4' => $this->ga4CoverageSummary(),
             'search_console' => $this->searchConsoleCoverageSummary(),
             'baseline_sync' => $this->baselineSyncSummary(),
             'manual_csv' => $this->manualCsvCoverageSummary(),
@@ -1744,20 +1785,42 @@ class WebProperty extends Model
             ];
         }
 
-        $matomo = $checks['matomo'];
-        if ($matomo['status'] !== 'covered') {
+        $ga4 = $checks['ga4'];
+        if ($ga4['status'] === 'needs_ga4_sync') {
             return [
                 'required' => true,
-                'status' => 'needs_matomo_binding',
-                'label' => 'Needs Matomo',
-                'reason' => $matomo['reason'],
-                'reasons' => array_filter([$matomo['reason']]),
+                'status' => 'needs_ga4_sync',
+                'label' => 'Needs GA4',
+                'reason' => $ga4['reason'],
+                'reasons' => array_filter([$ga4['reason']]),
+                'checks' => $checks,
+            ];
+        }
+
+        if ($ga4['status'] === 'ga4_provisioning') {
+            return [
+                'required' => true,
+                'status' => 'ga4_provisioning',
+                'label' => 'GA4 provisioning',
+                'reason' => $ga4['reason'],
+                'reasons' => array_filter([$ga4['reason']]),
+                'checks' => $checks,
+            ];
+        }
+
+        if ($ga4['status'] === 'ga4_attention') {
+            return [
+                'required' => true,
+                'status' => 'ga4_attention',
+                'label' => 'GA4 attention',
+                'reason' => $ga4['reason'],
+                'reasons' => array_filter([$ga4['reason']]),
                 'checks' => $checks,
             ];
         }
 
         $searchConsole = $checks['search_console'];
-        if (in_array($searchConsole['status'], ['needs_matomo', 'needs_property', 'url_prefix_only'], true)) {
+        if (in_array($searchConsole['status'], ['needs_ga4', 'needs_property', 'url_prefix_only'], true)) {
             return [
                 'required' => true,
                 'status' => 'needs_search_console_mapping',

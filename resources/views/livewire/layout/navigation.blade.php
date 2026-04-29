@@ -43,7 +43,7 @@ new class extends Component
                         {{ __('Fleet') }}
                     </x-nav-link>
                     <x-nav-link :href="route('matomo-coverage.index')" :active="request()->routeIs('matomo-coverage.*')" wire:navigate>
-                        {{ __('Matomo Coverage') }}
+                        {{ __('Legacy Matomo') }}
                     </x-nav-link>
                     <x-nav-link :href="route('automation-coverage.index')" :active="request()->routeIs('automation-coverage.*')" wire:navigate>
                         {{ __('Automation') }}
@@ -128,7 +128,7 @@ new class extends Component
                 {{ __('Fleet') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('matomo-coverage.index')" :active="request()->routeIs('matomo-coverage.*')" wire:navigate>
-                {{ __('Matomo Coverage') }}
+                {{ __('Legacy Matomo') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('automation-coverage.index')" :active="request()->routeIs('automation-coverage.*')" wire:navigate>
                 {{ __('Automation') }}
