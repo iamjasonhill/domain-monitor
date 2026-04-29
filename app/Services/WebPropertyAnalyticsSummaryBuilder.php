@@ -383,6 +383,7 @@ class WebPropertyAnalyticsSummaryBuilder
 
         if ($loadedFindings instanceof Collection) {
             $finding = $loadedFindings
+                ->where('status', MonitoringFinding::STATUS_OPEN)
                 ->where('finding_type', 'marketing.ga4_install')
                 ->sortByDesc(fn (MonitoringFinding $finding): mixed => $finding->last_detected_at)
                 ->first();
