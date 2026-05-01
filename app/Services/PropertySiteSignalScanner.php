@@ -10,9 +10,14 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 class PropertySiteSignalScanner
 {
+    private const PAGE_LINK_STATUS_CHECK_LIMIT = 12;
+
+    private const OUTBOUND_LINK_SAMPLE_LIMIT = 10;
+
     public function __construct(
         private readonly UptimeHealthCheck $uptimeHealthCheck,
         private readonly HttpHealthCheck $httpHealthCheck,
@@ -833,6 +838,187 @@ class PropertySiteSignalScanner
     }
 
     /**
+     * @return array{
+     *   target: array{
+     *     scope: 'exact_url'|'url_pattern',
+     *     requested_url: string,
+     *     sample_url: string,
+     *     url_pattern: string|null
+     *   },
+     *   status: 'ok'|'fail',
+     *   verdict: string,
+     *   summary: string,
+     *   evidence: array<string, mixed>
+     * }
+     */
+    public function liveSeoVerificationPacket(
+        WebProperty $property,
+        string $url,
+        ?string $urlPattern = null,
+        int $timeout = 10,
+    ): array {
+        $normalizedUrl = $this->normalizedUrl($url);
+
+        if ($normalizedUrl === '') {
+            throw new InvalidArgumentException('The verification URL must be a valid HTTP URL.');
+        }
+
+        if (! $this->isAllowedVerificationUrl($property, $normalizedUrl)) {
+            throw new InvalidArgumentException('The verification URL must belong to the selected web property.');
+        }
+
+        $probe = $this->probeUrl($normalizedUrl, max(1, min($timeout, 15)));
+        $verifiedAt = now()->toIso8601String();
+        $scope = is_string($urlPattern) && trim($urlPattern) !== '' ? 'url_pattern' : 'exact_url';
+        $target = [
+            'scope' => $scope,
+            'requested_url' => $normalizedUrl,
+            'sample_url' => $normalizedUrl,
+            'url_pattern' => is_string($urlPattern) && trim($urlPattern) !== '' ? trim($urlPattern) : null,
+        ];
+
+        if ($probe === null) {
+            return [
+                'target' => $target,
+                'status' => 'fail',
+                'verdict' => 'fetch_failed',
+                'summary' => 'Could not fetch the selected live URL for SEO verification.',
+                'evidence' => [
+                    'verified_at' => $verifiedAt,
+                    'expected_origin' => $this->expectedOrigin($property),
+                    'page' => [
+                        'requested_url' => $normalizedUrl,
+                        'final_url' => null,
+                        'status_code' => 0,
+                        'redirect_chain' => [],
+                        'redirect_statuses' => [],
+                        'content_type' => null,
+                    ],
+                    'canonical' => [
+                        'url' => null,
+                        'matches_expected_origin' => null,
+                    ],
+                    'indexability' => [
+                        'meta_robots' => null,
+                        'x_robots_tags' => [],
+                        'has_noindex' => false,
+                    ],
+                    'fetchability' => [
+                        'state' => 'fetch_failed',
+                        'blocked_signals' => ['fetch_failed'],
+                        'robots_txt' => [
+                            'ok' => false,
+                            'url' => null,
+                            'status' => 0,
+                            'sitemap_url' => null,
+                        ],
+                    ],
+                    'links' => [
+                        'evaluated' => false,
+                        'page_link_count' => 0,
+                        'checked_link_count' => 0,
+                        'broken_links_count' => 0,
+                        'broken_links' => [],
+                        'outbound_links_count' => 0,
+                        'outbound_links' => [],
+                    ],
+                    'evidence_limits' => $this->liveSeoEvidenceLimits($scope),
+                ],
+            ];
+        }
+
+        $expectedOrigin = $this->expectedOrigin($property);
+        $contentType = $this->firstHeaderValue($probe['headers'], 'Content-Type');
+        $canonicalUrl = $this->extractCanonicalUrl($probe['html']);
+        $metaRobots = $this->metaRobotsContent($probe['html']);
+        $xRobotsTags = $this->xRobotsTags($probe['headers']);
+        $hasNoindex = $this->hasNoindexDirective($probe['html'], $probe['headers']);
+        $robots = $this->fetchRobotsFile($probe['final_url'], $timeout);
+        $links = $this->auditPageLinks($probe['html'], $probe['final_url'], $timeout);
+        $blockedSignals = [];
+
+        if ($probe['status'] === 401) {
+            $blockedSignals[] = 'http_unauthorized';
+        }
+
+        if ($probe['status'] === 403) {
+            $blockedSignals[] = 'http_forbidden';
+        }
+
+        if ($hasNoindex) {
+            $blockedSignals[] = 'noindex_signal';
+        }
+
+        if (! $robots['ok']) {
+            $blockedSignals[] = 'robots_unavailable';
+        }
+
+        $fetchabilityState = match (true) {
+            $probe['status'] >= 400 => 'restricted',
+            $blockedSignals !== [] => 'caution',
+            default => 'fetchable',
+        };
+        $canonicalMatchesExpectedOrigin = $canonicalUrl !== null && $expectedOrigin !== null
+            ? $this->canonicalMatchesExpectedOrigin($canonicalUrl, $expectedOrigin, $probe['final_url'])
+            : null;
+        $summaryParts = [
+            sprintf('HTTP %d.', $probe['status']),
+            $canonicalUrl !== null
+                ? sprintf('Canonical: %s.', $canonicalUrl)
+                : 'Canonical missing.',
+            $hasNoindex ? 'Noindex signal detected.' : 'No noindex signal detected.',
+        ];
+
+        if ($links['broken_links_count'] > 0) {
+            $summaryParts[] = sprintf('Page-local link sample found %d broken link(s).', $links['broken_links_count']);
+        }
+
+        if ($links['outbound_links_count'] > 0) {
+            $summaryParts[] = sprintf('Page exposes %d outbound link(s) in the sampled evidence.', $links['outbound_links_count']);
+        }
+
+        return [
+            'target' => $target,
+            'status' => $probe['status'] >= 400 ? 'fail' : 'ok',
+            'verdict' => $probe['status'] >= 400 ? 'page_unavailable' : 'packet_ready',
+            'summary' => implode(' ', $summaryParts),
+            'evidence' => [
+                'verified_at' => $verifiedAt,
+                'expected_origin' => $expectedOrigin,
+                'page' => [
+                    'requested_url' => $normalizedUrl,
+                    'final_url' => $probe['final_url'],
+                    'status_code' => $probe['status'],
+                    'redirect_chain' => $probe['redirect_chain'],
+                    'redirect_statuses' => $probe['redirect_statuses'],
+                    'content_type' => $contentType,
+                ],
+                'canonical' => [
+                    'url' => $canonicalUrl,
+                    'matches_expected_origin' => $canonicalMatchesExpectedOrigin,
+                ],
+                'indexability' => [
+                    'meta_robots' => $metaRobots,
+                    'x_robots_tags' => $xRobotsTags,
+                    'has_noindex' => $hasNoindex,
+                ],
+                'fetchability' => [
+                    'state' => $fetchabilityState,
+                    'blocked_signals' => $blockedSignals,
+                    'robots_txt' => [
+                        'ok' => $robots['ok'],
+                        'url' => $robots['url'],
+                        'status' => $robots['status'],
+                        'sitemap_url' => $robots['sitemap_url'] ?? null,
+                    ],
+                ],
+                'links' => $links,
+                'evidence_limits' => $this->liveSeoEvidenceLimits($scope),
+            ],
+        ];
+    }
+
+    /**
      * @return Collection<int, string>
      */
     private function candidateUrlsForProperty(WebProperty $property): Collection
@@ -1046,6 +1232,19 @@ class PropertySiteSignalScanner
         return null;
     }
 
+    private function metaRobotsContent(string $html): ?string
+    {
+        if (preg_match('/<meta[^>]+name=["\']robots["\'][^>]+content=["\']([^"\']*)["\']/i', $html, $matches) === 1) {
+            return trim((string) $matches[1]);
+        }
+
+        if (preg_match('/<meta[^>]+content=["\']([^"\']*)["\'][^>]+name=["\']robots["\']/i', $html, $matches) === 1) {
+            return trim((string) $matches[1]);
+        }
+
+        return null;
+    }
+
     /**
      * @param  array<string, array<int, string>>  $headers
      */
@@ -1063,6 +1262,35 @@ class PropertySiteSignalScanner
 
         return collect(Arr::wrap($robotsHeaders))
             ->contains(fn (string $header): bool => Str::contains(Str::lower($header), 'noindex'));
+    }
+
+    /**
+     * @param  array<string, array<int, string>>  $headers
+     * @return array<int, string>
+     */
+    private function xRobotsTags(array $headers): array
+    {
+        return collect(Arr::wrap($headers['X-Robots-Tag'] ?? $headers['x-robots-tag'] ?? []))
+            ->filter(fn (string $value): bool => trim($value) !== '')
+            ->map(fn (string $value): string => trim($value))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, array<int, string>>  $headers
+     */
+    private function firstHeaderValue(array $headers, string $key): ?string
+    {
+        $values = $headers[$key] ?? $headers[strtolower($key)] ?? [];
+
+        foreach (Arr::wrap($values) as $value) {
+            if (trim($value) !== '') {
+                return trim($value);
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -1233,5 +1461,152 @@ class PropertySiteSignalScanner
         $host = parse_url($url, PHP_URL_HOST);
 
         return is_string($host) && $host !== '' ? Str::lower($host) : null;
+    }
+
+    private function isAllowedVerificationUrl(WebProperty $property, string $url): bool
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+
+        if (! is_string($host) || trim($host) === '') {
+            return false;
+        }
+
+        $normalizedHost = Str::lower(trim($host));
+        $allowedHosts = collect($property->propertyDomains ?? [])
+            ->map(fn (mixed $link): string => Str::lower($link->domain->domain))
+            ->concat([
+                $property->primaryDomainName(),
+                $property->canonical_origin_host,
+            ])
+            ->filter(fn (mixed $item): bool => is_string($item) && trim($item) !== '')
+            ->map(fn (string $item): string => Str::lower(trim($item)))
+            ->unique()
+            ->values();
+
+        return $allowedHosts->contains($normalizedHost);
+    }
+
+    /**
+     * @return array{
+     *   evaluated: bool,
+     *   page_link_count: int,
+     *   checked_link_count: int,
+     *   broken_links_count: int,
+     *   broken_links: array<int, array<string, mixed>>,
+     *   outbound_links_count: int,
+     *   outbound_links: array<int, array<string, mixed>>
+     * }
+     */
+    private function auditPageLinks(string $html, string $pageUrl, int $timeout): array
+    {
+        $anchors = collect($this->conversionLinkScanner->extractAllAnchors($html, $pageUrl))
+            ->map(function (array $anchor) use ($pageUrl): array {
+                $href = (string) $anchor['href'];
+
+                return [
+                    'url' => $href,
+                    'text' => $anchor['text'],
+                    'relationship' => $this->urlRelationship($href, $pageUrl),
+                ];
+            })
+            ->unique('url')
+            ->values();
+
+        $outboundLinks = $anchors
+            ->where('relationship', 'external')
+            ->take(self::OUTBOUND_LINK_SAMPLE_LIMIT)
+            ->map(fn (array $anchor): array => [
+                'url' => $anchor['url'],
+                'host' => parse_url($anchor['url'], PHP_URL_HOST),
+                'relationship' => $anchor['relationship'],
+                'found_on' => $pageUrl,
+            ])
+            ->values()
+            ->all();
+
+        $checkedAnchors = $anchors->take(self::PAGE_LINK_STATUS_CHECK_LIMIT);
+        $brokenLinks = [];
+
+        foreach ($checkedAnchors as $anchor) {
+            $status = $this->probeLinkedUrlStatus($anchor['url'], $timeout);
+
+            if ($status === null || $status === 429 || $status < 400) {
+                continue;
+            }
+
+            $brokenLinks[] = [
+                'url' => $anchor['url'],
+                'status' => $status,
+                'relationship' => $anchor['relationship'],
+                'found_on' => $pageUrl,
+            ];
+        }
+
+        return [
+            'evaluated' => true,
+            'page_link_count' => $anchors->count(),
+            'checked_link_count' => $checkedAnchors->count(),
+            'broken_links_count' => count($brokenLinks),
+            'broken_links' => $brokenLinks,
+            'outbound_links_count' => $anchors->where('relationship', 'external')->count(),
+            'outbound_links' => $outboundLinks,
+        ];
+    }
+
+    private function probeLinkedUrlStatus(string $url, int $timeout): ?int
+    {
+        try {
+            $response = Http::timeout($timeout)->head($url);
+            $status = $response->status();
+
+            if ($status === 405) {
+                $response = Http::timeout($timeout)->get($url);
+                $status = $response->status();
+            }
+
+            return $status;
+        } catch (ConnectionException|RequestException) {
+            return null;
+        }
+    }
+
+    private function urlRelationship(string $url, string $pageUrl): string
+    {
+        $pageHost = parse_url($pageUrl, PHP_URL_HOST);
+        $linkHost = parse_url($url, PHP_URL_HOST);
+
+        if (! is_string($pageHost) || ! is_string($linkHost)) {
+            return 'external';
+        }
+
+        $normalizedPageHost = Str::lower($pageHost);
+        $normalizedLinkHost = Str::lower($linkHost);
+
+        if ($normalizedPageHost === $normalizedLinkHost) {
+            return 'internal';
+        }
+
+        if (Str::endsWith($normalizedLinkHost, '.'.$normalizedPageHost)
+            || Str::endsWith($normalizedPageHost, '.'.$normalizedLinkHost)) {
+            return 'related_host';
+        }
+
+        return 'external';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function liveSeoEvidenceLimits(string $scope): array
+    {
+        return [
+            'page_scope' => 'single_url_only',
+            'scope_mode' => $scope === 'url_pattern' ? 'sample_url_only' : 'exact_url_only',
+            'max_redirect_hops' => 5,
+            'max_link_status_checks' => self::PAGE_LINK_STATUS_CHECK_LIMIT,
+            'max_outbound_link_samples' => self::OUTBOUND_LINK_SAMPLE_LIMIT,
+            'broken_link_detection_scope' => 'page_local_anchor_sample_only',
+            'search_console_included' => false,
+        ];
     }
 }

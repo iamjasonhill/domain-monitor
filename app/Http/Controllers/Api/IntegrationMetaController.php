@@ -60,6 +60,18 @@ class IntegrationMetaController extends Controller
                     'optional' => true,
                 ],
                 [
+                    'path' => '/api/web-properties/{slug}/live-seo-verification',
+                    'source_system' => 'domain-monitor-live-seo-verification',
+                    'contract_version' => 1,
+                    'purpose' => 'live SEO verification packet for one URL or one URL pattern sample on a selected property',
+                    'query_parameters' => [
+                        'url' => 'exact live URL to verify',
+                        'url_pattern' => 'optional pattern label when the verification is representing a URL group',
+                        'sample_url' => 'required sample URL when using url_pattern',
+                    ],
+                    'optional' => true,
+                ],
+                [
                     'path' => '/api/issues/{issue_id}/verification',
                     'source_system' => 'domain-monitor-issues',
                     'contract_version' => 1,

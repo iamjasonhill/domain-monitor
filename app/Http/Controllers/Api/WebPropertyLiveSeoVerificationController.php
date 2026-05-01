@@ -1,0 +1,61 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\LiveSeoVerificationPacketRequest;
+use App\Models\WebProperty;
+use App\Services\PropertySiteSignalScanner;
+use Illuminate\Http\JsonResponse;
+use InvalidArgumentException;
+
+class WebPropertyLiveSeoVerificationController extends Controller
+{
+    public function __invoke(
+        string $slug,
+        LiveSeoVerificationPacketRequest $request,
+        PropertySiteSignalScanner $scanner,
+    ): JsonResponse {
+        $property = WebProperty::query()
+            ->with([
+                'primaryDomain',
+                'propertyDomains.domain',
+            ])
+            ->where('slug', $slug)
+            ->first();
+
+        if (! $property instanceof WebProperty) {
+            return response()->json([
+                'error' => 'Web property not found',
+            ], 404);
+        }
+
+        $validated = $request->validated();
+        $sampleUrl = is_string($validated['sample_url'] ?? null) ? $validated['sample_url'] : null;
+        $url = is_string($validated['url'] ?? null) ? $validated['url'] : $sampleUrl;
+        $urlPattern = is_string($validated['url_pattern'] ?? null) ? $validated['url_pattern'] : null;
+        $timeout = array_key_exists('timeout', $validated) ? (int) $validated['timeout'] : 10;
+
+        if (! is_string($url) || trim($url) === '') {
+            return response()->json([
+                'error' => 'A verification URL or pattern sample URL is required.',
+            ], 422);
+        }
+
+        try {
+            $packet = $scanner->liveSeoVerificationPacket($property, $url, $urlPattern, $timeout);
+        } catch (InvalidArgumentException $exception) {
+            return response()->json([
+                'error' => $exception->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'source_system' => 'domain-monitor-live-seo-verification',
+            'contract_version' => 1,
+            'property_slug' => $property->slug,
+            'property_name' => $property->name,
+            ...$packet,
+        ]);
+    }
+}

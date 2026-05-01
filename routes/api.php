@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\WebPropertyAstroCutoverController;
 use App\Http\Controllers\Api\WebPropertyController;
 use App\Http\Controllers\Api\WebPropertyFleetContextRefreshController;
+use App\Http\Controllers\Api\WebPropertyLiveSeoVerificationController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -44,6 +45,7 @@ Route::middleware(['api-key'])->group(function () {
     Route::post('/web-properties/{slug}/refresh-fleet-context', WebPropertyFleetContextRefreshController::class)
         ->middleware('fleet-control-api-key');
     Route::get('/web-properties/{slug}/health-summary', [WebPropertyController::class, 'healthSummary']);
+    Route::get('/web-properties/{slug}/live-seo-verification', WebPropertyLiveSeoVerificationController::class);
     Route::get('/dashboard/priority-queue', DashboardPriorityQueueController::class);
     Route::get('/issues', [DetectedIssueController::class, 'index']);
     Route::get('/issues/{issueId}', [DetectedIssueController::class, 'show']);

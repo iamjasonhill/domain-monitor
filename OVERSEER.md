@@ -54,6 +54,27 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-02 08:11:00 AEST
+
+- Issue or trigger: issue `#154` to define a live SEO verification packet for Search Intelligence URLs
+- What changed: added a narrow authenticated `/api/web-properties/{slug}/live-seo-verification` packet, documented it in integration metadata, reused the site-signal scanner for live page fetch, canonical, robots, redirect, and limited page-local link evidence, and added focused API coverage for exact URLs and pattern-plus-sample verification
+- What was fixed: `domain-monitor` now exposes a repo-owned live verification packet that MM-Google or adjacent operators can call for one selected URL without widening into Search Console analysis, broad crawling, or site-repo issue generation
+- What remains: no additional in-repo implementation work is required for `#154`; follow-up is limited to GitHub issue closeout and any later decision to widen the packet beyond the current evidence limits
+
+### 2026-05-01 07:27:00 AEST
+
+- Issue or trigger: daily Bossman overseer review for issue `#153`
+- What changed: verified the repo already exposes the canonical Fleet must-fix contract through `/api/issues` with `fleet_focus=1`, labels `/api/dashboard/priority-queue` as priority-queue-only, and shows the same distinction on the dashboard; also reran focused API and dashboard tests covering the aggregate and UI wording
+- What was fixed: removed issue drift by confirming the must-fix source-of-truth mismatch has already been addressed in this repo, so downstream operators can use the documented detected-issue feed instead of reading priority-queue stats as total must-fix truth
+- What remains: no in-repo implementation work remains for `#153`; the unrelated local repo state is still the pre-existing modified [`/Users/jasonhill/Projects/Business/operations/domain-monitor/OVERSEER.md`](/Users/jasonhill/Projects/Business/operations/domain-monitor/OVERSEER.md) history and untracked [`/Users/jasonhill/Projects/Business/operations/domain-monitor/docs/FLEET-ASTRO-TECHNICAL-SEO-MONITORING-PLAN.md`](/Users/jasonhill/Projects/Business/operations/domain-monitor/docs/FLEET-ASTRO-TECHNICAL-SEO-MONITORING-PLAN.md), neither of which changed outside this closeout entry
+
+### 2026-04-30 04:02:25 AEST
+
+- Issue or trigger: daily Bossman overseer verification for issue `#152`
+- What changed: rechecked the only open repo issue against local `main`, confirmed commit `406d06e` already implements the full Matomo-retirement slice, and reran the focused queue and UI coverage tied to that change
+- What was fixed: removed issue drift by verifying the work is already landed in this repo and ready for GitHub closeout instead of leaving `#152` open after the implementation shipped
+- What remains: no in-repo implementation work remains for `#152`; the only non-issue repo state is the pre-existing untracked [`/Users/jasonhill/Projects/Business/operations/domain-monitor/docs/FLEET-ASTRO-TECHNICAL-SEO-MONITORING-PLAN.md`](/Users/jasonhill/Projects/Business/operations/domain-monitor/docs/FLEET-ASTRO-TECHNICAL-SEO-MONITORING-PLAN.md), which was not touched in this run
+
 ### 2026-04-29 15:16:30 AEST
 
 - Issue or trigger: issue `#152` to retire Matomo-facing Fleet analytics readiness surfaces
