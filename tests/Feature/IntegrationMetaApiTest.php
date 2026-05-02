@@ -33,6 +33,10 @@ class IntegrationMetaApiTest extends TestCase
             ->assertJsonPath('feeds.2.query_parameters.fleet_focus', 'optional boolean filter for Fleet-focused properties only')
             ->assertJsonPath('feeds.4.path', '/api/web-properties/{slug}/astro-cutover')
             ->assertJsonPath('feeds.5.path', '/api/web-properties/{slug}/live-seo-verification')
+            ->assertJsonPath('feeds.5.query_parameters.measurement_key', 'optional MM-Google or Search Intelligence measurement key; reused as verification_key when present')
+            ->assertJsonPath('feeds.5.query_parameters.expected_canonical', 'optional absolute canonical URL expected on the live page')
+            ->assertJsonPath('feeds.5.verdicts.0', 'passes_live_verification')
+            ->assertJsonPath('feeds.5.verdicts.2', 'inconclusive')
             ->assertJsonPath('feeds.6.path', '/api/issues/{issue_id}/verification')
             ->assertJsonPath('feeds.7.contract_version', 2);
     }

@@ -838,6 +838,15 @@ class PropertySiteSignalScanner
     }
 
     /**
+     * @param  array{
+     *   measurement_key?: string|null,
+     *   evidence_ref?: string|null,
+     *   site_key?: string|null,
+     *   expected_canonical?: string|null,
+     *   owning_repo?: string|null,
+     *   reason?: string|null,
+     *   requested_checks?: array<int, string>
+     * }  $context
      * @return array{
      *   target: array{
      *     scope: 'exact_url'|'url_pattern',
@@ -856,6 +865,7 @@ class PropertySiteSignalScanner
         string $url,
         ?string $urlPattern = null,
         int $timeout = 10,
+        array $context = [],
     ): array {
         $normalizedUrl = $this->normalizedUrl($url);
 
@@ -870,18 +880,40 @@ class PropertySiteSignalScanner
         $probe = $this->probeUrl($normalizedUrl, max(1, min($timeout, 15)));
         $verifiedAt = now()->toIso8601String();
         $scope = is_string($urlPattern) && trim($urlPattern) !== '' ? 'url_pattern' : 'exact_url';
+        $measurementKey = $this->nullableTrimmedString($context['measurement_key'] ?? null);
+        $evidenceRef = $this->nullableTrimmedString($context['evidence_ref'] ?? null);
+        $siteKey = $this->nullableTrimmedString($context['site_key'] ?? null);
+        $expectedCanonical = $this->normalizedUrl((string) ($context['expected_canonical'] ?? '')) ?: null;
+        $owningRepo = $this->nullableTrimmedString($context['owning_repo'] ?? null);
+        $reason = $this->nullableTrimmedString($context['reason'] ?? null);
+        $requestedChecks = collect($context['requested_checks'] ?? [])
+            ->filter(fn (string $check): bool => trim($check) !== '')
+            ->map(fn (string $check): string => trim($check))
+            ->values()
+            ->all();
+        $verificationKey = $measurementKey
+            ?? 'live-seo:'.$property->slug.':'.sha1($scope.'|'.$normalizedUrl.'|'.($urlPattern ?? ''));
         $target = [
             'scope' => $scope,
+            'measurement_key' => $measurementKey,
+            'evidence_ref' => $evidenceRef,
+            'site_key' => $siteKey,
             'requested_url' => $normalizedUrl,
             'sample_url' => $normalizedUrl,
             'url_pattern' => is_string($urlPattern) && trim($urlPattern) !== '' ? trim($urlPattern) : null,
+            'expected_canonical' => $expectedCanonical,
+            'owning_repo' => $owningRepo,
+            'reason' => $reason,
+            'requested_checks' => $requestedChecks,
         ];
 
         if ($probe === null) {
             return [
+                'verification_key' => $verificationKey,
+                'checked_at' => $verifiedAt,
                 'target' => $target,
                 'status' => 'fail',
-                'verdict' => 'fetch_failed',
+                'verdict' => 'inconclusive',
                 'summary' => 'Could not fetch the selected live URL for SEO verification.',
                 'evidence' => [
                     'verified_at' => $verifiedAt,
@@ -897,6 +929,12 @@ class PropertySiteSignalScanner
                     'canonical' => [
                         'url' => null,
                         'matches_expected_origin' => null,
+                        'expected_url' => $expectedCanonical,
+                        'matches_expected_url' => null,
+                    ],
+                    'basic_meta' => [
+                        'title' => null,
+                        'meta_description' => null,
                     ],
                     'indexability' => [
                         'meta_robots' => null,
@@ -930,6 +968,8 @@ class PropertySiteSignalScanner
         $expectedOrigin = $this->expectedOrigin($property);
         $contentType = $this->firstHeaderValue($probe['headers'], 'Content-Type');
         $canonicalUrl = $this->extractCanonicalUrl($probe['html']);
+        $pageTitle = $this->extractTitle($probe['html']);
+        $metaDescription = $this->metaDescriptionContent($probe['html']);
         $metaRobots = $this->metaRobotsContent($probe['html']);
         $xRobotsTags = $this->xRobotsTags($probe['headers']);
         $hasNoindex = $this->hasNoindexDirective($probe['html'], $probe['headers']);
@@ -961,6 +1001,19 @@ class PropertySiteSignalScanner
         $canonicalMatchesExpectedOrigin = $canonicalUrl !== null && $expectedOrigin !== null
             ? $this->canonicalMatchesExpectedOrigin($canonicalUrl, $expectedOrigin, $probe['final_url'])
             : null;
+        $canonicalMatchesExpectedUrl = $canonicalUrl !== null && $expectedCanonical !== null
+            ? $this->urlsMatch($canonicalUrl, $expectedCanonical)
+            : null;
+        $verdict = $this->liveSeoPacketVerdict(
+            $probe['status'],
+            $canonicalUrl,
+            $canonicalMatchesExpectedUrl,
+            $canonicalMatchesExpectedOrigin,
+            $hasNoindex,
+            $fetchabilityState,
+            $links['broken_links_count'],
+            $requestedChecks,
+        );
         $summaryParts = [
             sprintf('HTTP %d.', $probe['status']),
             $canonicalUrl !== null
@@ -978,9 +1031,11 @@ class PropertySiteSignalScanner
         }
 
         return [
+            'verification_key' => $verificationKey,
+            'checked_at' => $verifiedAt,
             'target' => $target,
             'status' => $probe['status'] >= 400 ? 'fail' : 'ok',
-            'verdict' => $probe['status'] >= 400 ? 'page_unavailable' : 'packet_ready',
+            'verdict' => $verdict,
             'summary' => implode(' ', $summaryParts),
             'evidence' => [
                 'verified_at' => $verifiedAt,
@@ -996,6 +1051,12 @@ class PropertySiteSignalScanner
                 'canonical' => [
                     'url' => $canonicalUrl,
                     'matches_expected_origin' => $canonicalMatchesExpectedOrigin,
+                    'expected_url' => $expectedCanonical,
+                    'matches_expected_url' => $canonicalMatchesExpectedUrl,
+                ],
+                'basic_meta' => [
+                    'title' => $pageTitle,
+                    'meta_description' => $metaDescription,
                 ],
                 'indexability' => [
                     'meta_robots' => $metaRobots,
@@ -1350,6 +1411,79 @@ class PropertySiteSignalScanner
 
         return Str::lower((string) ($final['scheme'] ?? '')) === Str::lower((string) ($expected['scheme'] ?? ''))
             && Str::lower((string) ($final['host'] ?? '')) === Str::lower((string) ($expected['host'] ?? ''));
+    }
+
+    private function urlsMatch(string $actualUrl, string $expectedUrl): bool
+    {
+        $actual = $this->normalizedComparableUrl($actualUrl);
+        $expected = $this->normalizedComparableUrl($expectedUrl);
+
+        return $actual !== null && $expected !== null && $actual === $expected;
+    }
+
+    private function nullableTrimmedString(mixed $value): ?string
+    {
+        return is_string($value) && trim($value) !== '' ? trim($value) : null;
+    }
+
+    private function extractTitle(string $html): ?string
+    {
+        if (preg_match('/<title[^>]*>(.*?)<\/title>/is', $html, $matches) !== 1) {
+            return null;
+        }
+
+        $title = trim(html_entity_decode(strip_tags((string) $matches[1]), ENT_QUOTES | ENT_HTML5));
+
+        return $title !== '' ? $title : null;
+    }
+
+    private function metaDescriptionContent(string $html): ?string
+    {
+        if (preg_match('/<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']*)["\']/i', $html, $matches) === 1) {
+            return trim((string) $matches[1]) ?: null;
+        }
+
+        if (preg_match('/<meta[^>]+content=["\']([^"\']*)["\'][^>]+name=["\']description["\']/i', $html, $matches) === 1) {
+            return trim((string) $matches[1]) ?: null;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<int, string>  $requestedChecks
+     */
+    private function liveSeoPacketVerdict(
+        int $statusCode,
+        ?string $canonicalUrl,
+        ?bool $canonicalMatchesExpectedUrl,
+        ?bool $canonicalMatchesExpectedOrigin,
+        bool $hasNoindex,
+        string $fetchabilityState,
+        int $brokenLinksCount,
+        array $requestedChecks,
+    ): string {
+        if ($statusCode === 0) {
+            return 'inconclusive';
+        }
+
+        if ($statusCode >= 400 || $hasNoindex || $fetchabilityState === 'restricted') {
+            return 'needs_attention';
+        }
+
+        if ($canonicalUrl === null || $canonicalMatchesExpectedUrl === false || $canonicalMatchesExpectedOrigin === false) {
+            return 'needs_attention';
+        }
+
+        $checks = collect($requestedChecks)
+            ->map(fn (string $check): string => Str::snake(Str::lower($check)))
+            ->all();
+
+        if ($brokenLinksCount > 0 && array_intersect($checks, ['links', 'broken_links', 'outbound_links']) !== []) {
+            return 'needs_attention';
+        }
+
+        return 'passes_live_verification';
     }
 
     private function alternateHost(string $expectedHost): ?string

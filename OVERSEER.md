@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-02 09:05:00 AEST
+
+- Issue or trigger: issue `#154` follow-up contract tightening for Search Intelligence live SEO verification packets
+- What changed: expanded the existing `/api/web-properties/{slug}/live-seo-verification` packet input to carry measurement, evidence, site, expected canonical, owning repo, reason, and requested-check metadata; aligned packet verdicts to `passes_live_verification`, `needs_attention`, and `inconclusive`; added basic title/meta evidence and a concise packet doc with a Moving Again pilot shape
+- What was fixed: Search Intelligence callers can now reference a repo-owned live-truth packet without translating older `packet_ready` or `page_unavailable` labels and without mixing live URL evidence with MM-Google measurement truth
+- What remains: no Search Console ownership, site repo writes, Fleet gate work, or automatic downstream issue creation belongs in this slice
+
 ### 2026-05-02 08:11:00 AEST
 
 - Issue or trigger: issue `#154` to define a live SEO verification packet for Search Intelligence URLs

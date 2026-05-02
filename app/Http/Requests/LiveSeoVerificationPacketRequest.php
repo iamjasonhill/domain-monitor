@@ -18,9 +18,18 @@ class LiveSeoVerificationPacketRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'url' => ['nullable', 'url', 'required_without:url_pattern'],
-            'url_pattern' => ['nullable', 'string', 'max:500', 'required_without:url'],
+            'url' => ['nullable', 'url', 'required_without_all:target_url,url_pattern'],
+            'target_url' => ['nullable', 'url', 'required_without_all:url,url_pattern'],
+            'url_pattern' => ['nullable', 'string', 'max:500', 'required_without_all:url,target_url'],
             'sample_url' => ['nullable', 'url', 'required_with:url_pattern'],
+            'measurement_key' => ['nullable', 'string', 'max:150'],
+            'evidence_ref' => ['nullable', 'string', 'max:500'],
+            'site_key' => ['nullable', 'string', 'max:150'],
+            'expected_canonical' => ['nullable', 'url'],
+            'owning_repo' => ['nullable', 'string', 'max:200'],
+            'reason' => ['nullable', 'string', 'max:1000'],
+            'requested_checks' => ['nullable'],
+            'requested_checks.*' => ['string', 'max:100'],
             'timeout' => ['sometimes', 'integer', 'min:1', 'max:15'],
         ];
     }
