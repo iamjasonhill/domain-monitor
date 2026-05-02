@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-02 17:29:00 AEST
+
+- Issue or trigger: MovingAgain SEO intelligence pilot live URL verification before Fleet controlled-test routing
+- What changed: captured `docs/evidence/live-seo-verification/movingagain-cairns-toowoomba-2026-05-02.json` using the live SEO verification packet contract against `https://movingagain.com.au/cairns-toowoomba/`
+- What was fixed: the pilot now has a repo-owned live-truth artifact showing HTTP `200`, matching canonical, no noindex signal, fetchable robots state, current title/meta, and zero broken links in the sampled page-local check
+- What remains: Domain Monitor has no site-writing role here; Fleet and MM Content Studio own the controlled-test brief/draft, and MM-Google owns follow-up measurement writeback
+
 ### 2026-05-02 09:05:00 AEST
 
 - Issue or trigger: issue `#154` follow-up contract tightening for Search Intelligence live SEO verification packets

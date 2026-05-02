@@ -1,0 +1,89 @@
+{
+    "source_system": "domain-monitor-live-seo-verification",
+    "contract_version": 1,
+    "property_slug": "movingagain-com-au",
+    "property_name": "Moving Again",
+    "verification_key": "mm-google-seo-intelligence-measurement:mm-google-search-intelligence:movingagain:page_ctr_underperformer:movingagain-com-au-cairns-toowoomba:2026-04-02:2026-04-29:2026-05-02",
+    "checked_at": "2026-05-02T17:27:30+10:00",
+    "target": {
+        "scope": "exact_url",
+        "measurement_key": "mm-google-seo-intelligence-measurement:mm-google-search-intelligence:movingagain:page_ctr_underperformer:movingagain-com-au-cairns-toowoomba:2026-04-02:2026-04-29:2026-05-02",
+        "evidence_ref": "MM-Google:seo_intelligence_measurements + Research Engine:exports/seo_intelligence_evidence_reviews/movingagain-cairns-toowoomba-2026-05-02-result.json",
+        "site_key": "movingagain",
+        "requested_url": "https://movingagain.com.au/cairns-toowoomba/",
+        "sample_url": "https://movingagain.com.au/cairns-toowoomba/",
+        "url_pattern": null,
+        "expected_canonical": "https://movingagain.com.au/cairns-toowoomba/",
+        "owning_repo": "iamjasonhill/MM-movingagain.com.au",
+        "reason": "MovingAgain SEO intelligence pilot live URL verification before Fleet controlled-test routing",
+        "requested_checks": [
+            "http",
+            "redirects",
+            "canonical",
+            "robots",
+            "indexability",
+            "title_meta",
+            "links"
+        ]
+    },
+    "status": "ok",
+    "verdict": "passes_live_verification",
+    "summary": "HTTP 200. Canonical: https://movingagain.com.au/cairns-toowoomba/. No noindex signal detected.",
+    "evidence": {
+        "verified_at": "2026-05-02T17:27:30+10:00",
+        "expected_origin": "https://movingagain.com.au",
+        "page": {
+            "requested_url": "https://movingagain.com.au/cairns-toowoomba/",
+            "final_url": "https://movingagain.com.au/cairns-toowoomba/",
+            "status_code": 200,
+            "redirect_chain": [],
+            "redirect_statuses": [
+                0
+            ],
+            "content_type": "text/html; charset=utf-8"
+        },
+        "canonical": {
+            "url": "https://movingagain.com.au/cairns-toowoomba/",
+            "matches_expected_origin": true,
+            "expected_url": "https://movingagain.com.au/cairns-toowoomba/",
+            "matches_expected_url": true
+        },
+        "basic_meta": {
+            "title": "Backloading Cairns to Toowoomba | Moving Again",
+            "meta_description": "Moving from Cairns to Toowoomba? Save up to 60% with backloading. 5-10 business days transit, transit insurance included. Professional interstate removals."
+        },
+        "indexability": {
+            "meta_robots": null,
+            "x_robots_tags": [],
+            "has_noindex": false
+        },
+        "fetchability": {
+            "state": "fetchable",
+            "blocked_signals": [],
+            "robots_txt": {
+                "ok": true,
+                "url": "https://movingagain.com.au/robots.txt",
+                "status": 200,
+                "sitemap_url": "https://movingagain.com.au/sitemap-index.xml"
+            }
+        },
+        "links": {
+            "evaluated": true,
+            "page_link_count": 35,
+            "checked_link_count": 12,
+            "broken_links_count": 0,
+            "broken_links": [],
+            "outbound_links_count": 0,
+            "outbound_links": []
+        },
+        "evidence_limits": {
+            "page_scope": "single_url_only",
+            "scope_mode": "exact_url_only",
+            "max_redirect_hops": 5,
+            "max_link_status_checks": 12,
+            "max_outbound_link_samples": 10,
+            "broken_link_detection_scope": "page_local_anchor_sample_only",
+            "search_console_included": false
+        }
+    }
+}
