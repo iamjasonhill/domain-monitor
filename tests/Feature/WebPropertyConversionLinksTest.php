@@ -633,6 +633,69 @@ class WebPropertyConversionLinksTest extends TestCase
         $this->assertSame('https://mymovehub.backloadingremovals.com.au/booking/create', $property->current_household_booking_url);
     }
 
+    public function test_fleet_scan_conversion_links_falls_back_to_page_anchors_when_nav_has_no_classified_links(): void
+    {
+        config()->set('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+
+        $tag = DomainTag::firstOrCreate(
+            ['name' => 'fleet.live'],
+            [
+                'priority' => 95,
+                'color' => '#2563EB',
+            ]
+        );
+
+        $domain = Domain::factory()->create([
+            'domain' => 'supercheapcartransport.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'supercheapcartransport-com-au',
+            'name' => 'supercheapcartransport.com.au',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://supercheapcartransport.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        $domain->tags()->syncWithoutDetaching([$tag->id]);
+
+        Http::fake([
+            'https://supercheapcartransport.com.au' => Http::response(<<<'HTML'
+                <html>
+                    <body>
+                        <header>
+                            <a href="/">Home</a>
+                            <nav>
+                                <a href="#quote">Quote me</a>
+                                <a href="#contact">Contact</a>
+                            </nav>
+                        </header>
+                        <main>
+                            <section>
+                                <a href="https://portal.supercheapcartransport.com.au/quote/vehicle">Car transport quote</a>
+                                <a href="https://portal.supercheapcartransport.com.au/contact">Contact the team</a>
+                            </section>
+                        </main>
+                    </body>
+                </html>
+            HTML),
+        ]);
+
+        $this->assertSame(0, Artisan::call('fleet:scan-conversion-links', ['propertySlug' => 'supercheapcartransport-com-au']));
+
+        $property->refresh();
+
+        $this->assertSame('https://portal.supercheapcartransport.com.au/quote/vehicle', $property->current_vehicle_quote_url);
+        $this->assertNull($property->current_household_quote_url);
+    }
+
     public function test_fleet_scan_conversion_links_keeps_backloading_services_quote_and_booking_slots_separate(): void
     {
         config()->set('domain_monitor.fleet_focus.tag_name', 'fleet.live');

@@ -77,7 +77,16 @@ class PropertyConversionLinkScanner
      */
     public function extractAnchors(string $html, string $baseUrl): array
     {
-        return $this->extractAnchorsForXPath($html, $baseUrl, '//nav//a[@href] | //header//a[@href]');
+        $primaryAnchors = $this->extractAnchorsForXPath($html, $baseUrl, '//nav//a[@href] | //header//a[@href]');
+
+        $hasClassifiedPrimaryAnchor = collect($primaryAnchors)
+            ->contains(fn (array $anchor): bool => is_string($anchor['bucket']) && $anchor['bucket'] !== '');
+
+        if ($hasClassifiedPrimaryAnchor) {
+            return $primaryAnchors;
+        }
+
+        return $this->extractAnchorsForXPath($html, $baseUrl, '//a[@href]');
     }
 
     /**
