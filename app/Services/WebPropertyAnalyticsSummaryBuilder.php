@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\AnalyticsEventContract;
 use App\Models\AnalyticsInstallAudit;
 use App\Models\MonitoringFinding;
 use App\Models\PropertyAnalyticsSource;
 use App\Models\WebProperty;
+use App\Models\WebPropertyEventContract;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -293,7 +295,10 @@ class WebPropertyAnalyticsSummaryBuilder
         ];
 
         if (! $source instanceof PropertyAnalyticsSource) {
-            return $default;
+            return [
+                ...$default,
+                'marketing_interaction_v2' => $this->marketingInteractionV2Summary($property, $default),
+            ];
         }
 
         $config = is_array($source->provider_config) ? $source->provider_config : [];
@@ -301,8 +306,7 @@ class WebPropertyAnalyticsSummaryBuilder
         $finding = $this->ga4MonitoringFinding($property);
         $detection = $this->ga4DetectionSummary($finding);
         $derivedState = $this->ga4LookupState($source, $measurementId, $finding);
-
-        return [
+        $ga4Summary = [
             'provider' => 'ga4',
             'property_slug' => $property->slug,
             'domain' => $this->summaryDomain($property),
@@ -321,6 +325,11 @@ class WebPropertyAnalyticsSummaryBuilder
             'last_verified_at' => null,
             'last_live_check_at' => $finding?->last_detected_at?->toIso8601String(),
             'detection' => $detection,
+        ];
+
+        return [
+            ...$ga4Summary,
+            'marketing_interaction_v2' => $this->marketingInteractionV2Summary($property, $ga4Summary),
         ];
     }
 
@@ -487,6 +496,186 @@ class WebPropertyAnalyticsSummaryBuilder
                 : [],
             'issue_id' => $finding->issue_id,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $ga4Summary
+     * @return array<string, mixed>
+     */
+    private function marketingInteractionV2Summary(WebProperty $property, array $ga4Summary): array
+    {
+        $assignment = $this->marketingInteractionV2Assignment($property);
+        $contract = $assignment?->eventContract;
+        $definition = $contract?->contract;
+
+        if (! $assignment instanceof WebPropertyEventContract || ! $contract instanceof AnalyticsEventContract) {
+            return [
+                'status' => 'missing',
+                'label' => 'Missing',
+                'reason' => 'No MM-Google marketing interaction v2 contract is assigned to this property yet.',
+                'source_system' => 'MM-Google',
+                'contract_key' => 'marketing-interaction-v2',
+                'contract_version' => 'v2',
+                'source_repo' => 'MM-Google',
+                'source_path' => 'docs/event-taxonomy.md',
+                'rollout_status' => null,
+                'verified_at' => null,
+                'base_readiness' => $this->marketingInteractionBaseReadiness($ga4Summary, null),
+                'events' => [],
+                'standard_parameters' => [],
+                'optional_surface_events' => [],
+                'transition_aliases' => [],
+            ];
+        }
+
+        $rolloutStatus = $this->normalizedText($assignment->rollout_status) ?? 'defined';
+        $state = $this->marketingInteractionV2State($rolloutStatus);
+
+        return [
+            'status' => $state['status'],
+            'label' => $state['label'],
+            'reason' => $state['reason'],
+            'source_system' => $contract->source_repo,
+            'contract_key' => $contract->key,
+            'contract_version' => $contract->version,
+            'source_repo' => $contract->source_repo,
+            'source_path' => $contract->source_path,
+            'rollout_status' => $rolloutStatus,
+            'verified_at' => $assignment->verified_at?->toIso8601String(),
+            'base_readiness' => $this->marketingInteractionBaseReadiness($ga4Summary, $rolloutStatus),
+            'events' => $this->stringList(data_get($definition, 'events')),
+            'standard_parameters' => $this->stringList(data_get($definition, 'standard_parameters')),
+            'optional_surface_events' => $this->arrayMapOfStringLists(data_get($definition, 'optional_surface_events')),
+            'transition_aliases' => $this->stringList(data_get($definition, 'transition_aliases')),
+        ];
+    }
+
+    private function marketingInteractionV2Assignment(WebProperty $property): ?WebPropertyEventContract
+    {
+        /** @var Collection<int, WebPropertyEventContract>|null $loadedAssignments */
+        $loadedAssignments = $property->relationLoaded('eventContractAssignments')
+            ? $property->getRelation('eventContractAssignments')
+            : null;
+
+        if (! $loadedAssignments instanceof Collection && ! $property->exists) {
+            return null;
+        }
+
+        $assignments = $loadedAssignments instanceof Collection
+            ? $loadedAssignments
+            : $property->eventContractAssignments()->with('eventContract')->get();
+
+        $assignment = $assignments
+            ->sortByDesc(fn (WebPropertyEventContract $assignment): bool => $assignment->is_primary)
+            ->first(fn (WebPropertyEventContract $assignment): bool => $assignment->eventContract?->key === 'marketing-interaction-v2');
+
+        return $assignment instanceof WebPropertyEventContract ? $assignment : null;
+    }
+
+    /**
+     * @return array{status: string, label: string, reason: string}
+     */
+    private function marketingInteractionV2State(string $rolloutStatus): array
+    {
+        return match ($rolloutStatus) {
+            'verified', 'ready' => [
+                'status' => 'ready',
+                'label' => 'Ready',
+                'reason' => 'MM-Google or Fleet evidence marks marketing interaction v2 as ready for the relevant site surfaces.',
+            ],
+            'instrumented', 'partial' => [
+                'status' => 'partial',
+                'label' => 'Partial',
+                'reason' => 'Some marketing interaction v2 evidence is present, but the relevant surface set is not fully verified yet.',
+            ],
+            'not_applicable', 'suppressed' => [
+                'status' => 'not_applicable',
+                'label' => 'Not applicable',
+                'reason' => 'Marketing interaction v2 is not required for this property or surface set.',
+            ],
+            default => [
+                'status' => 'missing',
+                'label' => 'Missing',
+                'reason' => 'The MM-Google marketing interaction v2 contract is assigned but has not been promoted with adoption evidence yet.',
+            ],
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>  $ga4Summary
+     * @return array<string, array{status: string, label: string, reason: string|null}>
+     */
+    private function marketingInteractionBaseReadiness(array $ga4Summary, ?string $rolloutStatus): array
+    {
+        $ga4Status = $this->normalizedText($ga4Summary['status'] ?? null);
+        $ga4Ready = $ga4Status === 'configured';
+        $interactionStatus = $this->normalizedText($rolloutStatus);
+        $hasInteractionEvidence = in_array($interactionStatus, ['instrumented', 'partial', 'verified', 'ready'], true);
+        $isFullyVerified = in_array($interactionStatus, ['verified', 'ready'], true);
+
+        return [
+            'ga4_installed' => [
+                'status' => $ga4Ready ? 'ready' : 'missing',
+                'label' => $ga4Ready ? 'Ready' : 'Missing',
+                'reason' => $ga4Ready
+                    ? 'The expected MM-Google GA4 measurement ID is configured for this property.'
+                    : $this->normalizedText($ga4Summary['reason'] ?? null),
+            ],
+            'mmtrack_present' => [
+                'status' => $hasInteractionEvidence ? 'ready' : 'unknown',
+                'label' => $hasInteractionEvidence ? 'Ready' : 'Unknown',
+                'reason' => $hasInteractionEvidence
+                    ? 'Interaction evidence implies the shared mmTrack helper is present.'
+                    : 'No MM-Google or Fleet interaction evidence has promoted the shared mmTrack helper yet.',
+            ],
+            'core_handoffs_present' => [
+                'status' => $isFullyVerified ? 'ready' : 'unknown',
+                'label' => $isFullyVerified ? 'Ready' : 'Unknown',
+                'reason' => $isFullyVerified
+                    ? 'The relevant core handoff instrumentation is verified for this property.'
+                    : 'Core handoff readiness should be promoted from MM-Google or Fleet evidence.',
+            ],
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function stringList(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            fn (mixed $item): ?string => $this->normalizedText($item),
+            $value
+        )));
+    }
+
+    /**
+     * @return array<string, array<int, string>>
+     */
+    private function arrayMapOfStringLists(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        $mapped = [];
+
+        foreach ($value as $key => $items) {
+            if (! is_string($key)) {
+                continue;
+            }
+
+            $strings = $this->stringList($items);
+            if ($strings !== []) {
+                $mapped[$key] = $strings;
+            }
+        }
+
+        return $mapped;
     }
 
     /**

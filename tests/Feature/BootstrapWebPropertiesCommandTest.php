@@ -46,10 +46,10 @@ class BootstrapWebPropertiesCommandTest extends TestCase
                     ],
                     'analytics_sources' => [
                         [
-                            'provider' => 'matomo',
-                            'external_id' => '6',
-                            'external_name' => 'Moveroo website',
-                            'workspace_path' => '/Users/jasonhill/Projects/2026 Projects/Matamo',
+                            'provider' => 'ga4',
+                            'external_id' => 'G-MOVEROO123',
+                            'external_name' => 'Moveroo GA4',
+                            'workspace_path' => '/Users/jasonhill/Projects/Business/operations/MM-Google',
                         ],
                     ],
                 ],
@@ -92,8 +92,8 @@ class BootstrapWebPropertiesCommandTest extends TestCase
         $this->assertSame('Astro', $repository->framework);
 
         $analytics = PropertyAnalyticsSource::query()->where('web_property_id', $moverooProperty->id)->firstOrFail();
-        $this->assertSame('matomo', $analytics->provider);
-        $this->assertSame('6', $analytics->external_id);
+        $this->assertSame('ga4', $analytics->provider);
+        $this->assertSame('G-MOVEROO123', $analytics->external_id);
 
         $moverooLink = WebPropertyDomain::query()->where('web_property_id', $moverooProperty->id)->firstOrFail();
         $this->assertSame($moveroo->id, $moverooLink->domain_id);
@@ -357,6 +357,49 @@ class BootstrapWebPropertiesCommandTest extends TestCase
         $this->assertSame('/Users/jasonhill/Projects/Business/websites/ma-car-transport-astro', $repository->local_path);
         $this->assertTrue($repository->is_controller);
         $this->assertSame('vercel', $repository->deployment_provider);
+    }
+
+    public function test_it_refreshes_existing_target_contact_url_from_bootstrap_overrides(): void
+    {
+        config()->set('domain_monitor.web_property_bootstrap', [
+            'websites_root' => storage_path('framework/testing/websites'),
+            'overrides' => [
+                'perthinterstateremovalists.com.au' => [
+                    'slug' => 'perthinterstateremovalists-com-au',
+                    'name' => 'perthinterstateremovalists.com.au',
+                    'property_type' => 'website',
+                    'target_contact_us_page_url' => 'https://quoting.perthinterstateremovalists.com.au/contact',
+                ],
+            ],
+        ]);
+
+        $domain = Domain::factory()->create([
+            'domain' => 'perthinterstateremovalists.com.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'perthinterstateremovalists-com-au',
+            'name' => 'perthinterstateremovalists.com.au',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+            'target_contact_us_page_url' => 'https://quoting.perthinterstateremovalists.com.aucontact',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        $this->assertSame(0, Artisan::call('web-properties:bootstrap', ['--refresh-links' => true]));
+
+        $this->assertSame(
+            'https://quoting.perthinterstateremovalists.com.au/contact',
+            $property->fresh()->target_contact_us_page_url
+        );
     }
 
     public function test_refresh_links_does_not_count_non_fillable_repository_keys_as_changes(): void

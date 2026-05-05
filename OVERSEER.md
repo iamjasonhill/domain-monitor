@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-05 13:49:14 AEST
+
+- Issue or trigger: issue `#157` to surface GA4 marketing interaction v2 readiness, plus local cleanup of bootstrap target override refresh behavior
+- What changed: added the MM-Google `marketing-interaction-v2` event contract to the repo sync config, exposed a new `analytics.ga4.marketing_interaction_v2` summary block, and taught `web-properties:bootstrap --refresh-links` to refresh target URL overrides on already-linked properties
+- What was fixed: Domain Monitor can now distinguish base GA4 readiness from optional marketing interaction v2 adoption without reviving Matomo readiness or duplicating MM-Google event and parameter names; the Perth Interstate Removalists contact target override can now be corrected through the bootstrap config
+- What remains: downstream MM-Google or Fleet evidence still needs to promote individual property assignments from `defined` to `instrumented` or `verified`; Domain Monitor now surfaces that state instead of inventing independent event taxonomy
+
 ### 2026-05-02 17:29:00 AEST
 
 - Issue or trigger: MovingAgain SEO intelligence pilot live URL verification before Fleet controlled-test routing

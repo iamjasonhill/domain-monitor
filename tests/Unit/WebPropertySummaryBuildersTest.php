@@ -2,12 +2,14 @@
 
 namespace Tests\Unit;
 
+use App\Models\AnalyticsEventContract;
 use App\Models\AnalyticsInstallAudit;
 use App\Models\Domain;
 use App\Models\DomainSeoBaseline;
 use App\Models\PropertyAnalyticsSource;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
+use App\Models\WebPropertyEventContract;
 use App\Services\WebPropertyAnalyticsSummaryBuilder;
 use App\Services\WebPropertyCanonicalOriginSummaryBuilder;
 use App\Services\WebPropertyGscEvidenceSummaryBuilder;
@@ -199,6 +201,39 @@ class WebPropertySummaryBuildersTest extends TestCase
                     'detected_measurement_ids' => [],
                     'issue_id' => null,
                 ],
+                'marketing_interaction_v2' => [
+                    'status' => 'missing',
+                    'label' => 'Missing',
+                    'reason' => 'No MM-Google marketing interaction v2 contract is assigned to this property yet.',
+                    'source_system' => 'MM-Google',
+                    'contract_key' => 'marketing-interaction-v2',
+                    'contract_version' => 'v2',
+                    'source_repo' => 'MM-Google',
+                    'source_path' => 'docs/event-taxonomy.md',
+                    'rollout_status' => null,
+                    'verified_at' => null,
+                    'base_readiness' => [
+                        'ga4_installed' => [
+                            'status' => 'missing',
+                            'label' => 'Missing',
+                            'reason' => 'No GA4 binding is stored for this property yet.',
+                        ],
+                        'mmtrack_present' => [
+                            'status' => 'unknown',
+                            'label' => 'Unknown',
+                            'reason' => 'No MM-Google or Fleet interaction evidence has promoted the shared mmTrack helper yet.',
+                        ],
+                        'core_handoffs_present' => [
+                            'status' => 'unknown',
+                            'label' => 'Unknown',
+                            'reason' => 'Core handoff readiness should be promoted from MM-Google or Fleet evidence.',
+                        ],
+                    ],
+                    'events' => [],
+                    'standard_parameters' => [],
+                    'optional_surface_events' => [],
+                    'transition_aliases' => [],
+                ],
             ],
         ], $summary);
     }
@@ -250,6 +285,39 @@ class WebPropertySummaryBuildersTest extends TestCase
                     'verdict' => null,
                     'detected_measurement_ids' => [],
                     'issue_id' => null,
+                ],
+                'marketing_interaction_v2' => [
+                    'status' => 'missing',
+                    'label' => 'Missing',
+                    'reason' => 'No MM-Google marketing interaction v2 contract is assigned to this property yet.',
+                    'source_system' => 'MM-Google',
+                    'contract_key' => 'marketing-interaction-v2',
+                    'contract_version' => 'v2',
+                    'source_repo' => 'MM-Google',
+                    'source_path' => 'docs/event-taxonomy.md',
+                    'rollout_status' => null,
+                    'verified_at' => null,
+                    'base_readiness' => [
+                        'ga4_installed' => [
+                            'status' => 'missing',
+                            'label' => 'Missing',
+                            'reason' => 'No GA4 binding is stored for this property yet.',
+                        ],
+                        'mmtrack_present' => [
+                            'status' => 'unknown',
+                            'label' => 'Unknown',
+                            'reason' => 'No MM-Google or Fleet interaction evidence has promoted the shared mmTrack helper yet.',
+                        ],
+                        'core_handoffs_present' => [
+                            'status' => 'unknown',
+                            'label' => 'Unknown',
+                            'reason' => 'Core handoff readiness should be promoted from MM-Google or Fleet evidence.',
+                        ],
+                    ],
+                    'events' => [],
+                    'standard_parameters' => [],
+                    'optional_surface_events' => [],
+                    'transition_aliases' => [],
                 ],
             ],
         ], $summary);
@@ -312,8 +380,101 @@ class WebPropertySummaryBuildersTest extends TestCase
                     'detected_measurement_ids' => [],
                     'issue_id' => null,
                 ],
+                'marketing_interaction_v2' => [
+                    'status' => 'missing',
+                    'label' => 'Missing',
+                    'reason' => 'No MM-Google marketing interaction v2 contract is assigned to this property yet.',
+                    'source_system' => 'MM-Google',
+                    'contract_key' => 'marketing-interaction-v2',
+                    'contract_version' => 'v2',
+                    'source_repo' => 'MM-Google',
+                    'source_path' => 'docs/event-taxonomy.md',
+                    'rollout_status' => null,
+                    'verified_at' => null,
+                    'base_readiness' => [
+                        'ga4_installed' => [
+                            'status' => 'ready',
+                            'label' => 'Ready',
+                            'reason' => 'The expected MM-Google GA4 measurement ID is configured for this property.',
+                        ],
+                        'mmtrack_present' => [
+                            'status' => 'unknown',
+                            'label' => 'Unknown',
+                            'reason' => 'No MM-Google or Fleet interaction evidence has promoted the shared mmTrack helper yet.',
+                        ],
+                        'core_handoffs_present' => [
+                            'status' => 'unknown',
+                            'label' => 'Unknown',
+                            'reason' => 'Core handoff readiness should be promoted from MM-Google or Fleet evidence.',
+                        ],
+                    ],
+                    'events' => [],
+                    'standard_parameters' => [],
+                    'optional_surface_events' => [],
+                    'transition_aliases' => [],
+                ],
             ],
         ], $summary);
+    }
+
+    public function test_analytics_builder_exposes_marketing_interaction_v2_readiness_from_event_contract(): void
+    {
+        $property = new WebProperty([
+            'slug' => 'movingagain-com-au',
+            'site_key' => 'movingagain',
+        ]);
+
+        $source = new PropertyAnalyticsSource([
+            'provider' => 'ga4',
+            'external_id' => 'G-MOVINGAGAIN',
+            'is_primary' => true,
+            'status' => 'active',
+            'provider_config' => [
+                'measurement_id' => 'G-MOVINGAGAIN',
+                'source_system' => 'MM-Google',
+            ],
+        ]);
+
+        $contract = new AnalyticsEventContract([
+            'key' => 'marketing-interaction-v2',
+            'name' => 'Marketing Interaction Analytics',
+            'version' => 'v2',
+            'contract_type' => 'ga4_marketing_interaction',
+            'status' => 'active',
+            'scope' => 'fleet_astro_marketing_sites',
+            'source_repo' => 'MM-Google',
+            'source_path' => 'docs/event-taxonomy.md',
+            'contract' => [
+                'events' => ['callback_request_click', 'booking_click', 'faq_open'],
+                'standard_parameters' => ['site_key', 'lead_type', 'page_path'],
+                'optional_surface_events' => [
+                    'faq_accordions' => ['faq_open'],
+                ],
+                'transition_aliases' => ['link_type'],
+            ],
+        ]);
+
+        $assignment = new WebPropertyEventContract([
+            'is_primary' => true,
+            'rollout_status' => 'instrumented',
+        ]);
+        $assignment->setRelation('eventContract', $contract);
+
+        $property->setRelation('analyticsSources', new EloquentCollection([$source]));
+        $property->setRelation('eventContractAssignments', new EloquentCollection([$assignment]));
+
+        $summary = (new WebPropertyAnalyticsSummaryBuilder)->build($property);
+
+        $this->assertSame('partial', $summary['ga4']['marketing_interaction_v2']['status']);
+        $this->assertSame('instrumented', $summary['ga4']['marketing_interaction_v2']['rollout_status']);
+        $this->assertSame('marketing-interaction-v2', $summary['ga4']['marketing_interaction_v2']['contract_key']);
+        $this->assertSame(['callback_request_click', 'booking_click', 'faq_open'], $summary['ga4']['marketing_interaction_v2']['events']);
+        $this->assertSame(['site_key', 'lead_type', 'page_path'], $summary['ga4']['marketing_interaction_v2']['standard_parameters']);
+        $this->assertSame(['faq_open'], $summary['ga4']['marketing_interaction_v2']['optional_surface_events']['faq_accordions']);
+        $this->assertSame(['link_type'], $summary['ga4']['marketing_interaction_v2']['transition_aliases']);
+        $this->assertSame('ready', $summary['ga4']['marketing_interaction_v2']['base_readiness']['ga4_installed']['status']);
+        $this->assertSame('ready', $summary['ga4']['marketing_interaction_v2']['base_readiness']['mmtrack_present']['status']);
+        $this->assertSame('unknown', $summary['ga4']['marketing_interaction_v2']['base_readiness']['core_handoffs_present']['status']);
     }
 
     public function test_analytics_builder_exposes_ga4_lookup_even_when_matomo_stays_primary(): void

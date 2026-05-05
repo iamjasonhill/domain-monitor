@@ -312,6 +312,7 @@ return [
                 'slug' => 'perthinterstateremovalists-com-au',
                 'name' => 'perthinterstateremovalists.com.au',
                 'property_type' => 'website',
+                'target_contact_us_page_url' => 'https://quoting.perthinterstateremovalists.com.au/contact',
                 'repository' => [
                     'repo_name' => '_wp-house',
                     'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',

@@ -76,6 +76,7 @@ class BootstrapWebProperties extends Command
         $linkedDomains = 0;
         $attachedRepositories = 0;
         $attachedAnalytics = 0;
+        $refreshedTargetOverrides = 0;
         $skippedDomains = 0;
 
         foreach ($domains as $domain) {
@@ -91,6 +92,10 @@ class BootstrapWebProperties extends Command
                 $skippedDomains++;
 
                 if ($refreshLinks && $existingLink->webProperty instanceof WebProperty) {
+                    if ($this->syncPropertyTargetOverrides($existingLink->webProperty, $override, $dryRun)) {
+                        $refreshedTargetOverrides++;
+                    }
+
                     [$repoAttached, $analyticsAttached] = $this->syncPropertyLinks(
                         $existingLink->webProperty,
                         $domain,
@@ -158,6 +163,7 @@ class BootstrapWebProperties extends Command
             'domain_links_created' => $linkedDomains,
             'repositories_attached' => $attachedRepositories,
             'analytics_sources_attached' => $attachedAnalytics,
+            'property_target_overrides_refreshed' => $refreshedTargetOverrides,
             'domains_skipped' => $skippedDomains,
             'dry_run' => $dryRun,
         ];
@@ -208,6 +214,66 @@ class BootstrapWebProperties extends Command
         }
 
         return [$repoAttached, $analyticsAttached];
+    }
+
+    /**
+     * @param  array<string, mixed>  $override
+     */
+    private function syncPropertyTargetOverrides(WebProperty $property, array $override, bool $dryRun): bool
+    {
+        $refreshableKeys = [
+            'target_household_quote_url',
+            'target_household_booking_url',
+            'target_vehicle_quote_url',
+            'target_vehicle_booking_url',
+            'target_moveroo_subdomain_url',
+            'target_contact_us_page_url',
+            'target_legacy_bookings_replacement_url',
+            'target_legacy_payments_replacement_url',
+        ];
+
+        $changedAttributes = [];
+
+        foreach ($refreshableKeys as $key) {
+            if (! array_key_exists($key, $override)) {
+                continue;
+            }
+
+            $rawValue = $override[$key];
+
+            if ($rawValue !== null && ! is_string($rawValue)) {
+                continue;
+            }
+
+            $normalizedValue = is_string($rawValue) && trim($rawValue) !== ''
+                ? trim($rawValue)
+                : null;
+
+            if ($property->getAttribute($key) === $normalizedValue) {
+                continue;
+            }
+
+            $changedAttributes[$key] = $normalizedValue;
+        }
+
+        if ($changedAttributes === []) {
+            return false;
+        }
+
+        if ($dryRun) {
+            $this->line(sprintf(
+                '  [dry-run] would refresh target overrides on %s: %s',
+                $property->slug,
+                implode(', ', array_keys($changedAttributes))
+            ));
+
+            return true;
+        }
+
+        $property->fill($changedAttributes);
+        $property->save();
+
+        return true;
     }
 
     /**

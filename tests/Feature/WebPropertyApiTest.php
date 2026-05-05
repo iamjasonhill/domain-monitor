@@ -194,6 +194,35 @@ class WebPropertyApiTest extends TestCase
             'notes' => 'Backfilled from MM-Google.',
         ]);
 
+        $marketingInteractionContract = AnalyticsEventContract::create([
+            'key' => 'marketing-interaction-v2',
+            'name' => 'Marketing Interaction Analytics',
+            'version' => 'v2',
+            'contract_type' => 'ga4_marketing_interaction',
+            'status' => 'active',
+            'scope' => 'fleet_astro_marketing_sites',
+            'source_repo' => 'MM-Google',
+            'source_path' => 'docs/event-taxonomy.md',
+            'contract' => [
+                'events' => ['callback_request_click', 'booking_click', 'faq_open', 'form_start', 'form_submit', 'form_success', 'form_error'],
+                'standard_parameters' => ['site_key', 'lead_type', 'page_path', 'link_url', 'form_name', 'faq_question'],
+                'optional_surface_events' => [
+                    'callback_or_contact_links' => ['callback_request_click'],
+                    'faq_accordions' => ['faq_open'],
+                    'site_owned_forms' => ['form_start', 'form_submit', 'form_success', 'form_error'],
+                ],
+                'transition_aliases' => ['link_type'],
+            ],
+        ]);
+
+        WebPropertyEventContract::create([
+            'web_property_id' => $property->id,
+            'analytics_event_contract_id' => $marketingInteractionContract->id,
+            'is_primary' => false,
+            'rollout_status' => 'instrumented',
+            'notes' => 'PR #18 style interactions are partially wired.',
+        ]);
+
         WebPropertyConversionSurface::create([
             'web_property_id' => $property->id,
             'domain_id' => $ownedSubdomain->id,
@@ -425,6 +454,18 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.analytics.ga4.last_live_check_at', MonitoringFinding::query()->where('issue_id', 'dm:test:moveroo-ga4')->firstOrFail()->last_detected_at?->toIso8601String())
             ->assertJsonPath('web_properties.0.analytics.ga4.detection.verdict', 'missing_expected_measurement_id')
             ->assertJsonPath('web_properties.0.analytics.ga4.detection.issue_id', 'dm:test:moveroo-ga4')
+            ->assertJsonPath('web_properties.0.analytics.ga4.marketing_interaction_v2.status', 'partial')
+            ->assertJsonPath('web_properties.0.analytics.ga4.marketing_interaction_v2.rollout_status', 'instrumented')
+            ->assertJsonPath('web_properties.0.analytics.ga4.marketing_interaction_v2.contract_key', 'marketing-interaction-v2')
+            ->assertJsonPath('web_properties.0.analytics.ga4.marketing_interaction_v2.source_repo', 'MM-Google')
+            ->assertJsonPath('web_properties.0.analytics.ga4.marketing_interaction_v2.source_path', 'docs/event-taxonomy.md')
+            ->assertJsonPath('web_properties.0.analytics.ga4.marketing_interaction_v2.base_readiness.ga4_installed.status', 'missing')
+            ->assertJsonPath('web_properties.0.analytics.ga4.marketing_interaction_v2.base_readiness.mmtrack_present.status', 'ready')
+            ->assertJsonPath('web_properties.0.analytics.ga4.marketing_interaction_v2.base_readiness.core_handoffs_present.status', 'unknown')
+            ->assertJsonPath('web_properties.0.analytics.ga4.marketing_interaction_v2.events.0', 'callback_request_click')
+            ->assertJsonPath('web_properties.0.analytics.ga4.marketing_interaction_v2.standard_parameters.0', 'site_key')
+            ->assertJsonPath('web_properties.0.analytics.ga4.marketing_interaction_v2.optional_surface_events.faq_accordions.0', 'faq_open')
+            ->assertJsonPath('web_properties.0.analytics.ga4.marketing_interaction_v2.transition_aliases.0', 'link_type')
             ->assertJsonPath('web_properties.0.health_summary.checks.uptime', 'ok')
             ->assertJsonPath('web_properties.0.health_summary.checks.http', 'ok')
             ->assertJsonPath('web_properties.0.health_summary.checks.ssl', 'warn')
