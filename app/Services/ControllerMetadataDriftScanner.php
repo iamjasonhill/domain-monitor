@@ -11,7 +11,7 @@ use Throwable;
 class ControllerMetadataDriftScanner
 {
     /**
-     * @return array{status:string, summary:string, evidence:array<string, mixed>}
+     * @return array{status:string, verdict:string, summary:string, evidence:array<string, mixed>}
      */
     public function audit(WebProperty $property, int $timeout = 10): array
     {
@@ -77,6 +77,7 @@ class ControllerMetadataDriftScanner
 
         return [
             'status' => 'fail',
+            'verdict' => 'controller_metadata_drift',
             'summary' => 'Live platform evidence indicates Astro, but stored controller metadata still points at the WordPress/_wp-house control surface. Promote the Astro controller metadata before routing policy work.',
             'evidence' => [
                 'verdict' => 'controller_metadata_drift',
@@ -98,12 +99,13 @@ class ControllerMetadataDriftScanner
 
     /**
      * @param  array<string, mixed>  $evidence
-     * @return array{status:string, summary:string, evidence:array<string, mixed>}
+     * @return array{status:string, verdict:string, summary:string, evidence:array<string, mixed>}
      */
     private function pass(string $summary, array $evidence): array
     {
         return [
             'status' => 'pass',
+            'verdict' => is_string($evidence['verdict'] ?? null) ? $evidence['verdict'] : 'pass',
             'summary' => $summary,
             'evidence' => $evidence,
         ];
