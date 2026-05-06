@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\PropertyAnalyticsSource;
 use App\Models\WebProperty;
+use App\Services\ControllerMetadataDriftScanner;
 use App\Services\DomainHealthCheckRunner;
 use App\Services\Ga4SignalScanner;
 use App\Services\MonitoringFindingManager;
@@ -26,6 +27,7 @@ class RunMonitoringLane extends Command
     public function handle(
         Ga4SignalScanner $ga4Scanner,
         PropertySiteSignalScanner $siteScanner,
+        ControllerMetadataDriftScanner $controllerMetadataDriftScanner,
         MonitoringFindingManager $findings,
         DomainHealthCheckRunner $domainHealthCheckRunner
     ): int {
@@ -113,6 +115,13 @@ class RunMonitoringLane extends Command
                     siteScanner: $siteScanner,
                     timeout: $timeout
                 ),
+                'controller_metadata' => [
+                    'controller_metadata_drift' => [
+                        'title' => 'Live platform and controller metadata drift detected',
+                        'issue_type' => 'cleanup',
+                        'audit' => $controllerMetadataDriftScanner->audit($property, $timeout),
+                    ],
+                ],
                 'deep_audit' => $this->deepAuditAudits(
                     property: $property,
                     siteScanner: $siteScanner,

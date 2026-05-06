@@ -347,6 +347,10 @@ class PlatformDetector
             return true;
         }
 
+        if (str_contains($html, '/_astro/') || str_contains($html, '_astro/')) {
+            return true;
+        }
+
         return false;
     }
 

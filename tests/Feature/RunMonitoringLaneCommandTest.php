@@ -1443,6 +1443,114 @@ class RunMonitoringLaneCommandTest extends TestCase
             ->first());
     }
 
+    public function test_controller_metadata_lane_flags_astro_live_evidence_with_wordpress_controller_metadata(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $property = $this->makeProperty('cutover-drift.example.au', 'Cutover Drift');
+        $property->forceFill([
+            'platform' => 'WordPress',
+            'target_platform' => 'Astro',
+        ])->save();
+        $property->primaryDomainModel()?->forceFill([
+            'platform' => 'WordPress',
+            'hosting_provider' => 'Vercel',
+        ])->save();
+        $this->attachControllerRepository($property, '_wp-house', 'WordPress');
+
+        Http::fake([
+            'https://cutover-drift.example.au/' => Http::response(
+                '<html><head><link rel="stylesheet" href="/_astro/index.css"></head><body>Cutover Drift</body></html>',
+                200
+            ),
+        ]);
+
+        $brain = Mockery::mock(BrainEventClient::class);
+        $this->instance(BrainEventClient::class, $brain);
+        $brain->shouldIgnoreMissing();
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'controller_metadata',
+            '--property' => $property->slug,
+        ]));
+
+        $finding = MonitoringFinding::query()
+            ->where('web_property_id', $property->id)
+            ->where('finding_type', 'controller_metadata_drift')
+            ->firstOrFail();
+
+        $this->assertSame(MonitoringFinding::STATUS_OPEN, $finding->status);
+        $this->assertSame('cleanup', $finding->issue_type);
+        $this->assertSame('controller_metadata_drift', data_get($finding->evidence, 'verdict'));
+        $this->assertSame('Astro', data_get($finding->evidence, 'live_platform'));
+        $this->assertSame('_wp-house', data_get($finding->evidence, 'stored_controller_repo'));
+        $this->assertStringContainsString(
+            'web-properties:promote-controller '.$property->slug,
+            (string) data_get($finding->evidence, 'suggested_command')
+        );
+
+        /** @var array<int, array<string, mixed>> $issues */
+        $issues = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues')
+            ->assertOk()
+            ->json('issues');
+        $issue = collect($issues)->firstWhere('issue_id', $finding->issue_id);
+
+        $this->assertIsArray($issue);
+        $this->assertSame('controller_metadata_drift', $issue['issue_class']);
+        $this->assertSame('should_fix', $issue['severity']);
+        $this->assertSame('domain_monitor.monitoring_lane', $issue['detector']);
+        $this->assertSame('controller_metadata', data_get($issue, 'evidence.lane'));
+        $this->assertSame('Astro', data_get($issue, 'evidence.live_platform'));
+        $this->assertSame('_wp-house', data_get($issue, 'evidence.stored_controller_repo'));
+
+        /** @var array<int, array<string, mixed>> $summaries */
+        $summaries = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/web-properties-summary')
+            ->assertOk()
+            ->json('web_properties');
+        $summary = collect($summaries)->firstWhere('slug', $property->slug);
+
+        $this->assertIsArray($summary);
+        $this->assertSame(1, data_get($summary, 'monitoring_summary.open_findings_count'));
+        $this->assertSame('controller_metadata_drift', data_get($summary, 'monitoring_summary.open_findings.0.issue_class'));
+    }
+
+    public function test_controller_metadata_lane_ignores_parked_and_email_only_properties(): void
+    {
+        $parkedProperty = $this->makeProperty('parked-drift.example.au', 'Parked Drift');
+        $parkedProperty->primaryDomainModel()?->forceFill([
+            'platform' => 'Parked',
+            'hosting_provider' => 'Vercel',
+        ])->save();
+        $this->attachControllerRepository($parkedProperty, '_wp-house', 'WordPress');
+
+        $emailOnlyProperty = $this->makeProperty('email-drift.example.au', 'Email Drift');
+        $emailOnlyProperty->primaryDomainModel()?->forceFill([
+            'platform' => 'Email Only',
+            'hosting_provider' => 'Vercel',
+        ])->save();
+        $this->attachControllerRepository($emailOnlyProperty, '_wp-house', 'WordPress');
+
+        Http::fake([
+            '*' => Http::response('<html><head><meta name="generator" content="Astro"></head></html>', 200),
+        ]);
+
+        $brain = Mockery::mock(BrainEventClient::class);
+        $this->instance(BrainEventClient::class, $brain);
+        $brain->shouldIgnoreMissing();
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'controller_metadata',
+        ]));
+
+        $this->assertSame(0, MonitoringFinding::query()
+            ->where('finding_type', 'controller_metadata_drift')
+            ->count());
+    }
+
     private function makeProperty(string $domainName, string $name): WebProperty
     {
         $domain = Domain::factory()->create([

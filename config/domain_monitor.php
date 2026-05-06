@@ -879,8 +879,9 @@ return [
     | marketing_integrity verifies live GA4 behavior, quote handoff, and
     | homepage indexability, seo_agent_readiness covers crawl/agent-facing
     | signals, fleet_astro_technical_seo adds a weekly Fleet-scoped Astro
-    | baseline, critical_live handles redirect hygiene on the preferred root
-    | host, and deep_audit currently starts with a deduped broken-links pass.
+    | baseline, controller_metadata catches stale cutover authority, critical_live
+    | handles redirect hygiene on the preferred root host, and deep_audit
+    | currently starts with a deduped broken-links pass.
     |
     */
     'monitoring_lanes' => [
@@ -922,6 +923,13 @@ return [
             'scope' => [
                 'fleet_focus' => true,
                 'execution_surface' => 'astro_repo_controlled',
+            ],
+        ],
+        'controller_metadata' => [
+            'cadence' => 'daily',
+            'issue_type' => 'cleanup',
+            'checks' => [
+                'controller_metadata_drift',
             ],
         ],
         'deep_audit' => [

@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 06:14:53 AEST
+
+- Issue or trigger: issue `#158` to detect live Astro/Vercel cutovers that still have stale WordPress/_wp-house controller metadata
+- What changed: added a `controller_metadata` monitoring lane backed by a live homepage Astro-evidence probe, surfaced drift as the advisory `controller_metadata_drift` finding, and widened Astro detection to recognise `/_astro/` assets
+- What was fixed: Domain Monitor can now open a normal monitoring finding when live platform evidence indicates Astro but stored controller metadata still points at WordPress/_wp-house, with evidence and a safe promotion-command hint for downstream Control Plane review
+- What remains: the lane needs to be scheduled in production alongside the existing monitoring lanes, then any detected rows should be promoted with `web-properties:promote-controller` rather than treated as broken websites
+
 ### 2026-05-06 19:23:44 AEST
 
 - Issue or trigger: Bossman/control-plane review found `interstatecarcarriers.com.au` and `supercheapcartransport.com.au` still surfacing as WordPress after their Astro/Vercel cutovers
