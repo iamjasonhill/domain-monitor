@@ -700,10 +700,16 @@ class Domain extends Model
      *   pages_scanned: int,
      *   external_links_count: int,
      *   unique_hosts_count: int,
+     *   policy_counts: array{approved:int, review_required:int, disallowed:int, broken_unverified:int, by_classification:array<string, int>},
      *   external_links: array<int, array{
      *     url: string,
      *     host: string|null,
      *     relationship: string,
+     *     policy_classification: string,
+     *     policy_action: string,
+     *     policy_approved: bool,
+     *     policy_reason: string,
+     *     policy_category: string|null,
      *     found_on: string|null,
      *     found_on_pages: array<int, string>
      *   }>
@@ -734,6 +740,11 @@ class Domain extends Model
                     'url' => (string) $item['url'],
                     'host' => is_string($item['host'] ?? null) ? $item['host'] : null,
                     'relationship' => is_string($item['relationship'] ?? null) ? $item['relationship'] : 'external',
+                    'policy_classification' => is_string($item['policy_classification'] ?? null) ? $item['policy_classification'] : 'review_required',
+                    'policy_action' => is_string($item['policy_action'] ?? null) ? $item['policy_action'] : 'review_required',
+                    'policy_approved' => (bool) ($item['policy_approved'] ?? false),
+                    'policy_reason' => is_string($item['policy_reason'] ?? null) ? $item['policy_reason'] : 'Host is not yet classified by the external reference policy.',
+                    'policy_category' => is_string($item['policy_category'] ?? null) ? $item['policy_category'] : null,
                     'found_on' => is_string($item['found_on'] ?? null) ? $item['found_on'] : ($foundOnPages[0] ?? null),
                     'found_on_pages' => $foundOnPages,
                 ];
@@ -747,6 +758,7 @@ class Domain extends Model
             'pages_scanned' => max(0, (int) ($payload['pages_scanned'] ?? 0)),
             'external_links_count' => max(0, (int) ($payload['external_links_count'] ?? count($externalLinks))),
             'unique_hosts_count' => max(0, (int) ($payload['unique_hosts_count'] ?? 0)),
+            'policy_counts' => $this->externalLinkPolicyCounts($payload, $externalLinks),
             'external_links' => $externalLinks,
         ];
     }
@@ -758,10 +770,16 @@ class Domain extends Model
      *   pages_scanned: int,
      *   external_links_count: int,
      *   unique_hosts_count: int,
+     *   policy_counts: array{approved:int, review_required:int, disallowed:int, broken_unverified:int, by_classification:array<string, int>},
      *   external_links: array<int, array{
      *     url: string,
      *     host: string|null,
      *     relationship: string,
+     *     policy_classification: string,
+     *     policy_action: string,
+     *     policy_approved: bool,
+     *     policy_reason: string,
+     *     policy_category: string|null,
      *     found_on: string|null,
      *     found_on_pages: array<int, string>
      *   }>
@@ -775,8 +793,58 @@ class Domain extends Model
             'pages_scanned' => 0,
             'external_links_count' => 0,
             'unique_hosts_count' => 0,
+            'policy_counts' => [
+                'approved' => 0,
+                'review_required' => 0,
+                'disallowed' => 0,
+                'broken_unverified' => 0,
+                'by_classification' => [],
+            ],
             'external_links' => [],
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  array<int, array<string, mixed>>  $externalLinks
+     * @return array{approved:int, review_required:int, disallowed:int, broken_unverified:int, by_classification:array<string, int>}
+     */
+    private function externalLinkPolicyCounts(array $payload, array $externalLinks): array
+    {
+        $configuredCounts = $payload['policy_counts'] ?? null;
+
+        if (is_array($configuredCounts)) {
+            return [
+                'approved' => max(0, (int) ($configuredCounts['approved'] ?? 0)),
+                'review_required' => max(0, (int) ($configuredCounts['review_required'] ?? 0)),
+                'disallowed' => max(0, (int) ($configuredCounts['disallowed'] ?? 0)),
+                'broken_unverified' => max(0, (int) ($configuredCounts['broken_unverified'] ?? 0)),
+                'by_classification' => is_array($configuredCounts['by_classification'] ?? null)
+                    ? array_map('intval', $configuredCounts['by_classification'])
+                    : [],
+            ];
+        }
+
+        $counts = [
+            'approved' => 0,
+            'review_required' => 0,
+            'disallowed' => 0,
+            'broken_unverified' => 0,
+            'by_classification' => [],
+        ];
+
+        foreach ($externalLinks as $externalLink) {
+            $action = is_string($externalLink['policy_action'] ?? null) ? $externalLink['policy_action'] : 'review_required';
+            $classification = is_string($externalLink['policy_classification'] ?? null) ? $externalLink['policy_classification'] : 'review_required';
+
+            if (array_key_exists($action, $counts)) {
+                $counts[$action]++;
+            }
+
+            $counts['by_classification'][$classification] = ($counts['by_classification'][$classification] ?? 0) + 1;
+        }
+
+        return $counts;
     }
 
     private function normalizedEmailUsage(mixed $value): ?string

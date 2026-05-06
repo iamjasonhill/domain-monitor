@@ -941,4 +941,16 @@ return [
             ],
         ],
     ],
+
+    'external_reference_policy' => [
+        'authority_reference_hosts' => [
+            'abs.gov.au',
+            'ato.gov.au',
+            'business.gov.au',
+        ],
+        'approved_partner_hosts' => [],
+        'disallowed_hosts' => [
+            'example-spam.test',
+        ],
+    ],
 ];

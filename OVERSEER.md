@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 07:15:04 AEST
+
+- Issue or trigger: issue `#160` to add an external reference policy for outbound link inventory
+- What changed: added a policy classifier for outbound hosts, persisted classification/action/reason metadata in external link inventory payloads, exposed policy counts for Control Plane consumers, and moved deep-audit review behavior onto policy actions instead of blunt external-host rules
+- What was fixed: known Domain Monitor/Fleet estate hosts, source-attached operational surfaces, official `.gov.au`/authority references, approved partners, review-required hosts, disallowed hosts, and broken/unverified inventory states now have explicit outcomes; the deep audit only opens `cleanup.external_links_inventory` findings for `review_required` or `disallowed` links
+- What remains: production inventory rows need to be refreshed by the normal monitoring lanes before Control Plane summaries show the new policy fields for previously scanned properties
+
 ### 2026-05-07 06:58:30 AEST
 
 - Issue or trigger: issue `#159` to clarify Search Console coverage freshness states for Control Plane consumers

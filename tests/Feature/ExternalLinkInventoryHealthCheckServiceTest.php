@@ -3,12 +3,15 @@
 namespace Tests\Feature;
 
 use App\Services\ExternalLinkInventoryHealthCheck;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class ExternalLinkInventoryHealthCheckServiceTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_it_collects_external_links_including_subdomains(): void
     {
         Http::fake(function (Request $request) {

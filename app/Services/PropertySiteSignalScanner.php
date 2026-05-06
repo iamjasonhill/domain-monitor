@@ -660,16 +660,26 @@ class PropertySiteSignalScanner
             : 0;
         $externalLinks = collect(is_array($payload['external_links'] ?? null) ? $payload['external_links'] : [])
             ->filter(fn (mixed $item): bool => is_array($item))
-            ->map(function (array $item): array {
+            ->map(function (array $item) use ($property, $primaryDomain): array {
                 $foundOnPages = collect(is_array($item['found_on_pages'] ?? null) ? $item['found_on_pages'] : [])
                     ->filter(fn (mixed $page): bool => is_string($page) && $page !== '')
                     ->values()
                     ->all();
+                $policy = app(ExternalReferencePolicy::class)->classify(
+                    is_string($item['host'] ?? null) ? $item['host'] : null,
+                    $primaryDomain->domain,
+                    $property
+                );
 
                 return [
                     'url' => is_string($item['url'] ?? null) ? $item['url'] : null,
                     'host' => is_string($item['host'] ?? null) ? $item['host'] : null,
                     'relationship' => is_string($item['relationship'] ?? null) ? $item['relationship'] : 'external',
+                    'policy_classification' => $policy['classification'],
+                    'policy_action' => $policy['action'],
+                    'policy_approved' => $policy['approved'],
+                    'policy_reason' => $policy['reason'],
+                    'policy_category' => $policy['category'],
                     'found_on' => is_string($item['found_on'] ?? null) ? $item['found_on'] : ($foundOnPages[0] ?? null),
                     'found_on_pages' => $foundOnPages,
                 ];
@@ -677,9 +687,9 @@ class PropertySiteSignalScanner
             ->filter(fn (array $item): bool => $item['url'] !== null)
             ->values();
         $reviewableLinks = $externalLinks
-            ->filter(fn (array $item): bool => $item['relationship'] === 'external')
-            ->reject(fn (array $item): bool => $this->isAllowedExternalReferenceHost($item['host'] ?? null))
+            ->filter(fn (array $item): bool => in_array($item['policy_action'], ['review_required', 'disallowed'], true))
             ->values();
+        $policyCounts = $this->externalLinkPolicyCounts($externalLinks);
         $uniqueHosts = $reviewableLinks
             ->pluck('host')
             ->filter(fn (mixed $host): bool => is_string($host) && $host !== '')
@@ -715,6 +725,7 @@ class PropertySiteSignalScanner
                     'page_failures_count' => $pageFailuresCount,
                     'reviewable_external_links_count' => 0,
                     'reviewable_unique_hosts_count' => 0,
+                    'policy_counts' => $policyCounts,
                     'external_links' => [],
                     'unique_hosts' => [],
                 ],
@@ -735,22 +746,47 @@ class PropertySiteSignalScanner
                 'page_failures_count' => $pageFailuresCount,
                 'reviewable_external_links_count' => $reviewableLinks->count(),
                 'reviewable_unique_hosts_count' => count($uniqueHosts),
+                'policy_counts' => $policyCounts,
                 'external_links' => $reviewableLinks->all(),
                 'unique_hosts' => $uniqueHosts,
             ],
         ];
     }
 
-    private function isAllowedExternalReferenceHost(mixed $host): bool
+    /**
+     * @param  Collection<int, mixed>  $externalLinks
+     * @return array{approved:int, review_required:int, disallowed:int, broken_unverified:int, by_classification:array<string, int>}
+     */
+    private function externalLinkPolicyCounts(Collection $externalLinks): array
     {
-        if (! is_string($host) || trim($host) === '') {
-            return false;
+        $counts = [
+            'approved' => 0,
+            'review_required' => 0,
+            'disallowed' => 0,
+            'broken_unverified' => 0,
+            'by_classification' => [],
+        ];
+
+        foreach ($externalLinks as $externalLink) {
+            if (! is_array($externalLink)) {
+                continue;
+            }
+
+            $action = is_string($externalLink['policy_action'] ?? null)
+                ? $externalLink['policy_action']
+                : 'review_required';
+            $classification = is_string($externalLink['policy_classification'] ?? null)
+                ? $externalLink['policy_classification']
+                : 'review_required';
+
+            if (array_key_exists($action, $counts)) {
+                $counts[$action]++;
+            }
+
+            $counts['by_classification'][$classification] = ($counts['by_classification'][$classification] ?? 0) + 1;
         }
 
-        $normalizedHost = Str::lower(trim($host));
-
-        return $normalizedHost === 'gov.au'
-            || Str::endsWith($normalizedHost, '.gov.au');
+        return $counts;
     }
 
     /**

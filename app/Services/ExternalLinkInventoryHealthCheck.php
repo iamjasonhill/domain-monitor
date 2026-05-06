@@ -17,6 +17,11 @@ class ExternalLinkInventoryHealthCheck
      *   url: string,
      *   host: string|null,
      *   relationship: string,
+     *   policy_classification: string,
+     *   policy_action: string,
+     *   policy_approved: bool,
+     *   policy_reason: string,
+     *   policy_category: string|null,
      *   found_on: string|null,
      *   found_on_pages: array<int, string>
      * }>
@@ -47,6 +52,11 @@ class ExternalLinkInventoryHealthCheck
      *     url: string,
      *     host: string|null,
      *     relationship: string,
+     *     policy_classification: string,
+     *     policy_action: string,
+     *     policy_approved: bool,
+     *     policy_reason: string,
+     *     policy_category: string|null,
      *     found_on: string|null,
      *     found_on_pages: array<int, string>
      *   }>,
@@ -77,6 +87,7 @@ class ExternalLinkInventoryHealthCheck
 
             $duration = (int) ((microtime(true) - $startTime) * 1000);
             $externalLinks = $this->externalLinks();
+            $policyCounts = $this->policyCounts($externalLinks);
             $verified = $this->pagesScanned > 0;
             $errorMessage = $verified
                 ? null
@@ -100,6 +111,7 @@ class ExternalLinkInventoryHealthCheck
                         ),
                         static fn (?string $host): bool => is_string($host) && $host !== ''
                     )))),
+                    'policy_counts' => $policyCounts,
                     'page_failures_count' => $this->pageFailures,
                     'external_links' => $externalLinks,
                     'duration_ms' => $duration,
@@ -125,6 +137,7 @@ class ExternalLinkInventoryHealthCheck
                     'pages_scanned' => $this->pagesScanned,
                     'external_links_count' => 0,
                     'unique_hosts_count' => 0,
+                    'policy_counts' => $this->emptyPolicyCounts(),
                     'page_failures_count' => $this->pageFailures,
                     'external_links' => [],
                     'error_type' => 'exception',
@@ -208,10 +221,17 @@ class ExternalLinkInventoryHealthCheck
         $normalizedHost = is_string($host) && $host !== '' ? strtolower($host) : null;
 
         if (! isset($this->externalLinks[$key])) {
+            $policy = app(ExternalReferencePolicy::class)->classify($normalizedHost, $this->host);
+
             $this->externalLinks[$key] = [
                 'url' => $url,
                 'host' => $normalizedHost,
                 'relationship' => $this->relationshipForHost($normalizedHost),
+                'policy_classification' => $policy['classification'],
+                'policy_action' => $policy['action'],
+                'policy_approved' => $policy['approved'],
+                'policy_reason' => $policy['reason'],
+                'policy_category' => $policy['category'],
                 'found_on' => $foundOn,
                 'found_on_pages' => [$foundOn],
             ];
@@ -239,6 +259,46 @@ class ExternalLinkInventoryHealthCheck
         }
 
         return 'external';
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $externalLinks
+     * @return array{approved:int, review_required:int, disallowed:int, broken_unverified:int, by_classification:array<string, int>}
+     */
+    private function policyCounts(array $externalLinks): array
+    {
+        $counts = $this->emptyPolicyCounts();
+
+        foreach ($externalLinks as $externalLink) {
+            $action = is_string($externalLink['policy_action'] ?? null)
+                ? $externalLink['policy_action']
+                : 'review_required';
+            $classification = is_string($externalLink['policy_classification'] ?? null)
+                ? $externalLink['policy_classification']
+                : 'review_required';
+
+            if (array_key_exists($action, $counts)) {
+                $counts[$action]++;
+            }
+
+            $counts['by_classification'][$classification] = ($counts['by_classification'][$classification] ?? 0) + 1;
+        }
+
+        return $counts;
+    }
+
+    /**
+     * @return array{approved:int, review_required:int, disallowed:int, broken_unverified:int, by_classification:array<string, int>}
+     */
+    private function emptyPolicyCounts(): array
+    {
+        return [
+            'approved' => 0,
+            'review_required' => 0,
+            'disallowed' => 0,
+            'broken_unverified' => 0,
+            'by_classification' => [],
+        ];
     }
 
     private function normalizeUrl(string $href, string $currentUrl): ?string
@@ -342,6 +402,11 @@ class ExternalLinkInventoryHealthCheck
      *   url: string,
      *   host: string|null,
      *   relationship: string,
+     *   policy_classification: string,
+     *   policy_action: string,
+     *   policy_approved: bool,
+     *   policy_reason: string,
+     *   policy_category: string|null,
      *   found_on: string|null,
      *   found_on_pages: array<int, string>
      * }>
