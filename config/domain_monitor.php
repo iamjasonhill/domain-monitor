@@ -277,9 +277,12 @@ return [
                 'name' => 'interstatecarcarriers.com.au',
                 'property_type' => 'website',
                 'repository' => [
-                    'repo_name' => '_wp-house',
-                    'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
-                    'framework' => 'WordPress',
+                    'repo_name' => 'MM-interstatecarcarriers',
+                    'repo_url' => 'https://github.com/iamjasonhill/MM-interstatecarcarriers',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/MM-interstatecarcarriers.com.au',
+                    'framework' => 'Astro',
+                    'deployment_provider' => 'vercel',
+                    'deployment_project_name' => 'mm-interstatecarcarriers',
                 ],
                 'analytics_sources' => [
                     [
@@ -517,9 +520,12 @@ return [
                 'name' => 'supercheapcartransport.com.au',
                 'property_type' => 'website',
                 'repository' => [
-                    'repo_name' => '_wp-house',
-                    'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
-                    'framework' => 'WordPress',
+                    'repo_name' => 'MM-supercheapcartransport',
+                    'repo_url' => 'https://github.com/iamjasonhill/MM-supercheapcartransport',
+                    'local_path' => '/Users/jasonhill/Projects/Business/websites/MM-supercheapcartransport',
+                    'framework' => 'Astro',
+                    'deployment_provider' => 'vercel',
+                    'deployment_project_name' => 'mm-supercheapcartransport',
                 ],
                 'analytics_sources' => [
                     [

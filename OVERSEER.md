@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-06 19:23:44 AEST
+
+- Issue or trigger: Bossman/control-plane review found `interstatecarcarriers.com.au` and `supercheapcartransport.com.au` still surfacing as WordPress after their Astro/Vercel cutovers
+- What changed: updated the seeded Domain Monitor controller metadata for both properties from `_wp-house`/WordPress to their Astro controller repos, including Vercel deployment project names
+- What was fixed: future bootstraps and summaries now align the repo source of truth with the live Astro/Vercel evidence instead of reintroducing stale WordPress controller metadata
+- What remains: production still needs the existing `web-properties:promote-controller` command run for both rows, followed by a Control Plane import refresh so the hosted overview reflects the corrected controller state
+
 ### 2026-05-05 13:49:14 AEST
 
 - Issue or trigger: issue `#157` to surface GA4 marketing interaction v2 readiness, plus local cleanup of bootstrap target override refresh behavior
