@@ -18,6 +18,8 @@ class SyncMmGoogleSearchConsoleExportCommandTest extends TestCase
 
     public function test_it_syncs_mm_google_search_console_exports_into_domain_monitor(): void
     {
+        $checkedAt = now()->subDay()->toIso8601String();
+
         $domain = Domain::factory()->create([
             'domain' => 'moveroo.com.au',
             'is_active' => true,
@@ -44,7 +46,7 @@ class SyncMmGoogleSearchConsoleExportCommandTest extends TestCase
         File::put($path, json_encode([
             'sourceSystem' => 'mm-google',
             'contract' => 'search-console-coverage-baseline-v1',
-            'generatedAt' => '2026-04-23T03:00:00Z',
+            'generatedAt' => $checkedAt,
             'coverageRecords' => [
                 [
                     'siteKey' => 'moveroo',
@@ -54,7 +56,7 @@ class SyncMmGoogleSearchConsoleExportCommandTest extends TestCase
                     'expectedPropertyType' => 'domain',
                     'expectedPropertyIdentifier' => 'sc-domain:moveroo.com.au',
                     'matchedPropertyIdentifier' => 'sc-domain:moveroo.com.au',
-                    'lastCheckedAt' => '2026-04-23T03:00:00Z',
+                    'lastCheckedAt' => $checkedAt,
                 ],
             ],
             'baselineRecords' => [
@@ -65,7 +67,7 @@ class SyncMmGoogleSearchConsoleExportCommandTest extends TestCase
                     'propertyIdentifier' => 'sc-domain:moveroo.com.au',
                     'baselineStatus' => 'search_console_ready',
                     'readinessStatus' => 'ready',
-                    'lastCheckedAt' => '2026-04-23T03:00:00Z',
+                    'lastCheckedAt' => $checkedAt,
                 ],
             ],
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));

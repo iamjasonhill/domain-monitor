@@ -1382,7 +1382,18 @@ class WebProperty extends Model
     }
 
     /**
-     * @return array{status: string, label: string, reason: string|null}
+     * @return array{
+     *   status: string,
+     *   label: string,
+     *   reason: string|null,
+     *   operational_state: string,
+     *   last_successful_import_at: string|null,
+     *   last_successful_evidence_at: string|null,
+     *   checked_at: string|null,
+     *   freshness_state: string|null,
+     *   blocker: string|null,
+     *   next_action: string
+     * }
      */
     public function searchConsoleCoverageSummary(): array
     {
@@ -1392,6 +1403,11 @@ class WebProperty extends Model
                 'status' => 'excluded',
                 'label' => 'Excluded',
                 'reason' => $eligibility['reason'],
+                ...$this->searchConsoleOperatorState(
+                    operationalState: 'excluded',
+                    reason: $eligibility['reason'],
+                    nextAction: 'No Search Console action is required while this property remains excluded from coverage.'
+                ),
             ];
         }
 
@@ -1412,6 +1428,11 @@ class WebProperty extends Model
                 'status' => 'needs_ga4',
                 'label' => 'Needs GA4',
                 'reason' => 'Search Console onboarding depends on the MM-Google GA4 sync being ready for this property.',
+                ...$this->searchConsoleOperatorState(
+                    operationalState: 'blocked_unavailable',
+                    reason: 'Search Console onboarding depends on the MM-Google GA4 sync being ready for this property.',
+                    nextAction: 'Complete the MM-Google GA4 sync before treating Search Console coverage as a website fix.'
+                ),
             ];
         }
 
@@ -1425,6 +1446,11 @@ class WebProperty extends Model
                 'status' => 'needs_property',
                 'label' => 'Needs Search Console',
                 'reason' => 'MM-Google GA4 is synced but no Search Console property is mapped yet.',
+                ...$this->searchConsoleOperatorState(
+                    operationalState: 'blocked_unavailable',
+                    reason: 'MM-Google GA4 is synced but no Search Console property is mapped yet.',
+                    nextAction: 'Map or verify the Search Console property in MM-Google, then re-import coverage evidence.'
+                ),
             ];
         }
 
@@ -1433,6 +1459,11 @@ class WebProperty extends Model
                 'status' => 'needs_import',
                 'label' => 'Needs import',
                 'reason' => 'Search Console property is mapped but no data has been imported yet',
+                ...$this->searchConsoleOperatorStateForCoverage(
+                    $coverage,
+                    operationalState: 'blocked_unavailable',
+                    nextAction: 'Run the Search Console import for this mapped property.'
+                ),
             ];
         }
 
@@ -1441,6 +1472,11 @@ class WebProperty extends Model
                 'status' => 'stale_import',
                 'label' => 'Import stale',
                 'reason' => 'Search Console coverage import is stale',
+                ...$this->searchConsoleOperatorStateForCoverage(
+                    $coverage,
+                    operationalState: 'stale',
+                    nextAction: 'Refresh the Search Console coverage import and confirm the latest evidence date is within policy.'
+                ),
             ];
         }
 
@@ -1449,6 +1485,11 @@ class WebProperty extends Model
                 'status' => 'url_prefix_only',
                 'label' => 'URL prefix only',
                 'reason' => 'Search Console is mapped as a URL prefix instead of a domain property',
+                ...$this->searchConsoleOperatorStateForCoverage(
+                    $coverage,
+                    operationalState: 'blocked_unavailable',
+                    nextAction: 'Add or verify the domain property mapping, then re-import coverage evidence.'
+                ),
             ];
         }
 
@@ -1459,53 +1500,42 @@ class WebProperty extends Model
                 'domain property is mapped and fresh for %s',
                 $coverage->property_uri ?? $this->primaryDomainName() ?? $this->slug
             ),
+            ...$this->searchConsoleOperatorStateForCoverage(
+                $coverage,
+                operationalState: 'ok_fresh',
+                nextAction: 'No Search Console coverage action is required while evidence remains fresh.'
+            ),
         ];
     }
 
     /**
-     * @return array{status: string, label: string, reason: string|null}
+     * @return array{
+     *   status: string,
+     *   label: string,
+     *   reason: string|null,
+     *   operational_state: string,
+     *   last_successful_import_at: string|null,
+     *   last_successful_evidence_at: string|null,
+     *   checked_at: string|null,
+     *   freshness_state: string|null,
+     *   blocker: string|null,
+     *   next_action: string
+     * }
      */
     private function searchConsoleCoverageSummaryFromCoverage(SearchConsoleCoverageStatus $coverage): array
     {
         $rawStatus = $this->searchConsoleCoverageStatusFromRawPayload($coverage->raw_payload);
-
-        if ($coverage->freshnessState() === 'never_imported') {
-            return [
-                'status' => 'needs_import',
-                'label' => 'Needs import',
-                'reason' => $this->searchConsoleCoverageReason($coverage, 'Search Console coverage is mapped but no data has been imported yet'),
-            ];
-        }
-
-        if ($coverage->freshnessState() === 'stale') {
-            return [
-                'status' => 'stale_import',
-                'label' => 'Import stale',
-                'reason' => $this->searchConsoleCoverageReason($coverage, 'Search Console coverage import is stale'),
-            ];
-        }
-
-        if ($coverage->mapping_state === 'not_mapped') {
-            return [
-                'status' => 'needs_property',
-                'label' => 'Needs Search Console',
-                'reason' => $this->searchConsoleCoverageReason($coverage, 'Search Console property is not mapped yet'),
-            ];
-        }
-
-        if ($coverage->mapping_state === 'url_prefix') {
-            return [
-                'status' => 'url_prefix_only',
-                'label' => 'URL prefix only',
-                'reason' => $this->searchConsoleCoverageReason($coverage, 'Search Console is mapped as a URL prefix instead of a domain property'),
-            ];
-        }
 
         if ($rawStatus === 'search_console_audit_failed') {
             return [
                 'status' => 'blocked',
                 'label' => 'Audit blocked',
                 'reason' => $this->searchConsoleCoverageReason($coverage, 'MM-Google Search Console audit failed'),
+                ...$this->searchConsoleOperatorStateForCoverage(
+                    $coverage,
+                    operationalState: 'blocked_unavailable',
+                    nextAction: 'Resolve the MM-Google Search Console audit blocker, then re-run the import.'
+                ),
             ];
         }
 
@@ -1514,6 +1544,37 @@ class WebProperty extends Model
                 'status' => 'needs_property',
                 'label' => 'Needs Search Console',
                 'reason' => $this->searchConsoleCoverageReason($coverage, 'MM-Google Search Console property is not configured'),
+                ...$this->searchConsoleOperatorStateForCoverage(
+                    $coverage,
+                    operationalState: 'blocked_unavailable',
+                    nextAction: 'Configure or verify the Search Console property in MM-Google, then re-import coverage evidence.'
+                ),
+            ];
+        }
+
+        if ($coverage->mapping_state === 'not_mapped') {
+            return [
+                'status' => 'needs_property',
+                'label' => 'Needs Search Console',
+                'reason' => $this->searchConsoleCoverageReason($coverage, 'Search Console property is not mapped yet'),
+                ...$this->searchConsoleOperatorStateForCoverage(
+                    $coverage,
+                    operationalState: 'blocked_unavailable',
+                    nextAction: 'Map or verify the Search Console property, then re-import coverage evidence.'
+                ),
+            ];
+        }
+
+        if ($coverage->mapping_state === 'url_prefix') {
+            return [
+                'status' => 'url_prefix_only',
+                'label' => 'URL prefix only',
+                'reason' => $this->searchConsoleCoverageReason($coverage, 'Search Console is mapped as a URL prefix instead of a domain property'),
+                ...$this->searchConsoleOperatorStateForCoverage(
+                    $coverage,
+                    operationalState: 'blocked_unavailable',
+                    nextAction: 'Add or verify the domain property mapping, then re-import coverage evidence.'
+                ),
             ];
         }
 
@@ -1522,6 +1583,11 @@ class WebProperty extends Model
                 'status' => 'needs_import',
                 'label' => 'Needs import',
                 'reason' => $this->searchConsoleCoverageReason($coverage, 'MM-Google Search Console coverage needs attention before it can be treated as ready'),
+                ...$this->searchConsoleOperatorStateForCoverage(
+                    $coverage,
+                    operationalState: 'failing',
+                    nextAction: 'Review the current Search Console evidence and route only confirmed site-side fixes to the website owner.'
+                ),
             ];
         }
 
@@ -1530,6 +1596,37 @@ class WebProperty extends Model
                 'status' => 'url_prefix_only',
                 'label' => 'URL prefix only',
                 'reason' => $this->searchConsoleCoverageReason($coverage, 'MM-Google Search Console only matched a URL prefix property'),
+                ...$this->searchConsoleOperatorStateForCoverage(
+                    $coverage,
+                    operationalState: 'blocked_unavailable',
+                    nextAction: 'Replace the URL-prefix match with a domain property mapping, then re-import coverage evidence.'
+                ),
+            ];
+        }
+
+        if ($coverage->freshnessState() === 'never_imported') {
+            return [
+                'status' => 'needs_import',
+                'label' => 'Needs import',
+                'reason' => $this->searchConsoleCoverageReason($coverage, 'Search Console coverage is mapped but no data has been imported yet'),
+                ...$this->searchConsoleOperatorStateForCoverage(
+                    $coverage,
+                    operationalState: 'blocked_unavailable',
+                    nextAction: 'Run the Search Console import for this mapped property.'
+                ),
+            ];
+        }
+
+        if ($coverage->freshnessState() === 'stale') {
+            return [
+                'status' => 'stale_import',
+                'label' => 'Import stale',
+                'reason' => $this->searchConsoleCoverageReason($coverage, 'Search Console coverage import is stale'),
+                ...$this->searchConsoleOperatorStateForCoverage(
+                    $coverage,
+                    operationalState: 'stale',
+                    nextAction: 'Refresh the Search Console coverage import and confirm the latest evidence date is within policy.'
+                ),
             ];
         }
 
@@ -1538,6 +1635,11 @@ class WebProperty extends Model
                 'status' => 'covered',
                 'label' => 'Covered',
                 'reason' => $this->searchConsoleCoverageReason($coverage, 'MM-Google Search Console coverage is ready'),
+                ...$this->searchConsoleOperatorStateForCoverage(
+                    $coverage,
+                    operationalState: 'ok_fresh',
+                    nextAction: 'No Search Console coverage action is required while evidence remains fresh.'
+                ),
             ];
         }
 
@@ -1551,6 +1653,65 @@ class WebProperty extends Model
                     $coverage->property_uri ?? $this->primaryDomainName() ?? $this->slug
                 )
             ),
+            ...$this->searchConsoleOperatorStateForCoverage(
+                $coverage,
+                operationalState: 'ok_fresh',
+                nextAction: 'No Search Console coverage action is required while evidence remains fresh.'
+            ),
+        ];
+    }
+
+    /**
+     * @return array{
+     *   operational_state: string,
+     *   last_successful_import_at: string|null,
+     *   last_successful_evidence_at: string|null,
+     *   checked_at: string|null,
+     *   freshness_state: string|null,
+     *   blocker: string|null,
+     *   next_action: string
+     * }
+     */
+    private function searchConsoleOperatorStateForCoverage(
+        SearchConsoleCoverageStatus $coverage,
+        string $operationalState,
+        string $nextAction
+    ): array {
+        return $this->searchConsoleOperatorState(
+            operationalState: $operationalState,
+            reason: $this->searchConsoleCoverageReason($coverage, ''),
+            nextAction: $nextAction,
+            coverage: $coverage
+        );
+    }
+
+    /**
+     * @return array{
+     *   operational_state: string,
+     *   last_successful_import_at: string|null,
+     *   last_successful_evidence_at: string|null,
+     *   checked_at: string|null,
+     *   freshness_state: string|null,
+     *   blocker: string|null,
+     *   next_action: string
+     * }
+     */
+    private function searchConsoleOperatorState(
+        string $operationalState,
+        ?string $reason,
+        string $nextAction,
+        ?SearchConsoleCoverageStatus $coverage = null
+    ): array {
+        return [
+            'operational_state' => $operationalState,
+            'last_successful_import_at' => $coverage?->latest_completed_job_at?->toIso8601String(),
+            'last_successful_evidence_at' => $coverage?->latest_metric_date?->toDateString(),
+            'checked_at' => $coverage?->checked_at?->toIso8601String(),
+            'freshness_state' => $coverage?->freshnessState(),
+            'blocker' => in_array($operationalState, ['blocked_unavailable', 'failing', 'stale', 'excluded'], true)
+                ? $reason
+                : null,
+            'next_action' => $nextAction,
         ];
     }
 
@@ -1561,6 +1722,10 @@ class WebProperty extends Model
             : str($coverage->source_provider)->replace('_', ' ')->title()->toString();
 
         $subject = $coverage->property_uri ?? $coverage->matomo_main_url ?? $this->primaryDomainName() ?? $this->slug;
+
+        if ($fallback === '') {
+            return sprintf('%s evidence for %s', $sourceLabel, $subject);
+        }
 
         return sprintf('%s evidence for %s: %s', $sourceLabel, $subject, $fallback);
     }

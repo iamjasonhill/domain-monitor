@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 06:58:30 AEST
+
+- Issue or trigger: issue `#159` to clarify Search Console coverage freshness states for Control Plane consumers
+- What changed: expanded Search Console coverage summaries with explicit `operational_state`, freshness, last successful evidence/import timestamps, blocker, checked-at, and next-action fields while preserving existing status labels for current consumers
+- What was fixed: stale, blocked/unavailable, failing, excluded, and fresh Search Console states now have operator-readable outcomes so Control Plane does not have to guess whether a stale coverage item should become website work; `movingagain.com.au` can now be represented as stale with the last evidence date and refresh action instead of an ambiguous import-stale flag
+- What remains: Domain Monitor now owns the classification contract; the actual Search Console import still needs to be refreshed by the normal MM-Google/import path when a property is stale or blocked
+
 ### 2026-05-07 06:14:53 AEST
 
 - Issue or trigger: issue `#158` to detect live Astro/Vercel cutovers that still have stale WordPress/_wp-house controller metadata
