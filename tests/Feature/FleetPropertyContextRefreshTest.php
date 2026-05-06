@@ -350,6 +350,80 @@ class FleetPropertyContextRefreshTest extends TestCase
         );
     }
 
+    public function test_forced_search_console_refresh_failure_is_persisted_as_blocker(): void
+    {
+        Storage::fake('local');
+
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        config()->set('services.domain_monitor.fleet_control_api_key', 'fleet-token');
+        config()->set('services.google.search_console.access_token', null);
+        config()->set('services.google.search_console.refresh_token', 'expired-refresh-token');
+        config()->set('services.google.search_console.client_id', 'test-client-id');
+        config()->set('services.google.search_console.client_secret', 'test-client-secret');
+        config()->set('services.google.search_console.inspection_request_delay_micros', 0);
+
+        $property = $this->makeProperty('blocked-gsc-site', 'blocked-gsc.example.com', withSearchConsoleCoverage: true);
+        $property->primaryDomainModel()?->latestSearchConsoleCoverageStatus()->first()?->update([
+            'latest_metric_date' => now()->subDays(11)->toDateString(),
+            'latest_completed_job_at' => now()->subDays(10),
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $property->primaryDomainModel()?->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'capture_method' => 'gsc_drilldown_zip',
+            'affected_url_count' => 1,
+            'sample_urls' => ['https://blocked-gsc.example.com/old-page/'],
+            'normalized_payload' => [
+                'affected_urls' => ['https://blocked-gsc.example.com/old-page/'],
+            ],
+        ]);
+
+        $this->mock(PropertyConversionLinkScanner::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('persistForProperty')
+                ->once()
+                ->andReturn([
+                    'current_household_quote_url' => null,
+                    'current_household_booking_url' => null,
+                    'current_vehicle_quote_url' => null,
+                    'current_vehicle_booking_url' => null,
+                    'conversion_links_scanned_at' => now(),
+                ]);
+        });
+
+        $this->mock(DomainHealthCheckRunner::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('run')
+                ->times(3)
+                ->andReturn($this->skippedHealthResult('refresh failure test'));
+        });
+
+        Http::fake([
+            'https://oauth2.googleapis.com/token' => Http::response([
+                'error' => 'invalid_grant',
+            ], 400),
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer fleet-token',
+        ])->postJson('/api/web-properties/blocked-gsc-site/refresh-fleet-context', [
+            'force_search_console_api_enrichment' => true,
+        ]);
+
+        $response->assertStatus(207)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('refreshed.search_console_api_enrichment.status', 'failed')
+            ->assertJsonPath('refreshed.search_console_api_enrichment.reason', 'explicit')
+            ->assertJsonPath('refreshed.search_console_api_enrichment.message', 'Unable to refresh the Google Search Console access token (400).');
+
+        $summary = $property->fresh()->searchConsoleCoverageSummary();
+
+        $this->assertSame('blocked', $summary['status']);
+        $this->assertSame('blocked_unavailable', $summary['operational_state']);
+        $this->assertSame('Unable to refresh the Google Search Console access token (400).', $summary['blocker']);
+        $this->assertSame('stale', $summary['freshness_state']);
+    }
+
     public function test_active_api_outputs_reflect_refreshed_state_after_endpoint_runs(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');

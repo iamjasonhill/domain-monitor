@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\SearchConsoleCoverageStatus;
 use App\Models\SearchConsoleIssueSnapshot;
 use App\Models\WebProperty;
 use Illuminate\Database\Eloquent\Builder;
@@ -217,6 +218,8 @@ class SearchConsoleApiEnrichmentRefresher
                 'message' => null,
             ];
         } catch (\Throwable $exception) {
+            $this->recordRefreshFailure($property, $exception->getMessage());
+
             Log::warning('Fleet property Search Console API enrichment refresh failed', [
                 'web_property_id' => $property->id,
                 'property_slug' => $property->slug,
@@ -228,7 +231,7 @@ class SearchConsoleApiEnrichmentRefresher
                 'status' => 'failed',
                 'captured_at' => $latestApiCapturedAt?->toIso8601String(),
                 'reason' => $reason,
-                'message' => 'Search Console API enrichment refresh failed.',
+                'message' => $exception->getMessage(),
             ];
         }
     }
@@ -382,6 +385,50 @@ class SearchConsoleApiEnrichmentRefresher
                 return ($summary['detail_snapshot_id'] ?? null) !== null
                     || ($summary['source_capture_method'] ?? null) === 'gsc_drilldown_zip';
             });
+    }
+
+    private function recordRefreshFailure(WebProperty $property, string $message): void
+    {
+        $domain = $property->primaryDomainModel();
+        $latestCoverage = $domain?->latestSearchConsoleCoverageStatus()->first()
+            ?? $property->primaryAnalyticsSource('ga4')?->latestSearchConsoleCoverage()->first()
+            ?? $property->primaryAnalyticsSource('matomo')?->latestSearchConsoleCoverage()->first();
+        $ga4Source = $property->primaryAnalyticsSource('ga4');
+        $searchConsolePropertyUri = $property->searchConsolePropertyUri();
+        $now = now();
+
+        SearchConsoleCoverageStatus::query()->updateOrCreate(
+            [
+                'source_provider' => 'mm-google',
+                'matomo_site_id' => $property->siteKey() ?? $property->slug,
+            ],
+            [
+                'domain_id' => $domain?->id,
+                'web_property_id' => $property->id,
+                'property_analytics_source_id' => $ga4Source?->id,
+                'matomo_site_name' => $property->name,
+                'matomo_main_url' => $property->production_url,
+                'mapping_state' => is_string($searchConsolePropertyUri) && $searchConsolePropertyUri !== ''
+                    ? 'domain_property'
+                    : ($latestCoverage?->mapping_state ?: 'not_mapped'),
+                'property_uri' => $searchConsolePropertyUri ?? $latestCoverage?->property_uri,
+                'property_type' => $latestCoverage?->property_type ?: 'domain',
+                'mapped_at' => $latestCoverage?->mapped_at,
+                'latest_completed_job_at' => $latestCoverage?->latest_completed_job_at,
+                'latest_completed_job_type' => $latestCoverage?->latest_completed_job_type,
+                'latest_completed_range_end' => $latestCoverage?->latest_completed_range_end,
+                'latest_metric_date' => $latestCoverage?->latest_metric_date,
+                'checked_at' => $now,
+                'raw_payload' => [
+                    'coverageStatus' => 'search_console_refresh_failed',
+                    'source' => 'search_console_api_enrichment',
+                    'refresh_failure' => [
+                        'message' => $message,
+                        'attempted_at' => $now->toIso8601String(),
+                    ],
+                ],
+            ]
+        );
     }
 
     /**

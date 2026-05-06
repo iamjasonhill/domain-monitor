@@ -170,6 +170,43 @@ class RefreshAutomationCoverageCommandTest extends TestCase
         $this->assertSame(1, $command->run(new ArrayInput([]), new BufferedOutput));
     }
 
+    public function test_domain_scoped_refresh_continues_when_matomo_coverage_sync_fails(): void
+    {
+        $needsBaseline = $this->makeProperty('scoped-matomo-failure.example.au', 'Scoped Matomo Failure');
+        $this->attachRepository($needsBaseline);
+        $needsBaselineSource = $this->attachMatomo($needsBaseline, '41');
+        $this->attachInstallAudit($needsBaseline, $needsBaselineSource);
+        $this->attachCoverage($needsBaseline, $needsBaselineSource, now()->subDay()->toDateString());
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('analytics:sync-search-console-coverage', ['--domain' => 'scoped-matomo-failure.example.au'])
+            ->andThrow(new \RuntimeException("cURL error 60: SSL: no alternative certificate subject name matches target host name 'stats.redirection.com.au'"));
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('analytics:sync-search-console-baseline', ['--domain' => 'scoped-matomo-failure.example.au'])
+            ->andReturn(0);
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('coverage:sync-tags', ['--domain' => 'scoped-matomo-failure.example.au'])
+            ->andReturn(0);
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('domains:refresh-should-fix', ['--domain' => 'scoped-matomo-failure.example.au'])
+            ->andReturn(0);
+
+        $command = app(RefreshAutomationCoverage::class);
+        $command->setOutput(new OutputStyle(new ArrayInput([]), new BufferedOutput));
+        $command->setLaravel($this->app);
+
+        $this->assertSame(0, $command->run(new ArrayInput([
+            '--domain' => 'scoped-matomo-failure.example.au',
+        ]), new BufferedOutput));
+    }
+
     public function test_it_returns_failure_when_any_baseline_sync_fails(): void
     {
         $needsBaseline = $this->makeProperty('baseline-fail.example.au', 'Baseline Failure');
@@ -292,7 +329,7 @@ class RefreshAutomationCoverageCommandTest extends TestCase
 
     private function attachMatomo(WebProperty $property, string $externalId): PropertyAnalyticsSource
     {
-        return PropertyAnalyticsSource::create([
+        $source = PropertyAnalyticsSource::create([
             'web_property_id' => $property->id,
             'provider' => 'matomo',
             'external_id' => $externalId,
@@ -300,6 +337,20 @@ class RefreshAutomationCoverageCommandTest extends TestCase
             'is_primary' => true,
             'status' => 'active',
         ]);
+
+        PropertyAnalyticsSource::create([
+            'web_property_id' => $property->id,
+            'provider' => 'ga4',
+            'external_id' => 'G-'.$externalId,
+            'external_name' => $property->name,
+            'is_primary' => true,
+            'status' => 'active',
+            'provider_config' => [
+                'measurement_id' => 'G-'.$externalId,
+            ],
+        ]);
+
+        return $source;
     }
 
     private function attachInstallAudit(WebProperty $property, PropertyAnalyticsSource $source): void

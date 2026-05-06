@@ -58,6 +58,33 @@ class SearchConsoleCoverageSummaryTest extends TestCase
         $this->assertStringContainsString('Refresh the Search Console coverage import', $summary['next_action']);
     }
 
+    public function test_it_exposes_refresh_failure_as_current_blocker_before_staleness(): void
+    {
+        $property = $this->propertyWithDomain('refresh-blocked.example.com');
+        $coverage = $this->coverage($property, [
+            'property_uri' => 'sc-domain:refresh-blocked.example.com',
+            'source_provider' => 'mm-google',
+            'latest_metric_date' => now()->subDays(11)->toDateString(),
+            'latest_completed_job_at' => now()->subDays(10),
+            'raw_payload' => [
+                'coverageStatus' => 'search_console_refresh_failed',
+                'refresh_failure' => [
+                    'message' => 'Unable to refresh the Google Search Console access token (400).',
+                ],
+            ],
+        ]);
+
+        $summary = $property->fresh()->searchConsoleCoverageSummary();
+
+        $this->assertSame('blocked', $summary['status']);
+        $this->assertSame('blocked_unavailable', $summary['operational_state']);
+        $this->assertSame('Unable to refresh the Google Search Console access token (400).', $summary['reason']);
+        $this->assertSame('Unable to refresh the Google Search Console access token (400).', $summary['blocker']);
+        $this->assertSame($coverage->latest_metric_date?->toDateString(), $summary['last_successful_evidence_at']);
+        $this->assertSame('stale', $summary['freshness_state']);
+        $this->assertStringContainsString('Resolve the Search Console refresh blocker', $summary['next_action']);
+    }
+
     public function test_it_exposes_blocked_search_console_coverage_with_blocker(): void
     {
         $property = $this->propertyWithDomain('blocked-search-console.example.com');

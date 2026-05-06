@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 07:50:06 AEST
+
+- Issue or trigger: issue `#161` to harden Search Console coverage refresh blockers after the Moving Again production refresh exposed GSC token and Matomo SSL coupling failures
+- What changed: forced Search Console API enrichment failures now persist a `search_console_refresh_failed` coverage record with the exact exception message, coverage summaries treat that refresh failure as the active `blocked_unavailable` operator state before stale-import handling, and domain-scoped automation coverage refreshes continue with existing domain state when the Matomo coverage sync throws or fails
+- What was fixed: Moving Again-style token failures can surface `Unable to refresh the Google Search Console access token (400).` as the current blocker, while `analytics:refresh-automation-coverage --domain=...` no longer aborts the requested domain just because a Matomo coverage sync path has an unrelated SSL/API failure
+- What remains: the underlying Search Console credential repair still belongs with the upstream Google/MM-Google source; once credentials are repaired, a successful Domain Monitor refresh should replace the persisted blocker state with fresh evidence
+
 ### 2026-05-07 07:15:04 AEST
 
 - Issue or trigger: issue `#160` to add an external reference policy for outbound link inventory

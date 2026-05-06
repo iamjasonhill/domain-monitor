@@ -22,15 +22,35 @@ class RefreshAutomationCoverage extends Command
 
         $this->info('Syncing Search Console coverage from Matomo...');
 
-        $coverageExitCode = Artisan::call(
-            'analytics:sync-search-console-coverage',
-            $domainFilter ? ['--domain' => $domainFilter] : []
-        );
+        try {
+            $coverageExitCode = Artisan::call(
+                'analytics:sync-search-console-coverage',
+                $domainFilter ? ['--domain' => $domainFilter] : []
+            );
+        } catch (\Throwable $exception) {
+            if (! $domainFilter) {
+                throw $exception;
+            }
+
+            $coverageExitCode = self::FAILURE;
+            $this->warn(sprintf(
+                'Search Console coverage refresh failed for [%s]: %s',
+                $domainFilter,
+                $exception->getMessage()
+            ));
+        }
 
         if ($coverageExitCode !== 0) {
-            $this->error('Search Console coverage refresh failed.');
+            if ($domainFilter) {
+                $this->warn(sprintf(
+                    'Search Console coverage refresh failed for [%s]; continuing with existing domain-scoped coverage state.',
+                    $domainFilter
+                ));
+            } else {
+                $this->error('Search Console coverage refresh failed.');
 
-            return self::FAILURE;
+                return self::FAILURE;
+            }
         }
 
         $baselineDomains = $this->domainsNeedingBaselineSync($domainFilter);

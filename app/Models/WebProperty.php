@@ -1526,15 +1526,22 @@ class WebProperty extends Model
     {
         $rawStatus = $this->searchConsoleCoverageStatusFromRawPayload($coverage->raw_payload);
 
-        if ($rawStatus === 'search_console_audit_failed') {
+        if (in_array($rawStatus, ['search_console_audit_failed', 'search_console_refresh_failed'], true)) {
+            $blocker = $rawStatus === 'search_console_refresh_failed'
+                ? $this->searchConsoleRefreshFailureReason($coverage)
+                : $this->searchConsoleCoverageReason($coverage, 'MM-Google Search Console audit failed');
+
             return [
                 'status' => 'blocked',
-                'label' => 'Audit blocked',
-                'reason' => $this->searchConsoleCoverageReason($coverage, 'MM-Google Search Console audit failed'),
-                ...$this->searchConsoleOperatorStateForCoverage(
-                    $coverage,
+                'label' => $rawStatus === 'search_console_refresh_failed' ? 'Refresh blocked' : 'Audit blocked',
+                'reason' => $blocker,
+                ...$this->searchConsoleOperatorState(
                     operationalState: 'blocked_unavailable',
-                    nextAction: 'Resolve the MM-Google Search Console audit blocker, then re-run the import.'
+                    reason: $blocker,
+                    nextAction: $rawStatus === 'search_console_refresh_failed'
+                        ? 'Resolve the Search Console refresh blocker, then re-run the API enrichment refresh.'
+                        : 'Resolve the MM-Google Search Console audit blocker, then re-run the import.',
+                    coverage: $coverage
                 ),
             ];
         }
@@ -1728,6 +1735,17 @@ class WebProperty extends Model
         }
 
         return sprintf('%s evidence for %s: %s', $sourceLabel, $subject, $fallback);
+    }
+
+    private function searchConsoleRefreshFailureReason(SearchConsoleCoverageStatus $coverage): string
+    {
+        $message = data_get($coverage->raw_payload, 'refresh_failure.message');
+
+        if (is_string($message) && trim($message) !== '') {
+            return trim($message);
+        }
+
+        return $this->searchConsoleCoverageReason($coverage, 'Search Console API enrichment refresh failed');
     }
 
     private function searchConsoleCoverageStatusFromRawPayload(mixed $rawPayload): ?string
