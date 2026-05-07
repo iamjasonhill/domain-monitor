@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 11:11:49 AEST
+
+- Issue or trigger: issue `#162` final production disk cleanup after the root Forge recipe successfully vacuumed journals but left `/` at `78%`
+- What changed: reran production evidence after the root recipe, then pruned the two oldest Forge release directories via the `forge` user while keeping the current release plus one rollback release
+- What was fixed: root disk is now below the issue threshold at `74%` used with `2.4G` free; journald retention was capped by the root recipe, journal usage dropped to about `170.7M`, and release storage dropped from `712M` to `356M`
+- What remains: watch whether the 10GB droplet regrows toward the threshold during normal deploy/log churn; if it does, schedule a DigitalOcean volume resize rather than repeatedly shaving normal operating data
+
 ### 2026-05-07 11:00:40 AEST
 
 - Issue or trigger: issue `#162` follow-up to finish Domain Monitor production root disk cleanup or resize after the first Forge release-prune pass
