@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 11:36:36 AEST
+
+- Issue or trigger: issue `#163` to plan the GA4-first retirement of Matomo/manual CSV active coverage before functional cleanup starts
+- What changed: added `docs/GA4-FIRST-COVERAGE-RETIREMENT.md` as the repo-owned decision record and updated the SEO baseline workflow so MM-Google/Search Console is the active path while Matomo/manual CSV is legacy archive/backfill only
+- What was fixed: future operators and agents now have a single documented rule that Matomo/manual CSV must not be treated as active required coverage, active domain health, or first-look work
+- What remains: the later retirement issues still need to stop scheduled Matomo refreshes, remove manual CSV from active automation coverage, retire active UI surfaces, archive Matomo sources safely, update quality tests, neutralize active contract naming, and verify production cleanup
+
 ### 2026-05-07 11:11:49 AEST
 
 - Issue or trigger: issue `#162` final production disk cleanup after the root Forge recipe successfully vacuumed journals but left `/` at `78%`

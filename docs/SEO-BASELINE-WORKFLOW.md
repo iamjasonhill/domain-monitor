@@ -12,20 +12,24 @@ This avoids redesigning or migrating blind when Google already knows something u
 
 ## System Roles
 
-### Matomo Owns Raw SEO/Search Data
+### MM-Google Owns Active Search Data
 
-Matomo is still the legacy raw source for older Search Console-derived data:
+MM-Google is the active source for current GA4 and Search Console coverage
+truth. See `docs/GA4-FIRST-COVERAGE-RETIREMENT.md` for the retirement
+decision that makes Matomo/manual CSV legacy archive/backfill only.
+
+MM-Google should answer:
 
 - Search Analytics totals
 - page/query/country/device breakdowns
-- Search Console property mapping to Matomo `idSite`
-- scheduled imports and backfills
+- Search Console property mapping and readiness
+- current coverage, blocker, and freshness state
 
-Matomo should answer:
+Matomo may still answer historical/backfill questions:
 
-- what search data do we have right now?
-- which pages and queries are performing?
-- what imported Search Console history is available?
+- what legacy Search Console history was imported before retirement?
+- which legacy Matomo `idSite` a preserved baseline came from?
+- what old backfill evidence explains a prior operator decision?
 
 ### domain-monitor Owns Domain-Level Baselines
 
@@ -38,10 +42,10 @@ It should answer:
 - what did indexation and search visibility look like at that point?
 - do we have enough baseline data to begin a rebuild?
 
-### MM-Google Owns The Replacement Export
+### MM-Google Owns The Search Console Export
 
 MM-Google is the preferred producer of the Search Console coverage/baseline
-replacement export.
+export.
 
 It should answer:
 
@@ -64,11 +68,10 @@ Raw search metrics should not live in Brain as the canonical source.
 
 Before a site enters active rebuild work, all of the following should be true:
 
-1. the domain has a Matomo site binding
-2. the domain has a Search Console property mapping in Matomo
-3. at least one Search Console backfill has completed
-4. a domain-level SEO baseline snapshot exists in `domain-monitor`
-5. any non-API Search Console exports needed for context are stored as operator artifacts and linked
+1. the property has GA4/MM-Google coverage or an explicit provisioning state
+2. the property has current Search Console coverage or an explicit blocker
+3. a domain-level SEO baseline snapshot exists in `domain-monitor`
+4. any optional historical Matomo/manual CSV context is preserved as evidence, not active required work
 
 Exception:
 
@@ -78,17 +81,17 @@ For money sites, operational sites, and serious rebuild candidates, do not skip 
 
 ## Standard Workflow
 
-### 1. Bind The Domain In Matomo
+### 1. Confirm The Active Analytics Binding
 
 Confirm:
 
-- Matomo `idSite` exists
-- site tracking code is live on the website
-- Search Console property is mapped
+- GA4 binding exists or has an explicit MM-Google provisioning state
+- expected GA4 measurement ID is available when provisioned
+- Search Console property is mapped or has an explicit blocker
 
-### 2. Import What The API Can Provide
+### 2. Import What The Active API Can Provide
 
-Use Matomo Search Console integration to import:
+Use the MM-Google/Search Console path to import:
 
 - daily summary
 - page
@@ -100,13 +103,14 @@ Minimum expected import:
 
 - latest 90 days
 
-### 3. Capture Manual Search Console Exports If Needed
+### 3. Preserve Manual Search Console Exports If Needed
 
 If Google exposes useful UI-only context that is not yet in MM-Google or Domain Monitor:
 
 - export the CSV from Search Console
 - store it as an operator artifact
 - do not treat the CSV as the long-term canonical source
+- do not require the CSV for active domain health
 
 Recommended artifact location:
 
@@ -231,18 +235,20 @@ Do not:
 - start a major rebuild without a baseline
 - use Brain notes as the only record of SEO/search state
 - store full raw Search Console page/query datasets in `domain-monitor`
-- assume Search Console UI exports are a permanent substitute for Matomo imports
+- require Matomo/manual CSV evidence for active coverage health
+- assume Search Console UI exports are a permanent substitute for MM-Google/Search Console imports
 
 ## Near-Term Implementation Shape
 
 The practical model should be:
 
-1. Matomo imports raw Search Console data
+1. MM-Google imports or exports current Search Console coverage and baseline data
 2. `domain-monitor` stores milestone baseline snapshots per domain/property
 3. `MM BRAIN` reads both and reasons about readiness, risk, and outcomes
 
 That keeps ownership clear:
 
-- Matomo = raw SEO/search engine
+- MM-Google = active GA4 and Search Console source of truth
+- Matomo/manual CSV = preserved legacy archive/backfill evidence
 - `domain-monitor` = operational baseline record
 - `MM BRAIN` = interpretation and planning
