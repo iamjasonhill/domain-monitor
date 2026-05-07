@@ -319,12 +319,7 @@ class WebProperty extends Model
 
     public function searchConsolePropertyUri(): ?string
     {
-        $primaryDomain = $this->primaryDomainModel();
-        $domainCoverage = $primaryDomain instanceof Domain
-            ? ($primaryDomain->relationLoaded('latestSearchConsoleCoverageStatus')
-                ? $primaryDomain->latestSearchConsoleCoverageStatus
-                : $primaryDomain->latestSearchConsoleCoverageStatus()->first())
-            : null;
+        $domainCoverage = $this->activeDomainSearchConsoleCoverage();
 
         if ($domainCoverage instanceof SearchConsoleCoverageStatus && is_string($domainCoverage->property_uri) && $domainCoverage->property_uri !== '') {
             return $domainCoverage->property_uri;
@@ -332,26 +327,52 @@ class WebProperty extends Model
 
         foreach (['ga4', 'matomo'] as $provider) {
             $source = $this->primaryAnalyticsSource($provider);
-            $coverage = $source instanceof PropertyAnalyticsSource
-                ? ($source->relationLoaded('latestSearchConsoleCoverage')
-                    ? $source->latestSearchConsoleCoverage
-                    : $source->latestSearchConsoleCoverage()->first())
-                : null;
+            if (! $source instanceof PropertyAnalyticsSource || ($provider === 'matomo' && $source->status !== 'active')) {
+                continue;
+            }
+
+            $coverage = $source->relationLoaded('latestSearchConsoleCoverage')
+                ? $source->latestSearchConsoleCoverage
+                : $source->latestSearchConsoleCoverage()->first();
 
             if ($coverage instanceof SearchConsoleCoverageStatus && is_string($coverage->property_uri) && $coverage->property_uri !== '') {
                 return $coverage->property_uri;
             }
         }
 
-        $coverage = $domainCoverage instanceof SearchConsoleCoverageStatus
-            ? $domainCoverage
-            : null;
+        return $this->latestPropertySeoBaselineRecord()?->search_console_property_uri;
+    }
 
-        if ($coverage instanceof SearchConsoleCoverageStatus && is_string($coverage->property_uri) && $coverage->property_uri !== '') {
-            return $coverage->property_uri;
+    private function activeDomainSearchConsoleCoverage(): ?SearchConsoleCoverageStatus
+    {
+        $primaryDomain = $this->primaryDomainModel();
+        if (! $primaryDomain instanceof Domain) {
+            return null;
         }
 
-        return $this->latestPropertySeoBaselineRecord()?->search_console_property_uri;
+        $coverages = $primaryDomain->relationLoaded('searchConsoleCoverageStatuses')
+            ? $primaryDomain->searchConsoleCoverageStatuses
+            : $primaryDomain->searchConsoleCoverageStatuses()->with('propertyAnalyticsSource')->get();
+
+        return $coverages
+            ->first(fn (SearchConsoleCoverageStatus $coverage): bool => $this->isActiveSearchConsoleCoverage($coverage));
+    }
+
+    private function isActiveSearchConsoleCoverage(SearchConsoleCoverageStatus $coverage): bool
+    {
+        if ($coverage->source_provider !== 'matomo') {
+            return true;
+        }
+
+        $source = $coverage->relationLoaded('propertyAnalyticsSource')
+            ? $coverage->propertyAnalyticsSource
+            : $coverage->propertyAnalyticsSource()->first();
+
+        if (! $source instanceof PropertyAnalyticsSource) {
+            return false;
+        }
+
+        return $source->provider === 'matomo' && $source->status === 'active';
     }
 
     /**
@@ -1441,12 +1462,7 @@ class WebProperty extends Model
             ];
         }
 
-        $primaryDomain = $this->primaryDomainModel();
-        $coverage = $primaryDomain instanceof Domain
-            ? ($primaryDomain->relationLoaded('latestSearchConsoleCoverageStatus')
-                ? $primaryDomain->latestSearchConsoleCoverageStatus
-                : $primaryDomain->latestSearchConsoleCoverageStatus()->first())
-            : null;
+        $coverage = $this->activeDomainSearchConsoleCoverage();
 
         if ($coverage instanceof SearchConsoleCoverageStatus) {
             return $this->searchConsoleCoverageSummaryFromCoverage($coverage);

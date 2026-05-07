@@ -93,6 +93,39 @@ class SearchConsoleCoverageSummaryTest extends TestCase
         $this->assertStringContainsString('Refresh the Search Console coverage import', $summary['next_action']);
     }
 
+    public function test_archived_matomo_coverage_does_not_drive_active_search_console_freshness(): void
+    {
+        $property = $this->propertyWithDomain('archived-matomo-search-console.example.com');
+        $matomo = $this->analyticsSource($property, 'matomo', 'legacy-archived-matomo-site', false, 'archived');
+        $this->analyticsSource($property, 'ga4', 'G-ARCHIVEDMATOMO', true, 'active', [
+            'measurement_id' => 'G-ARCHIVEDMATOMO',
+            'source_system' => 'MM-Google',
+        ]);
+
+        $this->coverage($property, [
+            'property_analytics_source_id' => $matomo->id,
+            'source_provider' => 'matomo',
+            'matomo_site_id' => 'legacy-archived-matomo-site',
+            'matomo_site_name' => 'Legacy archived Matomo site',
+            'property_uri' => 'sc-domain:archived-matomo-search-console.example.com',
+            'latest_metric_date' => now()->subDays(20)->toDateString(),
+            'latest_completed_job_at' => now()->subDays(19),
+            'checked_at' => now()->subDays(19),
+            'raw_payload' => [
+                'coverageStatus' => 'search_console_ready',
+            ],
+        ]);
+
+        $summary = $property->fresh()->searchConsoleCoverageSummary();
+
+        $this->assertSame('needs_property', $summary['status']);
+        $this->assertSame('blocked_unavailable', $summary['operational_state']);
+        $this->assertStringContainsString('MM-Google GA4 is synced', (string) $summary['reason']);
+        $this->assertNull($summary['source_provider']);
+        $this->assertNull($summary['last_successful_evidence_at']);
+        $this->assertNull($property->fresh()->searchConsolePropertyUri());
+    }
+
     public function test_it_exposes_refresh_failure_as_current_blocker_before_staleness(): void
     {
         $property = $this->propertyWithDomain('refresh-blocked.example.com');
@@ -210,15 +243,25 @@ class SearchConsoleCoverageSummaryTest extends TestCase
         ]);
     }
 
-    private function analyticsSource(WebProperty $property, string $provider, string $externalId, bool $isPrimary): PropertyAnalyticsSource
-    {
+    /**
+     * @param  array<string, mixed>  $providerConfig
+     */
+    private function analyticsSource(
+        WebProperty $property,
+        string $provider,
+        string $externalId,
+        bool $isPrimary,
+        string $status = 'active',
+        array $providerConfig = []
+    ): PropertyAnalyticsSource {
         return PropertyAnalyticsSource::create([
             'web_property_id' => $property->id,
             'provider' => $provider,
             'external_id' => $externalId,
             'external_name' => $provider.' source',
+            'provider_config' => $providerConfig,
             'is_primary' => $isPrimary,
-            'status' => 'active',
+            'status' => $status,
         ]);
     }
 }

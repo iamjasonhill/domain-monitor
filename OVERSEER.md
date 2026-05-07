@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 12:46:03 AEST
+
+- Issue or trigger: issue `#171` to stop archived Matomo coverage from driving active Search Console freshness
+- What changed: Search Console URI and coverage summaries now select only active coverage rows; archived/inactive Matomo coverage is skipped before freshness is calculated, while GA4/MM-Google rows remain eligible
+- What was fixed: an archived Matomo source with stale Search Console evidence now falls through to the current GA4/MM-Google Search Console setup gap instead of reporting `stale_import` from old Matomo evidence
+- What remains: deploy and rerun production Control Plane import/attention refresh to confirm stale Matomo-driven attention rows disappear; then continue with parked/domain-asset live-site QA suppression in issue `#172`
+
 ### 2026-05-07 12:13:05 AEST
 
 - Issue or trigger: issue `#170` to run production cleanup verification after Matomo/manual CSV retirement
