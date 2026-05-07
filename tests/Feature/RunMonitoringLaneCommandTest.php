@@ -1649,7 +1649,7 @@ class RunMonitoringLaneCommandTest extends TestCase
             ->count());
     }
 
-    public function test_live_site_lanes_ignore_domain_assets_and_dns_parked_properties(): void
+    public function test_live_site_lanes_ignore_non_live_website_properties(): void
     {
         $domainAsset = $this->makeProperty('asset-no-live-qa.example.au', 'Asset No Live QA');
         $domainAsset->forceFill([
@@ -1660,6 +1660,14 @@ class RunMonitoringLaneCommandTest extends TestCase
         $dnsParked->primaryDomainModel()?->forceFill([
             'dns_config_name' => 'Parked',
         ])->save();
+
+        $emailOnly = $this->makeProperty('email-only-no-live-qa.example.au', 'Email Only No Live QA');
+        $emailOnly->primaryDomainModel()?->forceFill([
+            'platform' => 'Email Only',
+        ])->save();
+
+        $notApplicable = $this->makeProperty('not-applicable-no-live-qa.example.au', 'Not Applicable No Live QA');
+        $this->attachCoverageExclusionTag($notApplicable);
 
         Http::fake([
             '*' => Http::response('<html><head></head><body>No QA please</body></html>', 200),
@@ -1676,7 +1684,7 @@ class RunMonitoringLaneCommandTest extends TestCase
         }
 
         $this->assertSame(0, MonitoringFinding::query()
-            ->whereIn('web_property_id', [$domainAsset->id, $dnsParked->id])
+            ->whereIn('web_property_id', [$domainAsset->id, $dnsParked->id, $emailOnly->id, $notApplicable->id])
             ->whereIn('finding_type', [
                 'marketing.ga4_install',
                 'marketing.indexability',
@@ -1686,7 +1694,7 @@ class RunMonitoringLaneCommandTest extends TestCase
             ->count());
     }
 
-    public function test_existing_live_site_findings_for_domain_assets_and_parked_domains_are_hidden_from_control_plane_exports(): void
+    public function test_existing_live_site_findings_for_non_live_website_properties_are_hidden_from_control_plane_exports(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
 
@@ -1702,10 +1710,24 @@ class RunMonitoringLaneCommandTest extends TestCase
         ])->save();
         $this->attachGa4Source($dnsParked, 'G-PARKEDHIDDEN');
 
+        $emailOnly = $this->makeProperty('email-hidden-findings.example.au', 'Email Hidden Findings');
+        $emailOnly->primaryDomainModel()?->forceFill([
+            'platform' => 'Email Only',
+        ])->save();
+        $this->attachGa4Source($emailOnly, 'G-EMAILHIDDEN');
+
+        $notApplicable = $this->makeProperty('excluded-hidden-findings.example.au', 'Excluded Hidden Findings');
+        $this->attachCoverageExclusionTag($notApplicable);
+        $this->attachGa4Source($notApplicable, 'G-EXCLUDEDHIDDEN');
+
         $this->openMonitoringFinding($domainAsset, 'dm:test:asset-hidden-ga4', 'marketing.ga4_install', 'marketing_integrity', 'regression');
         $this->openMonitoringFinding($domainAsset, 'dm:test:asset-hidden-agent', 'seo.agent_readiness', 'seo_agent_readiness', 'readiness_gap');
         $this->openMonitoringFinding($dnsParked, 'dm:test:parked-hidden-indexability', 'marketing.indexability', 'marketing_integrity', 'cleanup');
         $this->openMonitoringFinding($dnsParked, 'dm:test:parked-hidden-structured-data', 'seo.structured_data', 'seo_agent_readiness', 'readiness_gap');
+        $this->openMonitoringFinding($emailOnly, 'dm:test:email-hidden-ga4', 'marketing.ga4_install', 'marketing_integrity', 'regression');
+        $this->openMonitoringFinding($emailOnly, 'dm:test:email-hidden-agent', 'seo.agent_readiness', 'seo_agent_readiness', 'readiness_gap');
+        $this->openMonitoringFinding($notApplicable, 'dm:test:excluded-hidden-indexability', 'marketing.indexability', 'marketing_integrity', 'cleanup');
+        $this->openMonitoringFinding($notApplicable, 'dm:test:excluded-hidden-structured-data', 'seo.structured_data', 'seo_agent_readiness', 'readiness_gap');
 
         /** @var array<int, array<string, mixed>> $issues */
         $issues = $this->withHeaders([
@@ -1719,6 +1741,10 @@ class RunMonitoringLaneCommandTest extends TestCase
         $this->assertNotContains('dm:test:asset-hidden-agent', $issueIds);
         $this->assertNotContains('dm:test:parked-hidden-indexability', $issueIds);
         $this->assertNotContains('dm:test:parked-hidden-structured-data', $issueIds);
+        $this->assertNotContains('dm:test:email-hidden-ga4', $issueIds);
+        $this->assertNotContains('dm:test:email-hidden-agent', $issueIds);
+        $this->assertNotContains('dm:test:excluded-hidden-indexability', $issueIds);
+        $this->assertNotContains('dm:test:excluded-hidden-structured-data', $issueIds);
 
         /** @var array<int, array<string, mixed>> $summaries */
         $summaries = $this->withHeaders([
@@ -1729,15 +1755,25 @@ class RunMonitoringLaneCommandTest extends TestCase
 
         $assetSummary = collect($summaries)->firstWhere('slug', $domainAsset->slug);
         $parkedSummary = collect($summaries)->firstWhere('slug', $dnsParked->slug);
+        $emailOnlySummary = collect($summaries)->firstWhere('slug', $emailOnly->slug);
+        $notApplicableSummary = collect($summaries)->firstWhere('slug', $notApplicable->slug);
 
         $this->assertIsArray($assetSummary);
         $this->assertIsArray($parkedSummary);
+        $this->assertIsArray($emailOnlySummary);
+        $this->assertIsArray($notApplicableSummary);
         $this->assertSame(0, data_get($assetSummary, 'monitoring_summary.open_findings_count'));
         $this->assertSame(0, data_get($parkedSummary, 'monitoring_summary.open_findings_count'));
+        $this->assertSame(0, data_get($emailOnlySummary, 'monitoring_summary.open_findings_count'));
+        $this->assertSame(0, data_get($notApplicableSummary, 'monitoring_summary.open_findings_count'));
         $this->assertSame('configured', data_get($assetSummary, 'analytics.ga4.status'));
         $this->assertSame('configured', data_get($parkedSummary, 'analytics.ga4.status'));
+        $this->assertSame('configured', data_get($emailOnlySummary, 'analytics.ga4.status'));
+        $this->assertSame('configured', data_get($notApplicableSummary, 'analytics.ga4.status'));
         $this->assertNull(data_get($assetSummary, 'analytics.ga4.detection.issue_id'));
         $this->assertNull(data_get($parkedSummary, 'analytics.ga4.detection.issue_id'));
+        $this->assertNull(data_get($emailOnlySummary, 'analytics.ga4.detection.issue_id'));
+        $this->assertNull(data_get($notApplicableSummary, 'analytics.ga4.detection.issue_id'));
     }
 
     private function makeProperty(string $domainName, string $name): WebProperty
@@ -1780,6 +1816,23 @@ class RunMonitoringLaneCommandTest extends TestCase
             'is_primary' => true,
             'status' => 'active',
         ]);
+    }
+
+    private function attachCoverageExclusionTag(WebProperty $property): void
+    {
+        $tagConfig = (array) config('domain_monitor.coverage_tags.manual_exclusion_tag', []);
+        $tag = DomainTag::query()->firstOrCreate(
+            ['name' => (string) ($tagConfig['name'] ?? 'coverage.excluded')],
+            [
+                'priority' => (int) ($tagConfig['priority'] ?? 95),
+                'color' => (string) ($tagConfig['color'] ?? '#6b7280'),
+            ]
+        );
+
+        $primaryDomain = $property->primaryDomainModel();
+        $this->assertInstanceOf(Domain::class, $primaryDomain);
+
+        $primaryDomain->tags()->syncWithoutDetaching([$tag->id]);
     }
 
     private function openMonitoringFinding(

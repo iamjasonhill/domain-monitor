@@ -385,7 +385,7 @@ class WebPropertyAnalyticsSummaryBuilder
 
     private function ga4MonitoringFinding(WebProperty $property): ?MonitoringFinding
     {
-        if ($property->property_type === 'domain_asset') {
+        if ($property->shouldSuppressLiveWebsiteQualityFindings()) {
             return null;
         }
 

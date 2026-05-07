@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 13:34:23 AEST
+
+- Issue or trigger: issue `#173` to suppress website QA findings for email-only and not-applicable properties
+- What changed: live-website QA eligibility is now centralized on `WebProperty::shouldSuppressLiveWebsiteQualityFindings()` and reused by monitoring lane selection, Control Plane issue exports, web-property monitoring summaries, and GA4 detection summaries
+- What was fixed: domain assets, DNS-parked properties, email-only primary domains, and `not_applicable`/coverage-excluded properties no longer emit or export live-site QA findings for missing GA4, indexability, structured data, or agent-readiness checks, while eligible live website properties still use the normal monitoring paths
+- What remains: deploy to production and refresh/import Control Plane attention data to confirm the four current email-only properties drop from website-QA Attention without weakening live website QA
+
 ### 2026-05-07 13:11:23 AEST
 
 - Issue or trigger: Control Plane Attention review for `vehicle.net.au`, an operational app-shell domain whose HTTP apex upgraded correctly but whose alternate `www` host could not be verified

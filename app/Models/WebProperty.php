@@ -1238,6 +1238,11 @@ class WebProperty extends Model
         return ['eligible' => true, 'reason' => null];
     }
 
+    public function shouldSuppressLiveWebsiteQualityFindings(): bool
+    {
+        return ! $this->coverageEligibility()['eligible'];
+    }
+
     /**
      * @return array{status: string, label: string, reason: string|null}
      */

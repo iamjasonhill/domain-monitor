@@ -209,7 +209,7 @@ class RunMonitoringLane extends Command
         return $query
             ->get()
             ->filter(function (WebProperty $property) use ($lane, $laneConfig): bool {
-                if ($property->property_type === 'domain_asset') {
+                if ($property->shouldSuppressLiveWebsiteQualityFindings()) {
                     return false;
                 }
 

@@ -100,7 +100,7 @@ class WebPropertyMonitoringSummaryBuilder
 
     private function shouldSuppressFinding(MonitoringFinding $finding, WebProperty $property): bool
     {
-        if ($property->property_type === 'domain_asset') {
+        if ($property->shouldSuppressLiveWebsiteQualityFindings()) {
             return true;
         }
 

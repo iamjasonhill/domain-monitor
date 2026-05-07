@@ -257,7 +257,7 @@ class DetectedIssueSummaryService
             ->where('status', MonitoringFinding::STATUS_OPEN)
             ->with([
                 'domain:id,domain,platform,dns_config_name,parked_override',
-                'webProperty.primaryDomain:id,domain,platform,dns_config_name,parked_override',
+                'webProperty.primaryDomain:id,domain,is_active,platform,dns_config_name,parked_override',
                 'webProperty.primaryDomain.tags',
                 'webProperty.propertyDomains.domain.tags',
             ])
@@ -325,7 +325,7 @@ class DetectedIssueSummaryService
     private function shouldSuppressMonitoringFinding(MonitoringFinding $finding): bool
     {
         $property = $finding->webProperty;
-        if ($property instanceof WebProperty && $property->property_type === 'domain_asset') {
+        if ($property instanceof WebProperty && $property->shouldSuppressLiveWebsiteQualityFindings()) {
             return true;
         }
 
