@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 11:00:40 AEST
+
+- Issue or trigger: issue `#162` follow-up to finish Domain Monitor production root disk cleanup or resize after the first Forge release-prune pass
+- What changed: rechecked production via `domain-monitor-server`, confirmed root disk is now `86%` used with `1.3G` free, identified the largest remaining safe root-owned reclaim targets as `/var/log/journal` at roughly `909M` and apt cache/list data at roughly `517M`, and confirmed the droplet is `TheBrainDeftly` on a 10GB DigitalOcean disk
+- What was fixed: no further root-owned cleanup was performed from this checkout because `forge` sudo requires a password/TTY and direct `root@170.64.195.27` SSH is not authorized; Forge release retention is already within the current-plus-one-or-two rollback target
+- What remains: run the root/Forge console maintenance commands to vacuum journald to about `200M`, clean apt caches/lists, verify `/` drops below `75%`, then record the final `df -h /` evidence and close issue `#162`; if cleanup cannot hold the target, schedule a DigitalOcean resize with a maintenance window
+
 ### 2026-05-07 10:29:39 AEST
 
 - Issue or trigger: Control Plane still surfaced Moving Again `.com`, `.net`,
