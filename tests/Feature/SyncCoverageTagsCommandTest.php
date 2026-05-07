@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\AnalyticsInstallAudit;
 use App\Models\Domain;
 use App\Models\DomainSeoBaseline;
 use App\Models\DomainTag;
@@ -51,28 +50,24 @@ class SyncCoverageTagsCommandTest extends TestCase
         ]);
         $completeSource = PropertyAnalyticsSource::create([
             'web_property_id' => $completeProperty->id,
-            'provider' => 'matomo',
-            'external_id' => '101',
+            'provider' => 'ga4',
+            'external_id' => 'G-COMPLETE1',
             'external_name' => 'Complete Site',
-            'is_primary' => true,
+            'is_primary' => false,
             'status' => 'active',
-        ]);
-        AnalyticsInstallAudit::create([
-            'property_analytics_source_id' => $completeSource->id,
-            'web_property_id' => $completeProperty->id,
-            'provider' => 'matomo',
-            'external_id' => '101',
-            'external_name' => 'Complete Site',
-            'install_verdict' => 'installed_match',
-            'summary' => 'Tracker matches',
-            'checked_at' => now(),
+            'provider_config' => [
+                'measurement_id' => 'G-COMPLETE1',
+                'provisioning_state' => 'switch_ready',
+                'source_system' => 'MM-Google',
+                'switch_ready' => true,
+            ],
         ]);
         SearchConsoleCoverageStatus::create([
             'domain_id' => $completeDomain->id,
             'web_property_id' => $completeProperty->id,
             'property_analytics_source_id' => $completeSource->id,
-            'source_provider' => 'matomo',
-            'matomo_site_id' => '101',
+            'source_provider' => 'mm-google',
+            'matomo_site_id' => 'G-COMPLETE1',
             'matomo_site_name' => 'Complete Site',
             'mapping_state' => 'domain_property',
             'property_uri' => 'sc-domain:complete.example.au',
@@ -87,7 +82,7 @@ class SyncCoverageTagsCommandTest extends TestCase
             'baseline_type' => 'search_console',
             'captured_at' => now(),
             'source_provider' => 'search_console',
-            'matomo_site_id' => '101',
+            'matomo_site_id' => 'G-COMPLETE1',
             'search_console_property_uri' => 'sc-domain:complete.example.au',
             'search_type' => 'web',
             'import_method' => 'matomo_plus_manual_csv',
@@ -179,12 +174,19 @@ class SyncCoverageTagsCommandTest extends TestCase
             'priority' => 95,
             'color' => '#6b7280',
         ]);
+        $staleManualCsvTag = DomainTag::create([
+            'name' => 'automation.manual_csv_pending',
+            'priority' => 68,
+            'color' => '#ca8a04',
+        ]);
         $excludedDomain->tags()->sync([$requiredTag->id, $wrongGapTag->id, $wrongAutomationTag->id, $manualExclusionTag->id]);
         $completeDomain->tags()->sync([$requiredTag->id, $wrongGapTag->id, $wrongAutomationTag->id]);
+        $csvPendingDomain->tags()->sync([$staleManualCsvTag->id]);
 
         $this->assertSame('complete', $completeProperty->fresh()->fullCoverageSummary()['status']);
         $this->assertSame('complete', $completeProperty->fresh()->automationCoverageSummary()['status']);
-        $this->assertSame('manual_csv_pending', $csvPendingProperty->fresh()->automationCoverageSummary()['status']);
+        $this->assertSame('complete', $csvPendingProperty->fresh()->automationCoverageSummary()['status']);
+        $this->assertSame('pending', $csvPendingProperty->fresh()->manualCsvCoverageSummary()['status']);
 
         $this->assertSame(0, Artisan::call('coverage:sync-tags'));
 
@@ -199,7 +201,7 @@ class SyncCoverageTagsCommandTest extends TestCase
         );
 
         $this->assertSame(
-            ['automation.gap', 'automation.manual_csv_pending', 'automation.required', 'coverage.complete', 'coverage.required'],
+            ['automation.complete', 'automation.required', 'coverage.complete', 'coverage.required'],
             $csvPendingDomain->fresh()->tags()->orderBy('name')->pluck('name')->all()
         );
 
@@ -352,7 +354,7 @@ class SyncCoverageTagsCommandTest extends TestCase
         );
     }
 
-    public function test_shared_primary_domain_surfaces_non_authoritative_manual_csv_backlog_in_automation_tags(): void
+    public function test_shared_primary_domain_does_not_surface_non_authoritative_manual_csv_backlog_in_automation_tags(): void
     {
         $this->setCoverageTagConfig();
 
@@ -398,7 +400,7 @@ class SyncCoverageTagsCommandTest extends TestCase
         $this->assertSame(0, Artisan::call('coverage:sync-tags'));
 
         $this->assertSame(
-            ['automation.gap', 'automation.manual_csv_pending', 'automation.required', 'coverage.complete', 'coverage.required'],
+            ['automation.complete', 'automation.required', 'coverage.complete', 'coverage.required'],
             $domain->fresh()->tags()->orderBy('name')->pluck('name')->all()
         );
     }
@@ -481,7 +483,7 @@ class SyncCoverageTagsCommandTest extends TestCase
         ]);
     }
 
-    private function createCompleteCoverageProperty(string $domainName, string $propertyName, string $matomoId): Domain
+    private function createCompleteCoverageProperty(string $domainName, string $propertyName, string $measurementId): Domain
     {
         $domain = Domain::factory()->create([
             'domain' => $domainName,
@@ -503,13 +505,13 @@ class SyncCoverageTagsCommandTest extends TestCase
             'is_canonical' => true,
         ]);
 
-        $source = $this->attachRepositoryAndCoverage($property, $matomoId);
+        $source = $this->attachRepositoryAndCoverage($property, $measurementId);
         $this->attachBaselineForSource($property, $source, 'matomo_plus_manual_csv');
 
         return $domain;
     }
 
-    private function attachRepositoryAndCoverage(WebProperty $property, string $matomoId): PropertyAnalyticsSource
+    private function attachRepositoryAndCoverage(WebProperty $property, string $measurementId): PropertyAnalyticsSource
     {
         PropertyRepository::create([
             'web_property_id' => $property->id,
@@ -520,28 +522,24 @@ class SyncCoverageTagsCommandTest extends TestCase
         ]);
         $source = PropertyAnalyticsSource::create([
             'web_property_id' => $property->id,
-            'provider' => 'matomo',
-            'external_id' => $matomoId,
+            'provider' => 'ga4',
+            'external_id' => $measurementId,
             'external_name' => $property->name,
-            'is_primary' => true,
+            'is_primary' => false,
             'status' => 'active',
-        ]);
-        AnalyticsInstallAudit::create([
-            'property_analytics_source_id' => $source->id,
-            'web_property_id' => $property->id,
-            'provider' => 'matomo',
-            'external_id' => $matomoId,
-            'external_name' => $property->name,
-            'install_verdict' => 'installed_match',
-            'summary' => 'Tracker matches',
-            'checked_at' => now(),
+            'provider_config' => [
+                'measurement_id' => $measurementId,
+                'provisioning_state' => 'switch_ready',
+                'source_system' => 'MM-Google',
+                'switch_ready' => true,
+            ],
         ]);
         SearchConsoleCoverageStatus::create([
             'domain_id' => $property->primary_domain_id,
             'web_property_id' => $property->id,
             'property_analytics_source_id' => $source->id,
-            'source_provider' => 'matomo',
-            'matomo_site_id' => $matomoId,
+            'source_provider' => 'mm-google',
+            'matomo_site_id' => $measurementId,
             'matomo_site_name' => $property->name,
             'mapping_state' => 'domain_property',
             'property_uri' => 'sc-domain:'.$property->primaryDomainName(),

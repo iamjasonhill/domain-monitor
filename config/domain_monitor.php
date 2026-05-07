@@ -852,7 +852,7 @@ return [
                 'name' => 'automation.complete',
                 'priority' => 60,
                 'color' => '#16a34a',
-                'description' => 'This managed domain has automation coverage in place, including manual CSV evidence where required.',
+                'description' => 'This managed domain has active automation coverage in place through repository, GA4, Search Console, and baseline sync.',
             ],
             'gap' => [
                 'name' => 'automation.gap',
@@ -864,7 +864,7 @@ return [
                 'name' => 'automation.manual_csv_pending',
                 'priority' => 68,
                 'color' => '#ca8a04',
-                'description' => 'Automation is in place, but manual Search Console CSV evidence is still pending for this domain.',
+                'description' => 'Legacy tag retained only so existing manual CSV backlog tags can be removed from active automation coverage.',
             ],
         ],
     ],

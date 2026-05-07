@@ -222,7 +222,7 @@ class WebPropertyUiTest extends TestCase
         $response->assertSee('Needs Search Console');
     }
 
-    public function test_web_property_detail_shows_manual_csv_pending_checklist_state(): void
+    public function test_web_property_detail_treats_manual_csv_as_optional_legacy_evidence(): void
     {
         $user = User::factory()->create();
         $domain = Domain::factory()->create([
@@ -364,7 +364,8 @@ class WebPropertyUiTest extends TestCase
         $response->assertOk();
         $response->assertSee('Automation Checklist');
         $response->assertSee('Checklist Site');
-        $response->assertSee('Manual CSV pending');
+        $response->assertSee('Complete');
+        $response->assertSee('Legacy CSV optional');
         $response->assertSee('Open related queue');
         $response->assertSee('Search Console Issue Evidence');
         $response->assertSee('Exact examples captured');

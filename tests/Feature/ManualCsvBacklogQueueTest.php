@@ -87,14 +87,14 @@ class ManualCsvBacklogQueueTest extends TestCase
             ->values();
 
         $expectedNames = $properties
-            ->filter(fn (WebProperty $property): bool => $property->automationCoverageSummary()['status'] === 'manual_csv_pending')
+            ->filter(fn (WebProperty $property): bool => $property->manualCsvCoverageSummary()['status'] === 'pending')
             ->map(fn (WebProperty $property): string => $property->name)
             ->sort()
             ->values()
             ->all();
 
         $expectedPendingDomains = $properties
-            ->filter(fn (WebProperty $property): bool => $property->automationCoverageSummary()['status'] === 'manual_csv_pending')
+            ->filter(fn (WebProperty $property): bool => $property->manualCsvCoverageSummary()['status'] === 'pending')
             ->map(fn (WebProperty $property): ?string => $property->primaryDomainName())
             ->filter()
             ->unique()
@@ -168,7 +168,7 @@ class ManualCsvBacklogQueueTest extends TestCase
         $this->assertSame(18, $latestBaseline->indexed_pages);
         $this->assertSame(186, $latestBaseline->not_indexed_pages);
         $this->assertSame(35, $latestBaseline->pages_with_redirect);
-        $this->assertSame('complete', $property->fresh()->automationCoverageSummary()['status']);
+        $this->assertSame('needs_ga4_sync', $property->fresh()->automationCoverageSummary()['status']);
         Storage::disk('local')->assertExists($latestBaseline->artifact_path);
     }
 
@@ -242,8 +242,9 @@ class ManualCsvBacklogQueueTest extends TestCase
         $this->assertSame('matomo_plus_manual_csv', $propertyBLatestBaseline->import_method);
         $this->assertSame(999.0, $propertyBLatestBaseline->clicks);
         $this->assertSame(5000.0, $propertyBLatestBaseline->impressions);
-        $this->assertSame('complete', $propertyB->fresh()->automationCoverageSummary()['status']);
-        $this->assertSame('manual_csv_pending', $propertyA->fresh()->automationCoverageSummary()['status']);
+        $this->assertSame('needs_ga4_sync', $propertyB->fresh()->automationCoverageSummary()['status']);
+        $this->assertSame('needs_ga4_sync', $propertyA->fresh()->automationCoverageSummary()['status']);
+        $this->assertSame('pending', $propertyA->fresh()->manualCsvCoverageSummary()['status']);
     }
 
     private function makeProperty(string $domainName, string $name): WebProperty

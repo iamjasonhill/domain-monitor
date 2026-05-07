@@ -32,8 +32,9 @@ class ManualCsvBacklogService
         $pendingItems = $properties
             ->map(function (WebProperty $property): ?array {
                 $automation = $property->automationCoverageSummary();
+                $legacyManualCsv = $property->manualCsvCoverageSummary();
 
-                if ($automation['status'] !== 'manual_csv_pending') {
+                if ($legacyManualCsv['status'] !== 'pending') {
                     return null;
                 }
 
@@ -43,6 +44,7 @@ class ManualCsvBacklogService
                 return [
                     'property' => $property,
                     'automation' => $automation,
+                    'legacy_manual_csv' => $legacyManualCsv,
                     'primary_domain' => $property->primaryDomainName(),
                     'repository' => $property->repositories->first(),
                     'ga4_source' => $ga4Source,

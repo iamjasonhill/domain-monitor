@@ -53,11 +53,11 @@ class AutomationCoverageQueueTest extends TestCase
         $needsBaselineSource = $this->attachGa4($needsBaseline, 'G-BASELINE1');
         $this->attachCoverage($needsBaseline, $needsBaselineSource, 'domain_property', now()->subDay()->toDateString());
 
-        $csvPending = $this->makeProperty('csv-pending.example.au', 'CSV Pending');
-        $this->attachRepository($csvPending);
-        $csvPendingSource = $this->attachGa4($csvPending, 'G-CSVPEND01');
-        $this->attachCoverage($csvPending, $csvPendingSource, 'domain_property', now()->subDay()->toDateString());
-        $this->attachBaseline($csvPending, $csvPendingSource, 'matomo_api');
+        $legacyCsvOnly = $this->makeProperty('legacy-csv-only.example.au', 'Legacy CSV Optional');
+        $this->attachRepository($legacyCsvOnly);
+        $legacyCsvOnlySource = $this->attachGa4($legacyCsvOnly, 'G-CSVPEND01');
+        $this->attachCoverage($legacyCsvOnly, $legacyCsvOnlySource, 'domain_property', now()->subDay()->toDateString());
+        $this->attachBaseline($legacyCsvOnly, $legacyCsvOnlySource, 'matomo_api');
 
         $complete = $this->makeProperty('complete.example.au', 'Complete Site');
         $this->attachRepository($complete);
@@ -95,12 +95,13 @@ class AutomationCoverageQueueTest extends TestCase
         $response->assertSee('Needs Onboarding');
         $response->assertSee('Stale Import');
         $response->assertSee('Needs Baseline');
-        $response->assertSee('CSV Pending');
+        $response->assertSee('Legacy CSV Optional');
         $response->assertSee('Complete Site');
         $response->assertSee('Parked Site');
-        $response->assertSee('Manual CSV Pending');
 
         $this->assertSame('needs_baseline_sync', $needsBaseline->fresh()->automationCoverageSummary()['status']);
+        $this->assertSame('complete', $legacyCsvOnly->fresh()->automationCoverageSummary()['status']);
+        $this->assertSame('pending', $legacyCsvOnly->fresh()->manualCsvCoverageSummary()['status']);
 
         Livewire::test(AutomationCoverageQueue::class)
             ->assertViewHas('stats', function (array $stats): bool {
@@ -113,18 +114,19 @@ class AutomationCoverageQueueTest extends TestCase
                     && $stats['needs_onboarding'] === 1
                     && $stats['import_stale'] === 1
                     && $stats['needs_baseline_sync'] === 1
-                    && $stats['manual_csv_pending'] === 1
-                    && $stats['complete'] === 1
+                    && $stats['manual_csv_pending'] === 0
+                    && $stats['complete'] === 2
                     && $stats['excluded'] === 1;
             })
             ->assertViewHas('needsBaselineSync', function (Collection $items): bool {
                 return (bool) $items->first(fn (array $item): bool => $item['property']->name === 'Needs Baseline');
             })
             ->assertViewHas('manualCsvPending', function (Collection $items): bool {
-                return (bool) $items->first(fn (array $item): bool => $item['property']->name === 'CSV Pending');
+                return $items->isEmpty();
             })
             ->assertViewHas('complete', function (Collection $items): bool {
-                return (bool) $items->first(fn (array $item): bool => $item['property']->name === 'Complete Site');
+                return (bool) $items->first(fn (array $item): bool => $item['property']->name === 'Complete Site')
+                    && (bool) $items->first(fn (array $item): bool => $item['property']->name === 'Legacy CSV Optional');
             });
     }
 

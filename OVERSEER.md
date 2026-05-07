@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 11:47:05 AEST
+
+- Issue or trigger: issue `#165` to remove manual Search Console CSV from active automation coverage
+- What changed: active automation coverage now completes from repository, GA4/MM-Google, Search Console, and baseline sync without requiring manual CSV; manual CSV remains a legacy/archive evidence summary for the old importer/backlog path only
+- What was fixed: `manual_csv_pending` is no longer produced as an active automation status or emitted as an active automation tag, and stale `automation.manual_csv_pending` tags are cleaned up by `coverage:sync-tags`
+- What remains: retire Matomo/manual CSV first-look dashboard UI, archive Matomo sources safely while promoting GA4, update broader GA4-first quality tests, neutralize active contract naming, and run production cleanup verification
+
 ### 2026-05-07 11:40:19 AEST
 
 - Issue or trigger: issue `#164` to stop scheduled Matomo refresh jobs during the GA4-first retirement

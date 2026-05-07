@@ -327,8 +327,9 @@ class DashboardTest extends TestCase
         $this->attachBaseline($completeProperty, $completeSource, 'matomo_plus_manual_csv');
         $completeProperty->primaryDomainModel()?->tags()->syncWithoutDetaching([$manualCsvTag->id]);
 
-        $this->assertSame('manual_csv_pending', $pendingProperty->fresh()->automationCoverageSummary()['status']);
-        $this->assertSame('complete', $completeProperty->fresh()->automationCoverageSummary()['status']);
+        $this->assertSame('needs_ga4_sync', $pendingProperty->fresh()->automationCoverageSummary()['status']);
+        $this->assertSame('pending', $pendingProperty->fresh()->manualCsvCoverageSummary()['status']);
+        $this->assertSame('needs_ga4_sync', $completeProperty->fresh()->automationCoverageSummary()['status']);
 
         $response = $this->actingAs($user)->get('/dashboard');
 

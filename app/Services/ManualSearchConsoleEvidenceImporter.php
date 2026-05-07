@@ -32,9 +32,9 @@ class ManualSearchConsoleEvidenceImporter
 
         $this->assertArchiveWithinLimits($archivePath);
 
-        $automation = $property->automationCoverageSummary();
-        if ($automation['status'] !== 'manual_csv_pending') {
-            throw new InvalidArgumentException('This property is not currently waiting on manual Search Console CSV evidence.');
+        $legacyManualCsv = $property->manualCsvCoverageSummary();
+        if ($legacyManualCsv['status'] !== 'pending') {
+            throw new InvalidArgumentException('This property is not eligible for legacy manual Search Console CSV evidence enrichment.');
         }
 
         $domain = $property->primaryDomainModel();

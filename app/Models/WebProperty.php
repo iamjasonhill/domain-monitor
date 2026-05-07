@@ -1913,15 +1913,15 @@ class WebProperty extends Model
         if ($latestBaseline->import_method === 'matomo_plus_manual_csv') {
             return [
                 'status' => 'covered',
-                'label' => 'Covered',
-                'reason' => 'Manual Search Console CSV evidence has been imported',
+                'label' => 'Legacy CSV archived',
+                'reason' => 'Legacy manual Search Console CSV evidence has been imported and preserved',
             ];
         }
 
         return [
             'status' => 'pending',
-            'label' => 'Manual CSV pending',
-            'reason' => 'Automation is in place, but no manual Search Console CSV evidence has been uploaded yet',
+            'label' => 'Legacy CSV optional',
+            'reason' => 'No legacy manual Search Console CSV archive is attached; this is not required for active automation coverage',
         ];
     }
 
@@ -2049,23 +2049,11 @@ class WebProperty extends Model
             ];
         }
 
-        $manualCsv = $checks['manual_csv'];
-        if ($manualCsv['status'] === 'pending') {
-            return [
-                'required' => true,
-                'status' => 'manual_csv_pending',
-                'label' => 'Manual CSV pending',
-                'reason' => $manualCsv['reason'],
-                'reasons' => array_filter([$manualCsv['reason']]),
-                'checks' => $checks,
-            ];
-        }
-
         return [
             'required' => true,
             'status' => 'complete',
             'label' => 'Complete',
-            'reason' => 'All automatic coverage checks are in place and only optional manual evidence remains complete',
+            'reason' => 'Repository, GA4, Search Console, and baseline sync are in place; manual CSV is optional legacy evidence',
             'reasons' => [],
             'checks' => $checks,
         ];

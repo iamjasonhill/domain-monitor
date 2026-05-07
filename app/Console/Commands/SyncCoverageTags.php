@@ -124,8 +124,7 @@ class SyncCoverageTags extends Command
             $desiredTagNames = $this->desiredTagNames($summary, $managedTagDefinitions->all());
             $desiredAutomationTagNames = $this->desiredAutomationTagNames(
                 $automationSummary,
-                $managedAutomationDefinitions->all(),
-                $automationSummary['manual_csv_pending']
+                $managedAutomationDefinitions->all()
             );
             $desiredManagedTagNames = $desiredTagNames->merge($desiredAutomationTagNames)->unique()->values();
             $currentDomainTags = $domain->tags()->get();
@@ -154,9 +153,6 @@ class SyncCoverageTags extends Command
 
             if ($automationSummary['status'] === 'complete') {
                 $automationCompleteCount++;
-            } elseif ($automationSummary['status'] === 'manual_csv_pending') {
-                $automationGapCount++;
-                $manualCsvPendingCount++;
             } elseif ($automationSummary['status'] !== 'excluded') {
                 $automationGapCount++;
             }
@@ -281,7 +277,6 @@ class SyncCoverageTags extends Command
      * @param  array{
      *   required: bool,
      *   status: string,
-     *   manual_csv_pending?: bool
      * }  $summary
      * @param  array<int|string, array{name: string, priority: int, color: string|null, description: string|null}>  $tagDefinitions
      * @return Collection<int, string>
@@ -326,17 +321,15 @@ class SyncCoverageTags extends Command
      * @param  array<int|string, array{name: string, priority: int, color: string|null, description: string|null}>  $tagDefinitions
      * @return Collection<int, string>
      */
-    private function desiredAutomationTagNames(array $summary, array $tagDefinitions, bool $manualCsvPending = false): Collection
+    private function desiredAutomationTagNames(array $summary, array $tagDefinitions): Collection
     {
         $requiredTag = $tagDefinitions['required'] ?? null;
         $completeTag = $tagDefinitions['complete'] ?? null;
         $gapTag = $tagDefinitions['gap'] ?? null;
-        $manualCsvPendingTag = $tagDefinitions['manual_csv_pending'] ?? null;
         $map = [
             'required' => is_array($requiredTag) ? $requiredTag['name'] : '',
             'complete' => is_array($completeTag) ? $completeTag['name'] : '',
             'gap' => is_array($gapTag) ? $gapTag['name'] : '',
-            'manual_csv_pending' => is_array($manualCsvPendingTag) ? $manualCsvPendingTag['name'] : '',
         ];
 
         if (! $summary['required']) {
@@ -349,10 +342,6 @@ class SyncCoverageTags extends Command
             $tagNames[] = $map['complete'];
         } else {
             $tagNames[] = $map['gap'];
-        }
-
-        if ($manualCsvPending || $summary['status'] === 'manual_csv_pending') {
-            $tagNames[] = $map['manual_csv_pending'];
         }
 
         /** @var array<int, string> $filteredTagNames */
@@ -393,10 +382,6 @@ class SyncCoverageTags extends Command
             return $summary;
         }
 
-        $manualCsvPending = $requiredSummaries->contains(
-            fn (array $summary): bool => $summary['status'] === 'manual_csv_pending'
-        );
-
         $blockingStatuses = [
             'needs_controller',
             'needs_ga4_sync',
@@ -420,23 +405,7 @@ class SyncCoverageTags extends Command
                 'reason' => $blockingSummary['reason'] ?? null,
                 'reasons' => $requiredSummaries->pluck('reason')->filter()->values()->all(),
                 'checks' => ['group' => $requiredSummaries->all()],
-                'manual_csv_pending' => $manualCsvPending,
-            ];
-        }
-
-        if ($manualCsvPending) {
-            $pendingSummary = $requiredSummaries->first(
-                fn (array $summary): bool => $summary['status'] === 'manual_csv_pending'
-            );
-
-            return [
-                'required' => true,
-                'status' => 'manual_csv_pending',
-                'label' => $pendingSummary['label'] ?? 'Manual CSV Pending',
-                'reason' => $pendingSummary['reason'] ?? null,
-                'reasons' => $requiredSummaries->pluck('reason')->filter()->values()->all(),
-                'checks' => ['group' => $requiredSummaries->all()],
-                'manual_csv_pending' => true,
+                'manual_csv_pending' => false,
             ];
         }
 
