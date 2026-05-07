@@ -424,6 +424,106 @@ class FleetPropertyContextRefreshTest extends TestCase
         $this->assertSame('stale', $summary['freshness_state']);
     }
 
+    public function test_forced_search_console_refresh_failure_does_not_replace_fresh_mm_google_coverage(): void
+    {
+        Storage::fake('local');
+
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        config()->set('services.domain_monitor.fleet_control_api_key', 'fleet-token');
+        config()->set('services.google.search_console.access_token', null);
+        config()->set('services.google.search_console.refresh_token', 'expired-refresh-token');
+        config()->set('services.google.search_console.client_id', 'test-client-id');
+        config()->set('services.google.search_console.client_secret', 'test-client-secret');
+        config()->set('services.google.search_console.inspection_request_delay_micros', 0);
+
+        $property = $this->makeProperty('fresh-mm-google-gsc-site', 'fresh-mm-google-gsc.example.com');
+        $ga4Source = PropertyAnalyticsSource::create([
+            'web_property_id' => $property->id,
+            'provider' => 'ga4',
+            'external_id' => 'G-FRESHMMGOOGLE',
+            'external_name' => $property->name,
+            'provider_config' => [
+                'measurement_id' => 'G-FRESHMMGOOGLE',
+            ],
+            'is_primary' => true,
+            'status' => 'active',
+        ]);
+
+        SearchConsoleCoverageStatus::create([
+            'domain_id' => $property->primaryDomainModel()?->id,
+            'web_property_id' => $property->id,
+            'property_analytics_source_id' => $ga4Source->id,
+            'source_provider' => 'mm-google',
+            'matomo_site_id' => $property->slug,
+            'matomo_site_name' => $property->name,
+            'mapping_state' => 'domain_property',
+            'property_uri' => 'sc-domain:fresh-mm-google-gsc.example.com',
+            'property_type' => 'domain',
+            'latest_metric_date' => now()->subDay()->toDateString(),
+            'latest_completed_job_at' => now()->subDay(),
+            'checked_at' => now()->subHour(),
+            'raw_payload' => [
+                'coverageStatus' => 'search_console_ready',
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $property->primaryDomainModel()?->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'capture_method' => 'gsc_drilldown_zip',
+            'affected_url_count' => 1,
+            'sample_urls' => ['https://fresh-mm-google-gsc.example.com/old-page/'],
+            'normalized_payload' => [
+                'affected_urls' => ['https://fresh-mm-google-gsc.example.com/old-page/'],
+            ],
+        ]);
+
+        $this->mock(PropertyConversionLinkScanner::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('persistForProperty')
+                ->once()
+                ->andReturn([
+                    'current_household_quote_url' => null,
+                    'current_household_booking_url' => null,
+                    'current_vehicle_quote_url' => null,
+                    'current_vehicle_booking_url' => null,
+                    'conversion_links_scanned_at' => now(),
+                ]);
+        });
+
+        $this->mock(DomainHealthCheckRunner::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('run')
+                ->times(3)
+                ->andReturn($this->skippedHealthResult('fresh MM-Google coverage test'));
+        });
+
+        Http::fake([
+            'https://oauth2.googleapis.com/token' => Http::response([
+                'error' => 'invalid_grant',
+            ], 400),
+        ]);
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer fleet-token',
+        ])->postJson('/api/web-properties/fresh-mm-google-gsc-site/refresh-fleet-context', [
+            'force_search_console_api_enrichment' => true,
+        ])->assertStatus(207)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('refreshed.search_console_api_enrichment.status', 'failed')
+            ->assertJsonPath('refreshed.search_console_api_enrichment.message', 'Unable to refresh the Google Search Console access token (400).');
+
+        $summary = $property->fresh()->searchConsoleCoverageSummary();
+
+        $this->assertSame('covered', $summary['status']);
+        $this->assertSame('ok_fresh', $summary['operational_state']);
+        $this->assertNull($summary['blocker']);
+        $this->assertSame('recent', $summary['freshness_state']);
+        $this->assertSame(0, SearchConsoleCoverageStatus::query()
+            ->where('web_property_id', $property->id)
+            ->where('raw_payload->coverageStatus', 'search_console_refresh_failed')
+            ->count());
+    }
+
     public function test_active_api_outputs_reflect_refreshed_state_after_endpoint_runs(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');

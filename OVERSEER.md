@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 13:43:50 AEST
+
+- Issue or trigger: reopened issue `#161` to stop failed internal Search Console API enrichment from overriding fresh MM-Google coverage
+- What changed: Search Console API enrichment failure persistence now preserves existing fresh `search_console_ready` coverage rows and logs the failed optional enrichment attempt instead of replacing canonical coverage state
+- What was fixed: forced Domain Monitor enrichment failures such as `Unable to refresh the Google Search Console access token (400)` still surface as blockers when coverage is stale or missing, but no longer downgrade a property that already has fresh MM-Google Search Console coverage
+- What remains: deploy to production, rerun/verify Moving Again coverage refresh, then close issue `#161` if production continues to report fresh MM-Google coverage instead of the legacy token blocker
+
 ### 2026-05-07 13:40:11 AEST
 
 - Issue or trigger: production verification for issue `#173` after deploying commit `793226b`

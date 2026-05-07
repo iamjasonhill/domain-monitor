@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Domain;
 use App\Models\SearchConsoleCoverageStatus;
 use App\Models\SearchConsoleIssueSnapshot;
 use App\Models\WebProperty;
@@ -390,6 +391,17 @@ class SearchConsoleApiEnrichmentRefresher
     private function recordRefreshFailure(WebProperty $property, string $message): void
     {
         $domain = $property->primaryDomainModel();
+
+        if ($this->hasFreshReadyCoverage($property, $domain)) {
+            Log::warning('Fleet property Search Console API enrichment refresh failed without replacing fresh coverage', [
+                'web_property_id' => $property->id,
+                'property_slug' => $property->slug,
+                'exception' => $message,
+            ]);
+
+            return;
+        }
+
         $latestCoverage = $domain?->latestSearchConsoleCoverageStatus()->first()
             ?? $property->primaryAnalyticsSource('ga4')?->latestSearchConsoleCoverage()->first()
             ?? $property->primaryAnalyticsSource('matomo')?->latestSearchConsoleCoverage()->first();
@@ -436,6 +448,45 @@ class SearchConsoleApiEnrichmentRefresher
                 ],
             ]
         );
+    }
+
+    private function hasFreshReadyCoverage(WebProperty $property, ?Domain $domain): bool
+    {
+        return SearchConsoleCoverageStatus::query()
+            ->where(function (Builder $query) use ($property, $domain): void {
+                $query->where('web_property_id', $property->id);
+
+                if ($domain instanceof Domain) {
+                    $query->orWhere('domain_id', $domain->id);
+                }
+            })
+            ->get()
+            ->contains(function (SearchConsoleCoverageStatus $coverage): bool {
+                if ($coverage->freshnessState() !== 'recent') {
+                    return false;
+                }
+
+                return $this->coverageStatusFromPayload($coverage) === 'search_console_ready';
+            });
+    }
+
+    private function coverageStatusFromPayload(SearchConsoleCoverageStatus $coverage): ?string
+    {
+        $rawPayload = $coverage->raw_payload;
+
+        if (! is_array($rawPayload)) {
+            return null;
+        }
+
+        foreach (['coverageStatus', 'coverage_status', 'readinessStatus', 'readiness_status'] as $key) {
+            $value = $rawPayload[$key] ?? null;
+
+            if (is_string($value) && $value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     /**
