@@ -61,6 +61,13 @@ Why this is the current call:
 - What was fixed: properties with recent monitoring, health-check, Search Console, GSC evidence, or SEO-baseline timestamps no longer look stale solely because the old top-level property timestamp was missing; excluded properties return explicit `freshness.status=not_applicable`
 - What remains: deploy to production, confirm the false-stale candidate count drops, and tell Control to rerun `control-plane:refresh-attention-source-truth`
 
+### 2026-05-08 06:56:44 AEST
+
+- Issue or trigger: production verification for issue `#179` after deploying commit `f7634f4`
+- What changed: production is on `f7634f4`, Laravel caches were cleared, and the live web-property summary contract was remeasured against the same false-stale shape Control was tripping over
+- What was fixed: the old missing `last_checked_at` plus missing `health_summary.checked_at` plus present `monitoring_summary.latest_detected_at` candidate count dropped from 18 before the change to 0 after deploy; production now reports 26 `fresh` properties and 43 `not_applicable` properties with no stale freshness rows in that contract slice
+- What remains: Control should rerun `control-plane:refresh-attention-source-truth` so its attention-source truth reflects the fixed Domain Monitor contract
+
 ### 2026-05-08 05:50:41 AEST
 
 - Issue or trigger: production verification for issue `#178` after deploying commit `f585801`
