@@ -24,13 +24,24 @@ class ExternalReferencePolicyTest extends TestCase
 
     public function test_it_classifies_owned_estate_links_from_domain_monitor_inventory(): void
     {
-        Domain::factory()->create(['domain' => 'movinginsurance.com.au']);
+        Domain::factory()->create(['domain' => 'owned-reference.example.au']);
 
-        $policy = app(ExternalReferencePolicy::class)->classify('movinginsurance.com.au', 'movingagain.com.au');
+        $policy = app(ExternalReferencePolicy::class)->classify('owned-reference.example.au', 'movingagain.com.au');
 
         $this->assertSame('owned_estate', $policy['classification']);
         $this->assertSame('approved', $policy['action']);
         $this->assertTrue($policy['approved']);
+    }
+
+    public function test_it_approves_moving_insurance_as_fleet_external_reference(): void
+    {
+        $policy = app(ExternalReferencePolicy::class)->classify('movinginsurance.com.au', 'backloadingremovals.com.au');
+
+        $this->assertSame('approved_partner', $policy['classification']);
+        $this->assertSame('approved', $policy['action']);
+        $this->assertSame('approved_external_reference', $policy['category']);
+        $this->assertTrue($policy['approved']);
+        $this->assertStringContainsString('Moving Insurance', $policy['reason']);
     }
 
     public function test_it_classifies_operational_surfaces_for_the_source_property(): void
@@ -88,7 +99,6 @@ class ExternalReferencePolicyTest extends TestCase
 
     public function test_external_link_inventory_output_includes_policy_classification_and_counts(): void
     {
-        Domain::factory()->create(['domain' => 'movinginsurance.com.au']);
         config()->set('domain_monitor.external_reference_policy.disallowed_hosts', ['spam.example.test']);
 
         Http::fake(function (Request $request) {
@@ -117,7 +127,8 @@ class ExternalReferencePolicyTest extends TestCase
 
         $this->assertSame('operational_surface', $links->firstWhere('host', 'quote.movingagain.com.au')['policy_classification']);
         $this->assertSame('authority_reference', $links->firstWhere('host', 'www.abs.gov.au')['policy_classification']);
-        $this->assertSame('owned_estate', $links->firstWhere('host', 'movinginsurance.com.au')['policy_classification']);
+        $this->assertSame('approved_partner', $links->firstWhere('host', 'movinginsurance.com.au')['policy_classification']);
+        $this->assertSame('approved_external_reference', $links->firstWhere('host', 'movinginsurance.com.au')['policy_category']);
         $this->assertSame('review_required', $links->firstWhere('host', 'unknown.example.net')['policy_classification']);
         $this->assertSame('disallowed', $links->firstWhere('host', 'spam.example.test')['policy_classification']);
         $this->assertSame(3, data_get($result, 'payload.policy_counts.approved'));
@@ -127,7 +138,6 @@ class ExternalReferencePolicyTest extends TestCase
 
     public function test_deep_audit_only_fails_for_review_required_or_disallowed_external_links(): void
     {
-        Domain::factory()->create(['domain' => 'movinginsurance.com.au']);
         config()->set('domain_monitor.external_reference_policy.disallowed_hosts', ['spam.example.test']);
 
         $property = $this->property('movingagain.com.au');

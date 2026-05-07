@@ -79,14 +79,36 @@ class PropertyConversionLinkScanner
     {
         $primaryAnchors = $this->extractAnchorsForXPath($html, $baseUrl, '//nav//a[@href] | //header//a[@href]');
 
-        $hasClassifiedPrimaryAnchor = collect($primaryAnchors)
-            ->contains(fn (array $anchor): bool => is_string($anchor['bucket']) && $anchor['bucket'] !== '');
+        $primaryBuckets = collect($primaryAnchors)
+            ->pluck('bucket')
+            ->filter(fn (mixed $bucket): bool => is_string($bucket) && $bucket !== '')
+            ->unique()
+            ->values();
 
-        if ($hasClassifiedPrimaryAnchor) {
+        if ($primaryBuckets->isEmpty()) {
+            return $this->extractAnchorsForXPath($html, $baseUrl, '//a[@href]');
+        }
+
+        $missingBuckets = collect([
+            'household_quote',
+            'household_booking',
+            'vehicle_quote',
+            'vehicle_booking',
+        ])->diff($primaryBuckets);
+
+        if ($missingBuckets->isEmpty()) {
             return $primaryAnchors;
         }
 
-        return $this->extractAnchorsForXPath($html, $baseUrl, '//a[@href]');
+        $pageAnchorsForMissingBuckets = collect($this->extractAnchorsForXPath($html, $baseUrl, '//a[@href]'))
+            ->filter(fn (array $anchor): bool => is_string($anchor['bucket']) && $missingBuckets->contains($anchor['bucket']))
+            ->values();
+
+        return collect($primaryAnchors)
+            ->concat($pageAnchorsForMissingBuckets)
+            ->unique(fn (array $anchor): string => $anchor['href'].'|'.($anchor['bucket'] ?? ''))
+            ->values()
+            ->all();
     }
 
     /**

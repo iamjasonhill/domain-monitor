@@ -948,7 +948,13 @@ return [
             'ato.gov.au',
             'business.gov.au',
         ],
-        'approved_partner_hosts' => [],
+        'approved_partner_hosts' => [
+            [
+                'host' => 'movinginsurance.com.au',
+                'category' => 'approved_external_reference',
+                'reason' => 'Moving Insurance is an accepted fleet-adjacent reference destination.',
+            ],
+        ],
         'disallowed_hosts' => [
             'example-spam.test',
         ],

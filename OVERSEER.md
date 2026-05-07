@@ -54,6 +54,20 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 13:50:41 AEST
+
+- Issue or trigger: issue `#175` to allow `movinginsurance.com.au` as an approved fleet external reference
+- What changed: `movinginsurance.com.au` is now configured as an approved partner host with category `approved_external_reference` and an explicit Moving Insurance fleet-adjacent reason
+- What was fixed: fleet external-link inventory policy no longer depends on local Domain inventory to approve Moving Insurance links, so those links do not count as review-required external-link noise while unrelated unknown/disallowed hosts remain reportable
+- What remains: deploy to production and rerun affected deep-audit/external-link inventory checks to confirm affected `cleanup.external_links_inventory` counts drop where Moving Insurance was the only review-required host
+
+### 2026-05-07 13:50:41 AEST
+
+- Issue or trigger: issue `#174` to fix quote handoff scanning when header links hide page-level quote CTAs
+- What changed: conversion-link extraction still prefers classified header/nav links, but now backfills missing quote/booking buckets from all homepage anchors instead of stopping after the first classified primary link
+- What was fixed: a header booking/contact-style link can no longer hide body-level household or vehicle quote CTAs, preserving header/nav preference while detecting required quote buckets elsewhere on the page
+- What remains: deploy to production and rerun `marketing_integrity` for `backloadingremovals-com-au` to confirm the quote-handoff finding recovers
+
 ### 2026-05-07 13:46:08 AEST
 
 - Issue or trigger: production verification for reopened issue `#161` after deploying commit `6a78ac2`
