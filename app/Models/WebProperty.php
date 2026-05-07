@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -751,6 +752,7 @@ class WebProperty extends Model
         $overallRank = 0;
         $perDomain = [];
         $activeAlerts = 0;
+        $latestCheckedAt = null;
 
         foreach ($this->orderedDomainLinks() as $link) {
             $domain = $link->domain;
@@ -772,12 +774,16 @@ class WebProperty extends Model
                 }
             }
 
+            $domainCheckedAt = $this->latestDomainCheckedAt($domain);
+            $latestCheckedAt = $this->latestTimestamp($latestCheckedAt, $domainCheckedAt);
             $activeAlerts += $domain->alerts->count();
 
             $perDomain[] = [
                 'domain' => $domain->domain,
                 'usage_type' => $link->usage_type,
                 'is_canonical' => $link->is_canonical,
+                'last_checked_at' => $domain->last_checked_at?->toIso8601String(),
+                'checked_at' => $domainCheckedAt?->toIso8601String(),
                 'checks' => $domainChecks,
                 'active_alerts_count' => $domain->alerts->count(),
             ];
@@ -786,10 +792,159 @@ class WebProperty extends Model
         return [
             'overall_status' => $this->statusLabel($overallRank),
             'primary_domain' => $primaryDomain?->domain,
+            'checked_at' => $latestCheckedAt?->toIso8601String(),
             'checks' => $checks,
             'active_alerts_count' => $activeAlerts,
             'per_domain' => $perDomain,
         ];
+    }
+
+    private function latestDomainCheckedAt(Domain $domain): ?Carbon
+    {
+        $latestFinishedCheck = $domain->checks()
+            ->whereNotNull('finished_at')
+            ->orderByDesc('finished_at')
+            ->first();
+
+        $latestCreatedCheck = $latestFinishedCheck instanceof DomainCheck
+            ? null
+            : $domain->checks()
+                ->orderByDesc('created_at')
+                ->first();
+
+        $checkTimestamp = $latestFinishedCheck instanceof DomainCheck
+            ? $latestFinishedCheck->finished_at
+            : $latestCreatedCheck?->created_at;
+
+        return $this->latestTimestamp($domain->last_checked_at, $checkTimestamp);
+    }
+
+    /**
+     * @param  array<string, mixed>  $healthSummary
+     * @param  array<string, mixed>  $monitoringSummary
+     * @param  array<string, mixed>  $searchConsoleSummary
+     * @param  array<string, mixed>  $gscEvidenceSummary
+     * @param  array<string, mixed>  $seoBaselineSummary
+     * @return array{
+     *   status: string,
+     *   checked_at: string|null,
+     *   source: string|null,
+     *   reason: string,
+     *   stale_after_days: int,
+     *   components: array<string, string|null>
+     * }
+     */
+    private function freshnessSummary(
+        array $healthSummary,
+        array $monitoringSummary,
+        array $searchConsoleSummary,
+        array $gscEvidenceSummary,
+        array $seoBaselineSummary
+    ): array {
+        $staleAfterDays = 7;
+        $components = [
+            'domain_health_checks' => $this->timestampFromValue($healthSummary['checked_at'] ?? null),
+            'monitoring_summary' => $this->timestampFromValue($monitoringSummary['latest_detected_at'] ?? null),
+            'search_console' => $this->latestTimestamp(
+                $this->timestampFromValue($searchConsoleSummary['checked_at'] ?? null),
+                $this->timestampFromValue($searchConsoleSummary['last_successful_import_at'] ?? null)
+            ),
+            'gsc_evidence' => $this->latestTimestamp(
+                $this->timestampFromValue($gscEvidenceSummary['latest_issue_detail_captured_at'] ?? null),
+                $this->timestampFromValue($gscEvidenceSummary['latest_api_captured_at'] ?? null)
+            ),
+            'seo_baseline' => $this->timestampFromValue(data_get($seoBaselineSummary, 'latest.captured_at')),
+        ];
+
+        $source = null;
+        $checkedAt = null;
+        foreach ($components as $component => $timestamp) {
+            $latest = $this->latestTimestamp($checkedAt, $timestamp);
+            if ($latest !== $checkedAt) {
+                $source = $component;
+                $checkedAt = $latest;
+            }
+        }
+
+        $eligibility = $this->coverageEligibility();
+        $componentStrings = collect($components)
+            ->map(fn (?Carbon $timestamp): ?string => $timestamp?->toIso8601String())
+            ->all();
+
+        if (! $eligibility['eligible']) {
+            return [
+                'status' => 'not_applicable',
+                'checked_at' => $checkedAt?->toIso8601String(),
+                'source' => $source ?? 'coverage_policy',
+                'reason' => $eligibility['reason'] ?? 'property is excluded from active website freshness monitoring',
+                'stale_after_days' => $staleAfterDays,
+                'components' => $componentStrings,
+            ];
+        }
+
+        if (! $checkedAt instanceof Carbon) {
+            return [
+                'status' => 'stale',
+                'checked_at' => null,
+                'source' => null,
+                'reason' => 'No property-level health, monitoring, Search Console, GSC evidence, or SEO baseline timestamp is available.',
+                'stale_after_days' => $staleAfterDays,
+                'components' => $componentStrings,
+            ];
+        }
+
+        if ($checkedAt->lt(now()->subDays($staleAfterDays))) {
+            return [
+                'status' => 'stale',
+                'checked_at' => $checkedAt->toIso8601String(),
+                'source' => $source,
+                'reason' => sprintf('Latest property freshness evidence is older than %d days.', $staleAfterDays),
+                'stale_after_days' => $staleAfterDays,
+                'components' => $componentStrings,
+            ];
+        }
+
+        return [
+            'status' => 'fresh',
+            'checked_at' => $checkedAt->toIso8601String(),
+            'source' => $source,
+            'reason' => sprintf('Latest property freshness evidence comes from %s.', str_replace('_', ' ', (string) $source)),
+            'stale_after_days' => $staleAfterDays,
+            'components' => $componentStrings,
+        ];
+    }
+
+    private function timestampFromValue(mixed $value): ?Carbon
+    {
+        if ($value instanceof Carbon) {
+            return $value;
+        }
+
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function latestTimestamp(mixed $first, mixed $second): ?Carbon
+    {
+        $firstTimestamp = $this->timestampFromValue($first);
+        $secondTimestamp = $this->timestampFromValue($second);
+
+        if (! $firstTimestamp instanceof Carbon) {
+            return $secondTimestamp;
+        }
+
+        if (! $secondTimestamp instanceof Carbon) {
+            return $firstTimestamp;
+        }
+
+        return $secondTimestamp->gt($firstTimestamp) ? $secondTimestamp : $firstTimestamp;
     }
 
     /**
@@ -989,6 +1144,18 @@ class WebProperty extends Model
     {
         $executionReadiness = $this->executionReadinessSummary();
         $eventContracts = $this->eventContractSummaries();
+        $healthSummary = $this->healthSummary();
+        $monitoringSummary = $this->monitoringSummary();
+        $searchConsoleSummary = $this->searchConsoleCoverageSummary();
+        $gscEvidenceSummary = $this->gscEvidenceSummary();
+        $seoBaselineSummary = $this->seoBaselineSummary();
+        $freshnessSummary = $this->freshnessSummary(
+            $healthSummary,
+            $monitoringSummary,
+            $searchConsoleSummary,
+            $gscEvidenceSummary,
+            $seoBaselineSummary
+        );
 
         return [
             'slug' => $this->slug,
@@ -1020,8 +1187,10 @@ class WebProperty extends Model
             ],
             'conversion_surfaces' => $this->conversionSurfaceSummaries(),
             'hostname_link_policy' => $this->hostnameLinkPolicySummary(),
-            'health_summary' => $this->healthSummary(),
-            'monitoring_summary' => $this->monitoringSummary(),
+            'last_checked_at' => $freshnessSummary['checked_at'],
+            'freshness' => $freshnessSummary,
+            'health_summary' => $healthSummary,
+            'monitoring_summary' => $monitoringSummary,
             'deployment_summary' => $this->deploymentSummary(),
             'tags' => $this->tagSummaries(),
             'control_state' => $executionReadiness['control_state'],
@@ -1034,9 +1203,9 @@ class WebProperty extends Model
             'deployment_project_name' => $executionReadiness['deployment_project_name'],
             'deployment_project_id' => $executionReadiness['deployment_project_id'],
             'conversion_links' => $this->conversionLinkSummary(),
-            'search_console' => $this->searchConsoleCoverageSummary(),
-            'gsc_evidence_summary' => $this->gscEvidenceSummary(),
-            'seo_baseline_summary' => $this->seoBaselineSummary(),
+            'search_console' => $searchConsoleSummary,
+            'gsc_evidence_summary' => $gscEvidenceSummary,
+            'seo_baseline_summary' => $seoBaselineSummary,
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }

@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-08 06:53:47 AEST
+
+- Issue or trigger: issue `#179` to fix the exported web-property freshness contract for Control
+- What changed: `/api/web-properties-summary` and `/api/web-properties/{slug}` now expose top-level `last_checked_at`, a `freshness` object with status/source/reason/components, `health_summary.checked_at`, and per-domain health `checked_at`/`last_checked_at`
+- What was fixed: properties with recent monitoring, health-check, Search Console, GSC evidence, or SEO-baseline timestamps no longer look stale solely because the old top-level property timestamp was missing; excluded properties return explicit `freshness.status=not_applicable`
+- What remains: deploy to production, confirm the false-stale candidate count drops, and tell Control to rerun `control-plane:refresh-attention-source-truth`
+
 ### 2026-05-08 05:50:41 AEST
 
 - Issue or trigger: production verification for issue `#178` after deploying commit `f585801`

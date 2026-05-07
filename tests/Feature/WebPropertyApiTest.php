@@ -19,6 +19,7 @@ use App\Models\WebPropertyConversionSurface;
 use App\Models\WebPropertyDomain;
 use App\Models\WebPropertyEventContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -1206,6 +1207,160 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.domains.0.external_links_scan.pages_scanned', 2)
             ->assertJsonPath('web_properties.0.domains.0.external_links_scan.external_links_count', 1)
             ->assertJsonPath('web_properties.0.domains.0.external_links_scan.external_links.0.url', 'https://portal.summary-inventory.example.com/start');
+    }
+
+    public function test_web_properties_summary_exports_freshness_from_recent_monitoring_evidence(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        Carbon::setTestNow(Carbon::parse('2026-05-08 05:00:00', 'Australia/Brisbane'));
+
+        $domain = Domain::factory()->create([
+            'domain' => 'monitoring-fresh.example.com',
+            'is_active' => true,
+            'last_checked_at' => null,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'monitoring-fresh-site',
+            'name' => 'Monitoring Fresh Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://monitoring-fresh.example.com',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        $detectedAt = now()->subDay();
+
+        MonitoringFinding::factory()->create([
+            'issue_id' => 'dm:test:monitoring-fresh',
+            'lane' => 'marketing_integrity',
+            'finding_type' => 'marketing.indexability',
+            'issue_type' => 'cleanup',
+            'scope_type' => 'web_property',
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'status' => MonitoringFinding::STATUS_OPEN,
+            'title' => 'Indexability finding',
+            'summary' => 'Recent monitoring evidence.',
+            'first_detected_at' => $detectedAt,
+            'last_detected_at' => $detectedAt,
+        ]);
+
+        $expected = $detectedAt->toIso8601String();
+
+        $this->withHeaders(['Authorization' => 'Bearer test-api-key'])
+            ->getJson('/api/web-properties-summary')
+            ->assertOk()
+            ->assertJsonPath('web_properties.0.last_checked_at', $expected)
+            ->assertJsonPath('web_properties.0.freshness.status', 'fresh')
+            ->assertJsonPath('web_properties.0.freshness.checked_at', $expected)
+            ->assertJsonPath('web_properties.0.freshness.source', 'monitoring_summary')
+            ->assertJsonPath('web_properties.0.freshness.components.monitoring_summary', $expected)
+            ->assertJsonPath('web_properties.0.health_summary.checked_at', null);
+
+        $this->withHeaders(['Authorization' => 'Bearer test-api-key'])
+            ->getJson('/api/web-properties/monitoring-fresh-site')
+            ->assertOk()
+            ->assertJsonPath('data.last_checked_at', $expected)
+            ->assertJsonPath('data.freshness.status', 'fresh')
+            ->assertJsonPath('data.freshness.source', 'monitoring_summary');
+
+        Carbon::setTestNow();
+    }
+
+    public function test_web_properties_summary_exports_health_check_timestamps(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        Carbon::setTestNow(Carbon::parse('2026-05-08 05:00:00', 'Australia/Brisbane'));
+
+        $domain = Domain::factory()->create([
+            'domain' => 'health-fresh.example.com',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'health-fresh-site',
+            'name' => 'Health Fresh Site',
+            'property_type' => 'website',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://health-fresh.example.com',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        $finishedAt = now()->subHours(2);
+
+        DomainCheck::withoutEvents(function () use ($domain, $finishedAt): void {
+            DomainCheck::factory()->create([
+                'id' => (string) Str::uuid(),
+                'domain_id' => $domain->id,
+                'check_type' => 'http',
+                'status' => 'ok',
+                'started_at' => $finishedAt->copy()->subMinute(),
+                'finished_at' => $finishedAt,
+            ]);
+        });
+
+        $expected = $finishedAt->toIso8601String();
+
+        $this->withHeaders(['Authorization' => 'Bearer test-api-key'])
+            ->getJson('/api/web-properties-summary')
+            ->assertOk()
+            ->assertJsonPath('web_properties.0.last_checked_at', $expected)
+            ->assertJsonPath('web_properties.0.freshness.status', 'fresh')
+            ->assertJsonPath('web_properties.0.freshness.source', 'domain_health_checks')
+            ->assertJsonPath('web_properties.0.health_summary.checked_at', $expected)
+            ->assertJsonPath('web_properties.0.health_summary.per_domain.0.checked_at', $expected);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_web_properties_summary_marks_excluded_properties_not_applicable_for_freshness(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'parked-freshness.example.com',
+            'is_active' => true,
+            'dns_config_name' => 'Parked',
+            'last_checked_at' => null,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'parked-freshness-site',
+            'name' => 'Parked Freshness Site',
+            'property_type' => 'domain_asset',
+            'status' => 'active',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        $this->withHeaders(['Authorization' => 'Bearer test-api-key'])
+            ->getJson('/api/web-properties-summary')
+            ->assertOk()
+            ->assertJsonPath('web_properties.0.last_checked_at', null)
+            ->assertJsonPath('web_properties.0.freshness.status', 'not_applicable')
+            ->assertJsonPath('web_properties.0.freshness.source', 'coverage_policy')
+            ->assertJsonPath('web_properties.0.freshness.reason', 'property is a domain asset');
     }
 
     public function test_web_properties_summary_ignores_empty_fleet_focus_filter(): void
