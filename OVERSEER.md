@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-08 05:32:14 AEST
+
+- Issue or trigger: production verification for issue `#177` after deploying commit `93e6fec`
+- What changed: production is on `93e6fec`, caches were cleared, and the live `cartransport-movingagain-com-au` property summary was inspected from the production app
+- What was fixed: Moving Again Car Transport now reports `email_usage=none`, `email_security=not_applicable`, and `health_summary.overall_status=warn` instead of `fail`, so the Control freshness signal is no longer a failed property-health state
+- What remains: no in-repo work remains for issue `#177`; existing should-fix monitoring items such as Search Console mapping, security headers, sitemap/canonical drift, and external-link review remain separate follow-up work
+
 ### 2026-05-08 05:31:08 AEST
 
 - Issue or trigger: issue `#177` from Control Plane freshness for `cartransport-movingagain-com-au`
