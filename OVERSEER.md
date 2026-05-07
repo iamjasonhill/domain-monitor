@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 12:55:25 AEST
+
+- Issue or trigger: production verification for issues `#171` and `#172` after deploying commits `09dd29e` and `df830bb`
+- What changed: deployed production to `df830bb`, cleared optimized caches, checked representative Search Console summaries, checked `web-properties-summary` for stale Matomo freshness matches, and checked the production detected-issues export for parked/domain-asset live-site QA leakage
+- What was fixed: representative archived-Matomo properties now report current MM-Google Search Console setup gaps instead of stale Matomo freshness; `web-properties-summary?fleet_focus=1` reports `0` stale Matomo freshness matches; raw old parked/domain-asset QA findings remain preserved in the database, but Control Plane export reports `0` live-site QA attention issues for parked/domain-asset properties
+- What remains: Control Plane should rerun/import the refreshed Domain Monitor feed so the Attention page drops the now-suppressed rows; no further Domain Monitor code change is required for issues `#171` or `#172`
+
 ### 2026-05-07 12:53:29 AEST
 
 - Issue or trigger: issue `#172` to suppress live-site QA findings for parked and domain-asset properties
