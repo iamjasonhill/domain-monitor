@@ -41,6 +41,8 @@ class ExternalReferencePolicyTest extends TestCase
         $this->assertSame('approved', $policy['action']);
         $this->assertSame('approved_fleet_reference', $policy['category']);
         $this->assertSame('fleet_reviewed', $policy['registry_source']);
+        $this->assertSame('fleet', $policy['scope']);
+        $this->assertSame('https://github.com/iamjasonhill/MM-fleet-program/issues/36', $policy['policy_reference']);
         $this->assertTrue($policy['approved']);
         $this->assertStringContainsString('Moving Insurance', $policy['reason']);
     }
@@ -59,12 +61,50 @@ class ExternalReferencePolicyTest extends TestCase
             $this->assertSame('approved', $entry['action']);
             $this->assertTrue($entry['approved']);
             $this->assertSame('fleet_reviewed', $entry['registry_source']);
+            $this->assertSame('https://github.com/iamjasonhill/MM-fleet-program/issues/36', $entry['policy_reference']);
         }
 
         $this->assertSame('approved_storage_reference', $selfStorageApex['category']);
         $this->assertSame('approved_storage_reference', $selfStorageWww['category']);
+        $this->assertSame('fleet', $selfStorageApex['scope']);
         $this->assertSame('approved_government_reference', $agricultureApex['category']);
         $this->assertSame('approved_government_reference', $agricultureWww['category']);
+        $this->assertSame('interstate_quarantine_biosecurity', $agricultureApex['scope']);
+    }
+
+    public function test_it_approves_scoped_hosts_only_for_matching_properties_or_source_hosts(): void
+    {
+        config()->set('domain_monitor.external_reference_policy.approved_scoped_hosts', [
+            [
+                'host' => 'campaign-partner.example',
+                'property_slugs' => ['movingagain-com-au'],
+                'source_hosts' => ['fleet-source.example'],
+                'category' => 'approved_campaign_reference',
+                'reason' => 'Fleet approved this campaign reference for a limited surface.',
+                'registry_source' => 'fleet_reviewed',
+                'scope' => 'property',
+                'policy_reference' => 'https://github.com/iamjasonhill/MM-fleet-program/issues/36#scoped-campaign-partner',
+            ],
+        ]);
+
+        $matchingProperty = $this->property('movingagain.com.au');
+        $otherProperty = $this->property('other-site.example');
+        $policy = app(ExternalReferencePolicy::class);
+
+        $byProperty = $policy->classify('campaign-partner.example', 'movingagain.com.au', $matchingProperty);
+        $bySourceHost = $policy->classify('www.campaign-partner.example', 'fleet-source.example', $otherProperty);
+        $unmatched = $policy->classify('campaign-partner.example', 'unapproved-source.example', $otherProperty);
+
+        $this->assertSame('approved_scoped', $byProperty['classification']);
+        $this->assertSame('approved', $byProperty['action']);
+        $this->assertSame('approved_campaign_reference', $byProperty['category']);
+        $this->assertSame('fleet_reviewed', $byProperty['registry_source']);
+        $this->assertSame('property', $byProperty['scope']);
+        $this->assertSame('https://github.com/iamjasonhill/MM-fleet-program/issues/36#scoped-campaign-partner', $byProperty['policy_reference']);
+        $this->assertTrue($byProperty['approved']);
+
+        $this->assertSame('approved_scoped', $bySourceHost['classification']);
+        $this->assertSame('review_required', $unmatched['classification']);
     }
 
     public function test_it_classifies_operational_surfaces_for_the_source_property(): void
@@ -155,6 +195,8 @@ class ExternalReferencePolicyTest extends TestCase
         $this->assertSame('approved_registry', $links->firstWhere('host', 'movinginsurance.com.au')['policy_classification']);
         $this->assertSame('approved_fleet_reference', $links->firstWhere('host', 'movinginsurance.com.au')['policy_category']);
         $this->assertSame('fleet_reviewed', $links->firstWhere('host', 'movinginsurance.com.au')['registry_source']);
+        $this->assertSame('fleet', $links->firstWhere('host', 'movinginsurance.com.au')['policy_scope']);
+        $this->assertSame('https://github.com/iamjasonhill/MM-fleet-program/issues/36', $links->firstWhere('host', 'movinginsurance.com.au')['policy_reference']);
         $this->assertSame('approved_registry', $links->firstWhere('host', 'www.selfstorage.com.au')['policy_classification']);
         $this->assertSame('approved_storage_reference', $links->firstWhere('host', 'www.selfstorage.com.au')['policy_category']);
         $this->assertSame('approved_registry', $links->firstWhere('host', 'www.agriculture.gov.au')['policy_classification']);

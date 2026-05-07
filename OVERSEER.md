@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-08 05:49:29 AEST
+
+- Issue or trigger: issue `#178` to support accepted external-link policy for Fleet-approved links
+- What changed: external-reference policy now records Fleet/Control policy-standard references, supports global accepted registry entries and scoped accepted entries by property slug or source host, and emits `policy_scope` plus `policy_reference` in external-link evidence
+- What was fixed: Domain Monitor can suppress accepted global or scoped Fleet-approved external links while keeping unknown/disallowed links reviewable, and Control/Fleet receive auditable category, reason, registry source, scope, and policy-reference metadata
+- What remains: deploy to production and verify accepted-link policy metadata on the live classifier; Fleet issue `#36` and Control issue `#67` still own their separate governance/dispatch mappings
+
 ### 2026-05-08 05:32:14 AEST
 
 - Issue or trigger: production verification for issue `#177` after deploying commit `93e6fec`

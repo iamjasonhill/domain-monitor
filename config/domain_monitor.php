@@ -950,11 +950,18 @@ return [
     ],
 
     'external_reference_policy' => [
+        'policy_standard' => [
+            'owner' => 'Fleet',
+            'status' => 'pending_fleet_standard',
+            'fleet_issue' => 'https://github.com/iamjasonhill/MM-fleet-program/issues/36',
+            'control_policy_issue' => 'https://github.com/iamjasonhill/MM-Control-Plane/issues/67',
+        ],
         'authority_reference_hosts' => [
             'abs.gov.au',
             'ato.gov.au',
             'business.gov.au',
         ],
+        'approved_scoped_hosts' => [],
         'approved_registry_hosts' => [
             [
                 'host' => 'movinginsurance.com.au',

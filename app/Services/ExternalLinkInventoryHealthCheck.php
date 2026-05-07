@@ -23,6 +23,8 @@ class ExternalLinkInventoryHealthCheck
      *   policy_reason: string,
      *   policy_category: string|null,
      *   registry_source: string|null,
+     *   policy_scope: string|null,
+     *   policy_reference: string|null,
      *   found_on: string|null,
      *   found_on_pages: array<int, string>
      * }>
@@ -59,6 +61,8 @@ class ExternalLinkInventoryHealthCheck
      *     policy_reason: string,
      *     policy_category: string|null,
      *     registry_source: string|null,
+     *     policy_scope: string|null,
+     *     policy_reference: string|null,
      *     found_on: string|null,
      *     found_on_pages: array<int, string>
      *   }>,
@@ -235,6 +239,8 @@ class ExternalLinkInventoryHealthCheck
                 'policy_reason' => $policy['reason'],
                 'policy_category' => $policy['category'],
                 'registry_source' => $policy['registry_source'],
+                'policy_scope' => $policy['scope'],
+                'policy_reference' => $policy['policy_reference'],
                 'found_on' => $foundOn,
                 'found_on_pages' => [$foundOn],
             ];
@@ -411,6 +417,8 @@ class ExternalLinkInventoryHealthCheck
      *   policy_reason: string,
      *   policy_category: string|null,
      *   registry_source: string|null,
+     *   policy_scope: string|null,
+     *   policy_reference: string|null,
      *   found_on: string|null,
      *   found_on_pages: array<int, string>
      * }>

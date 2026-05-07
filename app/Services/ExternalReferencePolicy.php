@@ -16,7 +16,9 @@ class ExternalReferencePolicy
      *   approved: bool,
      *   reason: string,
      *   category: string|null,
-     *   registry_source: string|null
+     *   registry_source: string|null,
+     *   scope: string|null,
+     *   policy_reference: string|null
      * }
      */
     public function classify(?string $host, ?string $sourceHost = null, ?WebProperty $property = null): array
@@ -42,6 +44,20 @@ class ExternalReferencePolicy
             );
         }
 
+        $scopedEntry = $this->configuredScopedHostMatch($normalizedHost, $normalizedSourceHost, $property);
+        if ($scopedEntry !== null) {
+            return $this->result(
+                classification: 'approved_scoped',
+                action: 'approved',
+                approved: true,
+                reason: (string) ($scopedEntry['reason'] ?? 'Host is configured as an approved scoped external-link destination.'),
+                category: is_string($scopedEntry['category'] ?? null) ? $scopedEntry['category'] : 'approved_external_reference',
+                registrySource: is_string($scopedEntry['registry_source'] ?? null) ? $scopedEntry['registry_source'] : 'fleet_reviewed',
+                scope: is_string($scopedEntry['scope'] ?? null) ? $scopedEntry['scope'] : 'property',
+                policyReference: $this->policyReference($scopedEntry),
+            );
+        }
+
         $registryEntry = $this->configuredHostMatch($normalizedHost, 'approved_registry_hosts');
         if ($registryEntry !== null) {
             return $this->result(
@@ -51,6 +67,8 @@ class ExternalReferencePolicy
                 reason: (string) ($registryEntry['reason'] ?? 'Host is configured as an approved external-link registry destination.'),
                 category: is_string($registryEntry['category'] ?? null) ? $registryEntry['category'] : 'approved_external_reference',
                 registrySource: is_string($registryEntry['registry_source'] ?? null) ? $registryEntry['registry_source'] : 'fleet_reviewed',
+                scope: is_string($registryEntry['scope'] ?? null) ? $registryEntry['scope'] : 'global',
+                policyReference: $this->policyReference($registryEntry),
             );
         }
 
@@ -108,7 +126,9 @@ class ExternalReferencePolicy
      *   approved: bool,
      *   reason: string,
      *   category: string|null,
-     *   registry_source: string|null
+     *   registry_source: string|null,
+     *   scope: string|null,
+     *   policy_reference: string|null
      * }
      */
     private function result(
@@ -118,6 +138,8 @@ class ExternalReferencePolicy
         string $reason,
         ?string $category = null,
         ?string $registrySource = null,
+        ?string $scope = null,
+        ?string $policyReference = null,
     ): array {
         return [
             'classification' => $classification,
@@ -126,6 +148,8 @@ class ExternalReferencePolicy
             'reason' => $reason,
             'category' => $category,
             'registry_source' => $registrySource,
+            'scope' => $scope,
+            'policy_reference' => $policyReference,
         ];
     }
 
@@ -248,6 +272,79 @@ class ExternalReferencePolicy
         }
 
         return null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function configuredScopedHostMatch(string $host, ?string $sourceHost, ?WebProperty $property): ?array
+    {
+        $configured = config('domain_monitor.external_reference_policy.approved_scoped_hosts', []);
+
+        if (! is_array($configured)) {
+            return null;
+        }
+
+        foreach ($configured as $entry) {
+            if (! is_array($entry) || ! is_string($entry['host'] ?? null)) {
+                continue;
+            }
+
+            $entryHost = $this->normalizedHost($entry['host']);
+            if ($entryHost === null || ! $this->hostMatches($host, [$entryHost])) {
+                continue;
+            }
+
+            if ($this->scopedEntryMatches($entry, $sourceHost, $property)) {
+                return $entry;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $entry
+     */
+    private function scopedEntryMatches(array $entry, ?string $sourceHost, ?WebProperty $property): bool
+    {
+        $propertySlugs = $this->configuredStrings($entry['property_slugs'] ?? [])->all();
+        if ($property instanceof WebProperty && in_array($property->slug, $propertySlugs, true)) {
+            return true;
+        }
+
+        $sourceHosts = $this->configuredStrings($entry['source_hosts'] ?? [])
+            ->map(fn (string $host): ?string => $this->normalizedHost($host))
+            ->filter()
+            ->values()
+            ->all();
+
+        return $sourceHost !== null && $this->hostMatches($sourceHost, $sourceHosts);
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, string>
+     */
+    private function configuredStrings(mixed $value): \Illuminate\Support\Collection
+    {
+        return collect(is_array($value) ? $value : [$value])
+            ->filter(fn (mixed $item): bool => is_string($item) && trim($item) !== '')
+            ->map(fn (mixed $item): string => trim((string) $item))
+            ->values();
+    }
+
+    /**
+     * @param  array<string, mixed>  $entry
+     */
+    private function policyReference(array $entry): ?string
+    {
+        if (is_string($entry['policy_reference'] ?? null) && $entry['policy_reference'] !== '') {
+            return $entry['policy_reference'];
+        }
+
+        $fleetIssue = config('domain_monitor.external_reference_policy.policy_standard.fleet_issue');
+
+        return is_string($fleetIssue) && $fleetIssue !== '' ? $fleetIssue : null;
     }
 
     /**
