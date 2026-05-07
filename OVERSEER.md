@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 11:58:20 AEST
+
+- Issue or trigger: issue `#167` to archive Matomo analytics sources and promote GA4 where available
+- What changed: added `analytics:archive-legacy-matomo-sources`, deployed commit `ef8af81` to production, ran the production dry-run, then ran `php artisan analytics:archive-legacy-matomo-sources --write`
+- What was fixed: production archived `26` Matomo sources, set Matomo primary count to `0`, promoted valid GA4 sources so GA4 primary count is now `28`, and preserved all Matomo rows as archived legacy/backfill records; the post-run dry-run reports `0` Matomo sources left to archive, `0` GA4 sources left to promote, and `0` properties without valid GA4
+- What remains: update broader GA4-first quality tests, neutralize Matomo-era naming in active contracts, and run final production cleanup verification
+
 ### 2026-05-07 11:51:29 AEST
 
 - Issue or trigger: issue `#166` to retire Matomo/manual CSV UI from first-look dashboard and active navigation
