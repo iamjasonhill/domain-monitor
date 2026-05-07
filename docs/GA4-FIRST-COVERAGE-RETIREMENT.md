@@ -42,6 +42,12 @@ Use these rules when adding or reviewing active coverage behavior:
 - If Matomo exists but GA4 is ready, do not show Matomo as a blocker.
 - If manual CSV exists, preserve it as evidence; do not require it for active health.
 
+## Legacy Refresh Scheduling
+
+Normal production scheduling must not run Matomo install audits or Matomo-mapped weekly Search Console baseline refreshes.
+
+The legacy commands remain available for deliberate archive/backfill work, but scheduled Matomo refreshes require the explicit `MATOMO_LEGACY_REFRESH_SCHEDULE_ENABLED=true` opt-in plus valid Matomo credentials.
+
 ## Retirement Stack
 
 The retirement is intentionally staged:
@@ -54,4 +60,3 @@ The retirement is intentionally staged:
 6. Update quality tests around the GA4-first model.
 7. Neutralize Matomo-era naming in active contracts.
 8. Verify production cleanup after the stack lands.
-

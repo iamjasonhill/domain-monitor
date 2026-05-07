@@ -69,6 +69,7 @@ return [
     'matomo' => [
         'base_url' => env('MATOMO_BASE_URL', 'https://stats.redirection.com.au'),
         'token_auth' => env('MATOMO_TOKEN_AUTH'),
+        'legacy_refresh_schedule_enabled' => filter_var(env('MATOMO_LEGACY_REFRESH_SCHEDULE_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
     ],
 
     'domain_monitor' => [

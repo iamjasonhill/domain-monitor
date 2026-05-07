@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 11:40:19 AEST
+
+- Issue or trigger: issue `#164` to stop scheduled Matomo refresh jobs during the GA4-first retirement
+- What changed: moved the Matomo install-audit and Matomo-mapped weekly Search Console baseline schedules behind the explicit `MATOMO_LEGACY_REFRESH_SCHEDULE_ENABLED=true` legacy opt-in, documented the scheduling rule, and added schedule-list coverage for the default production cadence
+- What was fixed: normal scheduled tasks no longer run Matomo refresh jobs even when the repo still preserves Matomo command code and historical records for archive/backfill work
+- What remains: remove manual CSV from active automation coverage, retire Matomo/manual CSV first-look UI, archive Matomo sources safely, update broader GA4-first quality tests, neutralize active contract naming, and run production cleanup verification
+
 ### 2026-05-07 11:36:36 AEST
 
 - Issue or trigger: issue `#163` to plan the GA4-first retirement of Matomo/manual CSV active coverage before functional cleanup starts

@@ -604,6 +604,7 @@ Artisan::command('analytics:refresh-search-console-api-enrichment {--capture-met
 
 $brainConfigured = filled(config('services.brain.base_url')) && filled(config('services.brain.api_key'));
 $matomoConfigured = filled(config('services.matomo.base_url')) && filled(config('services.matomo.token_auth'));
+$legacyMatomoRefreshScheduleEnabled = (bool) config('services.matomo.legacy_refresh_schedule_enabled', false);
 $googleSearchConsoleConfigured = filled(config('services.google.search_console.access_token'))
     || (
         filled(config('services.google.search_console.refresh_token'))
@@ -785,11 +786,13 @@ Schedule::command('domains:prune-monitoring-data')
     ->at('09:00')
     ->timezone('UTC');
 
-// Verify live Matomo tracker installs before automation coverage is refreshed.
-Schedule::command('analytics:refresh-matomo-install-audits')
-    ->daily()
-    ->at('08:50')
-    ->timezone('UTC');
+// Legacy Matomo refreshes are archive/backfill-only and are not part of active readiness.
+if ($legacyMatomoRefreshScheduleEnabled && $matomoConfigured) {
+    Schedule::command('analytics:refresh-matomo-install-audits')
+        ->daily()
+        ->at('08:50')
+        ->timezone('UTC');
+}
 
 // Verify live marketing-integrity checks that are not covered by infrastructure-only health checks.
 Schedule::command('monitoring:run-lane marketing_integrity')
@@ -810,7 +813,7 @@ Schedule::command('monitoring:run-lane fleet_astro_technical_seo')
     ->at('09:10')
     ->timezone('UTC');
 
-// Refresh fleet automation coverage after upstream analytics imports have had time to settle.
+// Refresh fleet automation coverage after active GA4/Search Console evidence has had time to settle.
 Schedule::command('analytics:refresh-automation-coverage')
     ->daily()
     ->at('09:05')
@@ -842,8 +845,8 @@ Schedule::command('analytics:refresh-search-console-live-rechecks')
     ->at('09:25')
     ->timezone('UTC');
 
-// Capture a weekly Search Console baseline trend for active Matomo-mapped properties.
-if ($matomoConfigured) {
+// Legacy Matomo-mapped weekly baselines are archive/backfill-only and require explicit opt-in.
+if ($legacyMatomoRefreshScheduleEnabled && $matomoConfigured) {
     Schedule::command('analytics:refresh-weekly-search-console-baselines')
         ->weekly()
         ->sundays()
