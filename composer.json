@@ -57,7 +57,7 @@
         ],
         "test": [
             "@php artisan config:clear --ansi",
-            "@php artisan test"
+            "@php -d memory_limit=512M artisan test"
         ],
         "analyse": [
             "./vendor/bin/phpstan analyse --memory-limit=2G"
@@ -74,7 +74,7 @@
             "@php artisan config:clear --ansi",
             "./vendor/bin/pint --test",
             "./vendor/bin/phpstan analyse --memory-limit=2G",
-            "@php artisan test"
+            "@php -d memory_limit=512M artisan test"
         ],
         "quality": [
             "@check"

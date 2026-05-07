@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 12:04:03 AEST
+
+- Issue or trigger: issue `#168` to update quality tests for the GA4-first coverage model after Matomo/manual CSV retirement
+- What changed: renamed the manual Search Console CSV importer coverage as legacy archive/backfill, updated its active automation assertion to require GA4/MM-Google readiness, and raised the PHPUnit memory limit used by `composer quality`
+- What was fixed: `composer quality` now passes with Pint, PHPStan, and `436` tests; the suite no longer fails because a Matomo/manual CSV fixture is treated as complete active coverage
+- What remains: neutralize Matomo-era naming in active contracts, then run final production cleanup verification after the retirement stack is complete
+
 ### 2026-05-07 11:58:20 AEST
 
 - Issue or trigger: issue `#167` to archive Matomo analytics sources and promote GA4 where available

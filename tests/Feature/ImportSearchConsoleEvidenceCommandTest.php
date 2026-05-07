@@ -20,7 +20,7 @@ class ImportSearchConsoleEvidenceCommandTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_it_imports_manual_search_console_evidence_for_a_property(): void
+    public function test_it_imports_legacy_manual_search_console_evidence_for_archive_backfill(): void
     {
         Storage::fake('local');
 
@@ -132,10 +132,11 @@ class ImportSearchConsoleEvidenceCommandTest extends TestCase
         $this->assertSame(12, $latestBaseline->not_found_404);
         $this->assertSame(23, $latestBaseline->duplicate_without_user_selected_canonical);
         Storage::disk('local')->assertExists($latestBaseline->artifact_path);
-        $this->assertSame('complete', $property->fresh()->automationCoverageSummary()['status']);
+        $this->assertSame('needs_ga4_sync', $property->fresh()->automationCoverageSummary()['status']);
+        $this->assertSame('covered', $property->fresh()->manualCsvCoverageSummary()['status']);
     }
 
-    public function test_it_rejects_import_when_property_is_not_waiting_on_manual_csv(): void
+    public function test_it_rejects_legacy_import_when_manual_csv_archive_already_exists(): void
     {
         Storage::fake('local');
 
@@ -229,7 +230,7 @@ class ImportSearchConsoleEvidenceCommandTest extends TestCase
 
         $this->assertSame(1, $exitCode);
         $this->assertSame(
-            'This property is not currently waiting on manual Search Console CSV evidence.',
+            'This property is not eligible for legacy manual Search Console CSV evidence enrichment.',
             trim(Artisan::output())
         );
         $this->assertCount(1, DomainSeoBaseline::query()->where('web_property_id', $property->id)->get());
