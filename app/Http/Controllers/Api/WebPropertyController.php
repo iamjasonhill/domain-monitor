@@ -113,7 +113,7 @@ class WebPropertyController extends Controller
                 'conversionSurfaces.eventContractAssignment.eventContract',
                 'monitoringFindings' => fn ($query) => $query
                     ->where('status', MonitoringFinding::STATUS_OPEN)
-                    ->with('domain:id,domain')
+                    ->with('domain:id,domain,platform,dns_config_name,parked_override')
                     ->orderByDesc('last_detected_at'),
                 'seoBaselines' => fn ($query) => $query
                     ->orderByDesc('captured_at')

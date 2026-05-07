@@ -18,6 +18,44 @@ class DetectedIssueApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_parked_domains_only_surface_expiry_inside_two_week_window(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        Domain::factory()->create([
+            'domain' => 'parked-noise.example.com',
+            'expires_at' => now()->addDays(21),
+            'is_active' => true,
+            'platform' => 'Parked',
+            'dns_config_name' => 'Parked',
+        ]);
+
+        Domain::factory()->create([
+            'domain' => 'parked-expiring.example.com',
+            'expires_at' => now()->addDays(10),
+            'is_active' => true,
+            'platform' => 'Parked',
+            'dns_config_name' => 'Parked',
+        ]);
+
+        $issues = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues')
+            ->assertOk()
+            ->json('issues');
+
+        $this->assertIsArray($issues);
+        /** @var array<int, array<string, mixed>> $issues */
+        $this->assertNull(collect($issues)->firstWhere('domain', 'parked-noise.example.com'));
+
+        $expiringIssue = collect($issues)->firstWhere('domain', 'parked-expiring.example.com');
+
+        $this->assertIsArray($expiringIssue);
+        $this->assertSame('domain.expiry', $expiringIssue['issue_class']);
+        $this->assertSame('should_fix', $expiringIssue['severity']);
+        $this->assertSame('Parked domain expires in 10 days', data_get($expiringIssue, 'evidence.primary_reasons.0'));
+    }
+
     public function test_issues_endpoint_returns_normalized_open_issue_feed(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');

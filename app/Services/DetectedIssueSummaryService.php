@@ -256,12 +256,14 @@ class DetectedIssueSummaryService
         $issues = MonitoringFinding::query()
             ->where('status', MonitoringFinding::STATUS_OPEN)
             ->with([
-                'domain:id,domain',
+                'domain:id,domain,platform,dns_config_name,parked_override',
+                'webProperty.primaryDomain:id,domain,platform,dns_config_name,parked_override',
                 'webProperty.primaryDomain.tags',
                 'webProperty.propertyDomains.domain.tags',
             ])
             ->orderByDesc('last_detected_at')
             ->get()
+            ->reject(fn (MonitoringFinding $finding): bool => $this->shouldSuppressMonitoringFinding($finding))
             ->map(function (MonitoringFinding $finding): array {
                 $property = $finding->webProperty;
                 $findingEvidence = is_array($finding->evidence) ? $finding->evidence : [];
@@ -318,6 +320,15 @@ class DetectedIssueSummaryService
 
         /** @var Collection<int, array<string, mixed>> $issues */
         return $issues;
+    }
+
+    private function shouldSuppressMonitoringFinding(MonitoringFinding $finding): bool
+    {
+        $domain = $finding->domain instanceof Domain
+            ? $finding->domain
+            : $finding->webProperty?->primaryDomainModel();
+
+        return $domain instanceof Domain && $domain->isParkedForHosting();
     }
 
     /**

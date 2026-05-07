@@ -399,10 +399,6 @@ class DashboardIssueQueueService
         $shouldFixDomains = collect();
 
         foreach ($domains as $domain) {
-            if ($domain->isParkedForHosting()) {
-                continue;
-            }
-
             if ($this->shouldSkipLinkedSubdomainDomain($domain)) {
                 continue;
             }
@@ -488,6 +484,22 @@ class DashboardIssueQueueService
         $shouldFix = [];
         $mustFixIssues = [];
         $shouldFixIssues = [];
+
+        if ($domain->isParkedForHosting()) {
+            if ($domain->expires_at && $domain->expires_at->isFuture() && $domain->expires_at->lte(now()->addDays(14)->endOfDay())) {
+                $daysUntilExpiry = max(0, now()->startOfDay()->diffInDays($domain->expires_at->copy()->startOfDay(), false));
+                $reason = "Parked domain expires in {$daysUntilExpiry} days";
+                $shouldFix[] = $reason;
+                $shouldFixIssues[] = $this->issueRecord('domain.expiry', $reason, 'should_fix');
+            }
+
+            return [
+                array_values(array_unique($mustFix)),
+                array_values(array_unique($shouldFix)),
+                $this->uniqueIssueRecords($mustFixIssues),
+                $this->uniqueIssueRecords($shouldFixIssues),
+            ];
+        }
 
         if ((int) ($domain->open_critical_alerts_count ?? 0) > 0) {
             $reason = $this->formatAlertReason((int) $domain->open_critical_alerts_count, 'critical');

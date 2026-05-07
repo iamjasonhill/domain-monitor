@@ -226,6 +226,14 @@ class RunMonitoringLane extends Command
                         && $primaryDomain->monitoringSkipReason('external_links') === null;
                 }
 
+                if (in_array($lane, ['marketing_integrity', 'seo_agent_readiness', 'fleet_astro_technical_seo', 'controller_metadata'], true)) {
+                    $primaryDomain = $property->primaryDomainModel();
+
+                    if ($primaryDomain instanceof \App\Models\Domain && $primaryDomain->monitoringSkipReason('seo') !== null) {
+                        return false;
+                    }
+                }
+
                 if ($property->production_url === null && $property->primaryDomainName() === null) {
                     return false;
                 }

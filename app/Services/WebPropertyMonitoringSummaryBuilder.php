@@ -73,19 +73,22 @@ class WebPropertyMonitoringSummaryBuilder
         if ($property->relationLoaded('monitoringFindings')) {
             /** @var EloquentCollection<int, MonitoringFinding> $loadedFindings */
             $loadedFindings = $property->getRelation('monitoringFindings');
-            $loadedFindings->loadMissing('domain:id,domain');
+            $loadedFindings->loadMissing('domain:id,domain,platform,dns_config_name,parked_override');
 
             return $loadedFindings
                 ->filter(fn (MonitoringFinding $finding): bool => $finding->status === MonitoringFinding::STATUS_OPEN)
+                ->reject(fn (MonitoringFinding $finding): bool => $this->shouldSuppressFinding($finding))
                 ->sortByDesc(fn (MonitoringFinding $finding): int => $finding->last_detected_at?->getTimestamp() ?? 0)
                 ->values();
         }
 
         return $property->monitoringFindings()
             ->where('status', MonitoringFinding::STATUS_OPEN)
-            ->with('domain:id,domain')
+            ->with('domain:id,domain,platform,dns_config_name,parked_override')
             ->orderByDesc('last_detected_at')
-            ->get();
+            ->get()
+            ->reject(fn (MonitoringFinding $finding): bool => $this->shouldSuppressFinding($finding))
+            ->values();
     }
 
     private function severityFor(MonitoringFinding $finding): string
@@ -93,5 +96,12 @@ class WebPropertyMonitoringSummaryBuilder
         return in_array($finding->issue_type, ['incident', 'regression'], true)
             ? 'must_fix'
             : 'should_fix';
+    }
+
+    private function shouldSuppressFinding(MonitoringFinding $finding): bool
+    {
+        $domain = $finding->domain;
+
+        return $domain instanceof Domain && $domain->isParkedForHosting();
     }
 }

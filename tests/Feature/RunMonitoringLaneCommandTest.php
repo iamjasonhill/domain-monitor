@@ -495,6 +495,72 @@ class RunMonitoringLaneCommandTest extends TestCase
         $this->assertSame('should_fix', $matchingIssue['severity']);
     }
 
+    public function test_live_monitoring_lanes_ignore_parked_properties_and_suppress_prior_findings(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $property = $this->makeProperty('parked-live-noise.example.au', 'Parked Live Noise');
+        $primaryDomain = $property->primaryDomainModel();
+        $this->assertInstanceOf(Domain::class, $primaryDomain);
+        $primaryDomain->forceFill([
+            'platform' => 'Parked',
+            'dns_config_name' => 'Parked',
+        ])->save();
+
+        $finding = MonitoringFinding::factory()->create([
+            'issue_id' => app(\App\Services\DetectedIssueIdentityService::class)->makeIssueId(
+                $primaryDomain->id,
+                $property->slug,
+                'marketing.ga4_install'
+            ),
+            'lane' => 'marketing_integrity',
+            'finding_type' => 'marketing.ga4_install',
+            'issue_type' => 'cleanup',
+            'scope_type' => 'web_property',
+            'domain_id' => $primaryDomain->id,
+            'web_property_id' => $property->id,
+            'status' => MonitoringFinding::STATUS_OPEN,
+            'title' => 'GA4 install mismatch on live property',
+            'summary' => 'Property does not have an active GA4 measurement ID configured.',
+            'first_detected_at' => now()->subDay(),
+            'last_detected_at' => now()->subHour(),
+        ]);
+
+        Http::fake([
+            '*' => Http::response('', 500),
+        ]);
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'marketing_integrity',
+            '--property' => $property->slug,
+        ]));
+
+        $this->assertStringContainsString('No active properties matched', Artisan::output());
+        $this->assertSame(MonitoringFinding::STATUS_OPEN, $finding->refresh()->status);
+
+        $issues = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues')
+            ->assertOk()
+            ->json('issues');
+
+        $this->assertIsArray($issues);
+        /** @var array<int, array<string, mixed>> $issues */
+        $this->assertNull(collect($issues)->firstWhere('issue_id', $finding->issue_id));
+
+        /** @var array<int, array<string, mixed>> $summaries */
+        $summaries = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/web-properties-summary')
+            ->assertOk()
+            ->json('web_properties');
+        $summary = collect($summaries)->firstWhere('slug', $property->slug);
+
+        $this->assertIsArray($summary);
+        $this->assertSame(0, data_get($summary, 'monitoring_summary.open_findings_count'));
+        $this->assertSame([], data_get($summary, 'monitoring_summary.open_findings'));
+    }
+
     public function test_marketing_integrity_lane_reports_indexability_failures(): void
     {
         config()->set('services.brain.base_url', 'https://brain.example.test');

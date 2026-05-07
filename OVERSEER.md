@@ -54,6 +54,22 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 10:29:39 AEST
+
+- Issue or trigger: Control Plane still surfaced Moving Again `.com`, `.net`,
+  and `.net.au` parked-domain findings as SEO/GA/indexability should-fix work.
+- What changed: parked primary domains are now excluded from live monitoring
+  lanes that expect a real website, parked-domain monitoring findings are
+  suppressed from `/api/issues` and `/api/web-properties-summary`, and parked
+  domains can only enter the priority queue through a domain-expiry warning
+  inside the 14-day window.
+- What was fixed: parked domains no longer generate or export live-site noise
+  for GA4 install, structured data, agent-readiness, indexability, controller
+  drift, or Fleet Astro technical SEO checks.
+- What remains: deploy to production, rerun the relevant Domain Monitor
+  summaries, and refresh Control Plane so the Moving Again parked TLD rows drop
+  out unless one is within two weeks of expiry.
+
 ### 2026-05-07 07:50:06 AEST
 
 - Issue or trigger: issue `#161` to harden Search Console coverage refresh blockers after the Moving Again production refresh exposed GSC token and Matomo SSL coupling failures
