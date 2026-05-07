@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 12:13:05 AEST
+
+- Issue or trigger: issue `#170` to run production cleanup verification after Matomo/manual CSV retirement
+- What changed: verified production is deployed at commit `3b0b170`, reran `coverage:sync-tags`, checked the normal scheduler, queried live tag/source/baseline counts, checked the archive dry-run, and verified the authenticated production priority queue and issues API
+- What was fixed: production detached the remaining `automation.manual_csv_pending` tag and now reports `manual_csv_pending=0`; normal scheduling contains no Matomo refresh jobs; Matomo sources remain preserved as `26` archived rows with `0` active and `0` primary; the Matomo archive dry-run reports `0` remaining archive/promote actions; `composer quality` passes locally with `437` tests
+- What remains: no in-repo cleanup remains for this issue; retained Matomo/manual CSV baselines remain queryable as historical evidence, and the only `Matomo` string found in `/api/issues` is raw captured page HTML from `vehicle.net.au`, not a Domain Monitor live action item
+
 ### 2026-05-07 12:09:22 AEST
 
 - Issue or trigger: issue `#169` to neutralize Matomo-era naming in active contracts
