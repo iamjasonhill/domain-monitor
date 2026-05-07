@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 13:54:27 AEST
+
+- Issue or trigger: production verification for issues `#174` and `#175` after deploying commit `a9d024d`
+- What changed: deployed production to `a9d024d`, reran `marketing_integrity` for `backloadingremovals-com-au`, and reran `deep_audit` for `backloadingremovals-com-au`, `wemove-com-au`, and `backloading-services-com-au`
+- What was fixed: `backloadingremovals-com-au` now reports `quote_handoff_integrity=handoff_ok` with one quote-handoff finding recovered; `movinginsurance.com.au` is no longer review-required in refreshed external-link findings, `wemove-com-au` recovered its external-link finding, and remaining findings only list other review-required storage/self-storage hosts
+- What remains: no in-repo work remains for issues `#174` or `#175`; Control Plane should refresh/import Domain Monitor so the recovered/updated rows disappear or reduce in Attention
+
 ### 2026-05-07 13:50:41 AEST
 
 - Issue or trigger: issue `#175` to allow `movinginsurance.com.au` as an approved fleet external reference
