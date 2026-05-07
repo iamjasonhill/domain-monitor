@@ -76,6 +76,9 @@
             "./vendor/bin/phpstan analyse --memory-limit=2G",
             "@php artisan test"
         ],
+        "quality": [
+            "@check"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"

@@ -304,3 +304,10 @@ Why this is the current call:
 - What changed: exposed the current `search_console` coverage summary in the existing `/api/web-properties-summary` contract alongside the older `gsc_evidence_summary` evidence block
 - What was fixed: downstream consumers no longer have to infer first-look freshness from legacy Search Console issue evidence when the newer MM-Google coverage state already reports a fresh checked/imported timestamp
 - What remains: deploy this API contract update, then rerun the Control Plane Domain Monitor import so the stale Moving Again freshness signal resolves from the authoritative current coverage field
+
+### 2026-05-07 10:56:44 AEST
+
+- Issue or trigger: follow-up from production deploy showing Domain Monitor root disk near 90% and a missing `composer quality` script
+- What changed: pruned old Forge release directories on production while keeping the current release plus one rollback release, and added `composer quality` as the repo-standard alias for the existing `composer check` script
+- What was fixed: production root disk dropped from about 90% used to 84% used with roughly 1.5G free, and future operator runs can use the same `composer quality` command shape as adjacent repos
+- What remains: root-owned system journals, apt cache, and the tiny 8.65G root volume still need a Forge/root maintenance pass or resize; the full local `composer check` suite still has pre-existing manual CSV / coverage-tag failures plus a PHP memory ceiling, separate from this alias change
