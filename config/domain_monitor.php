@@ -465,6 +465,13 @@ return [
                 'slug' => 'removalsinterstate-com-au',
                 'name' => 'removalsinterstate.com.au',
                 'property_type' => 'website',
+                'target_household_quote_url' => 'https://quoting.removalsinterstate.com.au/quote/household',
+                'target_household_booking_url' => 'https://quoting.removalsinterstate.com.au/booking/create',
+                'target_vehicle_quote_url' => 'https://quoting.removalsinterstate.com.au/quote/vehicle',
+                'target_moveroo_subdomain_url' => 'https://quoting.removalsinterstate.com.au/',
+                'target_contact_us_page_url' => 'https://quoting.removalsinterstate.com.au/contact',
+                'target_legacy_bookings_replacement_url' => 'https://quoting.removalsinterstate.com.au/booking/create',
+                'target_legacy_payments_replacement_url' => 'https://quoting.removalsinterstate.com.au/contact',
                 'repository' => [
                     'repo_name' => '_wp-house',
                     'local_path' => '/Users/jasonhill/Projects/Business/websites/_wp-house',
