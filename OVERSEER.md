@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 13:40:11 AEST
+
+- Issue or trigger: production verification for issue `#173` after deploying commit `793226b`
+- What changed: deployed production to `793226b`, cleared optimized caches, and checked the four known email-only properties against the production Control Plane issue export
+- What was fixed: `jasonhill.com.au`, `jhmh.com.au`, `nfgseo.com.au`, and `removals.com.au` now report `shouldSuppressLiveWebsiteQualityFindings=true`; their `16` raw historical live-site QA findings remain preserved, but exported website-QA Attention leakage for the affected finding classes is `0`
+- What remains: no in-repo work remains for issue `#173`; Control Plane should refresh/import Domain Monitor so the now-suppressed rows disappear from the visible Attention queue
+
 ### 2026-05-07 13:34:23 AEST
 
 - Issue or trigger: issue `#173` to suppress website QA findings for email-only and not-applicable properties
