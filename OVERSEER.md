@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 14:09:50 AEST
+
+- Issue or trigger: production verification for issue `#176` after deploying commit `0762f25`
+- What changed: production is on current `main`, approved registry classifications were verified for Moving Insurance, Self Storage, and Australian Government biosecurity hosts, and `deep_audit` was rerun for `backloadingremovals-com-au`
+- What was fixed: approved registry hosts classify as `approved_registry` with their expected policy categories and `registry_source=fleet_reviewed`; `backloadingremovals-com-au` recovered its external-link inventory finding after Self Storage became approved
+- What remains: no in-repo work remains for issue `#176`; open external-link inventory findings no longer list the approved registry hosts as review-required
+
 ### 2026-05-07 14:04:02 AEST
 
 - Issue or trigger: issue `#176` to create an approved external-link registry for Fleet-reviewed destinations
