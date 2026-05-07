@@ -842,6 +842,23 @@ class PropertySiteSignalScanner
             }
         }
 
+        if ($this->shouldTolerateUnverifiedAlternateHost($property, $problems)) {
+            return [
+                'status' => 'ok',
+                'verdict' => 'redirect_policy_ok',
+                'summary' => 'Root redirects resolve cleanly to the preferred HTTPS host. Alternate host verification is optional for app-shell properties unless explicitly configured.',
+                'evidence' => [
+                    'verdict' => 'redirect_policy_ok',
+                    'expected_origin' => $expectedOrigin,
+                    'http_probe' => $httpProbe,
+                    'alternate_probe' => $alternateProbe,
+                    'problems' => [],
+                    'tolerated_problems' => $problems,
+                    'tolerance_reason' => 'app_shell_alternate_host_optional',
+                ],
+            ];
+        }
+
         if ($problems === []) {
             return [
                 'status' => 'ok',
@@ -871,6 +888,19 @@ class PropertySiteSignalScanner
                 'problems' => $problems,
             ],
         ];
+    }
+
+    /**
+     * App-shell domains often intentionally serve only the apex host. If the
+     * apex HTTP root upgrades correctly, a missing/unresolvable alternate host
+     * should not become a critical live-site incident by itself.
+     *
+     * @param  array<int, string>  $problems
+     */
+    private function shouldTolerateUnverifiedAlternateHost(WebProperty $property, array $problems): bool
+    {
+        return $property->property_type === 'app'
+            && $problems === ['preferred_host_unverified'];
     }
 
     /**

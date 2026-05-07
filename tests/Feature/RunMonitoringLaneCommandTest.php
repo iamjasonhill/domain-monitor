@@ -973,6 +973,38 @@ class RunMonitoringLaneCommandTest extends TestCase
         $this->assertSame('http_upgrade_failed', data_get($finding->evidence, 'verdict'));
     }
 
+    public function test_app_shell_redirect_policy_tolerates_missing_alternate_host_when_apex_upgrades_cleanly(): void
+    {
+        $property = $this->makeProperty('vehicle-app.example.au', 'Vehicle App');
+        $property->forceFill([
+            'property_type' => 'app',
+            'canonical_origin_scheme' => 'https',
+            'canonical_origin_host' => 'vehicle-app.example.au',
+            'canonical_origin_policy' => 'known',
+        ])->save();
+
+        Http::fake([
+            'http://vehicle-app.example.au/' => Http::response(
+                'ok',
+                200,
+                [
+                    'X-Guzzle-Redirect-History' => ['https://vehicle-app.example.au/'],
+                    'X-Guzzle-Redirect-Status-History' => ['301'],
+                ]
+            ),
+            'https://www.vehicle-app.example.au/' => function (): void {
+                throw new \Illuminate\Http\Client\ConnectionException('Could not resolve host.');
+            },
+        ]);
+
+        $result = app(PropertySiteSignalScanner::class)->auditRedirectPolicy($property);
+
+        $this->assertSame('ok', $result['status']);
+        $this->assertSame('redirect_policy_ok', $result['verdict']);
+        $this->assertSame(['preferred_host_unverified'], data_get($result, 'evidence.tolerated_problems'));
+        $this->assertSame('app_shell_alternate_host_optional', data_get($result, 'evidence.tolerance_reason'));
+    }
+
     public function test_critical_live_lane_reports_uptime_http_and_ssl_failures(): void
     {
         config()->set('services.brain.base_url', 'https://brain.example.test');

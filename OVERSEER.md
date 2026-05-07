@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 13:11:23 AEST
+
+- Issue or trigger: Control Plane Attention review for `vehicle.net.au`, an operational app-shell domain whose HTTP apex upgraded correctly but whose alternate `www` host could not be verified
+- What changed: redirect-policy scanning now treats `preferred_host_unverified` as optional for `property_type = app` when it is the only redirect-policy problem; the evidence records `tolerated_problems` and `app_shell_alternate_host_optional` so the exception is visible rather than silent
+- What was fixed: app-shell domains no longer surface a critical live redirect incident solely because an unconfigured alternate host cannot be probed, while real HTTP upgrade failures and alternate-host mismatches remain reportable
+- What remains: deploy production, rerun the `critical_live` lane or next scheduled monitoring pass for `vehicle.net.au`, and refresh Control Plane so the Attention critical drops if no other live issue remains
+
 ### 2026-05-07 12:55:25 AEST
 
 - Issue or trigger: production verification for issues `#171` and `#172` after deploying commits `09dd29e` and `df830bb`
