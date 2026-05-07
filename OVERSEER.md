@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 14:04:02 AEST
+
+- Issue or trigger: issue `#176` to create an approved external-link registry for Fleet-reviewed destinations
+- What changed: external-reference policy now has an `approved_registry_hosts` registry with Fleet-reviewed entries for Moving Insurance, Self Storage, and Australian Government biosecurity guidance; approved links expose category and `registry_source=fleet_reviewed` evidence in inventory and monitoring summaries
+- What was fixed: `movinginsurance.com.au`, `selfstorage.com.au`/`www.selfstorage.com.au`, and `agriculture.gov.au`/`www.agriculture.gov.au` classify as approved registry destinations instead of review-required links, while unrelated unknown/disallowed external hosts remain reviewable
+- What remains: deploy to production and rerun affected deep-audit/external-link inventory checks to confirm findings recover or retain only non-registry review-required hosts
+
 ### 2026-05-07 13:54:27 AEST
 
 - Issue or trigger: production verification for issues `#174` and `#175` after deploying commit `a9d024d`

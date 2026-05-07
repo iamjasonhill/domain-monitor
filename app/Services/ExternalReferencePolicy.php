@@ -15,7 +15,8 @@ class ExternalReferencePolicy
      *   action: string,
      *   approved: bool,
      *   reason: string,
-     *   category: string|null
+     *   category: string|null,
+     *   registry_source: string|null
      * }
      */
     public function classify(?string $host, ?string $sourceHost = null, ?WebProperty $property = null): array
@@ -38,6 +39,18 @@ class ExternalReferencePolicy
                 action: 'disallowed',
                 approved: false,
                 reason: 'Host is listed as a disallowed external reference.',
+            );
+        }
+
+        $registryEntry = $this->configuredHostMatch($normalizedHost, 'approved_registry_hosts');
+        if ($registryEntry !== null) {
+            return $this->result(
+                classification: 'approved_registry',
+                action: 'approved',
+                approved: true,
+                reason: (string) ($registryEntry['reason'] ?? 'Host is configured as an approved external-link registry destination.'),
+                category: is_string($registryEntry['category'] ?? null) ? $registryEntry['category'] : 'approved_external_reference',
+                registrySource: is_string($registryEntry['registry_source'] ?? null) ? $registryEntry['registry_source'] : 'fleet_reviewed',
             );
         }
 
@@ -94,7 +107,8 @@ class ExternalReferencePolicy
      *   action: string,
      *   approved: bool,
      *   reason: string,
-     *   category: string|null
+     *   category: string|null,
+     *   registry_source: string|null
      * }
      */
     private function result(
@@ -102,7 +116,8 @@ class ExternalReferencePolicy
         string $action,
         bool $approved,
         string $reason,
-        ?string $category = null
+        ?string $category = null,
+        ?string $registrySource = null,
     ): array {
         return [
             'classification' => $classification,
@@ -110,6 +125,7 @@ class ExternalReferencePolicy
             'approved' => $approved,
             'reason' => $reason,
             'category' => $category,
+            'registry_source' => $registrySource,
         ];
     }
 

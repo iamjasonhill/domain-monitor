@@ -680,6 +680,7 @@ class PropertySiteSignalScanner
                     'policy_approved' => $policy['approved'],
                     'policy_reason' => $policy['reason'],
                     'policy_category' => $policy['category'],
+                    'registry_source' => $policy['registry_source'],
                     'found_on' => is_string($item['found_on'] ?? null) ? $item['found_on'] : ($foundOnPages[0] ?? null),
                     'found_on_pages' => $foundOnPages,
                 ];

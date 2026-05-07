@@ -948,13 +948,30 @@ return [
             'ato.gov.au',
             'business.gov.au',
         ],
-        'approved_partner_hosts' => [
+        'approved_registry_hosts' => [
             [
                 'host' => 'movinginsurance.com.au',
-                'category' => 'approved_external_reference',
-                'reason' => 'Moving Insurance is an accepted fleet-adjacent reference destination.',
+                'category' => 'approved_fleet_reference',
+                'reason' => 'Moving Insurance is an accepted fleet-adjacent moving insurance reference.',
+                'registry_source' => 'fleet_reviewed',
+                'scope' => 'fleet',
+            ],
+            [
+                'host' => 'selfstorage.com.au',
+                'category' => 'approved_storage_reference',
+                'reason' => 'Self Storage is an accepted self-storage reference destination.',
+                'registry_source' => 'fleet_reviewed',
+                'scope' => 'fleet',
+            ],
+            [
+                'host' => 'agriculture.gov.au',
+                'category' => 'approved_government_reference',
+                'reason' => 'Official Australian Government biosecurity and interstate travel guidance.',
+                'registry_source' => 'fleet_reviewed',
+                'scope' => 'interstate_quarantine_biosecurity',
             ],
         ],
+        'approved_partner_hosts' => [],
         'disallowed_hosts' => [
             'example-spam.test',
         ],

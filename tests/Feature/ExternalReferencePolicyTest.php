@@ -37,11 +37,34 @@ class ExternalReferencePolicyTest extends TestCase
     {
         $policy = app(ExternalReferencePolicy::class)->classify('movinginsurance.com.au', 'backloadingremovals.com.au');
 
-        $this->assertSame('approved_partner', $policy['classification']);
+        $this->assertSame('approved_registry', $policy['classification']);
         $this->assertSame('approved', $policy['action']);
-        $this->assertSame('approved_external_reference', $policy['category']);
+        $this->assertSame('approved_fleet_reference', $policy['category']);
+        $this->assertSame('fleet_reviewed', $policy['registry_source']);
         $this->assertTrue($policy['approved']);
         $this->assertStringContainsString('Moving Insurance', $policy['reason']);
+    }
+
+    public function test_it_approves_registry_apex_and_www_variants(): void
+    {
+        $policy = app(ExternalReferencePolicy::class);
+
+        $selfStorageApex = $policy->classify('selfstorage.com.au', 'backloadingremovals.com.au');
+        $selfStorageWww = $policy->classify('www.selfstorage.com.au', 'backloadingremovals.com.au');
+        $agricultureApex = $policy->classify('agriculture.gov.au', 'movingagain.com.au');
+        $agricultureWww = $policy->classify('www.agriculture.gov.au', 'movingagain.com.au');
+
+        foreach ([$selfStorageApex, $selfStorageWww, $agricultureApex, $agricultureWww] as $entry) {
+            $this->assertSame('approved_registry', $entry['classification']);
+            $this->assertSame('approved', $entry['action']);
+            $this->assertTrue($entry['approved']);
+            $this->assertSame('fleet_reviewed', $entry['registry_source']);
+        }
+
+        $this->assertSame('approved_storage_reference', $selfStorageApex['category']);
+        $this->assertSame('approved_storage_reference', $selfStorageWww['category']);
+        $this->assertSame('approved_government_reference', $agricultureApex['category']);
+        $this->assertSame('approved_government_reference', $agricultureWww['category']);
     }
 
     public function test_it_classifies_operational_surfaces_for_the_source_property(): void
@@ -110,6 +133,8 @@ class ExternalReferencePolicyTest extends TestCase
                             <a href="https://quote.movingagain.com.au/start">Quote</a>
                             <a href="https://www.abs.gov.au/statistics">ABS</a>
                             <a href="https://movinginsurance.com.au/">Insurance</a>
+                            <a href="https://www.selfstorage.com.au/">Self storage</a>
+                            <a href="https://www.agriculture.gov.au/biosecurity-trade/travelling/within-australia">Biosecurity</a>
                             <a href="https://unknown.example.net/info">Unknown</a>
                             <a href="https://spam.example.test/bad">Spam</a>
                         </body>
@@ -127,11 +152,16 @@ class ExternalReferencePolicyTest extends TestCase
 
         $this->assertSame('operational_surface', $links->firstWhere('host', 'quote.movingagain.com.au')['policy_classification']);
         $this->assertSame('authority_reference', $links->firstWhere('host', 'www.abs.gov.au')['policy_classification']);
-        $this->assertSame('approved_partner', $links->firstWhere('host', 'movinginsurance.com.au')['policy_classification']);
-        $this->assertSame('approved_external_reference', $links->firstWhere('host', 'movinginsurance.com.au')['policy_category']);
+        $this->assertSame('approved_registry', $links->firstWhere('host', 'movinginsurance.com.au')['policy_classification']);
+        $this->assertSame('approved_fleet_reference', $links->firstWhere('host', 'movinginsurance.com.au')['policy_category']);
+        $this->assertSame('fleet_reviewed', $links->firstWhere('host', 'movinginsurance.com.au')['registry_source']);
+        $this->assertSame('approved_registry', $links->firstWhere('host', 'www.selfstorage.com.au')['policy_classification']);
+        $this->assertSame('approved_storage_reference', $links->firstWhere('host', 'www.selfstorage.com.au')['policy_category']);
+        $this->assertSame('approved_registry', $links->firstWhere('host', 'www.agriculture.gov.au')['policy_classification']);
+        $this->assertSame('approved_government_reference', $links->firstWhere('host', 'www.agriculture.gov.au')['policy_category']);
         $this->assertSame('review_required', $links->firstWhere('host', 'unknown.example.net')['policy_classification']);
         $this->assertSame('disallowed', $links->firstWhere('host', 'spam.example.test')['policy_classification']);
-        $this->assertSame(3, data_get($result, 'payload.policy_counts.approved'));
+        $this->assertSame(5, data_get($result, 'payload.policy_counts.approved'));
         $this->assertSame(1, data_get($result, 'payload.policy_counts.review_required'));
         $this->assertSame(1, data_get($result, 'payload.policy_counts.disallowed'));
     }
@@ -158,6 +188,8 @@ class ExternalReferencePolicyTest extends TestCase
                         $this->payloadLink('https://quote.movingagain.com.au/start', 'quote.movingagain.com.au'),
                         $this->payloadLink('https://www.abs.gov.au/statistics', 'www.abs.gov.au'),
                         $this->payloadLink('https://movinginsurance.com.au/', 'movinginsurance.com.au'),
+                        $this->payloadLink('https://www.selfstorage.com.au/', 'www.selfstorage.com.au'),
+                        $this->payloadLink('https://www.agriculture.gov.au/biosecurity-trade/travelling/within-australia', 'www.agriculture.gov.au'),
                         $this->payloadLink('https://unknown.example.net/info', 'unknown.example.net'),
                         $this->payloadLink('https://spam.example.test/bad', 'spam.example.test'),
                     ],
@@ -179,7 +211,7 @@ class ExternalReferencePolicyTest extends TestCase
         $this->assertSame('external_links_detected', $result['verdict']);
         $this->assertSame(2, data_get($result, 'evidence.reviewable_external_links_count'));
         $this->assertSame(['spam.example.test', 'unknown.example.net'], data_get($result, 'evidence.unique_hosts'));
-        $this->assertSame(3, data_get($result, 'evidence.policy_counts.approved'));
+        $this->assertSame(5, data_get($result, 'evidence.policy_counts.approved'));
         $this->assertSame(1, data_get($result, 'evidence.policy_counts.review_required'));
         $this->assertSame(1, data_get($result, 'evidence.policy_counts.disallowed'));
     }

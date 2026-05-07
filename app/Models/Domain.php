@@ -710,6 +710,7 @@ class Domain extends Model
      *     policy_approved: bool,
      *     policy_reason: string,
      *     policy_category: string|null,
+     *     registry_source: string|null,
      *     found_on: string|null,
      *     found_on_pages: array<int, string>
      *   }>
@@ -745,6 +746,7 @@ class Domain extends Model
                     'policy_approved' => (bool) ($item['policy_approved'] ?? false),
                     'policy_reason' => is_string($item['policy_reason'] ?? null) ? $item['policy_reason'] : 'Host is not yet classified by the external reference policy.',
                     'policy_category' => is_string($item['policy_category'] ?? null) ? $item['policy_category'] : null,
+                    'registry_source' => is_string($item['registry_source'] ?? null) ? $item['registry_source'] : null,
                     'found_on' => is_string($item['found_on'] ?? null) ? $item['found_on'] : ($foundOnPages[0] ?? null),
                     'found_on_pages' => $foundOnPages,
                 ];
@@ -780,6 +782,7 @@ class Domain extends Model
      *     policy_approved: bool,
      *     policy_reason: string,
      *     policy_category: string|null,
+     *     registry_source: string|null,
      *     found_on: string|null,
      *     found_on_pages: array<int, string>
      *   }>
