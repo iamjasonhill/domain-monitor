@@ -297,3 +297,10 @@ Why this is the current call:
 - What changed: added a new `fleet_astro_technical_seo` monitoring lane with weekly scheduling, scoped it to Fleet-focus properties whose execution surface resolves to `astro_repo_controlled`, and wired the lane to reuse the existing live `indexability` and `redirect_policy` audits under dedicated Fleet technical SEO finding keys
 - What was fixed: Domain Monitor can now surface Fleet Astro homepage technical SEO drift through the usual monitoring-finding issue flow without broadening into a crawler or build-lint path, and the focused lane test coverage now guards against WordPress or non-Fleet properties leaking into this weekly slice
 - What remains: this first slice does not implement PageSpeed snapshots or repeated-failure streak logic yet, so any later expansion should stay tied to the Fleet standard and add noise-control deliberately rather than broadening the lane ad hoc
+
+### 2026-05-07 10:47:33 AEST
+
+- Issue or trigger: Control Plane still saw `movingagain.com.au` as stale after Domain Monitor confirmed current MM-Google Search Console coverage was fresh
+- What changed: exposed the current `search_console` coverage summary in the existing `/api/web-properties-summary` contract alongside the older `gsc_evidence_summary` evidence block
+- What was fixed: downstream consumers no longer have to infer first-look freshness from legacy Search Console issue evidence when the newer MM-Google coverage state already reports a fresh checked/imported timestamp
+- What remains: deploy this API contract update, then rerun the Control Plane Domain Monitor import so the stale Moving Again freshness signal resolves from the authoritative current coverage field

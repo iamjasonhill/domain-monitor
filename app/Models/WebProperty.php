@@ -990,6 +990,7 @@ class WebProperty extends Model
             'deployment_project_name' => $executionReadiness['deployment_project_name'],
             'deployment_project_id' => $executionReadiness['deployment_project_id'],
             'conversion_links' => $this->conversionLinkSummary(),
+            'search_console' => $this->searchConsoleCoverageSummary(),
             'gsc_evidence_summary' => $this->gscEvidenceSummary(),
             'seo_baseline_summary' => $this->seoBaselineSummary(),
             'updated_at' => $this->updated_at?->toIso8601String(),

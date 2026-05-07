@@ -12,6 +12,7 @@ use App\Models\DomainTag;
 use App\Models\MonitoringFinding;
 use App\Models\PropertyAnalyticsSource;
 use App\Models\PropertyRepository;
+use App\Models\SearchConsoleCoverageStatus;
 use App\Models\SearchConsoleIssueSnapshot;
 use App\Models\WebProperty;
 use App\Models\WebPropertyConversionSurface;
@@ -1655,6 +1656,72 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.has_api_enrichment', true)
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.api_snapshot_count', 2)
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.latest_api_captured_at', '2026-04-01T05:12:02+00:00');
+    }
+
+    public function test_web_properties_summary_surfaces_current_search_console_coverage(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'movingagain.com.au',
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'movingagain-com-au',
+            'name' => 'Moving Again',
+            'property_type' => 'website',
+            'status' => 'active',
+            'platform' => 'WordPress',
+            'primary_domain_id' => $domain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        SearchConsoleCoverageStatus::create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'source_provider' => 'mm_google',
+            'matomo_site_id' => 'movingagain-com-au',
+            'mapping_state' => 'domain_property',
+            'property_uri' => 'sc-domain:movingagain.com.au',
+            'property_type' => 'domain',
+            'mapped_at' => '2026-05-06T21:55:00+00:00',
+            'latest_completed_job_at' => '2026-05-06T22:00:33+00:00',
+            'latest_completed_job_type' => 'daily_import',
+            'latest_completed_range_end' => '2026-05-06',
+            'latest_metric_date' => '2026-05-06',
+            'checked_at' => '2026-05-06T22:00:33+00:00',
+            'raw_payload' => [
+                'coverageStatus' => 'search_console_ready',
+                'reason' => 'MM-Google Search Console coverage is ready',
+            ],
+        ]);
+
+        SearchConsoleIssueSnapshot::factory()->create([
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'issue_class' => 'page_with_redirect_in_sitemap',
+            'captured_at' => '2026-04-01T06:08:41+00:00',
+        ]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/web-properties-summary');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('web_properties.0.slug', 'movingagain-com-au')
+            ->assertJsonPath('web_properties.0.search_console.status', 'covered')
+            ->assertJsonPath('web_properties.0.search_console.operational_state', 'ok_fresh')
+            ->assertJsonPath('web_properties.0.search_console.last_successful_import_at', '2026-05-06T22:00:33+10:00')
+            ->assertJsonPath('web_properties.0.search_console.checked_at', '2026-05-06T22:00:33+10:00')
+            ->assertJsonPath('web_properties.0.search_console.next_action', 'No Search Console coverage action is required while evidence remains fresh.')
+            ->assertJsonPath('web_properties.0.gsc_evidence_summary.latest_issue_detail_captured_at', '2026-04-01T06:08:41+00:00');
     }
 
     public function test_web_property_health_summary_endpoint_returns_property_health(): void
