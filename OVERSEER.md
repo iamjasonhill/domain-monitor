@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 13:46:08 AEST
+
+- Issue or trigger: production verification for reopened issue `#161` after deploying commit `6a78ac2`
+- What changed: deployed production to `6a78ac2`, reran `domains:refresh-fleet-context --property=movingagain-com-au --force-search-console-api-enrichment`, and inspected the resulting Moving Again Search Console coverage summary
+- What was fixed: the forced internal Search Console enrichment still reports `Unable to refresh the Google Search Console access token (400)`, but Moving Again remains canonical `status=covered`, `operational_state=ok_fresh`, `source_provider=mm-google`, `search_console_property_uri=sc-domain:movingagain.com.au`, and `blocker=null`
+- What remains: no in-repo work remains for issue `#161`; the internal Search Console token can be repaired separately without downgrading fresh MM-Google coverage in Domain Monitor
+
 ### 2026-05-07 13:43:50 AEST
 
 - Issue or trigger: reopened issue `#161` to stop failed internal Search Console API enrichment from overriding fresh MM-Google coverage
