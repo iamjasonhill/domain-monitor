@@ -33,7 +33,7 @@
                     'queue' => route('automation-coverage.index'),
                 ],
                 [
-                    'title' => 'Manual CSV',
+                    'title' => 'Legacy Manual CSV',
                     'summary' => $automationCoverage['checks']['manual_csv'],
                     'queue' => route('manual-csv-backlog.index'),
                 ],
@@ -577,9 +577,9 @@
                     <span @class([
                         'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
                         'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' => $automationCoverage['status'] === 'complete',
-                        'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' => in_array($automationCoverage['status'], ['manual_csv_pending', 'needs_baseline_sync', 'import_stale', 'needs_onboarding', 'ga4_provisioning'], true),
+                        'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' => in_array($automationCoverage['status'], ['needs_baseline_sync', 'import_stale', 'needs_onboarding', 'ga4_provisioning'], true),
                         'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300' => in_array($automationCoverage['status'], ['needs_controller', 'needs_ga4_sync', 'ga4_attention', 'needs_search_console_mapping'], true),
-                        'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' => ! in_array($automationCoverage['status'], ['complete', 'manual_csv_pending', 'needs_baseline_sync', 'import_stale', 'needs_onboarding', 'ga4_provisioning', 'needs_controller', 'needs_ga4_sync', 'ga4_attention', 'needs_search_console_mapping'], true),
+                        'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' => ! in_array($automationCoverage['status'], ['complete', 'needs_baseline_sync', 'import_stale', 'needs_onboarding', 'ga4_provisioning', 'needs_controller', 'needs_ga4_sync', 'ga4_attention', 'needs_search_console_mapping'], true),
                     ])>
                         {{ $automationCoverage['label'] }}
                     </span>

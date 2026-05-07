@@ -34,7 +34,6 @@ class AutomationCoverageQueue extends Component
             'needsOnboarding' => [],
             'importStale' => [],
             'needsBaselineSync' => [],
-            'manualCsvPending' => [],
             'complete' => [],
             'excluded' => [],
         ];
@@ -67,7 +66,6 @@ class AutomationCoverageQueue extends Component
                 'needs_onboarding' => $queues['needsOnboarding'][] = $row,
                 'import_stale' => $queues['importStale'][] = $row,
                 'needs_baseline_sync' => $queues['needsBaselineSync'][] = $row,
-                'manual_csv_pending' => $queues['manualCsvPending'][] = $row,
                 'complete' => $queues['complete'][] = $row,
                 default => $queues['excluded'][] = $row,
             };
@@ -82,7 +80,6 @@ class AutomationCoverageQueue extends Component
             'needsOnboarding' => collect($queues['needsOnboarding']),
             'importStale' => collect($queues['importStale']),
             'needsBaselineSync' => collect($queues['needsBaselineSync']),
-            'manualCsvPending' => collect($queues['manualCsvPending']),
             'complete' => collect($queues['complete']),
             'excluded' => collect($queues['excluded']),
             'stats' => [
@@ -94,7 +91,6 @@ class AutomationCoverageQueue extends Component
                     + count($queues['needsOnboarding'])
                     + count($queues['importStale'])
                     + count($queues['needsBaselineSync'])
-                    + count($queues['manualCsvPending'])
                     + count($queues['complete']),
                 'needs_controller' => count($queues['needsController']),
                 'needs_ga4_sync' => count($queues['needsGa4Sync']),
@@ -104,7 +100,6 @@ class AutomationCoverageQueue extends Component
                 'needs_onboarding' => count($queues['needsOnboarding']),
                 'import_stale' => count($queues['importStale']),
                 'needs_baseline_sync' => count($queues['needsBaselineSync']),
-                'manual_csv_pending' => count($queues['manualCsvPending']),
                 'complete' => count($queues['complete']),
                 'excluded' => count($queues['excluded']),
             ],

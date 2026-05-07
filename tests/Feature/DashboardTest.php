@@ -301,7 +301,7 @@ class DashboardTest extends TestCase
             });
     }
 
-    public function test_dashboard_shows_manual_csv_backlog_summary_and_preview(): void
+    public function test_dashboard_does_not_surface_manual_csv_backlog_as_first_look_work(): void
     {
         $user = User::factory()->create();
 
@@ -335,21 +335,16 @@ class DashboardTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Manual Search Console CSV Backlog')
-            ->assertSee('CSV Pending Site')
+            ->assertDontSee('Manual Search Console CSV Backlog')
+            ->assertDontSee('Manual CSV Backlog')
+            ->assertDontSee('Legacy Matomo')
+            ->assertDontSee('CSV Backlog')
+            ->assertDontSee('CSV Pending Site')
             ->assertDontSee('Complete Site');
 
         Livewire::test(Dashboard::class)
             ->assertViewHas('stats', function (array $stats): bool {
-                return $stats['manual_csv_pending'] === 1;
-            })
-            ->assertViewHas('manualCsvPendingStats', function (array $stats): bool {
-                return $stats['pending_properties'] === 1
-                    && $stats['pending_domains'] === 1;
-            })
-            ->assertViewHas('manualCsvPendingItems', function (Collection $items): bool {
-                return $items->count() === 1
-                    && $items->first()['property']->name === 'CSV Pending Site';
+                return ! array_key_exists('manual_csv_pending', $stats);
             });
     }
 

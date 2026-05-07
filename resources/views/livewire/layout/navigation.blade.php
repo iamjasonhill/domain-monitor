@@ -42,14 +42,8 @@ new class extends Component
                     <x-nav-link :href="route('web-properties.fleet')" :active="request()->routeIs('web-properties.fleet')" wire:navigate>
                         {{ __('Fleet') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('matomo-coverage.index')" :active="request()->routeIs('matomo-coverage.*')" wire:navigate>
-                        {{ __('Legacy Matomo') }}
-                    </x-nav-link>
                     <x-nav-link :href="route('automation-coverage.index')" :active="request()->routeIs('automation-coverage.*')" wire:navigate>
                         {{ __('Automation') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('manual-csv-backlog.index')" :active="request()->routeIs('manual-csv-backlog.*')" wire:navigate>
-                        {{ __('CSV Backlog') }}
                     </x-nav-link>
                     <x-nav-link :href="route('search-console-coverage.index')" :active="request()->routeIs('search-console-coverage.*')" wire:navigate>
                         {{ __('Search Console') }}
@@ -127,14 +121,8 @@ new class extends Component
             <x-responsive-nav-link :href="route('web-properties.fleet')" :active="request()->routeIs('web-properties.fleet')" wire:navigate>
                 {{ __('Fleet') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('matomo-coverage.index')" :active="request()->routeIs('matomo-coverage.*')" wire:navigate>
-                {{ __('Legacy Matomo') }}
-            </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('automation-coverage.index')" :active="request()->routeIs('automation-coverage.*')" wire:navigate>
                 {{ __('Automation') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('manual-csv-backlog.index')" :active="request()->routeIs('manual-csv-backlog.*')" wire:navigate>
-                {{ __('CSV Backlog') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('search-console-coverage.index')" :active="request()->routeIs('search-console-coverage.*')" wire:navigate>
                 {{ __('Search Console') }}

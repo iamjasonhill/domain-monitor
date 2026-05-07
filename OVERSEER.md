@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 11:51:29 AEST
+
+- Issue or trigger: issue `#166` to retire Matomo/manual CSV UI from first-look dashboard and active navigation
+- What changed: removed Matomo and manual CSV links from desktop/mobile navigation, removed the manual CSV dashboard card and preview section, removed the CSV-pending tab/stat from active automation coverage, and relabeled retained Matomo/manual CSV pages as legacy archive/backfill surfaces
+- What was fixed: first-look operators no longer see manual CSV or Matomo as active readiness work, while historical archive routes remain available for intentional inspection
+- What remains: archive Matomo sources while promoting GA4 where available, update broader GA4-first quality tests, neutralize active contract naming, and run production cleanup verification
+
 ### 2026-05-07 11:47:05 AEST
 
 - Issue or trigger: issue `#165` to remove manual Search Console CSV from active automation coverage

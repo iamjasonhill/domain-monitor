@@ -114,15 +114,12 @@ class AutomationCoverageQueueTest extends TestCase
                     && $stats['needs_onboarding'] === 1
                     && $stats['import_stale'] === 1
                     && $stats['needs_baseline_sync'] === 1
-                    && $stats['manual_csv_pending'] === 0
+                    && ! array_key_exists('manual_csv_pending', $stats)
                     && $stats['complete'] === 2
                     && $stats['excluded'] === 1;
             })
             ->assertViewHas('needsBaselineSync', function (Collection $items): bool {
                 return (bool) $items->first(fn (array $item): bool => $item['property']->name === 'Needs Baseline');
-            })
-            ->assertViewHas('manualCsvPending', function (Collection $items): bool {
-                return $items->isEmpty();
             })
             ->assertViewHas('complete', function (Collection $items): bool {
                 return (bool) $items->first(fn (array $item): bool => $item['property']->name === 'Complete Site')

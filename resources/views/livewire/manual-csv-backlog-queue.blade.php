@@ -13,17 +13,17 @@
 
     <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
         <div class="p-6">
-            <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Manual Search Console CSV Backlog</h3>
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Legacy Manual Search Console CSV Archive</h3>
             <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                These properties are fully automated up to the final Search Console CSV evidence step. Upload the Google Search Console Page indexing export ZIP here to clear the remaining manual backlog.
+                Manual CSV evidence is legacy archive/backfill context only. Upload old Google Search Console Page indexing ZIP exports here only when preserving historical evidence, not to satisfy active automation coverage.
             </p>
         </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         @foreach([
-            ['id' => 'pending_properties', 'label' => 'Pending Properties'],
-            ['id' => 'pending_domains', 'label' => 'Pending Domains'],
+            ['id' => 'pending_properties', 'label' => 'Legacy Missing Archives'],
+            ['id' => 'pending_domains', 'label' => 'Affected Domains'],
         ] as $stat)
             <div class="rounded-lg bg-white dark:bg-gray-800 shadow-xs p-4">
                 <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $stat['label'] }}</div>
@@ -35,13 +35,13 @@
     <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
         <div class="p-6">
             <div class="flex items-center justify-between">
-                <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Pending Evidence</h4>
+                <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Legacy Evidence Gaps</h4>
                 <span class="text-sm text-gray-500 dark:text-gray-400">{{ $pendingItems->count() }} properties</span>
             </div>
 
             <div class="mt-4 space-y-3">
                 @if($pendingItems->isEmpty())
-                    <p class="text-sm text-gray-500 dark:text-gray-400">No properties are waiting on manual Search Console CSV evidence right now.</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">No legacy manual Search Console CSV archive gaps are currently listed.</p>
                 @else
                     @foreach($pendingItems as $item)
                         <div class="rounded-lg border border-yellow-200 dark:border-yellow-800 bg-yellow-50/60 dark:bg-yellow-900/10 text-yellow-800 dark:text-yellow-200 p-4">
@@ -62,7 +62,7 @@
                                 </a>
                             </div>
 
-                            <div class="mt-2 text-sm">{{ $item['automation']['reason'] }}</div>
+                            <div class="mt-2 text-sm">{{ $item['legacy_manual_csv']['reason'] }}</div>
 
                             @if($item['repository'])
                                 <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -89,7 +89,7 @@
 
                             <div class="mt-4 rounded-md border border-yellow-200 dark:border-yellow-800/60 bg-white/70 dark:bg-gray-900/40 p-3">
                                 <div class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                                    Import Search Console export
+                                    Import legacy Search Console export
                                 </div>
                                 <div class="mt-2 flex flex-col gap-3 md:flex-row md:items-center">
                                     <input

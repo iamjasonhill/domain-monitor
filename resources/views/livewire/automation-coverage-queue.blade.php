@@ -3,12 +3,12 @@
         <div class="p-6">
             <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Automation Coverage</h3>
             <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                Track the full website automation checklist in one place: controller coverage, MM-Google GA4 readiness, Search Console onboarding, baseline sync, and optional manual CSV evidence.
+                Track the active website automation checklist in one place: controller coverage, MM-Google GA4 readiness, Search Console onboarding, and baseline sync.
             </p>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-11 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-10 gap-4">
         @foreach([
             ['id' => 'required', 'label' => 'Required'],
             ['id' => 'needs_controller', 'label' => 'Needs Controller'],
@@ -19,7 +19,6 @@
             ['id' => 'needs_onboarding', 'label' => 'Needs Onboarding'],
             ['id' => 'import_stale', 'label' => 'Import Stale'],
             ['id' => 'needs_baseline_sync', 'label' => 'Needs Baseline'],
-            ['id' => 'manual_csv_pending', 'label' => 'CSV Pending'],
             ['id' => 'complete', 'label' => 'Complete'],
         ] as $stat)
             <div class="rounded-lg bg-white dark:bg-gray-800 shadow-xs p-4">
@@ -39,7 +38,6 @@
             ['title' => 'Needs Onboarding', 'items' => $needsOnboarding, 'tone' => 'violet'],
             ['title' => 'Import Stale', 'items' => $importStale, 'tone' => 'red'],
             ['title' => 'Needs Baseline Sync', 'items' => $needsBaselineSync, 'tone' => 'indigo'],
-            ['title' => 'Manual CSV Pending', 'items' => $manualCsvPending, 'tone' => 'yellow'],
             ['title' => 'Complete', 'items' => $complete, 'tone' => 'emerald'],
             ['title' => 'Excluded', 'items' => $excluded, 'tone' => 'gray'],
         ];
@@ -65,7 +63,6 @@
                                     'red' => 'border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-900/10 text-red-800 dark:text-red-200',
                                     'violet' => 'border-violet-200 dark:border-violet-800 bg-violet-50/60 dark:bg-violet-900/10 text-violet-800 dark:text-violet-200',
                                     'indigo' => 'border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-900/10 text-indigo-800 dark:text-indigo-200',
-                                    'yellow' => 'border-yellow-200 dark:border-yellow-800 bg-yellow-50/60 dark:bg-yellow-900/10 text-yellow-800 dark:text-yellow-200',
                                     'emerald' => 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-900/10 text-emerald-800 dark:text-emerald-200',
                                     default => 'border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-900/10 text-gray-700 dark:text-gray-300',
                                 };

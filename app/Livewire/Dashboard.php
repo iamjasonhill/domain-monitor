@@ -8,7 +8,6 @@ use App\Models\Subdomain;
 use App\Services\DashboardIssueQueueService;
 use App\Services\DetectedIssueSummaryService;
 use App\Services\DomainMonitorSettings;
-use App\Services\ManualCsvBacklogService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Artisan;
 use Livewire\Component;
@@ -72,11 +71,6 @@ class Dashboard extends Component
         $stats['detected_must_fix'] = (int) data_get($detectedIssueSnapshot, 'stats.must_fix', 0);
         $stats['detected_should_fix'] = (int) data_get($detectedIssueSnapshot, 'stats.should_fix', 0);
 
-        $manualCsvBacklog = app(ManualCsvBacklogService::class)->snapshot();
-        $manualCsvPendingItems = $manualCsvBacklog['items'];
-        $manualCsvPendingStats = $manualCsvBacklog['stats'];
-        $stats['manual_csv_pending'] = $manualCsvPendingStats['pending_properties'];
-
         $subdomains = Subdomain::with('domain')
             ->where('is_active', true)
             ->whereNotNull('ip_checked_at')
@@ -106,8 +100,6 @@ class Dashboard extends Component
             'mustFixDomains' => new Collection($mustFixDomains),
             'shouldFixDomains' => new Collection($shouldFixDomains),
             'detectedMustFixIssues' => $detectedMustFixIssues->take(8),
-            'manualCsvPendingItems' => $manualCsvPendingItems->take(6),
-            'manualCsvPendingStats' => $manualCsvPendingStats,
             'unresolvedWebSubdomainDomains' => $unresolvedWebSubdomains->take(8),
             'recentFailuresHours' => $recentFailuresHours,
         ]);

@@ -103,7 +103,8 @@ class ManualCsvBacklogQueueTest extends TestCase
         $response = $this->actingAs($user)->get('/manual-csv-backlog');
 
         $response->assertOk();
-        $response->assertSee('Manual Search Console CSV Backlog');
+        $response->assertSee('Legacy Manual Search Console CSV Archive');
+        $response->assertSee('legacy archive/backfill context only');
 
         foreach ($expectedNames as $name) {
             $response->assertSee($name);
