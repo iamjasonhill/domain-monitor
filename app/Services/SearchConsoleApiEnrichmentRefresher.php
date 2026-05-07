@@ -422,6 +422,13 @@ class SearchConsoleApiEnrichmentRefresher
                 'raw_payload' => [
                     'coverageStatus' => 'search_console_refresh_failed',
                     'source' => 'search_console_api_enrichment',
+                    'source_metadata' => [
+                        'source_provider' => 'mm-google',
+                        'source_site_id' => $property->siteKey() ?? $property->slug,
+                        'source_display_name' => $property->name,
+                        'source_url' => $searchConsolePropertyUri ?? $property->production_url,
+                        'search_console_property_uri' => $searchConsolePropertyUri,
+                    ],
                     'refresh_failure' => [
                         'message' => $message,
                         'attempted_at' => $now->toIso8601String(),

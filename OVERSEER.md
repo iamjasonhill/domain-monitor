@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 12:09:22 AEST
+
+- Issue or trigger: issue `#169` to neutralize Matomo-era naming in active contracts
+- What changed: active Search Console summaries now expose neutral source aliases (`source_provider`, `source_site_id`, `source_display_name`, `source_url`, and `search_console_property_uri`) while preserving `legacy_matomo_*` compatibility fields; Search Console URI resolution now prefers current domain/GA4 evidence before legacy Matomo evidence, and API/baseline docs teach the neutral fields first
+- What was fixed: new consumers can integrate against GA4/MM-Google/Search Console contracts without treating Matomo-specific names as active requirements, and older consumers still have compatibility aliases for historical rows
+- What remains: run the final production cleanup verification after the retirement stack is deployed
+
 ### 2026-05-07 12:04:03 AEST
 
 - Issue or trigger: issue `#168` to update quality tests for the GA4-first coverage model after Matomo/manual CSV retirement

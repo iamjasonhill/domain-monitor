@@ -102,9 +102,24 @@ class SearchConsoleCoverageStatus extends Model
         return match ($this->mapping_state) {
             'domain_property' => 'Mapped (Domain Property)',
             'url_prefix' => 'Mapped (URL Prefix)',
-            'not_mapped' => 'Matomo Only',
+            'not_mapped' => 'Source Only',
             default => str($this->mapping_state)->replace('_', ' ')->title()->toString(),
         };
+    }
+
+    public function sourceSiteId(): ?string
+    {
+        return $this->matomo_site_id;
+    }
+
+    public function sourceDisplayName(): ?string
+    {
+        return $this->matomo_site_name;
+    }
+
+    public function sourceUrl(): ?string
+    {
+        return $this->property_uri ?: $this->matomo_main_url;
     }
 
     public function freshnessState(): string

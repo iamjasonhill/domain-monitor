@@ -76,6 +76,7 @@ Selected property fields now include:
 - `event_architecture`
 - `analytics_sources`
 - `analytics.ga4`
+- `search_console`
 
 `analytics.ga4` is the Fleet-facing lookup block for website-domain GA4
 rollouts. It is the active analytics source Fleet should use for current
@@ -98,6 +99,25 @@ Selected `analytics.ga4` fields include:
 - `last_live_check_at`
 - `detection.verdict`
 - `detection.issue_id`
+
+`search_console` is the current Search Console readiness block. New consumers
+should use the neutral source fields:
+
+- `source_provider`
+- `source_site_id`
+- `source_display_name`
+- `source_url`
+- `search_console_property_uri`
+- `operational_state`
+- `freshness_state`
+- `last_successful_import_at`
+- `last_successful_evidence_at`
+- `blocker`
+- `next_action`
+
+Legacy compatibility fields with `legacy_matomo_*` names may still be present
+while older stored rows and consumers are retired. They are aliases for the old
+database column names, not active requirements to use Matomo.
 
 `hostname_link_policy` is the canonical hostname-level export for quote,
 booking, contact, and customer-portal link expectations. It is derived from the

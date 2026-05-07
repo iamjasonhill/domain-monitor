@@ -150,8 +150,9 @@ These are the fields that matter at the domain level.
 
 ### Source Metadata
 
-- `matomo_site_id`
 - `search_console_property_uri`
+- `source_provider`
+- `source_site_id`
 - `search_type`
   - default: `web`
 - `date_range_start`
@@ -162,6 +163,11 @@ These are the fields that matter at the domain level.
   - `matomo_plus_manual_csv`
 - `artifact_path`
   - nullable
+
+`matomo_site_id` remains a legacy compatibility storage field for older
+Matomo/manual CSV backfill rows. New active integrations should write and read
+the neutral source identity (`source_provider`, `source_site_id`, and
+`search_console_property_uri`) wherever the API exposes it.
 
 ### Search Visibility Summary
 

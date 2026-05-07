@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Domain;
+use App\Models\PropertyAnalyticsSource;
 use App\Models\SearchConsoleCoverageStatus;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
@@ -31,8 +32,42 @@ class SearchConsoleCoverageSummaryTest extends TestCase
         $this->assertSame($coverage->latest_metric_date?->toDateString(), $summary['last_successful_evidence_at']);
         $this->assertSame($coverage->latest_completed_job_at?->toIso8601String(), $summary['last_successful_import_at']);
         $this->assertSame('recent', $summary['freshness_state']);
+        $this->assertSame('mm-google', $summary['source_provider']);
+        $this->assertSame($property->siteKey() ?? $property->slug, $summary['source_site_id']);
+        $this->assertSame($property->name, $summary['source_display_name']);
+        $this->assertSame('sc-domain:fresh-search-console.example.com', $summary['source_url']);
+        $this->assertSame('sc-domain:fresh-search-console.example.com', $summary['search_console_property_uri']);
+        $this->assertSame($property->siteKey() ?? $property->slug, $summary['legacy_matomo_site_id']);
         $this->assertNull($summary['blocker']);
         $this->assertStringContainsString('No Search Console coverage action is required', $summary['next_action']);
+    }
+
+    public function test_search_console_property_uri_prefers_current_ga4_or_domain_coverage_over_legacy_matomo(): void
+    {
+        $property = $this->propertyWithDomain('ga4-first-search-console.example.com');
+        $matomo = $this->analyticsSource($property, 'matomo', 'legacy-matomo-site', false);
+        $ga4 = $this->analyticsSource($property, 'ga4', 'ga4-current-site', true);
+
+        $this->coverage($property, [
+            'property_analytics_source_id' => $matomo->id,
+            'source_provider' => 'matomo',
+            'matomo_site_id' => 'legacy-matomo-site',
+            'property_uri' => 'sc-domain:legacy-matomo.example.com',
+            'checked_at' => now()->subDay(),
+        ]);
+
+        $this->coverage($property, [
+            'property_analytics_source_id' => $ga4->id,
+            'source_provider' => 'mm-google',
+            'matomo_site_id' => 'ga4-current-site',
+            'property_uri' => 'sc-domain:ga4-first-search-console.example.com',
+            'checked_at' => now(),
+        ]);
+
+        $this->assertSame(
+            'sc-domain:ga4-first-search-console.example.com',
+            $property->fresh()->searchConsolePropertyUri()
+        );
     }
 
     public function test_it_exposes_stale_search_console_coverage_with_next_refresh_action(): void
@@ -172,6 +207,18 @@ class SearchConsoleCoverageSummaryTest extends TestCase
             'latest_completed_job_at' => now()->subHours(2),
             'checked_at' => now(),
             ...$attributes,
+        ]);
+    }
+
+    private function analyticsSource(WebProperty $property, string $provider, string $externalId, bool $isPrimary): PropertyAnalyticsSource
+    {
+        return PropertyAnalyticsSource::create([
+            'web_property_id' => $property->id,
+            'provider' => $provider,
+            'external_id' => $externalId,
+            'external_name' => $provider.' source',
+            'is_primary' => $isPrimary,
+            'status' => 'active',
         ]);
     }
 }

@@ -319,11 +319,32 @@ class WebProperty extends Model
 
     public function searchConsolePropertyUri(): ?string
     {
-        $matomoSource = $this->primaryAnalyticsSource('matomo');
-        $coverage = $matomoSource instanceof PropertyAnalyticsSource
-            ? ($matomoSource->relationLoaded('latestSearchConsoleCoverage')
-                ? $matomoSource->latestSearchConsoleCoverage
-                : $matomoSource->latestSearchConsoleCoverage()->first())
+        $primaryDomain = $this->primaryDomainModel();
+        $domainCoverage = $primaryDomain instanceof Domain
+            ? ($primaryDomain->relationLoaded('latestSearchConsoleCoverageStatus')
+                ? $primaryDomain->latestSearchConsoleCoverageStatus
+                : $primaryDomain->latestSearchConsoleCoverageStatus()->first())
+            : null;
+
+        if ($domainCoverage instanceof SearchConsoleCoverageStatus && is_string($domainCoverage->property_uri) && $domainCoverage->property_uri !== '') {
+            return $domainCoverage->property_uri;
+        }
+
+        foreach (['ga4', 'matomo'] as $provider) {
+            $source = $this->primaryAnalyticsSource($provider);
+            $coverage = $source instanceof PropertyAnalyticsSource
+                ? ($source->relationLoaded('latestSearchConsoleCoverage')
+                    ? $source->latestSearchConsoleCoverage
+                    : $source->latestSearchConsoleCoverage()->first())
+                : null;
+
+            if ($coverage instanceof SearchConsoleCoverageStatus && is_string($coverage->property_uri) && $coverage->property_uri !== '') {
+                return $coverage->property_uri;
+            }
+        }
+
+        $coverage = $domainCoverage instanceof SearchConsoleCoverageStatus
+            ? $domainCoverage
             : null;
 
         if ($coverage instanceof SearchConsoleCoverageStatus && is_string($coverage->property_uri) && $coverage->property_uri !== '') {
@@ -1392,6 +1413,14 @@ class WebProperty extends Model
      *   last_successful_evidence_at: string|null,
      *   checked_at: string|null,
      *   freshness_state: string|null,
+     *   source_provider: string|null,
+     *   source_site_id: string|null,
+     *   source_display_name: string|null,
+     *   source_url: string|null,
+     *   search_console_property_uri: string|null,
+     *   legacy_matomo_site_id: string|null,
+     *   legacy_matomo_site_name: string|null,
+     *   legacy_matomo_main_url: string|null,
      *   blocker: string|null,
      *   next_action: string
      * }
@@ -1519,6 +1548,14 @@ class WebProperty extends Model
      *   last_successful_evidence_at: string|null,
      *   checked_at: string|null,
      *   freshness_state: string|null,
+     *   source_provider: string|null,
+     *   source_site_id: string|null,
+     *   source_display_name: string|null,
+     *   source_url: string|null,
+     *   search_console_property_uri: string|null,
+     *   legacy_matomo_site_id: string|null,
+     *   legacy_matomo_site_name: string|null,
+     *   legacy_matomo_main_url: string|null,
      *   blocker: string|null,
      *   next_action: string
      * }
@@ -1676,6 +1713,14 @@ class WebProperty extends Model
      *   last_successful_evidence_at: string|null,
      *   checked_at: string|null,
      *   freshness_state: string|null,
+     *   source_provider: string|null,
+     *   source_site_id: string|null,
+     *   source_display_name: string|null,
+     *   source_url: string|null,
+     *   search_console_property_uri: string|null,
+     *   legacy_matomo_site_id: string|null,
+     *   legacy_matomo_site_name: string|null,
+     *   legacy_matomo_main_url: string|null,
      *   blocker: string|null,
      *   next_action: string
      * }
@@ -1700,6 +1745,14 @@ class WebProperty extends Model
      *   last_successful_evidence_at: string|null,
      *   checked_at: string|null,
      *   freshness_state: string|null,
+     *   source_provider: string|null,
+     *   source_site_id: string|null,
+     *   source_display_name: string|null,
+     *   source_url: string|null,
+     *   search_console_property_uri: string|null,
+     *   legacy_matomo_site_id: string|null,
+     *   legacy_matomo_site_name: string|null,
+     *   legacy_matomo_main_url: string|null,
      *   blocker: string|null,
      *   next_action: string
      * }
@@ -1716,6 +1769,14 @@ class WebProperty extends Model
             'last_successful_evidence_at' => $coverage?->latest_metric_date?->toDateString(),
             'checked_at' => $coverage?->checked_at?->toIso8601String(),
             'freshness_state' => $coverage?->freshnessState(),
+            'source_provider' => $coverage?->source_provider,
+            'source_site_id' => $coverage?->sourceSiteId(),
+            'source_display_name' => $coverage?->sourceDisplayName(),
+            'source_url' => $coverage?->sourceUrl(),
+            'search_console_property_uri' => $coverage?->property_uri,
+            'legacy_matomo_site_id' => $coverage?->matomo_site_id,
+            'legacy_matomo_site_name' => $coverage?->matomo_site_name,
+            'legacy_matomo_main_url' => $coverage?->matomo_main_url,
             'blocker' => in_array($operationalState, ['blocked_unavailable', 'failing', 'stale', 'excluded'], true)
                 ? $reason
                 : null,
@@ -1729,7 +1790,7 @@ class WebProperty extends Model
             ? 'MM-Google'
             : str($coverage->source_provider)->replace('_', ' ')->title()->toString();
 
-        $subject = $coverage->property_uri ?? $coverage->matomo_main_url ?? $this->primaryDomainName() ?? $this->slug;
+        $subject = $coverage->sourceUrl() ?? $this->primaryDomainName() ?? $this->slug;
 
         if ($fallback === '') {
             return sprintf('%s evidence for %s', $sourceLabel, $subject);
