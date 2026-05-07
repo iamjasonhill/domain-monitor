@@ -1617,6 +1617,97 @@ class RunMonitoringLaneCommandTest extends TestCase
             ->count());
     }
 
+    public function test_live_site_lanes_ignore_domain_assets_and_dns_parked_properties(): void
+    {
+        $domainAsset = $this->makeProperty('asset-no-live-qa.example.au', 'Asset No Live QA');
+        $domainAsset->forceFill([
+            'property_type' => 'domain_asset',
+        ])->save();
+
+        $dnsParked = $this->makeProperty('dns-parked-no-live-qa.example.au', 'DNS Parked No Live QA');
+        $dnsParked->primaryDomainModel()?->forceFill([
+            'dns_config_name' => 'Parked',
+        ])->save();
+
+        Http::fake([
+            '*' => Http::response('<html><head></head><body>No QA please</body></html>', 200),
+        ]);
+
+        $brain = Mockery::mock(BrainEventClient::class);
+        $this->instance(BrainEventClient::class, $brain);
+        $brain->shouldIgnoreMissing();
+
+        foreach (['marketing_integrity', 'seo_agent_readiness'] as $lane) {
+            $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+                'lane' => $lane,
+            ]));
+        }
+
+        $this->assertSame(0, MonitoringFinding::query()
+            ->whereIn('web_property_id', [$domainAsset->id, $dnsParked->id])
+            ->whereIn('finding_type', [
+                'marketing.ga4_install',
+                'marketing.indexability',
+                'seo.structured_data',
+                'seo.agent_readiness',
+            ])
+            ->count());
+    }
+
+    public function test_existing_live_site_findings_for_domain_assets_and_parked_domains_are_hidden_from_control_plane_exports(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domainAsset = $this->makeProperty('asset-hidden-findings.example.au', 'Asset Hidden Findings');
+        $domainAsset->forceFill([
+            'property_type' => 'domain_asset',
+        ])->save();
+        $this->attachGa4Source($domainAsset, 'G-ASSETHIDDEN');
+
+        $dnsParked = $this->makeProperty('parked-hidden-findings.example.au', 'Parked Hidden Findings');
+        $dnsParked->primaryDomainModel()?->forceFill([
+            'dns_config_name' => 'Parked',
+        ])->save();
+        $this->attachGa4Source($dnsParked, 'G-PARKEDHIDDEN');
+
+        $this->openMonitoringFinding($domainAsset, 'dm:test:asset-hidden-ga4', 'marketing.ga4_install', 'marketing_integrity', 'regression');
+        $this->openMonitoringFinding($domainAsset, 'dm:test:asset-hidden-agent', 'seo.agent_readiness', 'seo_agent_readiness', 'readiness_gap');
+        $this->openMonitoringFinding($dnsParked, 'dm:test:parked-hidden-indexability', 'marketing.indexability', 'marketing_integrity', 'cleanup');
+        $this->openMonitoringFinding($dnsParked, 'dm:test:parked-hidden-structured-data', 'seo.structured_data', 'seo_agent_readiness', 'readiness_gap');
+
+        /** @var array<int, array<string, mixed>> $issues */
+        $issues = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/issues')
+            ->assertOk()
+            ->json('issues');
+
+        $issueIds = collect($issues)->pluck('issue_id')->all();
+        $this->assertNotContains('dm:test:asset-hidden-ga4', $issueIds);
+        $this->assertNotContains('dm:test:asset-hidden-agent', $issueIds);
+        $this->assertNotContains('dm:test:parked-hidden-indexability', $issueIds);
+        $this->assertNotContains('dm:test:parked-hidden-structured-data', $issueIds);
+
+        /** @var array<int, array<string, mixed>> $summaries */
+        $summaries = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/web-properties-summary')
+            ->assertOk()
+            ->json('web_properties');
+
+        $assetSummary = collect($summaries)->firstWhere('slug', $domainAsset->slug);
+        $parkedSummary = collect($summaries)->firstWhere('slug', $dnsParked->slug);
+
+        $this->assertIsArray($assetSummary);
+        $this->assertIsArray($parkedSummary);
+        $this->assertSame(0, data_get($assetSummary, 'monitoring_summary.open_findings_count'));
+        $this->assertSame(0, data_get($parkedSummary, 'monitoring_summary.open_findings_count'));
+        $this->assertSame('configured', data_get($assetSummary, 'analytics.ga4.status'));
+        $this->assertSame('configured', data_get($parkedSummary, 'analytics.ga4.status'));
+        $this->assertNull(data_get($assetSummary, 'analytics.ga4.detection.issue_id'));
+        $this->assertNull(data_get($parkedSummary, 'analytics.ga4.detection.issue_id'));
+    }
+
     private function makeProperty(string $domainName, string $name): WebProperty
     {
         $domain = Domain::factory()->create([
@@ -1642,6 +1733,50 @@ class RunMonitoringLaneCommandTest extends TestCase
         ]);
 
         return $property;
+    }
+
+    private function attachGa4Source(WebProperty $property, string $measurementId): void
+    {
+        PropertyAnalyticsSource::create([
+            'web_property_id' => $property->id,
+            'provider' => 'ga4',
+            'external_id' => $measurementId,
+            'external_name' => $property->name,
+            'provider_config' => [
+                'measurement_id' => $measurementId,
+            ],
+            'is_primary' => true,
+            'status' => 'active',
+        ]);
+    }
+
+    private function openMonitoringFinding(
+        WebProperty $property,
+        string $issueId,
+        string $findingType,
+        string $lane,
+        string $issueType
+    ): void {
+        $primaryDomain = $property->primaryDomainModel();
+        $this->assertInstanceOf(Domain::class, $primaryDomain);
+
+        MonitoringFinding::factory()->create([
+            'issue_id' => $issueId,
+            'lane' => $lane,
+            'finding_type' => $findingType,
+            'issue_type' => $issueType,
+            'scope_type' => 'web_property',
+            'domain_id' => $primaryDomain->id,
+            'web_property_id' => $property->id,
+            'status' => MonitoringFinding::STATUS_OPEN,
+            'title' => 'Suppressed live-site QA finding',
+            'summary' => 'This live-site QA finding should not surface for parked or domain-asset properties.',
+            'first_detected_at' => now()->subHours(2),
+            'last_detected_at' => now()->subMinutes(5),
+            'evidence' => [
+                'verdict' => 'missing_ga4',
+            ],
+        ]);
     }
 
     private function attachFleetFocusTag(WebProperty $property): void

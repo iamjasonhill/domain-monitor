@@ -77,7 +77,7 @@ class WebPropertyMonitoringSummaryBuilder
 
             return $loadedFindings
                 ->filter(fn (MonitoringFinding $finding): bool => $finding->status === MonitoringFinding::STATUS_OPEN)
-                ->reject(fn (MonitoringFinding $finding): bool => $this->shouldSuppressFinding($finding))
+                ->reject(fn (MonitoringFinding $finding): bool => $this->shouldSuppressFinding($finding, $property))
                 ->sortByDesc(fn (MonitoringFinding $finding): int => $finding->last_detected_at?->getTimestamp() ?? 0)
                 ->values();
         }
@@ -87,7 +87,7 @@ class WebPropertyMonitoringSummaryBuilder
             ->with('domain:id,domain,platform,dns_config_name,parked_override')
             ->orderByDesc('last_detected_at')
             ->get()
-            ->reject(fn (MonitoringFinding $finding): bool => $this->shouldSuppressFinding($finding))
+            ->reject(fn (MonitoringFinding $finding): bool => $this->shouldSuppressFinding($finding, $property))
             ->values();
     }
 
@@ -98,8 +98,12 @@ class WebPropertyMonitoringSummaryBuilder
             : 'should_fix';
     }
 
-    private function shouldSuppressFinding(MonitoringFinding $finding): bool
+    private function shouldSuppressFinding(MonitoringFinding $finding, WebProperty $property): bool
     {
+        if ($property->property_type === 'domain_asset') {
+            return true;
+        }
+
         $domain = $finding->domain;
 
         return $domain instanceof Domain && $domain->isParkedForHosting();

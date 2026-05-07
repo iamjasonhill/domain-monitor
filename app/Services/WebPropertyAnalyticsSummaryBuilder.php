@@ -385,6 +385,18 @@ class WebPropertyAnalyticsSummaryBuilder
 
     private function ga4MonitoringFinding(WebProperty $property): ?MonitoringFinding
     {
+        if ($property->property_type === 'domain_asset') {
+            return null;
+        }
+
+        $primaryDomain = $property->relationLoaded('primaryDomain') || $property->exists
+            ? $property->primaryDomainModel()
+            : null;
+
+        if ($primaryDomain?->isParkedForHosting()) {
+            return null;
+        }
+
         /** @var Collection<int, MonitoringFinding>|null $loadedFindings */
         $loadedFindings = $property->relationLoaded('monitoringFindings')
             ? $property->getRelation('monitoringFindings')

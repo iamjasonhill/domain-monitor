@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-07 12:53:29 AEST
+
+- Issue or trigger: issue `#172` to suppress live-site QA findings for parked and domain-asset properties
+- What changed: live monitoring lanes now skip `domain_asset` properties, parked detection for monitoring uses DNS parking as well as parked platform/override state, and Control Plane-facing issue, monitoring-summary, and GA4 live-detection exports suppress existing live-site QA findings for domain assets and parked domains
+- What was fixed: missing GA4, JSON-LD, robots/llms, sitemap/indexability, and related live-site QA findings no longer surface for parked/domain-asset properties while normal live website properties still receive QA findings and domain ownership/expiry paths remain separate
+- What remains: deploy and rerun production Control Plane import/attention refresh to confirm parked/domain-asset live-site QA rows drop from Attention without hiding real live-site defects
+
 ### 2026-05-07 12:46:03 AEST
 
 - Issue or trigger: issue `#171` to stop archived Matomo coverage from driving active Search Console freshness

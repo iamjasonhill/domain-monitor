@@ -673,7 +673,7 @@ class Domain extends Model
             return 'domain is inactive';
         }
 
-        if ($this->isParked() && $checkType !== 'reputation') {
+        if ($this->isParkedForHosting() && $checkType !== 'reputation') {
             return 'domain is marked as parked';
         }
 

@@ -324,6 +324,11 @@ class DetectedIssueSummaryService
 
     private function shouldSuppressMonitoringFinding(MonitoringFinding $finding): bool
     {
+        $property = $finding->webProperty;
+        if ($property instanceof WebProperty && $property->property_type === 'domain_asset') {
+            return true;
+        }
+
         $domain = $finding->domain instanceof Domain
             ? $finding->domain
             : $finding->webProperty?->primaryDomainModel();

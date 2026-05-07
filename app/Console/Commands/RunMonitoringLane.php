@@ -209,6 +209,10 @@ class RunMonitoringLane extends Command
         return $query
             ->get()
             ->filter(function (WebProperty $property) use ($lane, $laneConfig): bool {
+                if ($property->property_type === 'domain_asset') {
+                    return false;
+                }
+
                 if ($lane === 'critical_live') {
                     $primaryDomain = $property->primaryDomainModel();
 
