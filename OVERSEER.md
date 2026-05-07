@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-08 05:50:41 AEST
+
+- Issue or trigger: production verification for issue `#178` after deploying commit `f585801`
+- What changed: production is on `f585801`, caches were cleared, and the live external-reference classifier was checked for global registry and scoped accepted-link behaviour
+- What was fixed: production now returns `policy_reference` and `scope` for accepted Moving Insurance, Self Storage, and Australian Government references; temporary scoped policy verification approved matching property/source-host links and left unmatched links as `review_required`
+- What remains: no in-repo work remains for issue `#178`; Fleet issue `#36` and Control issue `#67` remain the separate governance and dispatch-policy owners
+
 ### 2026-05-08 05:49:29 AEST
 
 - Issue or trigger: issue `#178` to support accepted external-link policy for Fleet-approved links
