@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-08 05:31:08 AEST
+
+- Issue or trigger: issue `#177` from Control Plane freshness for `cartransport-movingagain-com-au`
+- What changed: `cartransport.*` subdomains now default to web-only email usage unless explicitly overridden, and web-property health summaries apply monitoring skip policy by marking skipped checks as `not_applicable`
+- What was fixed: stale `email_security=fail` records no longer make Moving Again Car Transport look failed when the live Astro web subdomain is not expected to send or receive mail
+- What remains: deploy to production and verify the property summary drops from failed to non-failed health after the new summary policy is live
+
 ### 2026-05-07 14:09:50 AEST
 
 - Issue or trigger: production verification for issue `#176` after deploying commit `0762f25`

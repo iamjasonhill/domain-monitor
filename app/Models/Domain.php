@@ -875,7 +875,7 @@ class Domain extends Model
             return false;
         }
 
-        return in_array($labels[0], ['app', 'admin', 'booking', 'bookings', 'portal', 'quoting'], true);
+        return in_array($labels[0], ['app', 'admin', 'booking', 'bookings', 'cartransport', 'portal', 'quoting'], true);
     }
 
     /**

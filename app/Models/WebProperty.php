@@ -761,7 +761,9 @@ class WebProperty extends Model
             $domainChecks = [];
             foreach ($checkTypes as $checkType) {
                 $attribute = 'latest_'.$checkType.'_status';
-                $status = $domain->{$attribute} ?? 'unknown';
+                $status = $domain->shouldSkipMonitoringCheck($checkType)
+                    ? 'not_applicable'
+                    : ($domain->{$attribute} ?? 'unknown');
                 $domainChecks[$checkType] = $status;
                 $overallRank = max($overallRank, $this->statusRank($status));
 
