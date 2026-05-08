@@ -77,6 +77,7 @@ Selected property fields now include:
 - `analytics_sources`
 - `analytics.ga4`
 - `search_console`
+- per-domain `mail_plane`
 
 `analytics.ga4` is the Fleet-facing lookup block for website-domain GA4
 rollouts. It is the active analytics source Fleet should use for current
@@ -118,6 +119,13 @@ should use the neutral source fields:
 Legacy compatibility fields with `legacy_matomo_*` names may still be present
 while older stored rows and consumers are retired. They are aliases for the old
 database column names, not active requirements to use Matomo.
+
+Per-domain `mail_plane` is the DNS/provider-readiness block for agent-first or
+application mail subdomains. It is separate from website health: an email-only
+or parked domain can be `not_applicable` for web checks while still reporting
+missing or drifted SPF, DKIM, DMARC, MX, return-path, bounce, or provider
+verification records. See `docs/MAIL-PLANE-DNS-TRACKING.md` for the full
+record shape and boundaries.
 
 `hostname_link_policy` is the canonical hostname-level export for quote,
 booking, contact, and customer-portal link expectations. It is derived from the
