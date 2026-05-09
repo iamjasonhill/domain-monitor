@@ -123,6 +123,8 @@ class WebPropertyController extends Controller
                     $relations = [
                         'platform',
                         'tags',
+                        'dnsRecords',
+                        'latestEmailSecurityCheck',
                         'deployments.domain',
                         'alerts' => fn ($alertQuery) => $alertQuery->whereNull('resolved_at'),
                     ];

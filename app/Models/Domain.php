@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\DomainMonitorSettings;
+use App\Services\MailPlaneDnsSummaryBuilder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -26,6 +27,10 @@ use Illuminate\Support\Str;
  * @property \Illuminate\Support\Carbon|null $hosting_reviewed_at
  * @property string|null $platform
  * @property string|null $email_usage
+ * @property string|null $mail_plane_type
+ * @property string|null $mail_provider
+ * @property array<int, array<string, mixed>>|null $mail_dns_requirements
+ * @property array<string, mixed>|null $mail_provider_verification
  * @property \Illuminate\Support\Carbon|null $expires_at
  * @property \Illuminate\Support\Carbon|null $renewed_at
  * @property string|null $renewed_by
@@ -94,6 +99,14 @@ class Domain extends Model
 
     public const string EMAIL_USAGE_SEND_RECEIVE = 'send_receive';
 
+    public const string MAIL_PLANE_AGENT_NOTIFICATIONS = 'agent_notifications';
+
+    public const string MAIL_PLANE_WORK_EMAIL_INTAKE = 'work_email_intake';
+
+    public const string MAIL_PLANE_TRANSACTIONAL_APP_MAIL = 'transactional_app_mail';
+
+    public const string MAIL_PLANE_AGENT_NATIVE_EXPERIMENT = 'agent_native_experiment';
+
     public $incrementing = false;
 
     protected $keyType = 'string';
@@ -111,6 +124,10 @@ class Domain extends Model
         'hosting_reviewed_at',
         'platform',
         'email_usage',
+        'mail_plane_type',
+        'mail_provider',
+        'mail_dns_requirements',
+        'mail_provider_verification',
         'target_platform',
         'migration_tier',
         'scaffolding_status',
@@ -187,6 +204,8 @@ class Domain extends Model
             'scaffolded_at' => 'datetime',
             'migration_tier' => 'integer',
             'dkim_selectors' => 'array',
+            'mail_dns_requirements' => 'array',
+            'mail_provider_verification' => 'array',
         ];
     }
 
@@ -233,6 +252,17 @@ class Domain extends Model
     {
         return $this->hasOne(DomainCheck::class)
             ->where('check_type', 'external_links')
+            ->orderByDesc('finished_at')
+            ->orderByDesc('created_at');
+    }
+
+    /**
+     * @return HasOne<DomainCheck, $this>
+     */
+    public function latestEmailSecurityCheck(): HasOne
+    {
+        return $this->hasOne(DomainCheck::class)
+            ->where('check_type', 'email_security')
             ->orderByDesc('finished_at')
             ->orderByDesc('created_at');
     }
@@ -667,6 +697,19 @@ class Domain extends Model
         return in_array($this->emailUsage(), [self::EMAIL_USAGE_RECEIVE, self::EMAIL_USAGE_SEND_RECEIVE], true);
     }
 
+    public function isMailPlane(): bool
+    {
+        return $this->normalizedMailPlaneType($this->mail_plane_type) !== null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function mailPlaneSummary(): array
+    {
+        return app(MailPlaneDnsSummaryBuilder::class)->build($this);
+    }
+
     public function monitoringSkipReason(string $checkType): ?string
     {
         if (! $this->is_active) {
@@ -869,6 +912,22 @@ class Domain extends Model
             self::EMAIL_USAGE_SEND,
             self::EMAIL_USAGE_RECEIVE,
             self::EMAIL_USAGE_SEND_RECEIVE,
+        ], true) ? $normalized : null;
+    }
+
+    private function normalizedMailPlaneType(mixed $value): ?string
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        $normalized = strtolower(trim($value));
+
+        return in_array($normalized, [
+            self::MAIL_PLANE_AGENT_NOTIFICATIONS,
+            self::MAIL_PLANE_WORK_EMAIL_INTAKE,
+            self::MAIL_PLANE_TRANSACTIONAL_APP_MAIL,
+            self::MAIL_PLANE_AGENT_NATIVE_EXPERIMENT,
         ], true) ? $normalized : null;
     }
 

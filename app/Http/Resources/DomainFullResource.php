@@ -54,9 +54,11 @@ class DomainFullResource extends JsonResource
     public function toArray(Request $request): array
     {
         // Eager load relationships if not already loaded
-        $this->resource->loadMissing(['platform', 'tags']);
+        $this->resource->loadMissing(['platform', 'tags', 'dnsRecords', 'latestEmailSecurityCheck']);
 
-        $platformModel = $this->resource->platform;
+        $platformModel = $this->resource->relationLoaded('platform')
+            ? $this->resource->getRelation('platform')
+            : null;
 
         return [
             'id' => $this->id,
@@ -69,6 +71,7 @@ class DomainFullResource extends JsonResource
             'email_expected' => $this->resource->emailExpected(),
             'email_sending_expected' => $this->resource->emailSendingExpected(),
             'email_receiving_expected' => $this->resource->emailReceivingExpected(),
+            'mail_plane' => $this->resource->mailPlaneSummary(),
 
             // Registration & Expiry
             'registrar' => $this->registrar,

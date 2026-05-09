@@ -29,6 +29,8 @@ class DomainResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $this->resource->loadMissing(['dnsRecords', 'latestEmailSecurityCheck']);
+
         return [
             'id' => $this->id,
             'name' => $this->domain,
@@ -39,6 +41,7 @@ class DomainResource extends JsonResource
             'email_expected' => $this->resource->emailExpected(),
             'email_sending_expected' => $this->resource->emailSendingExpected(),
             'email_receiving_expected' => $this->resource->emailReceivingExpected(),
+            'mail_plane' => $this->resource->mailPlaneSummary(),
             'expires_at' => $this->expires_at?->format('Y-m-d'),
             'registrar' => $this->registrar,
             'dns_servers' => $this->nameservers ?? [],

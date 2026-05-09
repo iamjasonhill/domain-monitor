@@ -54,6 +54,13 @@ Why this is the current call:
 
 ## Change Log
 
+### 2026-05-08 13:29:42 AEST
+
+- Issue or trigger: issue `#180` to track mail-plane DNS and provider verification for the agent-first mail architecture
+- What changed: added mail-plane metadata to domains, a mail-plane DNS summary builder, API exposure through domain resources and web-property domain summaries, focused Resend-style readiness tests, and docs for the mail-plane DNS contract
+- What was fixed: Domain Monitor can now represent mail-only domains such as `notify.again.com.au` separately from website health, compare stored DNS records against SPF/DKIM/DMARC/provider-verification requirements, surface missing or drifted records with copy/paste actions, and keep email-only web checks `not_applicable`
+- What remains: production still needs deployment/migration before live `notify.again.com.au` data can be entered or consumed by Control; no provider API keys, email sending, Control notification policy, or production cron changes were added
+
 ### 2026-05-08 06:53:47 AEST
 
 - Issue or trigger: issue `#179` to fix the exported web-property freshness contract for Control

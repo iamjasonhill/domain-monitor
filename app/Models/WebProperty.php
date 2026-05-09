@@ -399,6 +399,10 @@ class WebProperty extends Model
                     'email_expected' => $domain?->emailExpected() ?? false,
                     'email_sending_expected' => $domain?->emailSendingExpected() ?? false,
                     'email_receiving_expected' => $domain?->emailReceivingExpected() ?? false,
+                    'mail_plane' => $domain?->mailPlaneSummary() ?? [
+                        'enabled' => false,
+                        'status' => 'not_applicable',
+                    ],
                     'is_canonical' => $link->is_canonical,
                     'status' => $domain?->is_active ? 'active' : 'inactive',
                     'platform' => $platformType,
