@@ -142,10 +142,6 @@ class WebPropertyController extends Controller
                 ->orderByDesc('last_detected_at');
         }
 
-        if ($this->fleetTechnicalSeoAuditTablesExist()) {
-            $relations[] = 'latestFleetTechnicalSeoAuditRun.results.monitoringFinding';
-        }
-
         if (Schema::hasTable('domain_seo_baselines')) {
             $relations['seoBaselines'] = fn ($query) => $query
                 ->orderByDesc('captured_at')
@@ -177,12 +173,6 @@ class WebPropertyController extends Controller
     private function monitoringFindingsTableExists(): bool
     {
         return Schema::hasTable('monitoring_findings');
-    }
-
-    private function fleetTechnicalSeoAuditTablesExist(): bool
-    {
-        return Schema::hasTable('fleet_technical_seo_audit_runs')
-            && Schema::hasTable('fleet_technical_seo_audit_results');
     }
 
     private function findBySlug(string $slug): ?WebProperty

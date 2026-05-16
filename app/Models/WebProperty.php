@@ -1268,9 +1268,11 @@ class WebProperty extends Model
             return $this->emptyFleetTechnicalSeoAuditSummary($emptyCounts);
         }
 
-        $run = $this->relationLoaded('latestFleetTechnicalSeoAuditRun')
-            ? $this->latestFleetTechnicalSeoAuditRun
-            : $this->latestFleetTechnicalSeoAuditRun()->with('results.monitoringFinding')->first();
+        $run = $this->fleetTechnicalSeoAuditRuns()
+            ->with('results.monitoringFinding')
+            ->orderByDesc('started_at')
+            ->orderByDesc('created_at')
+            ->first();
 
         if (! $run instanceof FleetTechnicalSeoAuditRun) {
             return $this->emptyFleetTechnicalSeoAuditSummary($emptyCounts);
