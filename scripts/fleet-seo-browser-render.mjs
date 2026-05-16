@@ -1,12 +1,25 @@
 #!/usr/bin/env node
 
 import { chromium } from 'playwright';
+import axe from 'axe-core';
 import process from 'node:process';
 
 const DEFAULT_VIEWPORT = { width: 390, height: 844 };
 const NAVIGATION_TIMEOUT_MS = 20000;
 
 export async function summarizeRenderedPage(page, { requestedUrl, consoleErrors }) {
+    const axeResults = await page.evaluate((axeSource) => {
+        if (!window.axe) {
+            const script = document.createElement('script');
+            script.textContent = axeSource;
+            document.head.appendChild(script);
+        }
+
+        return window.axe.run(document, {
+            resultTypes: ['violations'],
+        });
+    }, axe.source);
+    const accessibility = summarizeAccessibilityViolations(axeResults.violations ?? []);
     const rendered = await page.evaluate(() => {
         const visibleText = document.body?.innerText?.replace(/\s+/g, ' ').trim() ?? '';
         const accessibleName = (element) => {
@@ -59,8 +72,62 @@ export async function summarizeRenderedPage(page, { requestedUrl, consoleErrors 
         html_lang: rendered.htmlLang,
         main_landmark_count: rendered.mainLandmarkCount,
         nav_landmark_count: rendered.navLandmarkCount,
-        link_without_name_count: rendered.linkWithoutNameCount,
+        link_without_name_count: Math.max(rendered.linkWithoutNameCount, accessibility.link_without_name_count),
+        color_contrast_violation_count: accessibility.color_contrast_violation_count,
+        form_label_missing_count: accessibility.form_label_missing_count,
+        button_without_name_count: accessibility.button_without_name_count,
+        duplicate_id_count: accessibility.duplicate_id_count,
+        aria_invalid_count: accessibility.aria_invalid_count,
+        heading_order_issue_count: accessibility.heading_order_issue_count,
+        document_language_issue_count: accessibility.document_language_issue_count,
+        axe_violation_count: accessibility.axe_violation_count,
+        axe_rule_ids: accessibility.axe_rule_ids,
     };
+}
+
+export function summarizeAccessibilityViolations(violations) {
+    const counts = {
+        color_contrast_violation_count: 0,
+        form_label_missing_count: 0,
+        button_without_name_count: 0,
+        link_without_name_count: 0,
+        duplicate_id_count: 0,
+        aria_invalid_count: 0,
+        heading_order_issue_count: 0,
+        document_language_issue_count: 0,
+        axe_violation_count: 0,
+        axe_rule_ids: [],
+    };
+
+    for (const violation of violations) {
+        const ruleId = typeof violation.id === 'string' ? violation.id : 'unknown';
+        const nodeCount = Array.isArray(violation.nodes) ? violation.nodes.length : 0;
+
+        counts.axe_violation_count += nodeCount;
+        counts.axe_rule_ids.push(ruleId);
+
+        if (ruleId.includes('color-contrast')) {
+            counts.color_contrast_violation_count += nodeCount;
+        } else if (['label', 'label-title-only'].includes(ruleId) || ruleId.includes('form-field')) {
+            counts.form_label_missing_count += nodeCount;
+        } else if (ruleId.includes('button-name')) {
+            counts.button_without_name_count += nodeCount;
+        } else if (ruleId.includes('link-name')) {
+            counts.link_without_name_count += nodeCount;
+        } else if (ruleId.includes('duplicate-id')) {
+            counts.duplicate_id_count += nodeCount;
+        } else if (ruleId.startsWith('aria-') || ruleId.includes('aria-')) {
+            counts.aria_invalid_count += nodeCount;
+        } else if (ruleId.includes('heading-order')) {
+            counts.heading_order_issue_count += nodeCount;
+        } else if (ruleId.includes('html-has-lang') || ruleId.includes('valid-lang')) {
+            counts.document_language_issue_count += nodeCount;
+        }
+    }
+
+    counts.axe_rule_ids = [...new Set(counts.axe_rule_ids)].slice(0, 25);
+
+    return counts;
 }
 
 export function boundedConsoleErrors(errors) {

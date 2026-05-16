@@ -392,6 +392,9 @@ class FleetTechnicalSeoAuditRunner
             'duplicate_id_count',
             'aria_invalid_count',
             'heading_order_issue_count',
+            'document_language_issue_count',
+            'axe_violation_count',
+            'axe_rule_ids',
             'reason',
         ]);
 
@@ -506,6 +509,10 @@ class FleetTechnicalSeoAuditRunner
 
             if ((int) ($rendered['heading_order_issue_count'] ?? 0) > 0) {
                 $problems[] = 'heading_order';
+            }
+
+            if ((int) ($rendered['document_language_issue_count'] ?? 0) > 0) {
+                $problems[] = 'document_language';
             }
 
             if ($problems !== []) {

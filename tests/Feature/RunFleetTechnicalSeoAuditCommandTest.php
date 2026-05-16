@@ -323,6 +323,9 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
                     'duplicate_id_count' => 1,
                     'aria_invalid_count' => 1,
                     'heading_order_issue_count' => 1,
+                    'document_language_issue_count' => 1,
+                    'axe_violation_count' => 8,
+                    'axe_rule_ids' => ['color-contrast', 'label', 'button-name'],
                 ];
             }
         });
@@ -340,6 +343,8 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
         $this->assertSame(FleetTechnicalSeoAuditResult::CONFIDENCE_MEDIUM, $accessibilityResult->evidence_confidence);
         $this->assertContains('color_contrast', $accessibilityResult->evidence['problem_urls'][0]['problems']);
         $this->assertContains('missing_form_labels', $accessibilityResult->evidence['problem_urls'][0]['problems']);
+        $this->assertContains('document_language', $accessibilityResult->evidence['problem_urls'][0]['problems']);
+        $this->assertSame(8, $accessibilityResult->evidence['browser_render']['axe_violation_count']);
         $this->assertSame('not_attention', $accessibilityResult->evidence['manual_review']['attention_default']);
         $this->assertDatabaseCount('monitoring_findings', 0);
     }

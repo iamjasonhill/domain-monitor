@@ -302,6 +302,8 @@ IDs, make accessibility coverage visible in audit summaries, and keep default
 runtime behavior as `manual_review` rather than Attention failure. Severe or
 repeated evidence can become owner-routable site-repo issues only when the
 durable-actionable and dedupe rules are satisfied.
+The repo-owned browser command uses `axe-core` for this collection and emits
+only bounded counts plus rule IDs, not raw axe node payloads.
 
 If those later modes are not implemented in the first slice, create or keep
 repo-owned GitHub issues for them so the missing coverage is visible.
