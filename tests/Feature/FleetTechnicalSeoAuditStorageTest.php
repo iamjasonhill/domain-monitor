@@ -35,7 +35,7 @@ class FleetTechnicalSeoAuditStorageTest extends TestCase
             ],
         ]);
 
-        $this->assertNotNull($run->id);
+        $this->assertNotSame('', $run->id);
         $this->assertTrue($run->webProperty->is($property));
         $this->assertSame(['http_fetch', 'html_parse', 'bounded_crawl'], $run->execution_modes);
         $this->assertSame(25, $run->url_cap);
@@ -80,7 +80,7 @@ class FleetTechnicalSeoAuditStorageTest extends TestCase
             'owner_issue_url' => 'https://github.com/iamjasonhill/domain-monitor/issues/999',
         ]);
 
-        $this->assertNotNull($result->id);
+        $this->assertNotSame('', $result->id);
         $this->assertTrue($result->auditRun->is($run));
         $this->assertTrue($result->monitoringFinding->is($finding));
         $this->assertSame('ssl_cert_expired', $result->evidence['status']);
@@ -102,5 +102,35 @@ class FleetTechnicalSeoAuditStorageTest extends TestCase
             'lane' => 'critical_live',
         ]);
         $this->assertSame(0, $finding->fleetTechnicalSeoAuditResults()->count());
+    }
+
+    public function test_manual_review_results_expose_review_payload_and_owner_issue_candidate_shape(): void
+    {
+        $result = FleetTechnicalSeoAuditResult::factory()->create([
+            'check_id' => 'crawl.unexpected_soft_404_absent',
+            'result_status' => FleetTechnicalSeoAuditResult::STATUS_MANUAL_REVIEW,
+            'evidence_confidence' => FleetTechnicalSeoAuditResult::CONFIDENCE_MEDIUM,
+            'owner_system' => 'site-repo',
+            'evidence' => [
+                'manual_review' => [
+                    'status' => 'pending',
+                    'reason' => 'Rendered page looks like a placeholder but needs operator judgement.',
+                    'reviewer' => null,
+                    'reviewed_at' => null,
+                    'notes' => 'This note must remain review evidence, not Attention text.',
+                ],
+                'owner_issue_candidate' => [
+                    'can_create_issue' => true,
+                    'owner_repo' => 'iamjasonhill/example-site',
+                    'dedupe_key' => 'example-site:crawl.unexpected_soft_404_absent',
+                    'reason' => 'Durable actionable owner identified.',
+                ],
+            ],
+        ]);
+
+        $this->assertTrue($result->requiresManualReview());
+        $this->assertSame('pending', $result->manualReviewPayload()['status']);
+        $this->assertTrue($result->ownerIssueCandidate()['can_create_issue']);
+        $this->assertSame('iamjasonhill/example-site', $result->ownerIssueCandidate()['owner_repo']);
     }
 }

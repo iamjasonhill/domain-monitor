@@ -91,4 +91,46 @@ class FleetTechnicalSeoAuditResult extends Model
     {
         return $this->belongsTo(MonitoringFinding::class);
     }
+
+    public function requiresManualReview(): bool
+    {
+        return $this->result_status === self::STATUS_MANUAL_REVIEW
+            || is_array($this->evidence)
+            && is_array($this->evidence['manual_review'] ?? null);
+    }
+
+    /**
+     * @return array{status: string, reason: string|null, reviewer: string|null, reviewed_at: string|null, notes: string|null}
+     */
+    public function manualReviewPayload(): array
+    {
+        $payload = is_array($this->evidence) && is_array($this->evidence['manual_review'] ?? null)
+            ? $this->evidence['manual_review']
+            : [];
+
+        return [
+            'status' => is_string($payload['status'] ?? null) ? $payload['status'] : 'pending',
+            'reason' => is_string($payload['reason'] ?? null) ? $payload['reason'] : null,
+            'reviewer' => is_string($payload['reviewer'] ?? null) ? $payload['reviewer'] : null,
+            'reviewed_at' => is_string($payload['reviewed_at'] ?? null) ? $payload['reviewed_at'] : null,
+            'notes' => is_string($payload['notes'] ?? null) ? $payload['notes'] : null,
+        ];
+    }
+
+    /**
+     * @return array{can_create_issue: bool, owner_repo: string|null, dedupe_key: string|null, reason: string|null}
+     */
+    public function ownerIssueCandidate(): array
+    {
+        $payload = is_array($this->evidence) && is_array($this->evidence['owner_issue_candidate'] ?? null)
+            ? $this->evidence['owner_issue_candidate']
+            : [];
+
+        return [
+            'can_create_issue' => (bool) ($payload['can_create_issue'] ?? false),
+            'owner_repo' => is_string($payload['owner_repo'] ?? null) ? $payload['owner_repo'] : null,
+            'dedupe_key' => is_string($payload['dedupe_key'] ?? null) ? $payload['dedupe_key'] : null,
+            'reason' => is_string($payload['reason'] ?? null) ? $payload['reason'] : null,
+        ];
+    }
 }

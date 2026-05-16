@@ -675,6 +675,7 @@ class FleetTechnicalSeoAuditRunner
     {
         $definition = self::CHECKS[$checkId];
         $findingId = null;
+        $evidence = $this->evidenceWithReviewWorkflow($property, $checkId, $status, $definition, $evidence);
 
         if ($definition['signal'] === 'failure' && $confidence === FleetTechnicalSeoAuditResult::CONFIDENCE_HIGH) {
             $findingType = 'fleet_technical_seo.'.$checkId;
@@ -720,6 +721,36 @@ class FleetTechnicalSeoAuditRunner
             'owner_system' => $definition['owner'],
             'monitoring_finding_id' => $status === FleetTechnicalSeoAuditResult::STATUS_FAIL ? $findingId : null,
         ]);
+    }
+
+    /**
+     * @param  array{mode: string, signal: 'failure'|'review'|'evidence_only', owner: string, title: string}  $definition
+     * @param  array<string, mixed>  $evidence
+     * @return array<string, mixed>
+     */
+    private function evidenceWithReviewWorkflow(WebProperty $property, string $checkId, string $status, array $definition, array $evidence): array
+    {
+        if ($status === FleetTechnicalSeoAuditResult::STATUS_MANUAL_REVIEW) {
+            $evidence['manual_review'] = array_merge([
+                'status' => 'pending',
+                'reason' => $evidence['reason'] ?? $definition['title'],
+                'reviewer' => null,
+                'reviewed_at' => null,
+                'notes' => null,
+                'attention_default' => 'not_attention',
+            ], is_array($evidence['manual_review'] ?? null) ? $evidence['manual_review'] : []);
+        }
+
+        if (in_array($status, [FleetTechnicalSeoAuditResult::STATUS_MANUAL_REVIEW, FleetTechnicalSeoAuditResult::STATUS_UNKNOWN], true)) {
+            $evidence['owner_issue_candidate'] = array_merge([
+                'can_create_issue' => false,
+                'owner_repo' => null,
+                'dedupe_key' => $property->slug.':'.$checkId,
+                'reason' => 'Owner issue creation requires a durable actionable unknown with an identified owner repo.',
+            ], is_array($evidence['owner_issue_candidate'] ?? null) ? $evidence['owner_issue_candidate'] : []);
+        }
+
+        return $evidence;
     }
 
     /**

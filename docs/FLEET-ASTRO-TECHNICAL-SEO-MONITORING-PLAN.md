@@ -249,6 +249,16 @@ creating a failure. Production can attach a Lighthouse wrapper by setting
 `FLEET_SEO_LIGHTHOUSE_URL` and must return a JSON object with bounded lab
 fields.
 
+Manual-review evidence has a stable result-level payload shape. Audit results
+with `manual_review` status carry a `manual_review` payload with `status`,
+`reason`, optional reviewer/reviewed timestamp, and optional notes. Review-class
+and unknown results may also carry an `owner_issue_candidate` payload with
+`can_create_issue`, `owner_repo`, `dedupe_key`, and `reason`. The default is
+`can_create_issue: false`; a GitHub issue should only be created after the
+durable-actionable, owner-identified, dedupe-safe rules above are satisfied.
+Manual review notes remain audit evidence and are not part of the Control API
+summary.
+
 If those later modes are not implemented in the first slice, create or keep
 repo-owned GitHub issues for them so the missing coverage is visible.
 
