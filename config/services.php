@@ -79,4 +79,9 @@ return [
         'moveroo_removals_api_key' => env('MOVEROO_REMOVALS_API_KEY'),
     ],
 
+    'fleet_technical_seo' => [
+        'browser_render_command' => env('FLEET_TECHNICAL_SEO_BROWSER_RENDER_COMMAND'),
+        'browser_render_timeout' => (int) env('FLEET_TECHNICAL_SEO_BROWSER_RENDER_TIMEOUT', 20),
+    ],
+
 ];

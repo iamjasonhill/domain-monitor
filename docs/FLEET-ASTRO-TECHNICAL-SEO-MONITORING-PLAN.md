@@ -217,10 +217,24 @@ The first slice should not be considered the complete end state. These later
 execution modes must remain tracked as explicit follow-up work rather than
 being forgotten:
 
-- `browser_render`
 - `lighthouse_lab`
 - broad accessibility automation
 - manual-review workflow UI
+
+`browser_render` is now represented in the runtime runner as a bounded
+evidence mode for `mobile.usability_basic_rendering`,
+`accessibility.semantic_baseline`, and rendered soft-404 review support. The
+runner stores only bounded fields such as viewport, final URL, text sample,
+console-error count/detail samples, and semantic counts. Raw rendered HTML,
+screenshots, and page dumps must not be exposed through the Control API summary
+unless a later evidence-artifact design explicitly approves that.
+
+Browser rendering is wired through `FleetTechnicalSeoBrowserRenderer`. Without
+configuration it returns `unknown` low-confidence evidence instead of failing a
+property. Production can attach a Playwright/Chrome wrapper by setting
+`FLEET_TECHNICAL_SEO_BROWSER_RENDER_COMMAND`; the command receives the target
+URL as `FLEET_SEO_RENDER_URL` and must return a JSON object with bounded
+rendering fields.
 
 If those later modes are not implemented in the first slice, create or keep
 repo-owned GitHub issues for them so the missing coverage is visible.

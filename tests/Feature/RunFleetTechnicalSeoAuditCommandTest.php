@@ -8,6 +8,7 @@ use App\Models\FleetTechnicalSeoAuditRun;
 use App\Models\MonitoringFinding;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
+use App\Services\FleetTechnicalSeoBrowserRenderer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
@@ -71,7 +72,7 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
 
         $run = FleetTechnicalSeoAuditRun::query()->firstOrFail();
 
-        $this->assertSame(24, $run->summary_counts['not_applicable']);
+        $this->assertSame(27, $run->summary_counts['not_applicable']);
         $this->assertSame(0, $run->summary_counts['fail']);
         $this->assertDatabaseCount('monitoring_findings', 0);
     }
@@ -124,6 +125,103 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
 
         $this->assertGreaterThan(0, $run->summary_counts['not_checked_due_to_limit']);
         $this->assertNotEmpty($result->evidence['skipped_urls']);
+    }
+
+    public function test_browser_render_mode_records_bounded_rendered_dom_evidence(): void
+    {
+        $property = $this->makeProperty('rendered-site', 'rendered.example');
+        $this->fakeHealthySite('https://rendered.example');
+        $this->app->instance(FleetTechnicalSeoBrowserRenderer::class, new class implements FleetTechnicalSeoBrowserRenderer
+        {
+            public function render(string $url): array
+            {
+                return [
+                    'available' => true,
+                    'url' => $url,
+                    'final_url' => $url,
+                    'title' => 'Example Site',
+                    'text_sample' => 'Example Site About Quote',
+                    'body_text_length' => 24,
+                    'console_errors' => [],
+                    'viewport' => ['width' => 390, 'height' => 844],
+                    'content_width' => 390,
+                    'h1_count' => 1,
+                    'html_lang' => 'en',
+                    'main_landmark_count' => 1,
+                    'nav_landmark_count' => 1,
+                    'link_without_name_count' => 0,
+                    'raw_html' => '<html><body>This raw dump must not be stored.</body></html>',
+                    'screenshot_path' => '/tmp/raw-render.png',
+                ];
+            }
+        });
+
+        $this->assertSame(0, Artisan::call('monitoring:run-fleet-technical-seo-audit', [
+            '--property' => $property->slug,
+            '--url-cap' => 10,
+        ]));
+
+        $run = FleetTechnicalSeoAuditRun::query()->firstOrFail();
+        $mobileResult = FleetTechnicalSeoAuditResult::query()
+            ->where('check_id', 'mobile.usability_basic_rendering')
+            ->firstOrFail();
+        $accessibilityResult = FleetTechnicalSeoAuditResult::query()
+            ->where('check_id', 'accessibility.semantic_baseline')
+            ->firstOrFail();
+
+        $this->assertContains('browser_render', $run->execution_modes);
+        $this->assertSame(FleetTechnicalSeoAuditResult::STATUS_PASS, $mobileResult->result_status);
+        $this->assertSame(FleetTechnicalSeoAuditResult::CONFIDENCE_MEDIUM, $mobileResult->evidence_confidence);
+        $this->assertSame(390, $mobileResult->evidence['browser_render']['viewport']['width']);
+        $this->assertArrayNotHasKey('raw_html', $mobileResult->evidence['browser_render']);
+        $this->assertArrayNotHasKey('screenshot_path', $mobileResult->evidence['browser_render']);
+        $this->assertSame(FleetTechnicalSeoAuditResult::STATUS_PASS, $accessibilityResult->result_status);
+        $this->assertDatabaseCount('monitoring_findings', 0);
+    }
+
+    public function test_browser_render_mode_records_review_evidence_without_attention_noise(): void
+    {
+        $property = $this->makeProperty('broken-render-site', 'broken-render.example');
+        $this->fakeHealthySite('https://broken-render.example');
+        $this->app->instance(FleetTechnicalSeoBrowserRenderer::class, new class implements FleetTechnicalSeoBrowserRenderer
+        {
+            public function render(string $url): array
+            {
+                return [
+                    'available' => true,
+                    'url' => $url,
+                    'final_url' => $url,
+                    'title' => 'Not found',
+                    'text_sample' => '404 not found',
+                    'body_text_length' => 13,
+                    'console_errors' => ['ReferenceError: app is not defined'],
+                    'viewport' => ['width' => 390, 'height' => 844],
+                    'content_width' => 620,
+                    'h1_count' => 0,
+                    'html_lang' => '',
+                    'main_landmark_count' => 0,
+                    'nav_landmark_count' => 0,
+                    'link_without_name_count' => 2,
+                ];
+            }
+        });
+
+        $this->assertSame(0, Artisan::call('monitoring:run-fleet-technical-seo-audit', [
+            '--property' => $property->slug,
+            '--url-cap' => 10,
+        ]));
+
+        $mobileResult = FleetTechnicalSeoAuditResult::query()
+            ->where('check_id', 'mobile.usability_basic_rendering')
+            ->firstOrFail();
+        $soft404Result = FleetTechnicalSeoAuditResult::query()
+            ->where('check_id', 'crawl.unexpected_soft_404_absent')
+            ->firstOrFail();
+
+        $this->assertSame(FleetTechnicalSeoAuditResult::STATUS_FAIL, $mobileResult->result_status);
+        $this->assertSame(FleetTechnicalSeoAuditResult::CONFIDENCE_MEDIUM, $mobileResult->evidence_confidence);
+        $this->assertSame(FleetTechnicalSeoAuditResult::STATUS_MANUAL_REVIEW, $soft404Result->result_status);
+        $this->assertDatabaseCount('monitoring_findings', 0);
     }
 
     /**

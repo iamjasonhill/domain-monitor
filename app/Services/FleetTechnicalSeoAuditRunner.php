@@ -23,6 +23,7 @@ class FleetTechnicalSeoAuditRunner
      */
     private const CHECKS = [
         'crawl.http_status_ok' => ['mode' => 'http_fetch', 'signal' => 'failure', 'owner' => 'domain-monitor', 'title' => 'Fleet SEO audit found an unreachable public URL'],
+        'crawl.unexpected_soft_404_absent' => ['mode' => 'browser_render', 'signal' => 'review', 'owner' => 'Fleet', 'title' => 'Fleet SEO audit found rendered soft-404 evidence needing review'],
         'robots.present_and_fetchable' => ['mode' => 'http_fetch', 'signal' => 'failure', 'owner' => 'domain-monitor', 'title' => 'Fleet SEO audit found missing robots.txt'],
         'robots.standard_directives_only' => ['mode' => 'http_fetch', 'signal' => 'review', 'owner' => 'Fleet', 'title' => 'Fleet SEO audit found non-standard robots.txt directives'],
         'robots.sitemap_reference_expected' => ['mode' => 'http_fetch', 'signal' => 'review', 'owner' => 'domain-monitor', 'title' => 'Fleet SEO audit found robots.txt without a sitemap reference'],
@@ -40,9 +41,11 @@ class FleetTechnicalSeoAuditRunner
         'links.quote_contact_targets_current' => ['mode' => 'bounded_crawl', 'signal' => 'failure', 'owner' => 'site-repo', 'title' => 'Fleet SEO audit found missing quote/contact target links'],
         'images.alt_text_meaningful' => ['mode' => 'html_parse', 'signal' => 'review', 'owner' => 'site-repo', 'title' => 'Fleet SEO audit found image alt evidence needing review'],
         'images.dimensions_declared_for_fixed_assets' => ['mode' => 'html_parse', 'signal' => 'review', 'owner' => 'site-repo', 'title' => 'Fleet SEO audit found image dimension evidence needing review'],
+        'mobile.usability_basic_rendering' => ['mode' => 'browser_render', 'signal' => 'review', 'owner' => 'site-repo', 'title' => 'Fleet SEO audit found rendered mobile usability evidence needing review'],
         'structured_data.valid_jsonld' => ['mode' => 'html_parse', 'signal' => 'review', 'owner' => 'site-repo', 'title' => 'Fleet SEO audit found structured data evidence needing review'],
         'hreflang.intentional_or_absent' => ['mode' => 'html_parse', 'signal' => 'evidence_only', 'owner' => 'Fleet', 'title' => 'Fleet SEO audit recorded hreflang evidence'],
         'security.https_valid_and_canonical' => ['mode' => 'http_fetch', 'signal' => 'failure', 'owner' => 'domain-monitor', 'title' => 'Fleet SEO audit found HTTPS canonical evidence failure'],
+        'accessibility.semantic_baseline' => ['mode' => 'browser_render', 'signal' => 'review', 'owner' => 'site-repo', 'title' => 'Fleet SEO audit found rendered accessibility evidence needing review'],
         'social.open_graph_baseline' => ['mode' => 'html_parse', 'signal' => 'review', 'owner' => 'site-repo', 'title' => 'Fleet SEO audit found Open Graph evidence needing review'],
         'ai.llms_txt_expected' => ['mode' => 'http_fetch', 'signal' => 'review', 'owner' => 'domain-monitor', 'title' => 'Fleet SEO audit found llms.txt evidence needing review'],
         'analytics.google_evidence_owned_by_mm_google' => ['mode' => 'imported_evidence', 'signal' => 'evidence_only', 'owner' => 'MM-Google', 'title' => 'Fleet SEO audit recorded Google evidence ownership'],
@@ -50,6 +53,7 @@ class FleetTechnicalSeoAuditRunner
 
     public function __construct(
         private readonly MonitoringFindingManager $findings,
+        private readonly FleetTechnicalSeoBrowserRenderer $browserRenderer,
     ) {}
 
     public function run(WebProperty $property, int $urlCap = 25, string $triggerType = 'manual'): FleetTechnicalSeoAuditRun
@@ -90,6 +94,7 @@ class FleetTechnicalSeoAuditRunner
         }
 
         $context = $this->collectContext($property, $urlCap);
+        $context['browser_render'] = $this->collectBrowserRenderContext($context['selected_urls']);
         $results = $this->evaluateChecks($property, $context);
 
         foreach ($results as $checkId => $result) {
@@ -133,6 +138,7 @@ class FleetTechnicalSeoAuditRunner
      *   selected_urls: array<int, string>,
      *   skipped_urls: array<int, string>,
      *   pages: array<string, array<string, mixed>>,
+     *   browser_render?: array<string, array<string, mixed>>,
      *   internal_links: array<int, string>,
      *   external_links: array<int, string>
      * }
@@ -204,6 +210,7 @@ class FleetTechnicalSeoAuditRunner
             ['homepage' => Arr::except($homepage, ['body']), 'selected_url_count' => count($context['selected_urls']), 'skipped_urls' => $context['skipped_urls']],
             $baseUrl.'/'
         );
+        $results['crawl.unexpected_soft_404_absent'] = $this->soft404RenderedResult($context['browser_render'] ?? []);
         $results['robots.present_and_fetchable'] = $this->result($this->isSuccessful($robots) ? 'pass' : 'fail', 'high', ['robots' => Arr::except($robots, ['body'])], $baseUrl.'/robots.txt');
         $results['robots.standard_directives_only'] = $this->result($this->robotsUsesStandardDirectives((string) ($robots['body'] ?? '')) ? 'pass' : 'manual_review', 'medium', ['robots' => Arr::except($robots, ['body'])], $baseUrl.'/robots.txt');
         $results['robots.sitemap_reference_expected'] = $this->result(Str::contains(Str::lower((string) ($robots['body'] ?? '')), 'sitemap:') ? 'pass' : 'manual_review', 'medium', ['robots' => Arr::except($robots, ['body'])], $baseUrl.'/robots.txt');
@@ -221,14 +228,211 @@ class FleetTechnicalSeoAuditRunner
         $results['links.quote_contact_targets_current'] = $this->result($declaredUrls === [] ? 'not_applicable' : ($missingDeclaredUrls === [] ? 'pass' : 'fail'), 'high', ['declared_urls' => $declaredUrls, 'missing_declared_urls' => $missingDeclaredUrls]);
         $results['images.alt_text_meaningful'] = $this->imageResult($context['pages'], 'alt');
         $results['images.dimensions_declared_for_fixed_assets'] = $this->imageResult($context['pages'], 'dimensions');
+        $results['mobile.usability_basic_rendering'] = $this->mobileRenderedResult($context['browser_render'] ?? []);
         $results['structured_data.valid_jsonld'] = $this->structuredDataResult($homepageHtml);
         $results['hreflang.intentional_or_absent'] = $this->result('not_applicable', 'low', ['reason' => 'Fleet default is intentional absence unless a property declares international alternates.']);
         $results['security.https_valid_and_canonical'] = $this->result(Str::startsWith($baseUrl, 'https://') && $this->isSuccessful($homepage) ? 'pass' : 'fail', 'high', ['base_url' => $baseUrl, 'homepage' => Arr::except($homepage, ['body'])], $baseUrl.'/');
+        $results['accessibility.semantic_baseline'] = $this->accessibilityRenderedResult($context['browser_render'] ?? []);
         $results['social.open_graph_baseline'] = $this->socialResult($homepageHtml);
         $results['ai.llms_txt_expected'] = $this->result($this->isSuccessful($context['llms']) ? 'pass' : 'manual_review', 'medium', ['llms' => Arr::except($context['llms'], ['body'])], $baseUrl.'/llms.txt');
         $results['analytics.google_evidence_owned_by_mm_google'] = $this->result('unknown', 'low', ['owner_system' => 'MM-Google', 'reason' => 'No imported MM-Google evidence attached to this deterministic run.']);
 
         return $results;
+    }
+
+    /**
+     * @param  array<int, string>  $urls
+     * @return array<string, array<string, mixed>>
+     */
+    private function collectBrowserRenderContext(array $urls): array
+    {
+        $rendered = [];
+
+        foreach ($urls as $url) {
+            $rendered[$url] = $this->boundedBrowserEvidence($this->browserRenderer->render($url));
+        }
+
+        return $rendered;
+    }
+
+    /**
+     * @param  array<string, mixed>  $evidence
+     * @return array<string, mixed>
+     */
+    private function boundedBrowserEvidence(array $evidence): array
+    {
+        $safe = Arr::only($evidence, [
+            'available',
+            'url',
+            'final_url',
+            'title',
+            'text_sample',
+            'body_text_length',
+            'console_errors',
+            'viewport',
+            'content_width',
+            'h1_count',
+            'html_lang',
+            'main_landmark_count',
+            'nav_landmark_count',
+            'link_without_name_count',
+            'reason',
+        ]);
+
+        if (isset($safe['text_sample']) && is_string($safe['text_sample'])) {
+            $safe['text_sample'] = Str::limit($safe['text_sample'], 500, '');
+        }
+
+        if (isset($safe['console_errors']) && is_array($safe['console_errors'])) {
+            $safe['console_errors'] = collect($safe['console_errors'])
+                ->filter(fn (mixed $error): bool => is_string($error) && trim($error) !== '')
+                ->map(fn (string $error): string => Str::limit($error, 240, ''))
+                ->take(10)
+                ->values()
+                ->all();
+        }
+
+        return $safe;
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $renderedPages
+     * @return array{status: string, confidence: string, evidence: array<string, mixed>}
+     */
+    private function mobileRenderedResult(array $renderedPages): array
+    {
+        $problemUrls = [];
+        $checked = [];
+
+        foreach ($renderedPages as $url => $rendered) {
+            if (($rendered['available'] ?? false) !== true) {
+                continue;
+            }
+
+            $checked[$url] = $rendered;
+            $viewportWidth = (int) data_get($rendered, 'viewport.width', 0);
+            $contentWidth = (int) ($rendered['content_width'] ?? 0);
+            $consoleErrors = is_array($rendered['console_errors'] ?? null) ? $rendered['console_errors'] : [];
+
+            if ($consoleErrors !== [] || ($viewportWidth > 0 && $contentWidth > $viewportWidth)) {
+                $problemUrls[] = [
+                    'url' => $url,
+                    'console_error_count' => count($consoleErrors),
+                    'viewport_width' => $viewportWidth,
+                    'content_width' => $contentWidth,
+                ];
+            }
+        }
+
+        if ($checked === []) {
+            return $this->result('unknown', 'low', ['browser_render' => $this->firstRenderEvidence($renderedPages), 'reason' => 'No rendered browser evidence was available.']);
+        }
+
+        return $this->result($problemUrls === [] ? 'pass' : 'fail', 'medium', [
+            'browser_render' => $this->firstRenderEvidence($checked),
+            'problem_urls' => $problemUrls,
+            'checked_url_count' => count($checked),
+        ]);
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $renderedPages
+     * @return array{status: string, confidence: string, evidence: array<string, mixed>}
+     */
+    private function accessibilityRenderedResult(array $renderedPages): array
+    {
+        $problemUrls = [];
+        $checked = [];
+
+        foreach ($renderedPages as $url => $rendered) {
+            if (($rendered['available'] ?? false) !== true) {
+                continue;
+            }
+
+            $checked[$url] = $rendered;
+            $problems = [];
+
+            if (trim((string) ($rendered['html_lang'] ?? '')) === '') {
+                $problems[] = 'missing_html_lang';
+            }
+
+            if ((int) ($rendered['h1_count'] ?? 0) < 1) {
+                $problems[] = 'missing_h1';
+            }
+
+            if ((int) ($rendered['main_landmark_count'] ?? 0) < 1) {
+                $problems[] = 'missing_main_landmark';
+            }
+
+            if ((int) ($rendered['link_without_name_count'] ?? 0) > 0) {
+                $problems[] = 'unnamed_links';
+            }
+
+            if ($problems !== []) {
+                $problemUrls[] = [
+                    'url' => $url,
+                    'problems' => $problems,
+                ];
+            }
+        }
+
+        if ($checked === []) {
+            return $this->result('unknown', 'low', ['browser_render' => $this->firstRenderEvidence($renderedPages), 'reason' => 'No rendered browser evidence was available.']);
+        }
+
+        return $this->result($problemUrls === [] ? 'pass' : 'manual_review', 'medium', [
+            'browser_render' => $this->firstRenderEvidence($checked),
+            'problem_urls' => $problemUrls,
+            'checked_url_count' => count($checked),
+        ]);
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $renderedPages
+     * @return array{status: string, confidence: string, evidence: array<string, mixed>}
+     */
+    private function soft404RenderedResult(array $renderedPages): array
+    {
+        $suspiciousUrls = [];
+        $checked = [];
+
+        foreach ($renderedPages as $url => $rendered) {
+            if (($rendered['available'] ?? false) !== true) {
+                continue;
+            }
+
+            $checked[$url] = $rendered;
+            $sample = Str::lower((string) ($rendered['text_sample'] ?? ''));
+            $title = Str::lower((string) ($rendered['title'] ?? ''));
+            $bodyTextLength = (int) ($rendered['body_text_length'] ?? 0);
+
+            if ($bodyTextLength < 120 || Str::contains($sample.' '.$title, ['404', 'not found', 'coming soon', 'parked domain'])) {
+                $suspiciousUrls[] = [
+                    'url' => $url,
+                    'body_text_length' => $bodyTextLength,
+                    'title' => $rendered['title'] ?? null,
+                ];
+            }
+        }
+
+        if ($checked === []) {
+            return $this->result('unknown', 'low', ['browser_render' => $this->firstRenderEvidence($renderedPages), 'reason' => 'No rendered browser evidence was available.']);
+        }
+
+        return $this->result($suspiciousUrls === [] ? 'pass' : 'manual_review', 'medium', [
+            'browser_render' => $this->firstRenderEvidence($checked),
+            'suspicious_urls' => $suspiciousUrls,
+            'checked_url_count' => count($checked),
+        ]);
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $renderedPages
+     * @return array<string, mixed>
+     */
+    private function firstRenderEvidence(array $renderedPages): array
+    {
+        return array_values($renderedPages)[0] ?? [];
     }
 
     /**
