@@ -42,6 +42,8 @@ class FleetTechnicalSeoAuditRunner
         'images.alt_text_meaningful' => ['mode' => 'html_parse', 'signal' => 'review', 'owner' => 'site-repo', 'title' => 'Fleet SEO audit found image alt evidence needing review'],
         'images.dimensions_declared_for_fixed_assets' => ['mode' => 'html_parse', 'signal' => 'review', 'owner' => 'site-repo', 'title' => 'Fleet SEO audit found image dimension evidence needing review'],
         'mobile.usability_basic_rendering' => ['mode' => 'browser_render', 'signal' => 'review', 'owner' => 'site-repo', 'title' => 'Fleet SEO audit found rendered mobile usability evidence needing review'],
+        'performance.core_web_vitals_threshold_reviewed' => ['mode' => 'lighthouse_lab', 'signal' => 'evidence_only', 'owner' => 'Fleet', 'title' => 'Fleet SEO audit recorded Lighthouse lab metric evidence'],
+        'performance.analytics_not_blocking_first_paint' => ['mode' => 'lighthouse_lab', 'signal' => 'review', 'owner' => 'site-repo', 'title' => 'Fleet SEO audit found analytics first-paint blocking evidence needing review'],
         'structured_data.valid_jsonld' => ['mode' => 'html_parse', 'signal' => 'review', 'owner' => 'site-repo', 'title' => 'Fleet SEO audit found structured data evidence needing review'],
         'hreflang.intentional_or_absent' => ['mode' => 'html_parse', 'signal' => 'evidence_only', 'owner' => 'Fleet', 'title' => 'Fleet SEO audit recorded hreflang evidence'],
         'security.https_valid_and_canonical' => ['mode' => 'http_fetch', 'signal' => 'failure', 'owner' => 'domain-monitor', 'title' => 'Fleet SEO audit found HTTPS canonical evidence failure'],
@@ -54,6 +56,7 @@ class FleetTechnicalSeoAuditRunner
     public function __construct(
         private readonly MonitoringFindingManager $findings,
         private readonly FleetTechnicalSeoBrowserRenderer $browserRenderer,
+        private readonly FleetTechnicalSeoLighthouseRunner $lighthouseRunner,
     ) {}
 
     public function run(WebProperty $property, int $urlCap = 25, string $triggerType = 'manual'): FleetTechnicalSeoAuditRun
@@ -95,6 +98,7 @@ class FleetTechnicalSeoAuditRunner
 
         $context = $this->collectContext($property, $urlCap);
         $context['browser_render'] = $this->collectBrowserRenderContext($context['selected_urls']);
+        $context['lighthouse_lab'] = $this->collectLighthouseLabContext($context['selected_urls']);
         $results = $this->evaluateChecks($property, $context);
 
         foreach ($results as $checkId => $result) {
@@ -139,6 +143,7 @@ class FleetTechnicalSeoAuditRunner
      *   skipped_urls: array<int, string>,
      *   pages: array<string, array<string, mixed>>,
      *   browser_render?: array<string, array<string, mixed>>,
+     *   lighthouse_lab?: array<string, array<string, mixed>>,
      *   internal_links: array<int, string>,
      *   external_links: array<int, string>
      * }
@@ -229,6 +234,8 @@ class FleetTechnicalSeoAuditRunner
         $results['images.alt_text_meaningful'] = $this->imageResult($context['pages'], 'alt');
         $results['images.dimensions_declared_for_fixed_assets'] = $this->imageResult($context['pages'], 'dimensions');
         $results['mobile.usability_basic_rendering'] = $this->mobileRenderedResult($context['browser_render'] ?? []);
+        $results['performance.core_web_vitals_threshold_reviewed'] = $this->coreWebVitalsLabResult($context['lighthouse_lab'] ?? []);
+        $results['performance.analytics_not_blocking_first_paint'] = $this->analyticsFirstPaintLabResult($context['lighthouse_lab'] ?? []);
         $results['structured_data.valid_jsonld'] = $this->structuredDataResult($homepageHtml);
         $results['hreflang.intentional_or_absent'] = $this->result('not_applicable', 'low', ['reason' => 'Fleet default is intentional absence unless a property declares international alternates.']);
         $results['security.https_valid_and_canonical'] = $this->result(Str::startsWith($baseUrl, 'https://') && $this->isSuccessful($homepage) ? 'pass' : 'fail', 'high', ['base_url' => $baseUrl, 'homepage' => Arr::except($homepage, ['body'])], $baseUrl.'/');
@@ -238,6 +245,109 @@ class FleetTechnicalSeoAuditRunner
         $results['analytics.google_evidence_owned_by_mm_google'] = $this->result('unknown', 'low', ['owner_system' => 'MM-Google', 'reason' => 'No imported MM-Google evidence attached to this deterministic run.']);
 
         return $results;
+    }
+
+    /**
+     * @param  array<int, string>  $urls
+     * @return array<string, array<string, mixed>>
+     */
+    private function collectLighthouseLabContext(array $urls): array
+    {
+        $labResults = [];
+
+        foreach ($urls as $url) {
+            $labResults[$url] = $this->boundedLighthouseEvidence($this->lighthouseRunner->run($url));
+        }
+
+        return $labResults;
+    }
+
+    /**
+     * @param  array<string, mixed>  $evidence
+     * @return array<string, mixed>
+     */
+    private function boundedLighthouseEvidence(array $evidence): array
+    {
+        $safe = Arr::only($evidence, [
+            'available',
+            'url',
+            'final_url',
+            'scores',
+            'metrics',
+            'analytics_blocking_first_paint',
+            'analytics_blocking_resources',
+            'threshold_source',
+            'reason',
+        ]);
+
+        if (isset($safe['analytics_blocking_resources']) && is_array($safe['analytics_blocking_resources'])) {
+            $safe['analytics_blocking_resources'] = collect($safe['analytics_blocking_resources'])
+                ->map(fn (mixed $resource): mixed => is_string($resource) ? Str::limit($resource, 240, '') : $resource)
+                ->take(10)
+                ->values()
+                ->all();
+        }
+
+        return $safe;
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $labResults
+     * @return array{status: string, confidence: string, evidence: array<string, mixed>}
+     */
+    private function coreWebVitalsLabResult(array $labResults): array
+    {
+        $checked = $this->availableLabResults($labResults);
+
+        if ($checked === []) {
+            return $this->result('unknown', 'low', ['lighthouse_lab' => $this->firstRenderEvidence($labResults), 'reason' => 'No Lighthouse lab evidence was available.']);
+        }
+
+        return $this->result('pass', 'low', [
+            'lighthouse_lab' => $this->firstRenderEvidence($checked),
+            'checked_url_count' => count($checked),
+            'threshold_source' => data_get($this->firstRenderEvidence($checked), 'threshold_source', 'Fleet-owned threshold review'),
+        ]);
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $labResults
+     * @return array{status: string, confidence: string, evidence: array<string, mixed>}
+     */
+    private function analyticsFirstPaintLabResult(array $labResults): array
+    {
+        $checked = $this->availableLabResults($labResults);
+
+        if ($checked === []) {
+            return $this->result('unknown', 'low', ['lighthouse_lab' => $this->firstRenderEvidence($labResults), 'reason' => 'No Lighthouse lab evidence was available.']);
+        }
+
+        $problemUrls = [];
+        foreach ($checked as $url => $lab) {
+            if (($lab['analytics_blocking_first_paint'] ?? null) === true) {
+                $problemUrls[] = [
+                    'url' => $url,
+                    'analytics_blocking_resources' => $lab['analytics_blocking_resources'] ?? [],
+                ];
+            }
+        }
+
+        return $this->result($problemUrls === [] ? 'pass' : 'manual_review', 'medium', [
+            'lighthouse_lab' => $this->firstRenderEvidence($checked),
+            'problem_urls' => $problemUrls,
+            'checked_url_count' => count($checked),
+        ]);
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $labResults
+     * @return array<string, array<string, mixed>>
+     */
+    private function availableLabResults(array $labResults): array
+    {
+        return collect($labResults)
+            ->filter(fn (array $lab): bool => ($lab['available'] ?? false) === true)
+            ->all();
     }
 
     /**

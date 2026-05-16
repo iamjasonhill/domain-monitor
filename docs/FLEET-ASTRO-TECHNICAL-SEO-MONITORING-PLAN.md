@@ -217,7 +217,6 @@ The first slice should not be considered the complete end state. These later
 execution modes must remain tracked as explicit follow-up work rather than
 being forgotten:
 
-- `lighthouse_lab`
 - broad accessibility automation
 - manual-review workflow UI
 
@@ -235,6 +234,20 @@ property. Production can attach a Playwright/Chrome wrapper by setting
 `FLEET_TECHNICAL_SEO_BROWSER_RENDER_COMMAND`; the command receives the target
 URL as `FLEET_SEO_RENDER_URL` and must return a JSON object with bounded
 rendering fields.
+
+`lighthouse_lab` is now represented in the runtime runner as bounded lab
+evidence for `performance.core_web_vitals_threshold_reviewed` and
+`performance.analytics_not_blocking_first_paint`. The runner stores summarized
+scores, metrics, threshold source, and analytics-blocking evidence only. Raw
+Lighthouse JSON must stay out of audit-result summaries unless a later
+artifact-storage design approves it.
+
+Lighthouse lab collection is wired through `FleetTechnicalSeoLighthouseRunner`.
+Without configuration it returns `unknown` low-confidence evidence rather than
+creating a failure. Production can attach a Lighthouse wrapper by setting
+`FLEET_TECHNICAL_SEO_LIGHTHOUSE_COMMAND`; the command receives the target URL as
+`FLEET_SEO_LIGHTHOUSE_URL` and must return a JSON object with bounded lab
+fields.
 
 If those later modes are not implemented in the first slice, create or keep
 repo-owned GitHub issues for them so the missing coverage is visible.

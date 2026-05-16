@@ -9,6 +9,7 @@ use App\Models\MonitoringFinding;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use App\Services\FleetTechnicalSeoBrowserRenderer;
+use App\Services\FleetTechnicalSeoLighthouseRunner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
@@ -72,7 +73,7 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
 
         $run = FleetTechnicalSeoAuditRun::query()->firstOrFail();
 
-        $this->assertSame(27, $run->summary_counts['not_applicable']);
+        $this->assertSame(29, $run->summary_counts['not_applicable']);
         $this->assertSame(0, $run->summary_counts['fail']);
         $this->assertDatabaseCount('monitoring_findings', 0);
     }
@@ -221,6 +222,75 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
         $this->assertSame(FleetTechnicalSeoAuditResult::STATUS_FAIL, $mobileResult->result_status);
         $this->assertSame(FleetTechnicalSeoAuditResult::CONFIDENCE_MEDIUM, $mobileResult->evidence_confidence);
         $this->assertSame(FleetTechnicalSeoAuditResult::STATUS_MANUAL_REVIEW, $soft404Result->result_status);
+        $this->assertDatabaseCount('monitoring_findings', 0);
+    }
+
+    public function test_lighthouse_lab_mode_records_bounded_metric_evidence(): void
+    {
+        $property = $this->makeProperty('lab-site', 'lab.example');
+        $this->fakeHealthySite('https://lab.example');
+        $this->app->instance(FleetTechnicalSeoLighthouseRunner::class, new class implements FleetTechnicalSeoLighthouseRunner
+        {
+            public function run(string $url): array
+            {
+                return [
+                    'available' => true,
+                    'url' => $url,
+                    'final_url' => $url,
+                    'scores' => ['performance' => 0.94, 'accessibility' => 0.98, 'best_practices' => 0.92, 'seo' => 1.0],
+                    'metrics' => ['lcp_ms' => 1800, 'fcp_ms' => 900, 'cls' => 0.02, 'tbt_ms' => 80],
+                    'analytics_blocking_first_paint' => false,
+                    'analytics_blocking_resources' => [],
+                    'threshold_source' => 'Fleet catalog 2026-05-16',
+                    'raw_lighthouse_json' => ['this' => 'must not be stored'],
+                ];
+            }
+        });
+
+        $this->assertSame(0, Artisan::call('monitoring:run-fleet-technical-seo-audit', [
+            '--property' => $property->slug,
+            '--url-cap' => 10,
+        ]));
+
+        $run = FleetTechnicalSeoAuditRun::query()->firstOrFail();
+        $coreWebVitals = FleetTechnicalSeoAuditResult::query()
+            ->where('check_id', 'performance.core_web_vitals_threshold_reviewed')
+            ->firstOrFail();
+        $analyticsBlocking = FleetTechnicalSeoAuditResult::query()
+            ->where('check_id', 'performance.analytics_not_blocking_first_paint')
+            ->firstOrFail();
+
+        $this->assertContains('lighthouse_lab', $run->execution_modes);
+        $this->assertSame(FleetTechnicalSeoAuditResult::STATUS_PASS, $coreWebVitals->result_status);
+        $this->assertSame(FleetTechnicalSeoAuditResult::CONFIDENCE_LOW, $coreWebVitals->evidence_confidence);
+        $this->assertSame(1800, $coreWebVitals->evidence['lighthouse_lab']['metrics']['lcp_ms']);
+        $this->assertArrayNotHasKey('raw_lighthouse_json', $coreWebVitals->evidence['lighthouse_lab']);
+        $this->assertSame(FleetTechnicalSeoAuditResult::STATUS_PASS, $analyticsBlocking->result_status);
+        $this->assertSame(FleetTechnicalSeoAuditResult::CONFIDENCE_MEDIUM, $analyticsBlocking->evidence_confidence);
+        $this->assertDatabaseCount('monitoring_findings', 0);
+    }
+
+    public function test_lighthouse_lab_mode_records_unknown_when_lab_evidence_is_missing(): void
+    {
+        $property = $this->makeProperty('missing-lab-site', 'missing-lab.example');
+        $this->fakeHealthySite('https://missing-lab.example');
+
+        $this->assertSame(0, Artisan::call('monitoring:run-fleet-technical-seo-audit', [
+            '--property' => $property->slug,
+            '--url-cap' => 10,
+        ]));
+
+        $coreWebVitals = FleetTechnicalSeoAuditResult::query()
+            ->where('check_id', 'performance.core_web_vitals_threshold_reviewed')
+            ->firstOrFail();
+        $analyticsBlocking = FleetTechnicalSeoAuditResult::query()
+            ->where('check_id', 'performance.analytics_not_blocking_first_paint')
+            ->firstOrFail();
+
+        $this->assertSame(FleetTechnicalSeoAuditResult::STATUS_UNKNOWN, $coreWebVitals->result_status);
+        $this->assertSame(FleetTechnicalSeoAuditResult::CONFIDENCE_LOW, $coreWebVitals->evidence_confidence);
+        $this->assertSame('No Lighthouse lab evidence was available.', $coreWebVitals->evidence['reason']);
+        $this->assertSame(FleetTechnicalSeoAuditResult::STATUS_UNKNOWN, $analyticsBlocking->result_status);
         $this->assertDatabaseCount('monitoring_findings', 0);
     }
 

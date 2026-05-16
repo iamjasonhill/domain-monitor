@@ -82,6 +82,8 @@ return [
     'fleet_technical_seo' => [
         'browser_render_command' => env('FLEET_TECHNICAL_SEO_BROWSER_RENDER_COMMAND'),
         'browser_render_timeout' => (int) env('FLEET_TECHNICAL_SEO_BROWSER_RENDER_TIMEOUT', 20),
+        'lighthouse_command' => env('FLEET_TECHNICAL_SEO_LIGHTHOUSE_COMMAND'),
+        'lighthouse_timeout' => (int) env('FLEET_TECHNICAL_SEO_LIGHTHOUSE_TIMEOUT', 60),
     ],
 
 ];

@@ -3,8 +3,11 @@
 namespace App\Providers;
 
 use App\Services\CommandFleetTechnicalSeoBrowserRenderer;
+use App\Services\CommandFleetTechnicalSeoLighthouseRunner;
 use App\Services\FleetTechnicalSeoBrowserRenderer;
+use App\Services\FleetTechnicalSeoLighthouseRunner;
 use App\Services\UnavailableFleetTechnicalSeoBrowserRenderer;
+use App\Services\UnavailableFleetTechnicalSeoLighthouseRunner;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -25,6 +28,19 @@ class AppServiceProvider extends ServiceProvider
             }
 
             return new UnavailableFleetTechnicalSeoBrowserRenderer;
+        });
+
+        $this->app->bind(FleetTechnicalSeoLighthouseRunner::class, function (): FleetTechnicalSeoLighthouseRunner {
+            $command = config('services.fleet_technical_seo.lighthouse_command');
+
+            if (is_string($command) && trim($command) !== '') {
+                return new CommandFleetTechnicalSeoLighthouseRunner(
+                    command: $command,
+                    timeoutSeconds: (int) config('services.fleet_technical_seo.lighthouse_timeout', 60),
+                );
+            }
+
+            return new UnavailableFleetTechnicalSeoLighthouseRunner;
         });
     }
 
