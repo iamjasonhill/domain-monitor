@@ -259,6 +259,14 @@ durable-actionable, owner-identified, dedupe-safe rules above are satisfied.
 Manual review notes remain audit evidence and are not part of the Control API
 summary.
 
+Broad accessibility automation is deliberately review-class by default. The
+browser-render evidence contract can carry document language, H1 count,
+landmark counts, unnamed link/button counts, missing form-label counts,
+duplicate ID counts, ARIA-invalid counts, heading-order issue counts, and
+color-contrast violation counts. These signals produce `manual_review` evidence
+for `accessibility.semantic_baseline` unless Fleet promotes a specific,
+high-confidence accessibility rule to failure-class later.
+
 If those later modes are not implemented in the first slice, create or keep
 repo-owned GitHub issues for them so the missing coverage is visible.
 

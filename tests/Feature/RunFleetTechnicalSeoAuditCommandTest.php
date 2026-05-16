@@ -294,6 +294,56 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
         $this->assertDatabaseCount('monitoring_findings', 0);
     }
 
+    public function test_broad_accessibility_evidence_records_manual_review_without_attention_noise(): void
+    {
+        $property = $this->makeProperty('a11y-review-site', 'a11y-review.example');
+        $this->fakeHealthySite('https://a11y-review.example');
+        $this->app->instance(FleetTechnicalSeoBrowserRenderer::class, new class implements FleetTechnicalSeoBrowserRenderer
+        {
+            public function render(string $url): array
+            {
+                return [
+                    'available' => true,
+                    'url' => $url,
+                    'final_url' => $url,
+                    'title' => 'Accessible review',
+                    'text_sample' => 'Accessible review Quote',
+                    'body_text_length' => 500,
+                    'console_errors' => [],
+                    'viewport' => ['width' => 390, 'height' => 844],
+                    'content_width' => 390,
+                    'h1_count' => 1,
+                    'html_lang' => 'en',
+                    'main_landmark_count' => 1,
+                    'nav_landmark_count' => 1,
+                    'link_without_name_count' => 0,
+                    'color_contrast_violation_count' => 2,
+                    'form_label_missing_count' => 1,
+                    'button_without_name_count' => 1,
+                    'duplicate_id_count' => 1,
+                    'aria_invalid_count' => 1,
+                    'heading_order_issue_count' => 1,
+                ];
+            }
+        });
+
+        $this->assertSame(0, Artisan::call('monitoring:run-fleet-technical-seo-audit', [
+            '--property' => $property->slug,
+            '--url-cap' => 10,
+        ]));
+
+        $accessibilityResult = FleetTechnicalSeoAuditResult::query()
+            ->where('check_id', 'accessibility.semantic_baseline')
+            ->firstOrFail();
+
+        $this->assertSame(FleetTechnicalSeoAuditResult::STATUS_MANUAL_REVIEW, $accessibilityResult->result_status);
+        $this->assertSame(FleetTechnicalSeoAuditResult::CONFIDENCE_MEDIUM, $accessibilityResult->evidence_confidence);
+        $this->assertContains('color_contrast', $accessibilityResult->evidence['problem_urls'][0]['problems']);
+        $this->assertContains('missing_form_labels', $accessibilityResult->evidence['problem_urls'][0]['problems']);
+        $this->assertSame('not_attention', $accessibilityResult->evidence['manual_review']['attention_default']);
+        $this->assertDatabaseCount('monitoring_findings', 0);
+    }
+
     /**
      * @param  array<string, mixed>  $attributes
      */

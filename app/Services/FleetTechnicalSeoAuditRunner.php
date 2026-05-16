@@ -386,6 +386,12 @@ class FleetTechnicalSeoAuditRunner
             'main_landmark_count',
             'nav_landmark_count',
             'link_without_name_count',
+            'color_contrast_violation_count',
+            'form_label_missing_count',
+            'button_without_name_count',
+            'duplicate_id_count',
+            'aria_invalid_count',
+            'heading_order_issue_count',
             'reason',
         ]);
 
@@ -476,6 +482,30 @@ class FleetTechnicalSeoAuditRunner
 
             if ((int) ($rendered['link_without_name_count'] ?? 0) > 0) {
                 $problems[] = 'unnamed_links';
+            }
+
+            if ((int) ($rendered['color_contrast_violation_count'] ?? 0) > 0) {
+                $problems[] = 'color_contrast';
+            }
+
+            if ((int) ($rendered['form_label_missing_count'] ?? 0) > 0) {
+                $problems[] = 'missing_form_labels';
+            }
+
+            if ((int) ($rendered['button_without_name_count'] ?? 0) > 0) {
+                $problems[] = 'unnamed_buttons';
+            }
+
+            if ((int) ($rendered['duplicate_id_count'] ?? 0) > 0) {
+                $problems[] = 'duplicate_ids';
+            }
+
+            if ((int) ($rendered['aria_invalid_count'] ?? 0) > 0) {
+                $problems[] = 'invalid_aria';
+            }
+
+            if ((int) ($rendered['heading_order_issue_count'] ?? 0) > 0) {
+                $problems[] = 'heading_order';
             }
 
             if ($problems !== []) {
