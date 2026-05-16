@@ -5,7 +5,9 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "fleet-seo:browser-render": "node scripts/fleet-seo-browser-render.mjs",
+        "test:node": "node --test tests/Node/*.test.mjs"
     },
     "devDependencies": {
         "@tailwindcss/forms": "^0.5.11",
@@ -13,6 +15,7 @@
         "axios": "^1.15.1",
         "concurrently": "^9.0.1",
         "laravel-vite-plugin": "^3.0.1",
+        "playwright": "^1.60.0",
         "tailwindcss": "^4.1.18",
         "vite": "^8.0.8"
     }

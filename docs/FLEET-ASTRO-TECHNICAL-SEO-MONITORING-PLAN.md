@@ -253,6 +253,9 @@ untracked operator-machine script. The command-adapter environment variables are
 still the runtime interface, but the scripts they point to should live in this
 repo with explicit Node dependencies, bounded JSON output, and tests. That keeps
 the Fleet SEO audit repeatable for Codex, local operators, and scheduled runs.
+The default repo-owned command is `npm run fleet-seo:browser-render --silent`,
+which runs `scripts/fleet-seo-browser-render.mjs` and reads the target URL from
+`FLEET_SEO_RENDER_URL`.
 
 `lighthouse_lab` is now represented in the runtime runner as bounded lab
 evidence for `performance.core_web_vitals_threshold_reviewed` and
