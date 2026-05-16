@@ -115,6 +115,7 @@ class WebPropertyController extends Controller
                     ->where('status', MonitoringFinding::STATUS_OPEN)
                     ->with('domain:id,domain,platform,dns_config_name,parked_override')
                     ->orderByDesc('last_detected_at'),
+                'latestFleetTechnicalSeoAuditRun.results.monitoringFinding',
                 'seoBaselines' => fn ($query) => $query
                     ->orderByDesc('captured_at')
                     ->orderByDesc('created_at')

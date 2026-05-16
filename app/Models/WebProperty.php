@@ -246,6 +246,14 @@ class WebProperty extends Model
     }
 
     /**
+     * @return HasOne<FleetTechnicalSeoAuditRun, $this>
+     */
+    public function latestFleetTechnicalSeoAuditRun(): HasOne
+    {
+        return $this->hasOne(FleetTechnicalSeoAuditRun::class)->latestOfMany('started_at');
+    }
+
+    /**
      * @return HasMany<DomainSeoBaseline, $this>
      */
     public function seoBaselines(): HasMany
@@ -1203,6 +1211,7 @@ class WebProperty extends Model
             'freshness' => $freshnessSummary,
             'health_summary' => $healthSummary,
             'monitoring_summary' => $monitoringSummary,
+            'fleet_technical_seo_audit_summary' => $this->fleetTechnicalSeoAuditSummary(),
             'deployment_summary' => $this->deploymentSummary(),
             'tags' => $this->tagSummaries(),
             'control_state' => $executionReadiness['control_state'],
@@ -1220,6 +1229,125 @@ class WebProperty extends Model
             'seo_baseline_summary' => $seoBaselineSummary,
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * @return array{
+     *   has_audit: bool,
+     *   status: string|null,
+     *   latest_run_id: string|null,
+     *   catalog_version: string|null,
+     *   catalog_checksum: string|null,
+     *   execution_modes: array<int, string>,
+     *   url_cap: int|null,
+     *   skipped_url_count: int,
+     *   started_at: string|null,
+     *   finished_at: string|null,
+     *   summary_counts: array{pass: int, fail: int, manual_review: int, unknown: int, not_applicable: int},
+     *   source_system: string,
+     *   source_path: string|null,
+     *   attention_findings: array<int, array{id: string, issue_id: string, status: string, title: string}>
+     * }
+     */
+    public function fleetTechnicalSeoAuditSummary(): array
+    {
+        $run = $this->relationLoaded('latestFleetTechnicalSeoAuditRun')
+            ? $this->latestFleetTechnicalSeoAuditRun
+            : $this->latestFleetTechnicalSeoAuditRun()->with('results.monitoringFinding')->first();
+        $emptyCounts = [
+            'pass' => 0,
+            'fail' => 0,
+            'manual_review' => 0,
+            'unknown' => 0,
+            'not_applicable' => 0,
+        ];
+
+        if (! $run instanceof FleetTechnicalSeoAuditRun) {
+            return [
+                'has_audit' => false,
+                'status' => null,
+                'latest_run_id' => null,
+                'catalog_version' => null,
+                'catalog_checksum' => null,
+                'execution_modes' => [],
+                'url_cap' => null,
+                'skipped_url_count' => 0,
+                'started_at' => null,
+                'finished_at' => null,
+                'summary_counts' => $emptyCounts,
+                'source_system' => 'domain-monitor',
+                'source_path' => null,
+                'attention_findings' => [],
+            ];
+        }
+
+        $rawCounts = array_merge($emptyCounts, array_intersect_key(
+            is_array($run->summary_counts) ? $run->summary_counts : [],
+            $emptyCounts
+        ));
+        $counts = [
+            'pass' => (int) $rawCounts['pass'],
+            'fail' => (int) $rawCounts['fail'],
+            'manual_review' => (int) $rawCounts['manual_review'],
+            'unknown' => (int) $rawCounts['unknown'],
+            'not_applicable' => (int) $rawCounts['not_applicable'],
+        ];
+        $skippedUrlCount = (int) data_get($run->summary_counts, 'not_checked_due_to_limit', 0);
+        $attentionFindings = $run->results
+            ->filter(fn (FleetTechnicalSeoAuditResult $result): bool => $result->result_status === FleetTechnicalSeoAuditResult::STATUS_FAIL
+                && $result->evidence_confidence === FleetTechnicalSeoAuditResult::CONFIDENCE_HIGH
+                && $result->monitoringFinding instanceof MonitoringFinding)
+            ->map(fn (FleetTechnicalSeoAuditResult $result): array => [
+                'id' => (string) $result->monitoringFinding?->id,
+                'issue_id' => (string) $result->monitoringFinding?->issue_id,
+                'status' => (string) $result->monitoringFinding?->status,
+                'title' => (string) $result->monitoringFinding?->title,
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'has_audit' => true,
+            'status' => $this->fleetTechnicalSeoAuditStatus($counts),
+            'latest_run_id' => $run->id,
+            'catalog_version' => $run->catalog_version,
+            'catalog_checksum' => $run->catalog_checksum,
+            'execution_modes' => array_values($run->execution_modes),
+            'url_cap' => $run->url_cap,
+            'skipped_url_count' => $skippedUrlCount,
+            'started_at' => $run->started_at?->toIso8601String(),
+            'finished_at' => $run->finished_at?->toIso8601String(),
+            'summary_counts' => [
+                'pass' => (int) $counts['pass'],
+                'fail' => (int) $counts['fail'],
+                'manual_review' => (int) $counts['manual_review'],
+                'unknown' => (int) $counts['unknown'],
+                'not_applicable' => (int) $counts['not_applicable'],
+            ],
+            'source_system' => 'domain-monitor',
+            'source_path' => '/api/web-properties/'.$this->slug,
+            'attention_findings' => $attentionFindings,
+        ];
+    }
+
+    /**
+     * @param  array{pass: int, fail: int, manual_review: int, unknown: int, not_applicable: int}  $counts
+     */
+    private function fleetTechnicalSeoAuditStatus(array $counts): string
+    {
+        if ($counts['fail'] > 0) {
+            return 'fail';
+        }
+
+        if ($counts['unknown'] > 0) {
+            return 'unknown';
+        }
+
+        if ($counts['manual_review'] > 0) {
+            return 'manual_review';
+        }
+
+        return 'pass';
     }
 
     /**
