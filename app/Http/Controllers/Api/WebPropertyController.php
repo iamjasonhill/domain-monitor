@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Schema;
 
 class WebPropertyController extends Controller
 {
@@ -100,44 +101,55 @@ class WebPropertyController extends Controller
      */
     private function baseQuery(bool $includeExternalLinkDetails = true): Builder
     {
+        $relations = [
+            'primaryDomain.tags',
+            'repositories',
+            'analyticsSources',
+            'analyticsSources.latestInstallAudit',
+            'eventContractAssignments.eventContract',
+            'conversionSurfaces.domain',
+            'conversionSurfaces.analyticsSource',
+            'conversionSurfaces.eventContractAssignment.eventContract',
+            'monitoringFindings' => fn ($query) => $query
+                ->where('status', MonitoringFinding::STATUS_OPEN)
+                ->with('domain:id,domain,platform,dns_config_name,parked_override')
+                ->orderByDesc('last_detected_at'),
+            'seoBaselines' => fn ($query) => $query
+                ->orderByDesc('captured_at')
+                ->orderByDesc('created_at')
+                ->limit(12),
+            'propertyDomains.domain' => function ($query) use ($includeExternalLinkDetails) {
+                $domainRelations = [
+                    'platform',
+                    'tags',
+                    'dnsRecords',
+                    'latestEmailSecurityCheck',
+                    'deployments.domain',
+                    'alerts' => fn ($alertQuery) => $alertQuery->whereNull('resolved_at'),
+                ];
+
+                if ($includeExternalLinkDetails) {
+                    $domainRelations[] = 'latestExternalLinksCheck';
+                }
+
+                $query->withLatestCheckStatuses()
+                    ->with($domainRelations);
+            },
+        ];
+
+        if ($this->fleetTechnicalSeoAuditTablesExist()) {
+            $relations[] = 'latestFleetTechnicalSeoAuditRun.results.monitoringFinding';
+        }
+
         return WebProperty::query()
             ->withGscEvidenceSummaryAttributes()
-            ->with([
-                'primaryDomain.tags',
-                'repositories',
-                'analyticsSources',
-                'analyticsSources.latestInstallAudit',
-                'eventContractAssignments.eventContract',
-                'conversionSurfaces.domain',
-                'conversionSurfaces.analyticsSource',
-                'conversionSurfaces.eventContractAssignment.eventContract',
-                'monitoringFindings' => fn ($query) => $query
-                    ->where('status', MonitoringFinding::STATUS_OPEN)
-                    ->with('domain:id,domain,platform,dns_config_name,parked_override')
-                    ->orderByDesc('last_detected_at'),
-                'latestFleetTechnicalSeoAuditRun.results.monitoringFinding',
-                'seoBaselines' => fn ($query) => $query
-                    ->orderByDesc('captured_at')
-                    ->orderByDesc('created_at')
-                    ->limit(12),
-                'propertyDomains.domain' => function ($query) use ($includeExternalLinkDetails) {
-                    $relations = [
-                        'platform',
-                        'tags',
-                        'dnsRecords',
-                        'latestEmailSecurityCheck',
-                        'deployments.domain',
-                        'alerts' => fn ($alertQuery) => $alertQuery->whereNull('resolved_at'),
-                    ];
+            ->with($relations);
+    }
 
-                    if ($includeExternalLinkDetails) {
-                        $relations[] = 'latestExternalLinksCheck';
-                    }
-
-                    $query->withLatestCheckStatuses()
-                        ->with($relations);
-                },
-            ]);
+    private function fleetTechnicalSeoAuditTablesExist(): bool
+    {
+        return Schema::hasTable('fleet_technical_seo_audit_runs')
+            && Schema::hasTable('fleet_technical_seo_audit_results');
     }
 
     private function findBySlug(string $slug): ?WebProperty

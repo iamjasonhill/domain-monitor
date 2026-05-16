@@ -9,6 +9,7 @@ use App\Models\MonitoringFinding;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class WebPropertyFleetTechnicalSeoAuditSummaryApiTest extends TestCase
@@ -29,6 +30,23 @@ class WebPropertyFleetTechnicalSeoAuditSummaryApiTest extends TestCase
             ->assertJsonPath('web_properties.0.fleet_technical_seo_audit_summary.status', null)
             ->assertJsonPath('web_properties.0.fleet_technical_seo_audit_summary.summary_counts.fail', 0)
             ->assertJsonPath('web_properties.0.fleet_technical_seo_audit_summary.execution_modes', [])
+            ->assertJsonPath('web_properties.0.fleet_technical_seo_audit_summary.attention_findings', []);
+    }
+
+    public function test_web_property_summary_remains_available_before_fleet_seo_audit_tables_are_migrated(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $property = $this->makeProperty('pre-migration-site', 'pre-migration.example');
+        Schema::dropIfExists('fleet_technical_seo_audit_results');
+        Schema::dropIfExists('fleet_technical_seo_audit_runs');
+
+        $this->withHeaders(['Authorization' => 'Bearer test-api-key'])
+            ->getJson('/api/web-properties-summary')
+            ->assertOk()
+            ->assertJsonPath('web_properties.0.slug', $property->slug)
+            ->assertJsonPath('web_properties.0.fleet_technical_seo_audit_summary.has_audit', false)
+            ->assertJsonPath('web_properties.0.fleet_technical_seo_audit_summary.summary_counts.fail', 0)
             ->assertJsonPath('web_properties.0.fleet_technical_seo_audit_summary.attention_findings', []);
     }
 

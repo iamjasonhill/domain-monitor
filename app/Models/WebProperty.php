@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 /**
@@ -1251,9 +1252,6 @@ class WebProperty extends Model
      */
     public function fleetTechnicalSeoAuditSummary(): array
     {
-        $run = $this->relationLoaded('latestFleetTechnicalSeoAuditRun')
-            ? $this->latestFleetTechnicalSeoAuditRun
-            : $this->latestFleetTechnicalSeoAuditRun()->with('results.monitoringFinding')->first();
         $emptyCounts = [
             'pass' => 0,
             'fail' => 0,
@@ -1262,23 +1260,16 @@ class WebProperty extends Model
             'not_applicable' => 0,
         ];
 
+        if (! Schema::hasTable('fleet_technical_seo_audit_runs') || ! Schema::hasTable('fleet_technical_seo_audit_results')) {
+            return $this->emptyFleetTechnicalSeoAuditSummary($emptyCounts);
+        }
+
+        $run = $this->relationLoaded('latestFleetTechnicalSeoAuditRun')
+            ? $this->latestFleetTechnicalSeoAuditRun
+            : $this->latestFleetTechnicalSeoAuditRun()->with('results.monitoringFinding')->first();
+
         if (! $run instanceof FleetTechnicalSeoAuditRun) {
-            return [
-                'has_audit' => false,
-                'status' => null,
-                'latest_run_id' => null,
-                'catalog_version' => null,
-                'catalog_checksum' => null,
-                'execution_modes' => [],
-                'url_cap' => null,
-                'skipped_url_count' => 0,
-                'started_at' => null,
-                'finished_at' => null,
-                'summary_counts' => $emptyCounts,
-                'source_system' => 'domain-monitor',
-                'source_path' => null,
-                'attention_findings' => [],
-            ];
+            return $this->emptyFleetTechnicalSeoAuditSummary($emptyCounts);
         }
 
         $rawCounts = array_merge($emptyCounts, array_intersect_key(
@@ -1327,6 +1318,45 @@ class WebProperty extends Model
             'source_system' => 'domain-monitor',
             'source_path' => '/api/web-properties/'.$this->slug,
             'attention_findings' => $attentionFindings,
+        ];
+    }
+
+    /**
+     * @param  array{pass: int, fail: int, manual_review: int, unknown: int, not_applicable: int}  $emptyCounts
+     * @return array{
+     *   has_audit: false,
+     *   status: null,
+     *   latest_run_id: null,
+     *   catalog_version: null,
+     *   catalog_checksum: null,
+     *   execution_modes: array<int, string>,
+     *   url_cap: null,
+     *   skipped_url_count: 0,
+     *   started_at: null,
+     *   finished_at: null,
+     *   summary_counts: array{pass: int, fail: int, manual_review: int, unknown: int, not_applicable: int},
+     *   source_system: string,
+     *   source_path: null,
+     *   attention_findings: array<int, array{id: string, issue_id: string, status: string, title: string}>
+     * }
+     */
+    private function emptyFleetTechnicalSeoAuditSummary(array $emptyCounts): array
+    {
+        return [
+            'has_audit' => false,
+            'status' => null,
+            'latest_run_id' => null,
+            'catalog_version' => null,
+            'catalog_checksum' => null,
+            'execution_modes' => [],
+            'url_cap' => null,
+            'skipped_url_count' => 0,
+            'started_at' => null,
+            'finished_at' => null,
+            'summary_counts' => $emptyCounts,
+            'source_system' => 'domain-monitor',
+            'source_path' => null,
+            'attention_findings' => [],
         ];
     }
 
