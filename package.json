@@ -7,6 +7,7 @@
         "build": "vite build",
         "dev": "vite",
         "fleet-seo:browser-render": "node scripts/fleet-seo-browser-render.mjs",
+        "fleet-seo:lighthouse": "node scripts/fleet-seo-lighthouse.mjs",
         "test:node": "node --test tests/Node/*.test.mjs"
     },
     "devDependencies": {
@@ -16,6 +17,7 @@
         "axios": "^1.15.1",
         "concurrently": "^9.0.1",
         "laravel-vite-plugin": "^3.0.1",
+        "lighthouse": "^13.3.0",
         "playwright": "^1.60.0",
         "tailwindcss": "^4.1.18",
         "vite": "^8.0.8"

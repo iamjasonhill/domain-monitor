@@ -275,6 +275,9 @@ The Lighthouse adapter follows the same ownership rule as browser render: the
 real command should be implemented and versioned in `domain-monitor`, with the
 environment variable selecting that repo-owned command in local, scheduled, and
 production contexts.
+The default repo-owned command is `npm run fleet-seo:lighthouse --silent`, which
+runs `scripts/fleet-seo-lighthouse.mjs` and reads the target URL from
+`FLEET_SEO_LIGHTHOUSE_URL`.
 
 Manual-review evidence has a stable result-level payload shape. Audit results
 with `manual_review` status carry a `manual_review` payload with `status`,
