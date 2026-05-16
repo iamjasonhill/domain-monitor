@@ -155,6 +155,19 @@ deliberately. Use these execution modes:
   and policy exceptions
 
 The full audit may run in phases by execution mode instead of one giant sweep.
+The core runtime invariant is still one `WebProperty` at a time. Estate-wide
+auditing should be a repo-owned batch/orchestrator command that selects eligible
+properties and invokes the existing single-property runner sequentially. It
+should support bounded operator controls such as dry-run, limit, property/domain
+selection, and continue-on-failure behavior, while each audit run remains scoped
+to one property selector.
+
+The first estate-wide rollout should default to conservative mode. It should
+run sequentially, require or default to a low property limit, preserve the
+per-property URL cap, include dry-run support, and only use browser/Lighthouse
+evidence when the repo-owned commands are configured. A deliberate full-estate
+mode can come later once runtime duration, evidence quality, and Attention noise
+are trusted.
 
 Only `fail` should open or update a runtime finding for Control Attention by
 default. `unknown` should create an owning-repo GitHub issue when the evidence
@@ -235,6 +248,12 @@ property. Production can attach a Playwright/Chrome wrapper by setting
 URL as `FLEET_SEO_RENDER_URL` and must return a JSON object with bounded
 rendering fields.
 
+The browser-render adapter should be repo-owned inside `domain-monitor`, not an
+untracked operator-machine script. The command-adapter environment variables are
+still the runtime interface, but the scripts they point to should live in this
+repo with explicit Node dependencies, bounded JSON output, and tests. That keeps
+the Fleet SEO audit repeatable for Codex, local operators, and scheduled runs.
+
 `lighthouse_lab` is now represented in the runtime runner as bounded lab
 evidence for `performance.core_web_vitals_threshold_reviewed` and
 `performance.analytics_not_blocking_first_paint`. The runner stores summarized
@@ -248,6 +267,11 @@ creating a failure. Production can attach a Lighthouse wrapper by setting
 `FLEET_TECHNICAL_SEO_LIGHTHOUSE_COMMAND`; the command receives the target URL as
 `FLEET_SEO_LIGHTHOUSE_URL` and must return a JSON object with bounded lab
 fields.
+
+The Lighthouse adapter follows the same ownership rule as browser render: the
+real command should be implemented and versioned in `domain-monitor`, with the
+environment variable selecting that repo-owned command in local, scheduled, and
+production contexts.
 
 Manual-review evidence has a stable result-level payload shape. Audit results
 with `manual_review` status carry a `manual_review` payload with `status`,
@@ -266,6 +290,15 @@ duplicate ID counts, ARIA-invalid counts, heading-order issue counts, and
 color-contrast violation counts. These signals produce `manual_review` evidence
 for `accessibility.semantic_baseline` unless Fleet promotes a specific,
 high-confidence accessibility rule to failure-class later.
+
+Repo-owned browser evidence should include axe-style accessibility collection
+because these defects are important and often missed by general SEO checks.
+`axe-core` or equivalent tooling is an evidence collector, not a competing
+standard: it should emit bounded counts/categories into the existing Fleet check
+IDs, make accessibility coverage visible in audit summaries, and keep default
+runtime behavior as `manual_review` rather than Attention failure. Severe or
+repeated evidence can become owner-routable site-repo issues only when the
+durable-actionable and dedupe rules are satisfied.
 
 If those later modes are not implemented in the first slice, create or keep
 repo-owned GitHub issues for them so the missing coverage is visible.
