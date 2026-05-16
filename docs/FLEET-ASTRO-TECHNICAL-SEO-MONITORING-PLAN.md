@@ -68,6 +68,189 @@ Those documents already define the standard for:
 It does not mean building a generic competitor-style SEO crawler or duplicating
 Fleet standards inside `domain-monitor`.
 
+The target scope is full Fleet-standard runtime auditing for operational
+website properties only. This is broader than the first narrow runtime lane,
+but still bounded by Fleet applicability. Parked domains, email-only domains,
+domain assets, and deliberately non-operational properties are excluded by
+default unless Fleet records an explicit per-property expectation.
+
+A `WebProperty` is eligible for full Fleet technical SEO runtime auditing by
+default only when all of these are true:
+
+- status is `active`
+- property type is `website`
+- it has a usable production URL or canonical primary domain
+- it is not classified as parked, email-only, domain asset, or
+  non-operational
+- it is not an app shell unless Fleet explicitly marks it as website-policy
+  eligible
+- it has enough controller and canonical-origin context to choose applicable
+  checks
+
+All other properties should return `not_applicable` for the full runtime audit
+unless Fleet records an explicit override.
+
+The canonical runtime audit unit is a `WebProperty`, not a raw domain. Domains,
+subdomains, and URLs are linked surfaces used as selectors and evidence
+locations. If an operator starts from `--domain=example.com`,
+`domain-monitor` should resolve that domain to the owning `WebProperty` before
+applying Fleet rules. The property context determines site type, status,
+canonical origin, controller repo, linked domains, and applicable checks.
+
+The runtime should support one-`WebProperty` execution, with domain-based
+selection as a convenience, so expensive checks can be run deliberately without
+sweeping the whole estate every time. For each applicable Fleet catalog check,
+`domain-monitor` should record one status:
+
+- `pass`
+- `fail`
+- `not_applicable`
+- `manual_review`
+- `unknown`
+
+Each check result should also record `evidence_confidence`:
+
+- `high`
+- `medium`
+- `low`
+
+Control Attention should receive a runtime finding only when
+`result_status = fail` and `evidence_confidence = high`, or when Fleet has
+explicitly approved that check to surface medium-confidence failures. Low
+confidence, weak crawler signals, flaky external dependencies, and ambiguous
+evidence should be stored as audit evidence or `unknown`, not promoted to
+Attention automatically.
+
+The full runtime audit is a bounded crawl, not a homepage-only check. The
+default URL set for an eligible `WebProperty` should include:
+
+- the production URL or canonical homepage
+- URLs listed in sitemap, capped by a configurable limit
+- key internal links discovered from the homepage and sampled sitemap pages
+- declared conversion, contact, quote, or booking URLs from `domain-monitor`
+  property context
+- manually configured critical URLs when Fleet or the site repo provides them
+
+The initial default cap should be conservative, such as 25 URLs per
+`WebProperty`, with per-property overrides. URLs skipped because of the cap
+must be recorded as `not_checked_due_to_limit`; they must not be treated as
+passing evidence.
+
+Each catalog check should declare an execution mode so cheap deterministic
+checks can run more often and expensive or subjective checks can run
+deliberately. Use these execution modes:
+
+- `http_fetch`: status, redirects, headers, robots, and sitemap fetchability
+- `html_parse`: title, meta, canonical, headings, links, images, and schema
+  parsing from fetched HTML
+- `bounded_crawl`: duplicate metadata, broken internal links, sitemap URL
+  consistency, and sampled page relationships
+- `browser_render`: rendered DOM, JavaScript redirects, console errors, and
+  mobile layout basics
+- `lighthouse_lab`: Core Web Vitals-style lab metrics, accessibility, and
+  best-practice checks
+- `imported_evidence`: Search Console, GA4, `MM-Google`, or retained benchmark
+  artifacts
+- `manual_review`: soft-404 judgement, content relevance, semantic judgement,
+  and policy exceptions
+
+The full audit may run in phases by execution mode instead of one giant sweep.
+
+Only `fail` should open or update a runtime finding for Control Attention by
+default. `unknown` should create an owning-repo GitHub issue when the evidence
+or ownership cannot be determined from current docs, code, live checks, or
+imported source truth.
+
+An `unknown` result should create a GitHub issue only when it is durable and
+actionable. Create an issue when all of these are true:
+
+- the check applies to the `WebProperty`
+- `domain-monitor` cannot determine pass or fail after one retry or a
+  reasonable secondary evidence source
+- the unknown affects a rule that could become a failure if true
+- the owner repo or system can be identified, or the issue is routed to
+  Bossman for ownership decision
+- the issue can be deduped by `web_property + check_id + owner_repo`
+
+Do not create GitHub issues for:
+
+- URLs skipped because of the crawl cap
+- a transient timeout on first attempt
+- checks marked `manual_review`
+- checks where Fleet says unknown is an acceptable evidence state
+- one issue per affected URL unless the owning repo explicitly needs URL-level
+  tickets
+
+`domain-monitor` should store full audit evidence separately from
+Attention-facing findings. Conceptually:
+
+- `fleet_technical_seo_audit_runs`
+  - `web_property_id`
+  - trigger type, such as manual, scheduled, or operator-requested
+  - URL cap
+  - execution modes included
+  - started and finished timestamps
+  - summary counts
+- `fleet_technical_seo_audit_results`
+  - `run_id`
+  - `check_id`
+  - URL or property-level evidence target
+  - `result_status`
+  - `evidence_confidence`
+  - evidence payload
+  - owner system
+  - linked `domain-monitor` finding, when a result becomes a failure
+  - linked GitHub issue URL, when a durable `unknown` needs owner resolution
+
+`MonitoringFinding` remains the Attention-facing failure surface, not the full
+audit record.
+
+The first implementation slice should build the audit runner, storage, bounded
+URL selection, and deterministic execution modes:
+
+- `http_fetch`
+- `html_parse`
+- `bounded_crawl`
+- `imported_evidence`, where the evidence already exists
+
+The first slice should not be considered the complete end state. These later
+execution modes must remain tracked as explicit follow-up work rather than
+being forgotten:
+
+- `browser_render`
+- `lighthouse_lab`
+- broad accessibility automation
+- manual-review workflow UI
+
+If those later modes are not implemented in the first slice, create or keep
+repo-owned GitHub issues for them so the missing coverage is visible.
+
+Control should import and display the full-audit summary separately from
+Attention. The summary view should show, per `WebProperty`:
+
+- latest full audit status
+- counts by `pass`, `fail`, `manual_review`, `unknown`, and `not_applicable`
+- execution modes included
+- URL cap and skipped URL count
+- timestamp and source link back to `domain-monitor`
+- Attention link only when high-confidence failures exist
+
+Control Attention remains failures-only. Clean passes, skipped URL counts,
+manual-review counts, and general audit coverage should be visible in a calm
+audit summary surface rather than becoming Attention signals.
+
+Fleet remains the canonical owner of the machine-readable technical SEO check
+catalog. Fleet owns check IDs, applicability, signal class, wording, and policy
+decisions. `domain-monitor` may import or mirror a versioned snapshot of the
+Fleet catalog for execution, but that snapshot must not become a competing
+standard.
+
+Each `domain-monitor` audit run should record the Fleet catalog version or
+checksum it executed. Runtime-specific implementation fields may live in
+`domain-monitor` as mapping metadata, but they must point back to Fleet-owned
+check IDs. Control may display the catalog version and check IDs from
+`domain-monitor` evidence, but Control does not own the catalog.
+
 Any actionable runtime verification issue should be visible in Control
 Attention at `https://control.again.com.au/admin/attention` so an operator can
 decide whether to route, suppress, accept, or investigate it. `domain-monitor`
