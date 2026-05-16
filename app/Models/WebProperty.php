@@ -238,6 +238,14 @@ class WebProperty extends Model
     }
 
     /**
+     * @return HasMany<FleetTechnicalSeoAuditRun, $this>
+     */
+    public function fleetTechnicalSeoAuditRuns(): HasMany
+    {
+        return $this->hasMany(FleetTechnicalSeoAuditRun::class)->orderByDesc('started_at');
+    }
+
+    /**
      * @return HasMany<DomainSeoBaseline, $this>
      */
     public function seoBaselines(): HasMany

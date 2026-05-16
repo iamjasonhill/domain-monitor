@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 /**
@@ -89,5 +90,13 @@ class MonitoringFinding extends Model
     public function webProperty(): BelongsTo
     {
         return $this->belongsTo(WebProperty::class);
+    }
+
+    /**
+     * @return HasMany<FleetTechnicalSeoAuditResult, $this>
+     */
+    public function fleetTechnicalSeoAuditResults(): HasMany
+    {
+        return $this->hasMany(FleetTechnicalSeoAuditResult::class);
     }
 }
