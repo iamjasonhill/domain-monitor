@@ -106,18 +106,6 @@ class WebPropertyController extends Controller
             'repositories',
             'analyticsSources',
             'analyticsSources.latestInstallAudit',
-            'eventContractAssignments.eventContract',
-            'conversionSurfaces.domain',
-            'conversionSurfaces.analyticsSource',
-            'conversionSurfaces.eventContractAssignment.eventContract',
-            'monitoringFindings' => fn ($query) => $query
-                ->where('status', MonitoringFinding::STATUS_OPEN)
-                ->with('domain:id,domain,platform,dns_config_name,parked_override')
-                ->orderByDesc('last_detected_at'),
-            'seoBaselines' => fn ($query) => $query
-                ->orderByDesc('captured_at')
-                ->orderByDesc('created_at')
-                ->limit(12),
             'propertyDomains.domain' => function ($query) use ($includeExternalLinkDetails) {
                 $domainRelations = [
                     'platform',
@@ -137,13 +125,58 @@ class WebPropertyController extends Controller
             },
         ];
 
+        if ($this->eventArchitectureTablesExist()) {
+            $relations[] = 'eventContractAssignments.eventContract';
+        }
+
+        if ($this->conversionSurfaceTablesExist()) {
+            $relations[] = 'conversionSurfaces.domain';
+            $relations[] = 'conversionSurfaces.analyticsSource';
+            $relations[] = 'conversionSurfaces.eventContractAssignment.eventContract';
+        }
+
+        if ($this->monitoringFindingsTableExists()) {
+            $relations['monitoringFindings'] = fn ($query) => $query
+                ->where('status', MonitoringFinding::STATUS_OPEN)
+                ->with('domain:id,domain,platform,dns_config_name,parked_override')
+                ->orderByDesc('last_detected_at');
+        }
+
         if ($this->fleetTechnicalSeoAuditTablesExist()) {
             $relations[] = 'latestFleetTechnicalSeoAuditRun.results.monitoringFinding';
         }
 
-        return WebProperty::query()
-            ->withGscEvidenceSummaryAttributes()
-            ->with($relations);
+        if (Schema::hasTable('domain_seo_baselines')) {
+            $relations['seoBaselines'] = fn ($query) => $query
+                ->orderByDesc('captured_at')
+                ->orderByDesc('created_at')
+                ->limit(12);
+        }
+
+        $query = WebProperty::query();
+
+        if (Schema::hasTable('search_console_issue_snapshots')) {
+            $query->withGscEvidenceSummaryAttributes();
+        }
+
+        return $query->with($relations);
+    }
+
+    private function eventArchitectureTablesExist(): bool
+    {
+        return Schema::hasTable('web_property_event_contracts')
+            && Schema::hasTable('analytics_event_contracts');
+    }
+
+    private function conversionSurfaceTablesExist(): bool
+    {
+        return Schema::hasTable('web_property_conversion_surfaces')
+            && $this->eventArchitectureTablesExist();
+    }
+
+    private function monitoringFindingsTableExists(): bool
+    {
+        return Schema::hasTable('monitoring_findings');
     }
 
     private function fleetTechnicalSeoAuditTablesExist(): bool

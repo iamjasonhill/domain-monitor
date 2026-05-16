@@ -6,6 +6,7 @@ use App\Models\Domain;
 use App\Models\MonitoringFinding;
 use App\Models\WebProperty;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Facades\Schema;
 
 class WebPropertyMonitoringSummaryBuilder
 {
@@ -32,6 +33,17 @@ class WebPropertyMonitoringSummaryBuilder
      */
     public function build(WebProperty $property): array
     {
+        if (! Schema::hasTable('monitoring_findings')) {
+            return [
+                'open_findings_count' => 0,
+                'must_fix_count' => 0,
+                'should_fix_count' => 0,
+                'latest_detected_at' => null,
+                'lane_counts' => [],
+                'open_findings' => [],
+            ];
+        }
+
         $openFindings = $this->openFindings($property);
 
         return [

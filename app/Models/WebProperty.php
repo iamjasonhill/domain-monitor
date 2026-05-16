@@ -582,6 +582,10 @@ class WebProperty extends Model
      */
     public function conversionSurfaceSummaries(): array
     {
+        if (! Schema::hasTable('web_property_conversion_surfaces')) {
+            return [];
+        }
+
         $surfaces = $this->relationLoaded('conversionSurfaces')
             ? $this->conversionSurfaces
             : $this->conversionSurfaces()->with(['domain', 'analyticsSource', 'eventContractAssignment.eventContract'])->get();

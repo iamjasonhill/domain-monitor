@@ -33,23 +33,6 @@ class WebPropertyFleetTechnicalSeoAuditSummaryApiTest extends TestCase
             ->assertJsonPath('web_properties.0.fleet_technical_seo_audit_summary.attention_findings', []);
     }
 
-    public function test_web_property_summary_remains_available_before_fleet_seo_audit_tables_are_migrated(): void
-    {
-        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
-
-        $property = $this->makeProperty('pre-migration-site', 'pre-migration.example');
-        Schema::dropIfExists('fleet_technical_seo_audit_results');
-        Schema::dropIfExists('fleet_technical_seo_audit_runs');
-
-        $this->withHeaders(['Authorization' => 'Bearer test-api-key'])
-            ->getJson('/api/web-properties-summary')
-            ->assertOk()
-            ->assertJsonPath('web_properties.0.slug', $property->slug)
-            ->assertJsonPath('web_properties.0.fleet_technical_seo_audit_summary.has_audit', false)
-            ->assertJsonPath('web_properties.0.fleet_technical_seo_audit_summary.summary_counts.fail', 0)
-            ->assertJsonPath('web_properties.0.fleet_technical_seo_audit_summary.attention_findings', []);
-    }
-
     public function test_web_property_summary_exposes_latest_fleet_seo_audit_without_raw_evidence(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
@@ -124,6 +107,32 @@ class WebPropertyFleetTechnicalSeoAuditSummaryApiTest extends TestCase
             ->assertJsonPath('web_properties.0.fleet_technical_seo_audit_summary.attention_findings.0.id', $finding->id)
             ->assertJsonMissingPath('web_properties.0.fleet_technical_seo_audit_summary.raw_html')
             ->assertJsonMissingPath('web_properties.0.fleet_technical_seo_audit_summary.results');
+    }
+
+    public function test_web_property_apis_remain_available_before_late_optional_tables_are_migrated(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $property = $this->makeProperty('pre-migration-site', 'pre-migration.example');
+        Schema::dropIfExists('fleet_technical_seo_audit_results');
+        Schema::dropIfExists('fleet_technical_seo_audit_runs');
+        Schema::dropIfExists('web_property_conversion_surfaces');
+        Schema::dropIfExists('monitoring_findings');
+
+        $this->withHeaders(['Authorization' => 'Bearer test-api-key'])
+            ->getJson('/api/web-properties-summary')
+            ->assertOk()
+            ->assertJsonPath('web_properties.0.slug', $property->slug)
+            ->assertJsonPath('web_properties.0.conversion_surfaces', [])
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings_count', 0)
+            ->assertJsonPath('web_properties.0.fleet_technical_seo_audit_summary.has_audit', false)
+            ->assertJsonPath('web_properties.0.fleet_technical_seo_audit_summary.summary_counts.fail', 0)
+            ->assertJsonPath('web_properties.0.fleet_technical_seo_audit_summary.attention_findings', []);
+
+        $this->withHeaders(['Authorization' => 'Bearer test-api-key'])
+            ->getJson('/api/web-properties?per_page=1')
+            ->assertOk()
+            ->assertJsonPath('data.0.slug', $property->slug);
     }
 
     private function makeProperty(string $slug, string $domainName): WebProperty

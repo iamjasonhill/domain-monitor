@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\PropertyRepository;
 use App\Models\WebProperty;
 use App\Models\WebPropertyConversionSurface;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class WebPropertyHostnameLinkPolicyBuilder
@@ -102,16 +103,18 @@ class WebPropertyHostnameLinkPolicyBuilder
 
         $addCandidate($owningMarketingDomain, isMarketingDomain: true, isOperationalAppShell: $property->property_type === 'app');
 
-        $conversionSurfaces = $property->relationLoaded('conversionSurfaces')
-            ? $property->conversionSurfaces
-            : $property->conversionSurfaces()->get();
+        if (Schema::hasTable('web_property_conversion_surfaces')) {
+            $conversionSurfaces = $property->relationLoaded('conversionSurfaces')
+                ? $property->conversionSurfaces
+                : $property->conversionSurfaces()->get();
 
-        foreach ($conversionSurfaces as $surface) {
-            $addCandidate(
-                $surface->hostname,
-                isCustomerPortal: $surface->surface_type === 'portal_subdomain',
-                surface: $surface,
-            );
+            foreach ($conversionSurfaces as $surface) {
+                $addCandidate(
+                    $surface->hostname,
+                    isCustomerPortal: $surface->surface_type === 'portal_subdomain',
+                    surface: $surface,
+                );
+            }
         }
 
         $targetSummary = $property->conversionLinkSummary()['target'];
