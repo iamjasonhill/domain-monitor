@@ -168,6 +168,11 @@ per-property URL cap, include dry-run support, and only use browser/Lighthouse
 evidence when the repo-owned commands are configured. A deliberate full-estate
 mode can come later once runtime duration, evidence quality, and Attention noise
 are trusted.
+The repo-owned conservative command is
+`php artisan monitoring:run-fleet-technical-seo-estate-audit`. It defaults to a
+limit of five eligible properties, supports `--dry-run`, `--limit`, `--url-cap`,
+`--property`, `--domain`, and `--continue-on-failure`, and still creates one
+audit run per selected `WebProperty`.
 
 Only `fail` should open or update a runtime finding for Control Attention by
 default. `unknown` should create an owning-repo GitHub issue when the evidence
