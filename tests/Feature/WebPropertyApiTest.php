@@ -1283,6 +1283,7 @@ class WebPropertyApiTest extends TestCase
         $domain = Domain::factory()->create([
             'domain' => 'health-fresh.example.com',
             'is_active' => true,
+            'last_checked_at' => null,
         ]);
 
         $property = WebProperty::factory()->create([
@@ -1816,6 +1817,7 @@ class WebPropertyApiTest extends TestCase
     public function test_web_properties_summary_surfaces_current_search_console_coverage(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        Carbon::setTestNow(Carbon::parse('2026-05-07 09:00:00', 'Australia/Brisbane'));
 
         $domain = Domain::factory()->create([
             'domain' => 'movingagain.com.au',
@@ -1877,6 +1879,8 @@ class WebPropertyApiTest extends TestCase
             ->assertJsonPath('web_properties.0.search_console.checked_at', '2026-05-06T22:00:33+10:00')
             ->assertJsonPath('web_properties.0.search_console.next_action', 'No Search Console coverage action is required while evidence remains fresh.')
             ->assertJsonPath('web_properties.0.gsc_evidence_summary.latest_issue_detail_captured_at', '2026-04-01T06:08:41+00:00');
+
+        Carbon::setTestNow();
     }
 
     public function test_web_property_health_summary_endpoint_returns_property_health(): void
