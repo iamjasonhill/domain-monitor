@@ -84,6 +84,29 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Runtime Analytics Host Overrides
+    |--------------------------------------------------------------------------
+    |
+    | Explicit runtime hostname classifications for known active hosts that
+    | are not yet represented as first-class conversion surfaces or direct
+    | property target URLs.
+    |
+    */
+    'runtime_analytics' => [
+        'host_overrides' => [
+            [
+                'hostname' => 'quotes.interstateremovalists.net.au',
+                'property_slug' => 'interstateremovalists-net-au',
+                'class' => 'conversion_host',
+                'decision' => 'exported',
+                'reason' => 'moveroocombined_runtime_host_override',
+                'journey_type' => 'mixed_quote',
+            ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Domain Monitor UI Windows
     |--------------------------------------------------------------------------
     |

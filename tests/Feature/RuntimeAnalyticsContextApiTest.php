@@ -206,4 +206,86 @@ class RuntimeAnalyticsContextApiTest extends TestCase
             ->assertJsonPath('runtime_contexts.0.host_classification.decision', 'exported')
             ->assertJsonPath('runtime_contexts.0.host_classification.provenance', 'hostname_link_policy');
     }
+
+    public function test_runtime_analytics_context_feed_exports_configured_runtime_host_override(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        config()->set('domain_monitor.runtime_analytics.host_overrides', [
+            [
+                'hostname' => 'quotes.interstateremovalists.net.au',
+                'property_slug' => 'interstateremovalists-net-au',
+                'class' => 'conversion_host',
+                'decision' => 'exported',
+                'reason' => 'moveroocombined_runtime_host_override',
+                'journey_type' => 'mixed_quote',
+            ],
+        ]);
+
+        $primaryDomain = Domain::factory()->create([
+            'domain' => 'interstateremovalists.net.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'interstateremovalists-net-au',
+            'name' => 'Interstate Removalists',
+            'site_key' => 'interstateremovalists',
+            'status' => 'active',
+            'property_type' => 'website',
+            'primary_domain_id' => $primaryDomain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $primaryDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyAnalyticsSource::create([
+            'web_property_id' => $property->id,
+            'provider' => 'ga4',
+            'external_id' => 'G-INTERSTATE01',
+            'external_name' => 'Interstate Removalists GA4',
+            'provider_config' => [
+                'site_key' => 'interstateremovalists',
+                'property_id' => '123456789',
+                'stream_id' => '22334455',
+                'measurement_id' => 'G-INTERSTATE01',
+                'bigquery_project' => 'mm-interstate-analytics',
+            ],
+            'is_primary' => true,
+            'status' => 'active',
+        ]);
+
+        $contract = AnalyticsEventContract::create([
+            'key' => 'interstate-full-funnel-v1',
+            'name' => 'Interstate Full Funnel',
+            'version' => 'v1',
+            'contract_type' => 'ga4_web_and_backend',
+            'status' => 'active',
+        ]);
+
+        WebPropertyEventContract::create([
+            'web_property_id' => $property->id,
+            'analytics_event_contract_id' => $contract->id,
+            'is_primary' => true,
+            'rollout_status' => 'instrumented',
+        ]);
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/runtime/analytics-contexts?hostname=quotes.interstateremovalists.net.au')
+            ->assertOk()
+            ->assertJsonPath('runtime_contexts.0.hostname', 'quotes.interstateremovalists.net.au')
+            ->assertJsonPath('runtime_contexts.0.property_slug', 'interstateremovalists-net-au')
+            ->assertJsonPath('runtime_contexts.0.site_key', 'interstateremovalists')
+            ->assertJsonPath('runtime_contexts.0.journey_type', 'mixed_quote')
+            ->assertJsonPath('runtime_contexts.0.ga4.measurement_id', 'G-INTERSTATE01')
+            ->assertJsonPath('runtime_contexts.0.host_classification.class', 'conversion_host')
+            ->assertJsonPath('runtime_contexts.0.host_classification.decision', 'exported')
+            ->assertJsonPath('runtime_contexts.0.host_classification.reason', 'moveroocombined_runtime_host_override')
+            ->assertJsonPath('runtime_contexts.0.host_classification.provenance', 'runtime_host_override')
+            ->assertJsonPath('runtime_contexts.0.runtime.path', '/Users/jasonhill/Projects/laravel-projects/Moveroo Removals 2026');
+    }
 }

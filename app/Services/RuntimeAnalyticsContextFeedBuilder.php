@@ -125,6 +125,38 @@ class RuntimeAnalyticsContextFeedBuilder
             ];
         }
 
+        foreach ($this->hostOverridesForProperty($property->slug) as $hostOverride) {
+            $hostname = $this->normalizeHostname($hostOverride['hostname'] ?? null);
+
+            if ($hostname === null || isset($includedHostnames[$hostname])) {
+                continue;
+            }
+
+            $includedHostnames[$hostname] = true;
+
+            $contexts[] = [
+                'hostname' => $hostname,
+                'property_slug' => $property->slug,
+                'site_key' => $property->siteKey(),
+                'journey_type' => $this->normalizeText($hostOverride['journey_type'] ?? null),
+                'runtime' => $defaultRuntime,
+                'ga4' => $this->ga4Summary($propertyAnalyticsSource),
+                'event_contract' => $this->eventContractSummary($propertyEventAssignment),
+                'conversion_surface' => [
+                    'rollout_status' => null,
+                    'verified_at' => null,
+                ],
+                'host_classification' => [
+                    'class' => $this->normalizeText($hostOverride['class'] ?? null) ?? 'retired_or_unknown',
+                    'decision' => $this->normalizeText($hostOverride['decision'] ?? null) ?? 'excluded',
+                    'reason' => $this->normalizeText($hostOverride['reason'] ?? null) ?? 'runtime_host_override',
+                    'provenance' => 'runtime_host_override',
+                    'role' => null,
+                    'property_kind' => null,
+                ],
+            ];
+        }
+
         return $contexts;
     }
 
@@ -252,10 +284,20 @@ class RuntimeAnalyticsContextFeedBuilder
             ?? $property->conversionSurfaces->first();
 
         if (! $surface instanceof WebPropertyConversionSurface) {
+            $defaultRuntime = config('domain_monitor.conversion_surfaces.default_quote_surface');
+
+            if (! is_array($defaultRuntime)) {
+                return [
+                    'driver' => null,
+                    'label' => null,
+                    'path' => null,
+                ];
+            }
+
             return [
-                'driver' => null,
-                'label' => null,
-                'path' => null,
+                'driver' => $this->normalizeText($defaultRuntime['runtime_driver'] ?? null),
+                'label' => $this->normalizeText($defaultRuntime['runtime_label'] ?? null),
+                'path' => $this->normalizeText($defaultRuntime['runtime_path'] ?? null),
             ];
         }
 
@@ -325,6 +367,39 @@ class RuntimeAnalyticsContextFeedBuilder
     }
 
     private function normalizeSiteKey(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $normalized = trim($value);
+
+        return $normalized !== '' ? $normalized : null;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function hostOverridesForProperty(string $propertySlug): array
+    {
+        $overrides = config('domain_monitor.runtime_analytics.host_overrides', []);
+
+        if (! is_array($overrides)) {
+            return [];
+        }
+
+        return collect($overrides)
+            ->filter(fn (mixed $override): bool => is_array($override))
+            ->filter(function (array $override) use ($propertySlug): bool {
+                $overrideSlug = $this->normalizeText($override['property_slug'] ?? null);
+
+                return $overrideSlug === $propertySlug;
+            })
+            ->values()
+            ->all();
+    }
+
+    private function normalizeText(mixed $value): ?string
     {
         if (! is_string($value)) {
             return null;
