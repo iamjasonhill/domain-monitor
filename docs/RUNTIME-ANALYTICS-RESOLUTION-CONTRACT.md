@@ -68,6 +68,7 @@ The runtime contexts feed already includes:
 - `ga4`
 - `event_contract`
 - `conversion_surface`
+- `host_classification`
 
 The runtime should prefer this feed for lightweight hostname resolution.
 
@@ -115,6 +116,12 @@ The runtime should treat this as the minimum resolved contract per hostname:
   },
   "conversion_surface": {
     "rollout_status": "instrumented"
+  },
+  "host_classification": {
+    "class": "conversion_host",
+    "decision": "exported",
+    "reason": "first_class_conversion_surface",
+    "provenance": "conversion_surface"
   }
 }
 ```
@@ -126,6 +133,10 @@ The runtime should treat this as the minimum resolved contract per hostname:
   slug or analytics metadata.
 - Transitional fallback from `ga4.provider_config.site_key` is acceptable only
   while older rows are being backfilled.
+- Runtime feed records can also be inferred from `hostname_link_policy` for
+  active non-conversion runtime hosts. These records expose
+  `host_classification` so consumers can distinguish exported runtime contexts
+  from intentionally excluded host classes.
 
 ## Binding Rules
 
