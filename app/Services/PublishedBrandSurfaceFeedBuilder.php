@@ -11,6 +11,8 @@ use Illuminate\Support\Str;
 
 class PublishedBrandSurfaceFeedBuilder
 {
+    public function __construct(private readonly BrandStyleSurfaceDraftBuilder $brandStyleDrafts) {}
+
     /**
      * @return array{
      *   source_system: string,
@@ -146,7 +148,7 @@ class PublishedBrandSurfaceFeedBuilder
         $updatedAt = $surface->verified_at ?? $property->updated_at ?? now();
         $journeyType = $surface->journey_type;
 
-        return [
+        return $this->withBrandStyleSource($hostname, [
             'hostname' => $hostname,
             'property_slug' => $property->slug,
             'surface_slug' => $metadata['surface_slug'] ?? $this->defaultSurfaceSlug($property, $hostname),
@@ -169,7 +171,7 @@ class PublishedBrandSurfaceFeedBuilder
             'contact' => $this->contact($metadata),
             'analytics' => $this->analytics($property, $hostname, $journeyType, $analyticsSource, $eventAssignment),
             'provenance' => $this->provenance($metadata),
-        ];
+        ]);
     }
 
     /**
@@ -189,7 +191,7 @@ class PublishedBrandSurfaceFeedBuilder
         $updatedAt = $property->updated_at ?? now();
         $journeyType = 'mixed_quote';
 
-        return [
+        return $this->withBrandStyleSource($hostname, [
             'hostname' => $hostname,
             'property_slug' => $property->slug,
             'surface_slug' => $metadata['surface_slug'] ?? $this->defaultSurfaceSlug($property, $hostname),
@@ -212,7 +214,7 @@ class PublishedBrandSurfaceFeedBuilder
             'contact' => $this->contact($metadata),
             'analytics' => $this->analytics($property, $hostname, $journeyType, $analyticsSource, $eventAssignment),
             'provenance' => $this->provenance($metadata),
-        ];
+        ]);
     }
 
     /**
@@ -270,7 +272,7 @@ class PublishedBrandSurfaceFeedBuilder
         $updatedAt = $property->updated_at ?? now();
         $journeyType = is_string($metadata['journey_type'] ?? null) ? $metadata['journey_type'] : null;
 
-        return [
+        return $this->withBrandStyleSource($hostname, [
             'hostname' => $hostname,
             'property_slug' => $property->slug,
             'surface_slug' => $metadata['surface_slug'] ?? $this->defaultSurfaceSlug($property, $hostname),
@@ -293,7 +295,7 @@ class PublishedBrandSurfaceFeedBuilder
             'contact' => $this->contact($metadata),
             'analytics' => $this->analytics($property, $hostname, $journeyType, $analyticsSource, $eventAssignment),
             'provenance' => $this->provenance($metadata),
-        ];
+        ]);
     }
 
     /**
@@ -562,6 +564,33 @@ class PublishedBrandSurfaceFeedBuilder
             'change_ref' => $provenance['change_ref'] ?? 'domain-monitor#208',
             'source_marketing_url' => $provenance['source_marketing_url'] ?? null,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function brandStyleSource(string $hostname): ?array
+    {
+        $approvedMetadata = $this->brandStyleDrafts->approvedMetadataByHostname();
+
+        return $approvedMetadata[$hostname] ?? null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $surface
+     * @return array<string, mixed>
+     */
+    private function withBrandStyleSource(string $hostname, array $surface): array
+    {
+        $brandStyleSource = $this->brandStyleSource($hostname);
+
+        if ($brandStyleSource === null) {
+            return $surface;
+        }
+
+        return array_merge($surface, [
+            'brand_style_source' => $brandStyleSource,
+        ]);
     }
 
     private function defaultSurfaceSlug(WebProperty $property, string $hostname): string

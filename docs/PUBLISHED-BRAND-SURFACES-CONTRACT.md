@@ -16,6 +16,12 @@ Optional query parameters:
 
 - `hostname`: returns a single hostname only when it is also present in the pilot allowlist.
 
+Draft/review endpoint:
+
+`GET /api/published-brand-surface-drafts`
+
+This read-only feed exposes app-host to source-marketing-domain proposals, candidate brand/style facts, evidence, confidence, and approval status. Draft or `needs_review` proposals are review evidence only and must not be treated as published MoverooCombined runtime truth.
+
 ## Envelope
 
 Required fields:
@@ -123,6 +129,7 @@ Each surface includes:
 - parent/canonical relationship: `owning_marketing_domain`, `controller_owner`, `controller_repo`
 - ownership metadata: `ownership.published_truth_owner`, `ownership.runtime_renderer_owner`, `ownership.site_repo_owner`, `ownership.portfolio_routing_owner`
 - telemetry linkage: `analytics.status`, `analytics.runtime_context_key`, `analytics.property_slug`, `analytics.site_key`, `analytics.journey_type`, optional GA4 and event-contract mirrors
+- approved brand-style source metadata: optional `brand_style_source` is present only when a draft proposal has been explicitly approved
 - non-sensitive provenance: `provenance.approved_by`, `provenance.approved_at`, `provenance.source`, `provenance.change_ref`
 
 ## Guardrails
@@ -131,6 +138,7 @@ Each surface includes:
 - No DNS, cron, secret, billing, live website, or MoverooCombined changes.
 - No redirect policy decisions from #210.
 - Hostnames outside the pilot allowlist are intentionally omitted, even when present in Domain Monitor data.
+- Brand-style drafts are never published merely because extraction or reviewed metadata exists; only `approval_status=approved` proposals can annotate the published feed.
 - Consumers must validate again before rendering and keep local fallback behavior during the pilot.
 
 ## Fixtures

@@ -280,6 +280,89 @@ class PublishedBrandSurfaceApiTest extends TestCase
         }
     }
 
+    public function test_brand_style_draft_feed_maps_app_hosts_to_source_domains_with_review_evidence(): void
+    {
+        config()->set('services.domain_monitor.moveroo_removals_api_key', 'moveroo-runtime-token');
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer moveroo-runtime-token',
+        ])->getJson('/api/published-brand-surface-drafts')
+            ->assertOk()
+            ->assertJsonPath('source_system', 'domain-monitor-brand-style-drafts')
+            ->assertJsonPath('contract_version', 1)
+            ->assertJsonPath('proposals.0.hostname', 'quoting.movingcars.com.au')
+            ->assertJsonPath('proposals.0.source_marketing_domain', 'movingcars.com.au')
+            ->assertJsonPath('proposals.0.approval_status', 'approved')
+            ->assertJsonPath('proposals.0.publish_gate.can_publish', true)
+            ->assertJsonPath('proposals.0.candidate.brand.display_name', 'Moving Cars')
+            ->assertJsonPath('proposals.0.evidence.0.field', 'source_marketing_domain')
+            ->assertJsonPath('proposals.0.evidence.0.confidence', 'high')
+            ->assertJsonPath('proposals.1.hostname', 'mymovehub.backloading-services.com.au')
+            ->assertJsonPath('proposals.1.source_marketing_domain', 'backloading-services.com.au')
+            ->assertJsonPath('proposals.1.approval_status', 'needs_review')
+            ->assertJsonPath('proposals.1.publish_gate.can_publish', false)
+            ->assertJsonPath('proposals.1.publish_gate.reason', 'draft_requires_human_or_trusted_review')
+            ->assertJsonPath('proposals.2.hostname', 'quotes.interstate-removals.com.au')
+            ->assertJsonPath('proposals.2.source_marketing_domain', 'interstate-removals.com.au')
+            ->assertJsonPath('proposals.2.approval_status', 'approved')
+            ->assertJsonPath('proposals.2.publish_gate.can_publish', true)
+            ->assertJsonCount(3, 'proposals');
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer moveroo-runtime-token',
+        ])->getJson('/api/published-brand-surface-drafts?hostname=quoting.movingcars.com.au')
+            ->assertOk()
+            ->assertJsonCount(1, 'proposals')
+            ->assertJsonPath('proposals.0.hostname', 'quoting.movingcars.com.au');
+    }
+
+    public function test_only_approved_brand_style_drafts_annotate_the_published_feed(): void
+    {
+        config()->set('services.domain_monitor.moveroo_removals_api_key', 'moveroo-runtime-token');
+        config()->set('domain_monitor.published_brand_surfaces.pilot_host_allowlist', [
+            'quoting.movingcars.com.au',
+            'mymovehub.backloading-services.com.au',
+            'quotes.interstate-removals.com.au',
+        ]);
+
+        $metadataByHostname = config('domain_monitor.published_brand_surfaces.hostnames');
+        $this->assertIsArray($metadataByHostname);
+
+        foreach ([
+            'quoting.movingcars.com.au',
+            'mymovehub.backloading-services.com.au',
+            'quotes.interstate-removals.com.au',
+        ] as $hostname) {
+            $metadata = $metadataByHostname[$hostname];
+            $measurementKey = preg_replace('/[^A-Za-z0-9]/', '', (string) $metadata['property_slug']) ?: 'SURFACE';
+
+            $this->createConfiguredProperty(
+                propertySlug: (string) $metadata['property_slug'],
+                propertyName: (string) $metadata['owning_marketing_domain'],
+                siteKey: (string) $metadata['brand']['brand_key'],
+                primaryDomainName: (string) $metadata['owning_marketing_domain'],
+                repoName: '_wp-house',
+                measurementId: 'G-'.strtoupper(substr($measurementKey, 0, 10)),
+                eventContractKey: $metadata['property_slug'].'-full-funnel-v1',
+            );
+        }
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer moveroo-runtime-token',
+        ])->getJson('/api/published-brand-surfaces')
+            ->assertOk()
+            ->assertJsonCount(3, 'surfaces')
+            ->assertJsonPath('surfaces.0.hostname', 'quoting.movingcars.com.au')
+            ->assertJsonPath('surfaces.0.brand_style_source.source_marketing_domain', 'movingcars.com.au')
+            ->assertJsonPath('surfaces.0.brand_style_source.approval_status', 'approved')
+            ->assertJsonPath('surfaces.0.brand_style_source.evidence_count', 3)
+            ->assertJsonPath('surfaces.1.hostname', 'mymovehub.backloading-services.com.au')
+            ->assertJsonMissingPath('surfaces.1.brand_style_source')
+            ->assertJsonPath('surfaces.2.hostname', 'quotes.interstate-removals.com.au')
+            ->assertJsonPath('surfaces.2.brand_style_source.source_marketing_domain', 'interstate-removals.com.au')
+            ->assertJsonPath('surfaces.2.brand_style_source.approval_status', 'approved');
+    }
+
     public function test_published_brand_surface_feed_returns_final_runtime_closeout_host_and_classifies_the_rest(): void
     {
         config()->set('services.domain_monitor.moveroo_removals_api_key', 'moveroo-runtime-token');

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\BrandStyleSurfaceDraftController;
 use App\Http\Controllers\Api\DashboardPriorityQueueController;
 use App\Http\Controllers\Api\DeploymentController;
 use App\Http\Controllers\Api\DetectedIssueController;
@@ -40,6 +41,7 @@ Route::middleware(['api-key'])->group(function () {
     Route::get('/web-properties', [WebPropertyController::class, 'index']);
     Route::get('/web-properties-summary', [WebPropertyController::class, 'summary']);
     Route::get('/published-brand-surfaces', PublishedBrandSurfaceController::class);
+    Route::get('/published-brand-surface-drafts', BrandStyleSurfaceDraftController::class);
     Route::get('/runtime/analytics-contexts', RuntimeAnalyticsContextController::class);
     Route::get('/web-properties/{slug}', [WebPropertyController::class, 'show']);
     Route::post('/web-properties/{slug}/astro-cutover', WebPropertyAstroCutoverController::class)
