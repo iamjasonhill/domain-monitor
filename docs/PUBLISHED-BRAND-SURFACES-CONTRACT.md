@@ -1,7 +1,7 @@
 # Published Brand Surfaces Contract
 
 Status: v1 pilot publisher
-Issue: #208, updated by #213 and #215
+Issue: #208, updated by #213, #215, and #217
 Consumer: MoverooCombined issues #2083 and #2084
 
 Domain Monitor publishes the read-only `domain-monitor-published-brand-surfaces` feed for MoverooCombined runtime consumption. The feed is pilot scoped and must not be treated as permission to import or render the full estate.
@@ -39,6 +39,24 @@ Current pilot hostnames:
 - Interstate Removals quote host: `quotes.interstate-removals.com.au`
 - Moving Cars vehicle quote host: `quoting.movingcars.com.au`
 - Super Cheap Car Transport portal quote host: `portal.supercheapcartransport.com.au`
+- Backloading Services quote host: `mymovehub.backloading-services.com.au`
+- Backloading Removals quote host: `mymovehub.backloadingremovals.com.au`
+- Move My Car quote host: `portal.movemycar.com.au`
+- WeMove quote host: `quotes.wemove.com.au`
+- Backloading Australia quote host: `quoting.backloading-au.com.au`
+- Car Transport quote host: `quoting.cartransport.au`
+- Car Transport Aus quote host: `quoting.cartransportaus.com.au`
+- Car Transport With Personal Items quote host: `quoting.cartransportwithpersonalitems.com.au`
+- Interstate Car Transport quote host: `quoting.interstate-car-transport.com.au`
+- Interstate Car Carriers quote host: `quoting.interstatecarcarriers.com.au`
+- Perth Interstate Removalists quote host: `quoting.perthinterstateremovalists.com.au`
+- Removals Interstate quote host: `quoting.removalsinterstate.com.au`
+- Transport Non Drivable Cars quote host: `quoting.transportnondrivablecars.com.au`
+- Moving Again removalist quote host: `removalistquotes.movingagain.com.au`
+- Moveroo removalists quote host: `removalists.moveroo.com.au`
+- Interstate Removals removal portal: `removalportal.interstate-removals.com.au`
+- Backloading Services removal quotes host: `removalquotes.backloading-services.com.au`
+- Alliance Removals moving quote host: `moving.allianceremovals.com.au`
 
 Second-pilot host classifications:
 
@@ -47,6 +65,34 @@ Second-pilot host classifications:
 - `quotes.interstate-removals.com.au`: app-served mixed quote surface and published.
 - `quoting.movingcars.com.au`: app-served vehicle quote surface and published.
 - `portal.supercheapcartransport.com.au`: app-served vehicle quote surface and published.
+
+Third-pilot host classifications:
+
+- `mymovehub.backloading-services.com.au`: app-served mixed quote surface and published.
+- `mymovehub.backloadingremovals.com.au`: app-served mixed quote surface and published.
+- `portal.movemycar.com.au`: app-served vehicle quote surface and published.
+- `quotes.wemove.com.au`: app-served mixed quote surface and published.
+- `quoting.backloading-au.com.au`: app-served mixed quote surface and published.
+- `quoting.cartransport.au`: app-served vehicle quote surface and published.
+- `quoting.cartransportaus.com.au`: app-served vehicle quote surface and published.
+- `quoting.cartransportwithpersonalitems.com.au`: app-served vehicle quote surface and published.
+- `quoting.interstate-car-transport.com.au`: app-served vehicle quote surface and published.
+- `quoting.interstatecarcarriers.com.au`: app-served vehicle quote surface and published.
+- `quoting.perthinterstateremovalists.com.au`: app-served mixed quote surface and published.
+- `quoting.removalsinterstate.com.au`: app-served mixed quote surface and published.
+- `quoting.transportnondrivablecars.com.au`: app-served vehicle quote surface and published.
+- `removalistquotes.movingagain.com.au`: app-served mixed quote surface and published.
+- `removalists.moveroo.com.au`: app-served mixed quote surface and published.
+- `removalportal.interstate-removals.com.au`: app-served mixed quote surface and published.
+- `removalquotes.backloading-services.com.au`: app-served mixed quote surface and published.
+- `moving.allianceremovals.com.au`: app-served mixed quote surface and published.
+- `cartransport.movingagain.com.au`: marketing website candidate, not confirmed as a MoverooCombined app-served runtime surface for this pilot.
+- `perth.moveroo.com.au`: retired and superseded by `quoting.perthinterstateremovalists.com.au`.
+- `quotes.interstateremovalists.net.au`: retired/decommissioned hostname recorded as an expected miss.
+- `quoting.mover.com.au`: retired and superseded by `quoteandbook.mover.com.au`.
+- `quoting.vehicle.net.au`: legacy vehicle quoting, not the active vehicle pilot.
+- `removalist.backloadingremovals.com.au`: legacy portal host recorded as an expected miss.
+- `interstate-removals.moveroo.com.au`: legacy Moveroo subdomain, not confirmed as a current app-served brand surface for this controlled batch.
 
 `quoting.vehicle.net.au` is legacy quoting and is not the active #2084 pilot test host. Discount Backloading is the selected pilot because Domain Monitor production records the current property-specific quote portal and target links:
 
@@ -86,3 +132,4 @@ Example payload fixtures live in:
 - `docs/fixtures/published-brand-surfaces/household-quote.json`
 - `docs/fixtures/published-brand-surfaces/discountbackloading-quote.json`
 - `docs/fixtures/published-brand-surfaces/second-pilot-batch.json`
+- `docs/fixtures/published-brand-surfaces/third-pilot-batch.json`

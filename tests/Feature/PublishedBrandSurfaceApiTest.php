@@ -203,12 +203,90 @@ class PublishedBrandSurfaceApiTest extends TestCase
             ->assertJsonCount(0, 'surfaces');
     }
 
+    public function test_published_brand_surface_feed_returns_configured_third_batch_hosts(): void
+    {
+        config()->set('services.domain_monitor.moveroo_removals_api_key', 'moveroo-runtime-token');
+
+        $thirdBatchHostnames = [
+            'mymovehub.backloading-services.com.au',
+            'mymovehub.backloadingremovals.com.au',
+            'portal.movemycar.com.au',
+            'quotes.wemove.com.au',
+            'quoting.backloading-au.com.au',
+            'quoting.cartransport.au',
+            'quoting.cartransportaus.com.au',
+            'quoting.cartransportwithpersonalitems.com.au',
+            'quoting.interstate-car-transport.com.au',
+            'quoting.interstatecarcarriers.com.au',
+            'quoting.perthinterstateremovalists.com.au',
+            'quoting.removalsinterstate.com.au',
+            'quoting.transportnondrivablecars.com.au',
+            'removalistquotes.movingagain.com.au',
+            'removalists.moveroo.com.au',
+            'removalportal.interstate-removals.com.au',
+            'removalquotes.backloading-services.com.au',
+            'moving.allianceremovals.com.au',
+        ];
+
+        config()->set('domain_monitor.published_brand_surfaces.pilot_host_allowlist', $thirdBatchHostnames);
+        $metadataByHostname = config('domain_monitor.published_brand_surfaces.hostnames');
+        $this->assertIsArray($metadataByHostname);
+
+        foreach ($thirdBatchHostnames as $hostname) {
+            $this->assertArrayHasKey($hostname, $metadataByHostname);
+            $metadata = $metadataByHostname[$hostname];
+            $propertySlug = $metadata['property_slug'];
+            $measurementKey = preg_replace('/[^A-Za-z0-9]/', '', $propertySlug) ?: 'SURFACE';
+
+            if (WebProperty::query()->where('slug', $propertySlug)->exists()) {
+                continue;
+            }
+
+            $this->createConfiguredProperty(
+                propertySlug: $propertySlug,
+                propertyName: (string) $metadata['owning_marketing_domain'],
+                siteKey: (string) $metadata['brand']['brand_key'],
+                primaryDomainName: (string) $metadata['owning_marketing_domain'],
+                repoName: (string) ($metadata['controller_repo'] ?? '_wp-house'),
+                measurementId: 'G-'.strtoupper(substr($measurementKey, 0, 10)),
+                eventContractKey: $propertySlug.'-full-funnel-v1',
+            );
+        }
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer moveroo-runtime-token',
+        ])->getJson('/api/published-brand-surfaces')
+            ->assertOk()
+            ->assertJsonCount(count($thirdBatchHostnames), 'surfaces')
+            ->assertJsonPath('surfaces.0.hostname', 'mymovehub.backloading-services.com.au')
+            ->assertJsonPath('surfaces.0.links.household_quote_url', 'https://mymovehub.backloading-services.com.au/quote/household')
+            ->assertJsonPath('surfaces.2.hostname', 'portal.movemycar.com.au')
+            ->assertJsonPath('surfaces.2.links.vehicle_quote_url', 'https://portal.movemycar.com.au/quote/vehicle')
+            ->assertJsonPath('surfaces.17.hostname', 'moving.allianceremovals.com.au')
+            ->assertJsonPath('surfaces.17.links.booking_url', 'https://moving.allianceremovals.com.au/booking/create');
+
+        $publishedHostnames = collect($response->json('surfaces'))->pluck('hostname')->all();
+
+        foreach ([
+            'cartransport.movingagain.com.au',
+            'perth.moveroo.com.au',
+            'quotes.interstateremovalists.net.au',
+            'quoting.mover.com.au',
+            'quoting.vehicle.net.au',
+            'removalist.backloadingremovals.com.au',
+            'interstate-removals.moveroo.com.au',
+        ] as $classifiedHostname) {
+            $this->assertNotContains($classifiedHostname, $publishedHostnames);
+        }
+    }
+
     public function test_published_brand_surface_fixtures_match_the_contract_shape(): void
     {
         foreach ([
             base_path('docs/fixtures/published-brand-surfaces/household-quote.json'),
             base_path('docs/fixtures/published-brand-surfaces/discountbackloading-quote.json'),
             base_path('docs/fixtures/published-brand-surfaces/second-pilot-batch.json'),
+            base_path('docs/fixtures/published-brand-surfaces/third-pilot-batch.json'),
         ] as $fixturePath) {
             $payload = json_decode((string) file_get_contents($fixturePath), true);
 
@@ -243,6 +321,74 @@ class PublishedBrandSurfaceApiTest extends TestCase
                 }
             }
         }
+    }
+
+    private function createConfiguredProperty(
+        string $propertySlug,
+        string $propertyName,
+        string $siteKey,
+        string $primaryDomainName,
+        string $repoName,
+        string $measurementId,
+        string $eventContractKey,
+    ): void {
+        $primaryDomain = Domain::factory()->create([
+            'domain' => $primaryDomainName,
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => $propertySlug,
+            'name' => $propertyName,
+            'site_key' => $siteKey,
+            'status' => 'active',
+            'property_type' => 'website',
+            'primary_domain_id' => $primaryDomain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $primaryDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => $repoName,
+            'repo_provider' => 'github',
+            'framework' => 'Laravel',
+            'is_primary' => true,
+            'is_controller' => true,
+        ]);
+
+        PropertyAnalyticsSource::create([
+            'web_property_id' => $property->id,
+            'provider' => 'ga4',
+            'external_id' => $measurementId,
+            'external_name' => $propertyName.' GA4',
+            'provider_config' => [
+                'site_key' => $siteKey,
+                'measurement_id' => $measurementId,
+            ],
+            'is_primary' => true,
+            'status' => 'active',
+        ]);
+
+        $eventContract = AnalyticsEventContract::create([
+            'key' => $eventContractKey,
+            'name' => $propertyName.' Full Funnel',
+            'version' => 'v1',
+            'contract_type' => 'ga4_web_and_backend',
+            'status' => 'active',
+        ]);
+
+        WebPropertyEventContract::create([
+            'web_property_id' => $property->id,
+            'analytics_event_contract_id' => $eventContract->id,
+            'is_primary' => true,
+            'rollout_status' => 'instrumented',
+        ]);
     }
 
     private function createPilotSurface(

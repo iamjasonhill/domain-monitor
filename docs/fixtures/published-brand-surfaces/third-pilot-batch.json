@@ -1,0 +1,1976 @@
+{
+    "source_system": "domain-monitor-published-brand-surfaces",
+    "contract_version": 1,
+    "snapshot_id": "pbs-fixture-third-pilot-2026-05-19T084700Z",
+    "published_at": "2026-05-19T18:47:00+10:00",
+    "generated_by": "domain-monitor.published-brand-surfaces",
+    "pilot": {
+        "host_allowlist": [
+            "mymovehub.backloading-services.com.au",
+            "mymovehub.backloadingremovals.com.au",
+            "portal.movemycar.com.au",
+            "quotes.wemove.com.au",
+            "quoting.backloading-au.com.au",
+            "quoting.cartransport.au",
+            "quoting.cartransportaus.com.au",
+            "quoting.cartransportwithpersonalitems.com.au",
+            "quoting.interstate-car-transport.com.au",
+            "quoting.interstatecarcarriers.com.au",
+            "quoting.perthinterstateremovalists.com.au",
+            "quoting.removalsinterstate.com.au",
+            "quoting.transportnondrivablecars.com.au",
+            "removalistquotes.movingagain.com.au",
+            "removalists.moveroo.com.au",
+            "removalportal.interstate-removals.com.au",
+            "removalquotes.backloading-services.com.au",
+            "moving.allianceremovals.com.au"
+        ],
+        "scope": "moveroo_v1_third_pilot"
+    },
+    "surfaces": [
+        {
+            "hostname": "mymovehub.backloading-services.com.au",
+            "property_slug": "backloading-services-com-au",
+            "surface_slug": "backloading-services-mymovehub-v1",
+            "status": "published",
+            "surface_type": "quote",
+            "canonical_role": "primary",
+            "updated_at": "2026-05-19T18:47:00+10:00",
+            "canonical_hostname": "mymovehub.backloading-services.com.au",
+            "linked_hostnames": [
+                "mymovehub.backloading-services.com.au"
+            ],
+            "owning_marketing_domain": "backloading-services.com.au",
+            "controller_owner": "domain-monitor",
+            "controller_repo": "_wp-house",
+            "ownership": {
+                "published_truth_owner": "Domain Monitor",
+                "runtime_renderer_owner": "MoverooCombined",
+                "site_repo_owner": "_wp-house",
+                "portfolio_routing_owner": "Bossman"
+            },
+            "brand": {
+                "display_name": "Backloading Services",
+                "brand_key": "backloading-services",
+                "tagline": "Moving and backloading quotes",
+                "mark_text": "BS"
+            },
+            "copy": {
+                "eyebrow": "Backloading Services Quotes",
+                "headline": "Get your Backloading Services quote",
+                "subheading": "Use the current Backloading Services app-served host for this controlled third-pilot surface.",
+                "primary_cta_label": "Start your quote",
+                "secondary_cta_label": "Contact us",
+                "footer_blurb": "Backloading Services is published as a controlled third-pilot brand surface."
+            },
+            "theme": {
+                "theme_key": "backloading-services",
+                "mode": "auto",
+                "fonts": {
+                    "body_family": "Inter",
+                    "heading_family": "Inter"
+                },
+                "colors": {
+                    "accent": "#f97316",
+                    "accent_strong": "#c2410c",
+                    "background": "#fff7ed",
+                    "text": "#1f1308",
+                    "muted_text": "#4b5563",
+                    "surface": "#ffffff",
+                    "border": "#dbeafe"
+                },
+                "radius_scale": "rounded",
+                "shadow_style": "soft",
+                "exact_tokens": []
+            },
+            "navigation": {
+                "show_household_quote_link": true,
+                "show_vehicle_quote_link": true,
+                "show_booking_link": true,
+                "show_contact_link": true,
+                "show_customer_portal_link": false,
+                "show_customer_portal_in_header": false,
+                "show_provider_login_link": false,
+                "show_admin_link": false
+            },
+            "behavior": {
+                "show_phone_publicly": true,
+                "show_email_publicly": true,
+                "prefer_contact_page_over_direct_contact": false,
+                "allow_customer_portal_links": true,
+                "allow_provider_login_links": false,
+                "allow_admin_links": false
+            },
+            "links": {
+                "primary_cta_route": "household.quote",
+                "primary_cta_url": "https://mymovehub.backloading-services.com.au/quote/household",
+                "household_quote_url": "https://mymovehub.backloading-services.com.au/quote/household",
+                "vehicle_quote_url": "https://mymovehub.backloading-services.com.au/quote/vehicle",
+                "booking_url": "https://mymovehub.backloading-services.com.au/booking/create",
+                "contact_url": "https://mymovehub.backloading-services.com.au/contact"
+            },
+            "contact": {
+                "public_email": "removals@moveroo.com.au"
+            },
+            "analytics": {
+                "status": "linked",
+                "runtime_context_key": "mymovehub.backloading-services.com.au",
+                "property_slug": "backloading-services-com-au",
+                "site_key": "backloading-services",
+                "journey_type": "mixed_quote",
+                "ga4": {
+                    "measurement_id": "G-BACKLOADIN"
+                },
+                "event_contract": {
+                    "key": "backloading-services-com-au-full-funnel-v1",
+                    "version": "v1",
+                    "rollout_status": "instrumented"
+                }
+            },
+            "provenance": {
+                "approved_by": "domain-monitor",
+                "approved_at": "2026-05-19T18:47:00+10:00",
+                "source": "domain_monitor",
+                "change_ref": "domain-monitor#217",
+                "source_marketing_url": "https://backloading-services.com.au"
+            }
+        },
+        {
+            "hostname": "mymovehub.backloadingremovals.com.au",
+            "property_slug": "backloadingremovals-com-au",
+            "surface_slug": "backloadingremovals-mymovehub-v1",
+            "status": "published",
+            "surface_type": "quote",
+            "canonical_role": "primary",
+            "updated_at": "2026-05-19T18:47:00+10:00",
+            "canonical_hostname": "mymovehub.backloadingremovals.com.au",
+            "linked_hostnames": [
+                "mymovehub.backloadingremovals.com.au"
+            ],
+            "owning_marketing_domain": "backloadingremovals.com.au",
+            "controller_owner": "domain-monitor",
+            "controller_repo": "_wp-house",
+            "ownership": {
+                "published_truth_owner": "Domain Monitor",
+                "runtime_renderer_owner": "MoverooCombined",
+                "site_repo_owner": "_wp-house",
+                "portfolio_routing_owner": "Bossman"
+            },
+            "brand": {
+                "display_name": "Backloading Removals",
+                "brand_key": "backloadingremovals",
+                "tagline": "Moving and backloading quotes",
+                "mark_text": "BR"
+            },
+            "copy": {
+                "eyebrow": "Backloading Removals Quotes",
+                "headline": "Get your Backloading Removals quote",
+                "subheading": "Use the current Backloading Removals app-served host for this controlled third-pilot surface.",
+                "primary_cta_label": "Start your quote",
+                "secondary_cta_label": "Contact us",
+                "footer_blurb": "Backloading Removals is published as a controlled third-pilot brand surface."
+            },
+            "theme": {
+                "theme_key": "backloadingremovals",
+                "mode": "auto",
+                "fonts": {
+                    "body_family": "Inter",
+                    "heading_family": "Inter"
+                },
+                "colors": {
+                    "accent": "#f97316",
+                    "accent_strong": "#c2410c",
+                    "background": "#fff7ed",
+                    "text": "#1f1308",
+                    "muted_text": "#4b5563",
+                    "surface": "#ffffff",
+                    "border": "#dbeafe"
+                },
+                "radius_scale": "rounded",
+                "shadow_style": "soft",
+                "exact_tokens": []
+            },
+            "navigation": {
+                "show_household_quote_link": true,
+                "show_vehicle_quote_link": true,
+                "show_booking_link": true,
+                "show_contact_link": true,
+                "show_customer_portal_link": false,
+                "show_customer_portal_in_header": false,
+                "show_provider_login_link": false,
+                "show_admin_link": false
+            },
+            "behavior": {
+                "show_phone_publicly": true,
+                "show_email_publicly": true,
+                "prefer_contact_page_over_direct_contact": false,
+                "allow_customer_portal_links": true,
+                "allow_provider_login_links": false,
+                "allow_admin_links": false
+            },
+            "links": {
+                "primary_cta_route": "household.quote",
+                "primary_cta_url": "https://mymovehub.backloadingremovals.com.au/quote/household",
+                "household_quote_url": "https://mymovehub.backloadingremovals.com.au/quote/household",
+                "vehicle_quote_url": "https://mymovehub.backloadingremovals.com.au/quote/vehicle",
+                "booking_url": "https://mymovehub.backloadingremovals.com.au/booking/create",
+                "contact_url": "https://mymovehub.backloadingremovals.com.au/contact"
+            },
+            "contact": {
+                "public_email": "removals@moveroo.com.au"
+            },
+            "analytics": {
+                "status": "linked",
+                "runtime_context_key": "mymovehub.backloadingremovals.com.au",
+                "property_slug": "backloadingremovals-com-au",
+                "site_key": "backloadingremovals",
+                "journey_type": "mixed_quote",
+                "ga4": {
+                    "measurement_id": "G-BACKLOADIN"
+                },
+                "event_contract": {
+                    "key": "backloadingremovals-com-au-full-funnel-v1",
+                    "version": "v1",
+                    "rollout_status": "instrumented"
+                }
+            },
+            "provenance": {
+                "approved_by": "domain-monitor",
+                "approved_at": "2026-05-19T18:47:00+10:00",
+                "source": "domain_monitor",
+                "change_ref": "domain-monitor#217",
+                "source_marketing_url": "https://backloadingremovals.com.au"
+            }
+        },
+        {
+            "hostname": "portal.movemycar.com.au",
+            "property_slug": "movemycar-com-au",
+            "surface_slug": "movemycar-portal-v1",
+            "status": "published",
+            "surface_type": "quote",
+            "canonical_role": "primary",
+            "updated_at": "2026-05-19T18:47:00+10:00",
+            "canonical_hostname": "portal.movemycar.com.au",
+            "linked_hostnames": [
+                "portal.movemycar.com.au"
+            ],
+            "owning_marketing_domain": "movemycar.com.au",
+            "controller_owner": "domain-monitor",
+            "controller_repo": "_wp-house",
+            "ownership": {
+                "published_truth_owner": "Domain Monitor",
+                "runtime_renderer_owner": "MoverooCombined",
+                "site_repo_owner": "_wp-house",
+                "portfolio_routing_owner": "Bossman"
+            },
+            "brand": {
+                "display_name": "Move My Car",
+                "brand_key": "movemycar",
+                "tagline": "Vehicle transport quotes",
+                "mark_text": "MM"
+            },
+            "copy": {
+                "eyebrow": "Move My Car Quotes",
+                "headline": "Get your Move My Car transport quote",
+                "subheading": "Use the current Move My Car app-served host for this controlled third-pilot surface.",
+                "primary_cta_label": "Start your vehicle quote",
+                "secondary_cta_label": "Contact us",
+                "footer_blurb": "Move My Car is published as a controlled third-pilot brand surface."
+            },
+            "theme": {
+                "theme_key": "movemycar",
+                "mode": "auto",
+                "fonts": {
+                    "body_family": "Inter",
+                    "heading_family": "Inter"
+                },
+                "colors": {
+                    "accent": "#0891b2",
+                    "accent_strong": "#0e7490",
+                    "background": "#ecfeff",
+                    "text": "#102a31",
+                    "muted_text": "#4b5563",
+                    "surface": "#ffffff",
+                    "border": "#dbeafe"
+                },
+                "radius_scale": "rounded",
+                "shadow_style": "soft",
+                "exact_tokens": []
+            },
+            "navigation": {
+                "show_household_quote_link": false,
+                "show_vehicle_quote_link": true,
+                "show_booking_link": false,
+                "show_contact_link": true,
+                "show_customer_portal_link": false,
+                "show_customer_portal_in_header": false,
+                "show_provider_login_link": false,
+                "show_admin_link": false
+            },
+            "behavior": {
+                "show_phone_publicly": true,
+                "show_email_publicly": true,
+                "prefer_contact_page_over_direct_contact": false,
+                "allow_customer_portal_links": true,
+                "allow_provider_login_links": false,
+                "allow_admin_links": false
+            },
+            "links": {
+                "primary_cta_route": "vehicle.quote",
+                "primary_cta_url": "https://portal.movemycar.com.au/quote/vehicle",
+                "vehicle_quote_url": "https://portal.movemycar.com.au/quote/vehicle",
+                "contact_url": "https://portal.movemycar.com.au/contact"
+            },
+            "contact": {
+                "public_email": "cars@moveroo.com.au"
+            },
+            "analytics": {
+                "status": "linked",
+                "runtime_context_key": "portal.movemycar.com.au",
+                "property_slug": "movemycar-com-au",
+                "site_key": "movemycar",
+                "journey_type": "vehicle_quote",
+                "ga4": {
+                    "measurement_id": "G-MOVEMYCARC"
+                },
+                "event_contract": {
+                    "key": "movemycar-com-au-full-funnel-v1",
+                    "version": "v1",
+                    "rollout_status": "instrumented"
+                }
+            },
+            "provenance": {
+                "approved_by": "domain-monitor",
+                "approved_at": "2026-05-19T18:47:00+10:00",
+                "source": "domain_monitor",
+                "change_ref": "domain-monitor#217",
+                "source_marketing_url": "https://movemycar.com.au"
+            }
+        },
+        {
+            "hostname": "quotes.wemove.com.au",
+            "property_slug": "wemove-com-au",
+            "surface_slug": "wemove-quotes-v1",
+            "status": "published",
+            "surface_type": "quote",
+            "canonical_role": "primary",
+            "updated_at": "2026-05-19T18:47:00+10:00",
+            "canonical_hostname": "quotes.wemove.com.au",
+            "linked_hostnames": [
+                "quotes.wemove.com.au"
+            ],
+            "owning_marketing_domain": "wemove.com.au",
+            "controller_owner": "domain-monitor",
+            "controller_repo": "_wp-house",
+            "ownership": {
+                "published_truth_owner": "Domain Monitor",
+                "runtime_renderer_owner": "MoverooCombined",
+                "site_repo_owner": "_wp-house",
+                "portfolio_routing_owner": "Bossman"
+            },
+            "brand": {
+                "display_name": "We Move",
+                "brand_key": "wemove",
+                "tagline": "Moving and backloading quotes",
+                "mark_text": "WM"
+            },
+            "copy": {
+                "eyebrow": "We Move Quotes",
+                "headline": "Get your We Move quote",
+                "subheading": "Use the current We Move app-served host for this controlled third-pilot surface.",
+                "primary_cta_label": "Start your quote",
+                "secondary_cta_label": "Contact us",
+                "footer_blurb": "We Move is published as a controlled third-pilot brand surface."
+            },
+            "theme": {
+                "theme_key": "wemove",
+                "mode": "auto",
+                "fonts": {
+                    "body_family": "Inter",
+                    "heading_family": "Inter"
+                },
+                "colors": {
+                    "accent": "#2563eb",
+                    "accent_strong": "#1d4ed8",
+                    "background": "#eff6ff",
+                    "text": "#111827",
+                    "muted_text": "#4b5563",
+                    "surface": "#ffffff",
+                    "border": "#dbeafe"
+                },
+                "radius_scale": "rounded",
+                "shadow_style": "soft",
+                "exact_tokens": []
+            },
+            "navigation": {
+                "show_household_quote_link": true,
+                "show_vehicle_quote_link": true,
+                "show_booking_link": true,
+                "show_contact_link": true,
+                "show_customer_portal_link": false,
+                "show_customer_portal_in_header": false,
+                "show_provider_login_link": false,
+                "show_admin_link": false
+            },
+            "behavior": {
+                "show_phone_publicly": true,
+                "show_email_publicly": true,
+                "prefer_contact_page_over_direct_contact": false,
+                "allow_customer_portal_links": true,
+                "allow_provider_login_links": false,
+                "allow_admin_links": false
+            },
+            "links": {
+                "primary_cta_route": "household.quote",
+                "primary_cta_url": "https://quotes.wemove.com.au/quote/household",
+                "household_quote_url": "https://quotes.wemove.com.au/quote/household",
+                "vehicle_quote_url": "https://quotes.wemove.com.au/quote/vehicle",
+                "booking_url": "https://quotes.wemove.com.au/booking/create",
+                "contact_url": "https://quotes.wemove.com.au/contact"
+            },
+            "contact": {
+                "public_email": "removals@moveroo.com.au"
+            },
+            "analytics": {
+                "status": "linked",
+                "runtime_context_key": "quotes.wemove.com.au",
+                "property_slug": "wemove-com-au",
+                "site_key": "wemove",
+                "journey_type": "mixed_quote",
+                "ga4": {
+                    "measurement_id": "G-WEMOVECOMA"
+                },
+                "event_contract": {
+                    "key": "wemove-com-au-full-funnel-v1",
+                    "version": "v1",
+                    "rollout_status": "instrumented"
+                }
+            },
+            "provenance": {
+                "approved_by": "domain-monitor",
+                "approved_at": "2026-05-19T18:47:00+10:00",
+                "source": "domain_monitor",
+                "change_ref": "domain-monitor#217",
+                "source_marketing_url": "https://wemove.com.au"
+            }
+        },
+        {
+            "hostname": "quoting.backloading-au.com.au",
+            "property_slug": "backloading-au-com-au",
+            "surface_slug": "backloading-quoting-v1",
+            "status": "published",
+            "surface_type": "quote",
+            "canonical_role": "primary",
+            "updated_at": "2026-05-19T18:47:00+10:00",
+            "canonical_hostname": "quoting.backloading-au.com.au",
+            "linked_hostnames": [
+                "quoting.backloading-au.com.au"
+            ],
+            "owning_marketing_domain": "backloading-au.com.au",
+            "controller_owner": "domain-monitor",
+            "controller_repo": "_wp-house",
+            "ownership": {
+                "published_truth_owner": "Domain Monitor",
+                "runtime_renderer_owner": "MoverooCombined",
+                "site_repo_owner": "_wp-house",
+                "portfolio_routing_owner": "Bossman"
+            },
+            "brand": {
+                "display_name": "Backloading Australia",
+                "brand_key": "backloading-au",
+                "tagline": "Moving and backloading quotes",
+                "mark_text": "BA"
+            },
+            "copy": {
+                "eyebrow": "Backloading Australia Quotes",
+                "headline": "Get your Backloading Australia quote",
+                "subheading": "Use the current Backloading Australia app-served host for this controlled third-pilot surface.",
+                "primary_cta_label": "Start your quote",
+                "secondary_cta_label": "Contact us",
+                "footer_blurb": "Backloading Australia is published as a controlled third-pilot brand surface."
+            },
+            "theme": {
+                "theme_key": "backloading-au",
+                "mode": "auto",
+                "fonts": {
+                    "body_family": "Inter",
+                    "heading_family": "Inter"
+                },
+                "colors": {
+                    "accent": "#f97316",
+                    "accent_strong": "#c2410c",
+                    "background": "#fff7ed",
+                    "text": "#1f1308",
+                    "muted_text": "#4b5563",
+                    "surface": "#ffffff",
+                    "border": "#dbeafe"
+                },
+                "radius_scale": "rounded",
+                "shadow_style": "soft",
+                "exact_tokens": []
+            },
+            "navigation": {
+                "show_household_quote_link": true,
+                "show_vehicle_quote_link": true,
+                "show_booking_link": true,
+                "show_contact_link": true,
+                "show_customer_portal_link": false,
+                "show_customer_portal_in_header": false,
+                "show_provider_login_link": false,
+                "show_admin_link": false
+            },
+            "behavior": {
+                "show_phone_publicly": true,
+                "show_email_publicly": true,
+                "prefer_contact_page_over_direct_contact": false,
+                "allow_customer_portal_links": true,
+                "allow_provider_login_links": false,
+                "allow_admin_links": false
+            },
+            "links": {
+                "primary_cta_route": "household.quote",
+                "primary_cta_url": "https://quoting.backloading-au.com.au/quote/household",
+                "household_quote_url": "https://quoting.backloading-au.com.au/quote/household",
+                "vehicle_quote_url": "https://quoting.backloading-au.com.au/quote/vehicle",
+                "booking_url": "https://quoting.backloading-au.com.au/booking/create",
+                "contact_url": "https://quoting.backloading-au.com.au/contact"
+            },
+            "contact": {
+                "public_email": "removals@moveroo.com.au"
+            },
+            "analytics": {
+                "status": "linked",
+                "runtime_context_key": "quoting.backloading-au.com.au",
+                "property_slug": "backloading-au-com-au",
+                "site_key": "backloading-au",
+                "journey_type": "mixed_quote",
+                "ga4": {
+                    "measurement_id": "G-BACKLOADIN"
+                },
+                "event_contract": {
+                    "key": "backloading-au-com-au-full-funnel-v1",
+                    "version": "v1",
+                    "rollout_status": "instrumented"
+                }
+            },
+            "provenance": {
+                "approved_by": "domain-monitor",
+                "approved_at": "2026-05-19T18:47:00+10:00",
+                "source": "domain_monitor",
+                "change_ref": "domain-monitor#217",
+                "source_marketing_url": "https://backloading-au.com.au"
+            }
+        },
+        {
+            "hostname": "quoting.cartransport.au",
+            "property_slug": "cartransport-au",
+            "surface_slug": "cartransport-quoting-v1",
+            "status": "published",
+            "surface_type": "quote",
+            "canonical_role": "primary",
+            "updated_at": "2026-05-19T18:47:00+10:00",
+            "canonical_hostname": "quoting.cartransport.au",
+            "linked_hostnames": [
+                "quoting.cartransport.au"
+            ],
+            "owning_marketing_domain": "cartransport.au",
+            "controller_owner": "domain-monitor",
+            "controller_repo": "_wp-house",
+            "ownership": {
+                "published_truth_owner": "Domain Monitor",
+                "runtime_renderer_owner": "MoverooCombined",
+                "site_repo_owner": "_wp-house",
+                "portfolio_routing_owner": "Bossman"
+            },
+            "brand": {
+                "display_name": "cartransport.au",
+                "brand_key": "cartransport-au",
+                "tagline": "Vehicle transport quotes",
+                "mark_text": "CT"
+            },
+            "copy": {
+                "eyebrow": "cartransport.au Quotes",
+                "headline": "Get your car transport quote",
+                "subheading": "Use the current cartransport.au app-served host for this controlled third-pilot surface.",
+                "primary_cta_label": "Start your vehicle quote",
+                "secondary_cta_label": "Contact us",
+                "footer_blurb": "cartransport.au is published as a controlled third-pilot brand surface."
+            },
+            "theme": {
+                "theme_key": "cartransport-au",
+                "mode": "auto",
+                "fonts": {
+                    "body_family": "Inter",
+                    "heading_family": "Inter"
+                },
+                "colors": {
+                    "accent": "#0891b2",
+                    "accent_strong": "#0e7490",
+                    "background": "#ecfeff",
+                    "text": "#102a31",
+                    "muted_text": "#4b5563",
+                    "surface": "#ffffff",
+                    "border": "#dbeafe"
+                },
+                "radius_scale": "rounded",
+                "shadow_style": "soft",
+                "exact_tokens": []
+            },
+            "navigation": {
+                "show_household_quote_link": false,
+                "show_vehicle_quote_link": true,
+                "show_booking_link": false,
+                "show_contact_link": true,
+                "show_customer_portal_link": false,
+                "show_customer_portal_in_header": false,
+                "show_provider_login_link": false,
+                "show_admin_link": false
+            },
+            "behavior": {
+                "show_phone_publicly": true,
+                "show_email_publicly": true,
+                "prefer_contact_page_over_direct_contact": false,
+                "allow_customer_portal_links": true,
+                "allow_provider_login_links": false,
+                "allow_admin_links": false
+            },
+            "links": {
+                "primary_cta_route": "vehicle.quote",
+                "primary_cta_url": "https://quoting.cartransport.au/quote/vehicle",
+                "vehicle_quote_url": "https://quoting.cartransport.au/quote/vehicle",
+                "contact_url": "https://quoting.cartransport.au/contact"
+            },
+            "contact": {
+                "public_email": "cars@moveroo.com.au"
+            },
+            "analytics": {
+                "status": "linked",
+                "runtime_context_key": "quoting.cartransport.au",
+                "property_slug": "cartransport-au",
+                "site_key": "cartransport-au",
+                "journey_type": "vehicle_quote",
+                "ga4": {
+                    "measurement_id": "G-CARTRANSPO"
+                },
+                "event_contract": {
+                    "key": "cartransport-au-full-funnel-v1",
+                    "version": "v1",
+                    "rollout_status": "instrumented"
+                }
+            },
+            "provenance": {
+                "approved_by": "domain-monitor",
+                "approved_at": "2026-05-19T18:47:00+10:00",
+                "source": "domain_monitor",
+                "change_ref": "domain-monitor#217",
+                "source_marketing_url": "https://cartransport.au"
+            }
+        },
+        {
+            "hostname": "quoting.cartransportaus.com.au",
+            "property_slug": "cartransportaus-com-au",
+            "surface_slug": "cartransportaus-quoting-v1",
+            "status": "published",
+            "surface_type": "quote",
+            "canonical_role": "primary",
+            "updated_at": "2026-05-19T18:47:00+10:00",
+            "canonical_hostname": "quoting.cartransportaus.com.au",
+            "linked_hostnames": [
+                "quoting.cartransportaus.com.au"
+            ],
+            "owning_marketing_domain": "cartransportaus.com.au",
+            "controller_owner": "domain-monitor",
+            "controller_repo": "_wp-house",
+            "ownership": {
+                "published_truth_owner": "Domain Monitor",
+                "runtime_renderer_owner": "MoverooCombined",
+                "site_repo_owner": "_wp-house",
+                "portfolio_routing_owner": "Bossman"
+            },
+            "brand": {
+                "display_name": "Car Transport Aus",
+                "brand_key": "cartransportaus",
+                "tagline": "Vehicle transport quotes",
+                "mark_text": "CA"
+            },
+            "copy": {
+                "eyebrow": "Car Transport Aus Quotes",
+                "headline": "Get your Car Transport Aus quote",
+                "subheading": "Use the current Car Transport Aus app-served host for this controlled third-pilot surface.",
+                "primary_cta_label": "Start your vehicle quote",
+                "secondary_cta_label": "Contact us",
+                "footer_blurb": "Car Transport Aus is published as a controlled third-pilot brand surface."
+            },
+            "theme": {
+                "theme_key": "cartransportaus",
+                "mode": "auto",
+                "fonts": {
+                    "body_family": "Inter",
+                    "heading_family": "Inter"
+                },
+                "colors": {
+                    "accent": "#0891b2",
+                    "accent_strong": "#0e7490",
+                    "background": "#ecfeff",
+                    "text": "#102a31",
+                    "muted_text": "#4b5563",
+                    "surface": "#ffffff",
+                    "border": "#dbeafe"
+                },
+                "radius_scale": "rounded",
+                "shadow_style": "soft",
+                "exact_tokens": []
+            },
+            "navigation": {
+                "show_household_quote_link": false,
+                "show_vehicle_quote_link": true,
+                "show_booking_link": false,
+                "show_contact_link": true,
+                "show_customer_portal_link": false,
+                "show_customer_portal_in_header": false,
+                "show_provider_login_link": false,
+                "show_admin_link": false
+            },
+            "behavior": {
+                "show_phone_publicly": true,
+                "show_email_publicly": true,
+                "prefer_contact_page_over_direct_contact": false,
+                "allow_customer_portal_links": true,
+                "allow_provider_login_links": false,
+                "allow_admin_links": false
+            },
+            "links": {
+                "primary_cta_route": "vehicle.quote",
+                "primary_cta_url": "https://quoting.cartransportaus.com.au/quote/vehicle",
+                "vehicle_quote_url": "https://quoting.cartransportaus.com.au/quote/vehicle",
+                "contact_url": "https://quoting.cartransportaus.com.au/contact"
+            },
+            "contact": {
+                "public_email": "cars@moveroo.com.au"
+            },
+            "analytics": {
+                "status": "linked",
+                "runtime_context_key": "quoting.cartransportaus.com.au",
+                "property_slug": "cartransportaus-com-au",
+                "site_key": "cartransportaus",
+                "journey_type": "vehicle_quote",
+                "ga4": {
+                    "measurement_id": "G-CARTRANSPO"
+                },
+                "event_contract": {
+                    "key": "cartransportaus-com-au-full-funnel-v1",
+                    "version": "v1",
+                    "rollout_status": "instrumented"
+                }
+            },
+            "provenance": {
+                "approved_by": "domain-monitor",
+                "approved_at": "2026-05-19T18:47:00+10:00",
+                "source": "domain_monitor",
+                "change_ref": "domain-monitor#217",
+                "source_marketing_url": "https://cartransportaus.com.au"
+            }
+        },
+        {
+            "hostname": "quoting.cartransportwithpersonalitems.com.au",
+            "property_slug": "cartransportwithpersonalitems-com-au",
+            "surface_slug": "cartransportwithpersonalitems-quoting-v1",
+            "status": "published",
+            "surface_type": "quote",
+            "canonical_role": "primary",
+            "updated_at": "2026-05-19T18:47:00+10:00",
+            "canonical_hostname": "quoting.cartransportwithpersonalitems.com.au",
+            "linked_hostnames": [
+                "quoting.cartransportwithpersonalitems.com.au"
+            ],
+            "owning_marketing_domain": "cartransportwithpersonalitems.com.au",
+            "controller_owner": "domain-monitor",
+            "controller_repo": "_wp-house",
+            "ownership": {
+                "published_truth_owner": "Domain Monitor",
+                "runtime_renderer_owner": "MoverooCombined",
+                "site_repo_owner": "_wp-house",
+                "portfolio_routing_owner": "Bossman"
+            },
+            "brand": {
+                "display_name": "Car Transport With Personal Items",
+                "brand_key": "cartransportwithpersonalitems",
+                "tagline": "Vehicle transport quotes",
+                "mark_text": "CP"
+            },
+            "copy": {
+                "eyebrow": "Car Transport Personal Items Quotes",
+                "headline": "Get your car transport quote",
+                "subheading": "Use the current Car Transport With Personal Items app-served host for this controlled third-pilot surface.",
+                "primary_cta_label": "Start your vehicle quote",
+                "secondary_cta_label": "Contact us",
+                "footer_blurb": "Car Transport With Personal Items is published as a controlled third-pilot brand surface."
+            },
+            "theme": {
+                "theme_key": "cartransportwithpersonalitems",
+                "mode": "auto",
+                "fonts": {
+                    "body_family": "Inter",
+                    "heading_family": "Inter"
+                },
+                "colors": {
+                    "accent": "#0891b2",
+                    "accent_strong": "#0e7490",
+                    "background": "#ecfeff",
+                    "text": "#102a31",
+                    "muted_text": "#4b5563",
+                    "surface": "#ffffff",
+                    "border": "#dbeafe"
+                },
+                "radius_scale": "rounded",
+                "shadow_style": "soft",
+                "exact_tokens": []
+            },
+            "navigation": {
+                "show_household_quote_link": false,
+                "show_vehicle_quote_link": true,
+                "show_booking_link": false,
+                "show_contact_link": true,
+                "show_customer_portal_link": false,
+                "show_customer_portal_in_header": false,
+                "show_provider_login_link": false,
+                "show_admin_link": false
+            },
+            "behavior": {
+                "show_phone_publicly": true,
+                "show_email_publicly": true,
+                "prefer_contact_page_over_direct_contact": false,
+                "allow_customer_portal_links": true,
+                "allow_provider_login_links": false,
+                "allow_admin_links": false
+            },
+            "links": {
+                "primary_cta_route": "vehicle.quote",
+                "primary_cta_url": "https://quoting.cartransportwithpersonalitems.com.au/quote/vehicle",
+                "vehicle_quote_url": "https://quoting.cartransportwithpersonalitems.com.au/quote/vehicle",
+                "contact_url": "https://quoting.cartransportwithpersonalitems.com.au/contact"
+            },
+            "contact": {
+                "public_email": "cars@moveroo.com.au"
+            },
+            "analytics": {
+                "status": "linked",
+                "runtime_context_key": "quoting.cartransportwithpersonalitems.com.au",
+                "property_slug": "cartransportwithpersonalitems-com-au",
+                "site_key": "cartransportwithpersonalitems",
+                "journey_type": "vehicle_quote",
+                "ga4": {
+                    "measurement_id": "G-CARTRANSPO"
+                },
+                "event_contract": {
+                    "key": "cartransportwithpersonalitems-com-au-full-funnel-v1",
+                    "version": "v1",
+                    "rollout_status": "instrumented"
+                }
+            },
+            "provenance": {
+                "approved_by": "domain-monitor",
+                "approved_at": "2026-05-19T18:47:00+10:00",
+                "source": "domain_monitor",
+                "change_ref": "domain-monitor#217",
+                "source_marketing_url": "https://cartransportwithpersonalitems.com.au"
+            }
+        },
+        {
+            "hostname": "quoting.interstate-car-transport.com.au",
+            "property_slug": "interstate-car-transport-com-au",
+            "surface_slug": "interstate-car-transport-quoting-v1",
+            "status": "published",
+            "surface_type": "quote",
+            "canonical_role": "primary",
+            "updated_at": "2026-05-19T18:47:00+10:00",
+            "canonical_hostname": "quoting.interstate-car-transport.com.au",
+            "linked_hostnames": [
+                "quoting.interstate-car-transport.com.au"
+            ],
+            "owning_marketing_domain": "interstate-car-transport.com.au",
+            "controller_owner": "domain-monitor",
+            "controller_repo": "_wp-house",
+            "ownership": {
+                "published_truth_owner": "Domain Monitor",
+                "runtime_renderer_owner": "MoverooCombined",
+                "site_repo_owner": "_wp-house",
+                "portfolio_routing_owner": "Bossman"
+            },
+            "brand": {
+                "display_name": "Interstate Car Transport",
+                "brand_key": "interstate-car-transport",
+                "tagline": "Vehicle transport quotes",
+                "mark_text": "IC"
+            },
+            "copy": {
+                "eyebrow": "Interstate Car Transport Quotes",
+                "headline": "Get your interstate car transport quote",
+                "subheading": "Use the current Interstate Car Transport app-served host for this controlled third-pilot surface.",
+                "primary_cta_label": "Start your vehicle quote",
+                "secondary_cta_label": "Contact us",
+                "footer_blurb": "Interstate Car Transport is published as a controlled third-pilot brand surface."
+            },
+            "theme": {
+                "theme_key": "interstate-car-transport",
+                "mode": "auto",
+                "fonts": {
+                    "body_family": "Inter",
+                    "heading_family": "Inter"
+                },
+                "colors": {
+                    "accent": "#0891b2",
+                    "accent_strong": "#0e7490",
+                    "background": "#ecfeff",
+                    "text": "#102a31",
+                    "muted_text": "#4b5563",
+                    "surface": "#ffffff",
+                    "border": "#dbeafe"
+                },
+                "radius_scale": "rounded",
+                "shadow_style": "soft",
+                "exact_tokens": []
+            },
+            "navigation": {
+                "show_household_quote_link": false,
+                "show_vehicle_quote_link": true,
+                "show_booking_link": false,
+                "show_contact_link": true,
+                "show_customer_portal_link": false,
+                "show_customer_portal_in_header": false,
+                "show_provider_login_link": false,
+                "show_admin_link": false
+            },
+            "behavior": {
+                "show_phone_publicly": true,
+                "show_email_publicly": true,
+                "prefer_contact_page_over_direct_contact": false,
+                "allow_customer_portal_links": true,
+                "allow_provider_login_links": false,
+                "allow_admin_links": false
+            },
+            "links": {
+                "primary_cta_route": "vehicle.quote",
+                "primary_cta_url": "https://quoting.interstate-car-transport.com.au/quote/vehicle",
+                "vehicle_quote_url": "https://quoting.interstate-car-transport.com.au/quote/vehicle",
+                "contact_url": "https://quoting.interstate-car-transport.com.au/contact"
+            },
+            "contact": {
+                "public_email": "cars@moveroo.com.au"
+            },
+            "analytics": {
+                "status": "linked",
+                "runtime_context_key": "quoting.interstate-car-transport.com.au",
+                "property_slug": "interstate-car-transport-com-au",
+                "site_key": "interstate-car-transport",
+                "journey_type": "vehicle_quote",
+                "ga4": {
+                    "measurement_id": "G-INTERSTATE"
+                },
+                "event_contract": {
+                    "key": "interstate-car-transport-com-au-full-funnel-v1",
+                    "version": "v1",
+                    "rollout_status": "instrumented"
+                }
+            },
+            "provenance": {
+                "approved_by": "domain-monitor",
+                "approved_at": "2026-05-19T18:47:00+10:00",
+                "source": "domain_monitor",
+                "change_ref": "domain-monitor#217",
+                "source_marketing_url": "https://interstate-car-transport.com.au"
+            }
+        },
+        {
+            "hostname": "quoting.interstatecarcarriers.com.au",
+            "property_slug": "interstatecarcarriers-com-au",
+            "surface_slug": "interstatecarcarriers-quoting-v1",
+            "status": "published",
+            "surface_type": "quote",
+            "canonical_role": "primary",
+            "updated_at": "2026-05-19T18:47:00+10:00",
+            "canonical_hostname": "quoting.interstatecarcarriers.com.au",
+            "linked_hostnames": [
+                "quoting.interstatecarcarriers.com.au"
+            ],
+            "owning_marketing_domain": "interstatecarcarriers.com.au",
+            "controller_owner": "domain-monitor",
+            "controller_repo": "_wp-house",
+            "ownership": {
+                "published_truth_owner": "Domain Monitor",
+                "runtime_renderer_owner": "MoverooCombined",
+                "site_repo_owner": "_wp-house",
+                "portfolio_routing_owner": "Bossman"
+            },
+            "brand": {
+                "display_name": "Interstate Car Carriers",
+                "brand_key": "interstatecarcarriers",
+                "tagline": "Vehicle transport quotes",
+                "mark_text": "ICC"
+            },
+            "copy": {
+                "eyebrow": "Interstate Car Carriers Quotes",
+                "headline": "Get your interstate car carrier quote",
+                "subheading": "Use the current Interstate Car Carriers app-served host for this controlled third-pilot surface.",
+                "primary_cta_label": "Start your vehicle quote",
+                "secondary_cta_label": "Contact us",
+                "footer_blurb": "Interstate Car Carriers is published as a controlled third-pilot brand surface."
+            },
+            "theme": {
+                "theme_key": "interstatecarcarriers",
+                "mode": "auto",
+                "fonts": {
+                    "body_family": "Inter",
+                    "heading_family": "Inter"
+                },
+                "colors": {
+                    "accent": "#0891b2",
+                    "accent_strong": "#0e7490",
+                    "background": "#ecfeff",
+                    "text": "#102a31",
+                    "muted_text": "#4b5563",
+                    "surface": "#ffffff",
+                    "border": "#dbeafe"
+                },
+                "radius_scale": "rounded",
+                "shadow_style": "soft",
+                "exact_tokens": []
+            },
+            "navigation": {
+                "show_household_quote_link": false,
+                "show_vehicle_quote_link": true,
+                "show_booking_link": false,
+                "show_contact_link": true,
+                "show_customer_portal_link": false,
+                "show_customer_portal_in_header": false,
+                "show_provider_login_link": false,
+                "show_admin_link": false
+            },
+            "behavior": {
+                "show_phone_publicly": true,
+                "show_email_publicly": true,
+                "prefer_contact_page_over_direct_contact": false,
+                "allow_customer_portal_links": true,
+                "allow_provider_login_links": false,
+                "allow_admin_links": false
+            },
+            "links": {
+                "primary_cta_route": "vehicle.quote",
+                "primary_cta_url": "https://quoting.interstatecarcarriers.com.au/quote/vehicle",
+                "vehicle_quote_url": "https://quoting.interstatecarcarriers.com.au/quote/vehicle",
+                "contact_url": "https://quoting.interstatecarcarriers.com.au/contact"
+            },
+            "contact": {
+                "public_email": "cars@moveroo.com.au"
+            },
+            "analytics": {
+                "status": "linked",
+                "runtime_context_key": "quoting.interstatecarcarriers.com.au",
+                "property_slug": "interstatecarcarriers-com-au",
+                "site_key": "interstatecarcarriers",
+                "journey_type": "vehicle_quote",
+                "ga4": {
+                    "measurement_id": "G-INTERSTATE"
+                },
+                "event_contract": {
+                    "key": "interstatecarcarriers-com-au-full-funnel-v1",
+                    "version": "v1",
+                    "rollout_status": "instrumented"
+                }
+            },
+            "provenance": {
+                "approved_by": "domain-monitor",
+                "approved_at": "2026-05-19T18:47:00+10:00",
+                "source": "domain_monitor",
+                "change_ref": "domain-monitor#217",
+                "source_marketing_url": "https://interstatecarcarriers.com.au"
+            }
+        },
+        {
+            "hostname": "quoting.perthinterstateremovalists.com.au",
+            "property_slug": "perthinterstateremovalists-com-au",
+            "surface_slug": "perthinterstateremovalists-quoting-v1",
+            "status": "published",
+            "surface_type": "quote",
+            "canonical_role": "primary",
+            "updated_at": "2026-05-19T18:47:00+10:00",
+            "canonical_hostname": "quoting.perthinterstateremovalists.com.au",
+            "linked_hostnames": [
+                "quoting.perthinterstateremovalists.com.au"
+            ],
+            "owning_marketing_domain": "perthinterstateremovalists.com.au",
+            "controller_owner": "domain-monitor",
+            "controller_repo": "_wp-house",
+            "ownership": {
+                "published_truth_owner": "Domain Monitor",
+                "runtime_renderer_owner": "MoverooCombined",
+                "site_repo_owner": "_wp-house",
+                "portfolio_routing_owner": "Bossman"
+            },
+            "brand": {
+                "display_name": "Perth Interstate Removalists",
+                "brand_key": "perthinterstateremovalists",
+                "tagline": "Moving and backloading quotes",
+                "mark_text": "PI"
+            },
+            "copy": {
+                "eyebrow": "Perth Interstate Removalists Quotes",
+                "headline": "Get your Perth interstate removals quote",
+                "subheading": "Use the current Perth Interstate Removalists app-served host for this controlled third-pilot surface.",
+                "primary_cta_label": "Start your quote",
+                "secondary_cta_label": "Contact us",
+                "footer_blurb": "Perth Interstate Removalists is published as a controlled third-pilot brand surface."
+            },
+            "theme": {
+                "theme_key": "perthinterstateremovalists",
+                "mode": "auto",
+                "fonts": {
+                    "body_family": "Inter",
+                    "heading_family": "Inter"
+                },
+                "colors": {
+                    "accent": "#2563eb",
+                    "accent_strong": "#1d4ed8",
+                    "background": "#eff6ff",
+                    "text": "#111827",
+                    "muted_text": "#4b5563",
+                    "surface": "#ffffff",
+                    "border": "#dbeafe"
+                },
+                "radius_scale": "rounded",
+                "shadow_style": "soft",
+                "exact_tokens": []
+            },
+            "navigation": {
+                "show_household_quote_link": true,
+                "show_vehicle_quote_link": true,
+                "show_booking_link": true,
+                "show_contact_link": true,
+                "show_customer_portal_link": false,
+                "show_customer_portal_in_header": false,
+                "show_provider_login_link": false,
+                "show_admin_link": false
+            },
+            "behavior": {
+                "show_phone_publicly": true,
+                "show_email_publicly": true,
+                "prefer_contact_page_over_direct_contact": false,
+                "allow_customer_portal_links": true,
+                "allow_provider_login_links": false,
+                "allow_admin_links": false
+            },
+            "links": {
+                "primary_cta_route": "household.quote",
+                "primary_cta_url": "https://quoting.perthinterstateremovalists.com.au/quote/household",
+                "household_quote_url": "https://quoting.perthinterstateremovalists.com.au/quote/household",
+                "vehicle_quote_url": "https://quoting.perthinterstateremovalists.com.au/quote/vehicle",
+                "booking_url": "https://quoting.perthinterstateremovalists.com.au/booking/create",
+                "contact_url": "https://quoting.perthinterstateremovalists.com.au/contact"
+            },
+            "contact": {
+                "public_email": "removals@moveroo.com.au"
+            },
+            "analytics": {
+                "status": "linked",
+                "runtime_context_key": "quoting.perthinterstateremovalists.com.au",
+                "property_slug": "perthinterstateremovalists-com-au",
+                "site_key": "perthinterstateremovalists",
+                "journey_type": "mixed_quote",
+                "ga4": {
+                    "measurement_id": "G-PERTHINTER"
+                },
+                "event_contract": {
+                    "key": "perthinterstateremovalists-com-au-full-funnel-v1",
+                    "version": "v1",
+                    "rollout_status": "instrumented"
+                }
+            },
+            "provenance": {
+                "approved_by": "domain-monitor",
+                "approved_at": "2026-05-19T18:47:00+10:00",
+                "source": "domain_monitor",
+                "change_ref": "domain-monitor#217",
+                "source_marketing_url": "https://perthinterstateremovalists.com.au"
+            }
+        },
+        {
+            "hostname": "quoting.removalsinterstate.com.au",
+            "property_slug": "removalsinterstate-com-au",
+            "surface_slug": "removalsinterstate-quoting-v1",
+            "status": "published",
+            "surface_type": "quote",
+            "canonical_role": "primary",
+            "updated_at": "2026-05-19T18:47:00+10:00",
+            "canonical_hostname": "quoting.removalsinterstate.com.au",
+            "linked_hostnames": [
+                "quoting.removalsinterstate.com.au"
+            ],
+            "owning_marketing_domain": "removalsinterstate.com.au",
+            "controller_owner": "domain-monitor",
+            "controller_repo": "_wp-house",
+            "ownership": {
+                "published_truth_owner": "Domain Monitor",
+                "runtime_renderer_owner": "MoverooCombined",
+                "site_repo_owner": "_wp-house",
+                "portfolio_routing_owner": "Bossman"
+            },
+            "brand": {
+                "display_name": "Removals Interstate",
+                "brand_key": "removalsinterstate",
+                "tagline": "Moving and backloading quotes",
+                "mark_text": "RI"
+            },
+            "copy": {
+                "eyebrow": "Removals Interstate Quotes",
+                "headline": "Get your Removals Interstate quote",
+                "subheading": "Use the current Removals Interstate app-served host for this controlled third-pilot surface.",
+                "primary_cta_label": "Start your quote",
+                "secondary_cta_label": "Contact us",
+                "footer_blurb": "Removals Interstate is published as a controlled third-pilot brand surface."
+            },
+            "theme": {
+                "theme_key": "removalsinterstate",
+                "mode": "auto",
+                "fonts": {
+                    "body_family": "Inter",
+                    "heading_family": "Inter"
+                },
+                "colors": {
+                    "accent": "#2563eb",
+                    "accent_strong": "#1d4ed8",
+                    "background": "#eff6ff",
+                    "text": "#111827",
+                    "muted_text": "#4b5563",
+                    "surface": "#ffffff",
+                    "border": "#dbeafe"
+                },
+                "radius_scale": "rounded",
+                "shadow_style": "soft",
+                "exact_tokens": []
+            },
+            "navigation": {
+                "show_household_quote_link": true,
+                "show_vehicle_quote_link": true,
+                "show_booking_link": true,
+                "show_contact_link": true,
+                "show_customer_portal_link": false,
+                "show_customer_portal_in_header": false,
+                "show_provider_login_link": false,
+                "show_admin_link": false
+            },
+            "behavior": {
+                "show_phone_publicly": true,
+                "show_email_publicly": true,
+                "prefer_contact_page_over_direct_contact": false,
+                "allow_customer_portal_links": true,
+                "allow_provider_login_links": false,
+                "allow_admin_links": false
+            },
+            "links": {
+                "primary_cta_route": "household.quote",
+                "primary_cta_url": "https://quoting.removalsinterstate.com.au/quote/household",
+                "household_quote_url": "https://quoting.removalsinterstate.com.au/quote/household",
+                "vehicle_quote_url": "https://quoting.removalsinterstate.com.au/quote/vehicle",
+                "booking_url": "https://quoting.removalsinterstate.com.au/booking/create",
+                "contact_url": "https://quoting.removalsinterstate.com.au/contact"
+            },
+            "contact": {
+                "public_email": "removals@moveroo.com.au"
+            },
+            "analytics": {
+                "status": "linked",
+                "runtime_context_key": "quoting.removalsinterstate.com.au",
+                "property_slug": "removalsinterstate-com-au",
+                "site_key": "removalsinterstate",
+                "journey_type": "mixed_quote",
+                "ga4": {
+                    "measurement_id": "G-REMOVALSIN"
+                },
+                "event_contract": {
+                    "key": "removalsinterstate-com-au-full-funnel-v1",
+                    "version": "v1",
+                    "rollout_status": "instrumented"
+                }
+            },
+            "provenance": {
+                "approved_by": "domain-monitor",
+                "approved_at": "2026-05-19T18:47:00+10:00",
+                "source": "domain_monitor",
+                "change_ref": "domain-monitor#217",
+                "source_marketing_url": "https://removalsinterstate.com.au"
+            }
+        },
+        {
+            "hostname": "quoting.transportnondrivablecars.com.au",
+            "property_slug": "transportnondrivablecars-com-au",
+            "surface_slug": "transportnondrivablecars-quoting-v1",
+            "status": "published",
+            "surface_type": "quote",
+            "canonical_role": "primary",
+            "updated_at": "2026-05-19T18:47:00+10:00",
+            "canonical_hostname": "quoting.transportnondrivablecars.com.au",
+            "linked_hostnames": [
+                "quoting.transportnondrivablecars.com.au"
+            ],
+            "owning_marketing_domain": "transportnondrivablecars.com.au",
+            "controller_owner": "domain-monitor",
+            "controller_repo": "_wp-house",
+            "ownership": {
+                "published_truth_owner": "Domain Monitor",
+                "runtime_renderer_owner": "MoverooCombined",
+                "site_repo_owner": "_wp-house",
+                "portfolio_routing_owner": "Bossman"
+            },
+            "brand": {
+                "display_name": "Transport Non Drivable Cars",
+                "brand_key": "transportnondrivablecars",
+                "tagline": "Vehicle transport quotes",
+                "mark_text": "TN"
+            },
+            "copy": {
+                "eyebrow": "Transport Non Drivable Cars Quotes",
+                "headline": "Get your non-drivable car transport quote",
+                "subheading": "Use the current Transport Non Drivable Cars app-served host for this controlled third-pilot surface.",
+                "primary_cta_label": "Start your vehicle quote",
+                "secondary_cta_label": "Contact us",
+                "footer_blurb": "Transport Non Drivable Cars is published as a controlled third-pilot brand surface."
+            },
+            "theme": {
+                "theme_key": "transportnondrivablecars",
+                "mode": "auto",
+                "fonts": {
+                    "body_family": "Inter",
+                    "heading_family": "Inter"
+                },
+                "colors": {
+                    "accent": "#0891b2",
+                    "accent_strong": "#0e7490",
+                    "background": "#ecfeff",
+                    "text": "#102a31",
+                    "muted_text": "#4b5563",
+                    "surface": "#ffffff",
+                    "border": "#dbeafe"
+                },
+                "radius_scale": "rounded",
+                "shadow_style": "soft",
+                "exact_tokens": []
+            },
+            "navigation": {
+                "show_household_quote_link": false,
+                "show_vehicle_quote_link": true,
+                "show_booking_link": false,
+                "show_contact_link": true,
+                "show_customer_portal_link": false,
+                "show_customer_portal_in_header": false,
+                "show_provider_login_link": false,
+                "show_admin_link": false
+            },
+            "behavior": {
+                "show_phone_publicly": true,
+                "show_email_publicly": true,
+                "prefer_contact_page_over_direct_contact": false,
+                "allow_customer_portal_links": true,
+                "allow_provider_login_links": false,
+                "allow_admin_links": false
+            },
+            "links": {
+                "primary_cta_route": "vehicle.quote",
+                "primary_cta_url": "https://quoting.transportnondrivablecars.com.au/quote/vehicle",
+                "vehicle_quote_url": "https://quoting.transportnondrivablecars.com.au/quote/vehicle",
+                "contact_url": "https://quoting.transportnondrivablecars.com.au/contact"
+            },
+            "contact": {
+                "public_email": "cars@moveroo.com.au"
+            },
+            "analytics": {
+                "status": "linked",
+                "runtime_context_key": "quoting.transportnondrivablecars.com.au",
+                "property_slug": "transportnondrivablecars-com-au",
+                "site_key": "transportnondrivablecars",
+                "journey_type": "vehicle_quote",
+                "ga4": {
+                    "measurement_id": "G-TRANSPORTN"
+                },
+                "event_contract": {
+                    "key": "transportnondrivablecars-com-au-full-funnel-v1",
+                    "version": "v1",
+                    "rollout_status": "instrumented"
+                }
+            },
+            "provenance": {
+                "approved_by": "domain-monitor",
+                "approved_at": "2026-05-19T18:47:00+10:00",
+                "source": "domain_monitor",
+                "change_ref": "domain-monitor#217",
+                "source_marketing_url": "https://transportnondrivablecars.com.au"
+            }
+        },
+        {
+            "hostname": "removalistquotes.movingagain.com.au",
+            "property_slug": "movingagain-com-au",
+            "surface_slug": "movingagain-removalistquotes-v1",
+            "status": "published",
+            "surface_type": "quote",
+            "canonical_role": "primary",
+            "updated_at": "2026-05-19T18:47:00+10:00",
+            "canonical_hostname": "removalistquotes.movingagain.com.au",
+            "linked_hostnames": [
+                "removalistquotes.movingagain.com.au"
+            ],
+            "owning_marketing_domain": "movingagain.com.au",
+            "controller_owner": "domain-monitor",
+            "controller_repo": "_wp-house",
+            "ownership": {
+                "published_truth_owner": "Domain Monitor",
+                "runtime_renderer_owner": "MoverooCombined",
+                "site_repo_owner": "_wp-house",
+                "portfolio_routing_owner": "Bossman"
+            },
+            "brand": {
+                "display_name": "Moving Again",
+                "brand_key": "movingagain",
+                "tagline": "Moving and backloading quotes",
+                "mark_text": "MA"
+            },
+            "copy": {
+                "eyebrow": "Moving Again Removalist Quotes",
+                "headline": "Get your Moving Again quote",
+                "subheading": "Use the current Moving Again app-served host for this controlled third-pilot surface.",
+                "primary_cta_label": "Start your quote",
+                "secondary_cta_label": "Contact us",
+                "footer_blurb": "Moving Again is published as a controlled third-pilot brand surface."
+            },
+            "theme": {
+                "theme_key": "movingagain",
+                "mode": "auto",
+                "fonts": {
+                    "body_family": "Inter",
+                    "heading_family": "Inter"
+                },
+                "colors": {
+                    "accent": "#2563eb",
+                    "accent_strong": "#1d4ed8",
+                    "background": "#eff6ff",
+                    "text": "#111827",
+                    "muted_text": "#4b5563",
+                    "surface": "#ffffff",
+                    "border": "#dbeafe"
+                },
+                "radius_scale": "rounded",
+                "shadow_style": "soft",
+                "exact_tokens": []
+            },
+            "navigation": {
+                "show_household_quote_link": true,
+                "show_vehicle_quote_link": false,
+                "show_booking_link": true,
+                "show_contact_link": true,
+                "show_customer_portal_link": false,
+                "show_customer_portal_in_header": false,
+                "show_provider_login_link": false,
+                "show_admin_link": false
+            },
+            "behavior": {
+                "show_phone_publicly": true,
+                "show_email_publicly": true,
+                "prefer_contact_page_over_direct_contact": false,
+                "allow_customer_portal_links": true,
+                "allow_provider_login_links": false,
+                "allow_admin_links": false
+            },
+            "links": {
+                "primary_cta_route": "household.quote",
+                "primary_cta_url": "https://removalistquotes.movingagain.com.au/quote/household",
+                "household_quote_url": "https://removalistquotes.movingagain.com.au/quote/household",
+                "booking_url": "https://removalistquotes.movingagain.com.au/booking/create",
+                "contact_url": "https://removalistquotes.movingagain.com.au/contact"
+            },
+            "contact": {
+                "public_email": "removals@moveroo.com.au"
+            },
+            "analytics": {
+                "status": "linked",
+                "runtime_context_key": "removalistquotes.movingagain.com.au",
+                "property_slug": "movingagain-com-au",
+                "site_key": "movingagain",
+                "journey_type": "mixed_quote",
+                "ga4": {
+                    "measurement_id": "G-MOVINGAGAI"
+                },
+                "event_contract": {
+                    "key": "movingagain-com-au-full-funnel-v1",
+                    "version": "v1",
+                    "rollout_status": "instrumented"
+                }
+            },
+            "provenance": {
+                "approved_by": "domain-monitor",
+                "approved_at": "2026-05-19T18:47:00+10:00",
+                "source": "domain_monitor",
+                "change_ref": "domain-monitor#217",
+                "source_marketing_url": "https://movingagain.com.au"
+            }
+        },
+        {
+            "hostname": "removalists.moveroo.com.au",
+            "property_slug": "moveroo-com-au",
+            "surface_slug": "moveroo-removalists-v1",
+            "status": "published",
+            "surface_type": "quote",
+            "canonical_role": "primary",
+            "updated_at": "2026-05-19T18:47:00+10:00",
+            "canonical_hostname": "removalists.moveroo.com.au",
+            "linked_hostnames": [
+                "removalists.moveroo.com.au"
+            ],
+            "owning_marketing_domain": "moveroo.com.au",
+            "controller_owner": "domain-monitor",
+            "controller_repo": "_wp-house",
+            "ownership": {
+                "published_truth_owner": "Domain Monitor",
+                "runtime_renderer_owner": "MoverooCombined",
+                "site_repo_owner": "_wp-house",
+                "portfolio_routing_owner": "Bossman"
+            },
+            "brand": {
+                "display_name": "Moveroo",
+                "brand_key": "moveroo",
+                "tagline": "Moving and backloading quotes",
+                "mark_text": "M"
+            },
+            "copy": {
+                "eyebrow": "Moveroo Removalist Quotes",
+                "headline": "Get your Moveroo removalist quote",
+                "subheading": "Use the current Moveroo app-served host for this controlled third-pilot surface.",
+                "primary_cta_label": "Start your quote",
+                "secondary_cta_label": "Contact us",
+                "footer_blurb": "Moveroo is published as a controlled third-pilot brand surface."
+            },
+            "theme": {
+                "theme_key": "moveroo",
+                "mode": "auto",
+                "fonts": {
+                    "body_family": "Inter",
+                    "heading_family": "Inter"
+                },
+                "colors": {
+                    "accent": "#2563eb",
+                    "accent_strong": "#1d4ed8",
+                    "background": "#eff6ff",
+                    "text": "#111827",
+                    "muted_text": "#4b5563",
+                    "surface": "#ffffff",
+                    "border": "#dbeafe"
+                },
+                "radius_scale": "rounded",
+                "shadow_style": "soft",
+                "exact_tokens": []
+            },
+            "navigation": {
+                "show_household_quote_link": true,
+                "show_vehicle_quote_link": false,
+                "show_booking_link": true,
+                "show_contact_link": true,
+                "show_customer_portal_link": false,
+                "show_customer_portal_in_header": false,
+                "show_provider_login_link": false,
+                "show_admin_link": false
+            },
+            "behavior": {
+                "show_phone_publicly": true,
+                "show_email_publicly": true,
+                "prefer_contact_page_over_direct_contact": false,
+                "allow_customer_portal_links": true,
+                "allow_provider_login_links": false,
+                "allow_admin_links": false
+            },
+            "links": {
+                "primary_cta_route": "household.quote",
+                "primary_cta_url": "https://removalists.moveroo.com.au/quote/household",
+                "household_quote_url": "https://removalists.moveroo.com.au/quote/household",
+                "booking_url": "https://removalists.moveroo.com.au/booking/create",
+                "contact_url": "https://removalists.moveroo.com.au/contact"
+            },
+            "contact": {
+                "public_email": "removals@moveroo.com.au"
+            },
+            "analytics": {
+                "status": "linked",
+                "runtime_context_key": "removalists.moveroo.com.au",
+                "property_slug": "moveroo-com-au",
+                "site_key": "moveroo",
+                "journey_type": "mixed_quote",
+                "ga4": {
+                    "measurement_id": "G-MOVEROOCOM"
+                },
+                "event_contract": {
+                    "key": "moveroo-com-au-full-funnel-v1",
+                    "version": "v1",
+                    "rollout_status": "instrumented"
+                }
+            },
+            "provenance": {
+                "approved_by": "domain-monitor",
+                "approved_at": "2026-05-19T18:47:00+10:00",
+                "source": "domain_monitor",
+                "change_ref": "domain-monitor#217",
+                "source_marketing_url": "https://moveroo.com.au"
+            }
+        },
+        {
+            "hostname": "removalportal.interstate-removals.com.au",
+            "property_slug": "interstate-removals-com-au",
+            "surface_slug": "interstate-removals-removalportal-v1",
+            "status": "published",
+            "surface_type": "portal",
+            "canonical_role": "primary",
+            "updated_at": "2026-05-19T18:47:00+10:00",
+            "canonical_hostname": "removalportal.interstate-removals.com.au",
+            "linked_hostnames": [
+                "removalportal.interstate-removals.com.au"
+            ],
+            "owning_marketing_domain": "interstate-removals.com.au",
+            "controller_owner": "domain-monitor",
+            "controller_repo": "_wp-house",
+            "ownership": {
+                "published_truth_owner": "Domain Monitor",
+                "runtime_renderer_owner": "MoverooCombined",
+                "site_repo_owner": "_wp-house",
+                "portfolio_routing_owner": "Bossman"
+            },
+            "brand": {
+                "display_name": "Interstate Removals",
+                "brand_key": "interstate-removals",
+                "tagline": "Moving and backloading quotes",
+                "mark_text": "IR"
+            },
+            "copy": {
+                "eyebrow": "Interstate Removals Portal",
+                "headline": "Open the Interstate Removals portal",
+                "subheading": "Use the current Interstate Removals app-served host for this controlled third-pilot surface.",
+                "primary_cta_label": "Open portal",
+                "secondary_cta_label": "Contact us",
+                "footer_blurb": "Interstate Removals is published as a controlled third-pilot brand surface."
+            },
+            "theme": {
+                "theme_key": "interstate-removals",
+                "mode": "auto",
+                "fonts": {
+                    "body_family": "Inter",
+                    "heading_family": "Inter"
+                },
+                "colors": {
+                    "accent": "#2563eb",
+                    "accent_strong": "#1d4ed8",
+                    "background": "#eff6ff",
+                    "text": "#111827",
+                    "muted_text": "#4b5563",
+                    "surface": "#ffffff",
+                    "border": "#dbeafe"
+                },
+                "radius_scale": "rounded",
+                "shadow_style": "soft",
+                "exact_tokens": []
+            },
+            "navigation": {
+                "show_household_quote_link": false,
+                "show_vehicle_quote_link": false,
+                "show_booking_link": false,
+                "show_contact_link": true,
+                "show_customer_portal_link": true,
+                "show_customer_portal_in_header": false,
+                "show_provider_login_link": false,
+                "show_admin_link": false
+            },
+            "behavior": {
+                "show_phone_publicly": true,
+                "show_email_publicly": true,
+                "prefer_contact_page_over_direct_contact": false,
+                "allow_customer_portal_links": true,
+                "allow_provider_login_links": false,
+                "allow_admin_links": false
+            },
+            "links": {
+                "primary_cta_route": "customer.portal",
+                "primary_cta_url": "https://removalportal.interstate-removals.com.au/contact",
+                "contact_url": "https://removalportal.interstate-removals.com.au/contact"
+            },
+            "contact": {
+                "public_email": "removals@moveroo.com.au"
+            },
+            "analytics": {
+                "status": "linked",
+                "runtime_context_key": "removalportal.interstate-removals.com.au",
+                "property_slug": "interstate-removals-com-au",
+                "site_key": "interstate-removals",
+                "journey_type": "portal",
+                "ga4": {
+                    "measurement_id": "G-INTERSTATE"
+                },
+                "event_contract": {
+                    "key": "interstate-removals-com-au-full-funnel-v1",
+                    "version": "v1",
+                    "rollout_status": "instrumented"
+                }
+            },
+            "provenance": {
+                "approved_by": "domain-monitor",
+                "approved_at": "2026-05-19T18:47:00+10:00",
+                "source": "domain_monitor",
+                "change_ref": "domain-monitor#217",
+                "source_marketing_url": "https://interstate-removals.com.au"
+            }
+        },
+        {
+            "hostname": "removalquotes.backloading-services.com.au",
+            "property_slug": "backloading-services-com-au",
+            "surface_slug": "backloading-services-removalquotes-v1",
+            "status": "published",
+            "surface_type": "quote",
+            "canonical_role": "primary",
+            "updated_at": "2026-05-19T18:47:00+10:00",
+            "canonical_hostname": "removalquotes.backloading-services.com.au",
+            "linked_hostnames": [
+                "removalquotes.backloading-services.com.au"
+            ],
+            "owning_marketing_domain": "backloading-services.com.au",
+            "controller_owner": "domain-monitor",
+            "controller_repo": "_wp-house",
+            "ownership": {
+                "published_truth_owner": "Domain Monitor",
+                "runtime_renderer_owner": "MoverooCombined",
+                "site_repo_owner": "_wp-house",
+                "portfolio_routing_owner": "Bossman"
+            },
+            "brand": {
+                "display_name": "Backloading Services",
+                "brand_key": "backloading-services",
+                "tagline": "Moving and backloading quotes",
+                "mark_text": "BS"
+            },
+            "copy": {
+                "eyebrow": "Backloading Services Quote Host",
+                "headline": "Get your Backloading Services quote",
+                "subheading": "Use the current Backloading Services app-served host for this controlled third-pilot surface.",
+                "primary_cta_label": "Start your quote",
+                "secondary_cta_label": "Contact us",
+                "footer_blurb": "Backloading Services is published as a controlled third-pilot brand surface."
+            },
+            "theme": {
+                "theme_key": "backloading-services",
+                "mode": "auto",
+                "fonts": {
+                    "body_family": "Inter",
+                    "heading_family": "Inter"
+                },
+                "colors": {
+                    "accent": "#f97316",
+                    "accent_strong": "#c2410c",
+                    "background": "#fff7ed",
+                    "text": "#1f1308",
+                    "muted_text": "#4b5563",
+                    "surface": "#ffffff",
+                    "border": "#dbeafe"
+                },
+                "radius_scale": "rounded",
+                "shadow_style": "soft",
+                "exact_tokens": []
+            },
+            "navigation": {
+                "show_household_quote_link": true,
+                "show_vehicle_quote_link": true,
+                "show_booking_link": true,
+                "show_contact_link": true,
+                "show_customer_portal_link": false,
+                "show_customer_portal_in_header": false,
+                "show_provider_login_link": false,
+                "show_admin_link": false
+            },
+            "behavior": {
+                "show_phone_publicly": true,
+                "show_email_publicly": true,
+                "prefer_contact_page_over_direct_contact": false,
+                "allow_customer_portal_links": true,
+                "allow_provider_login_links": false,
+                "allow_admin_links": false
+            },
+            "links": {
+                "primary_cta_route": "household.quote",
+                "primary_cta_url": "https://removalquotes.backloading-services.com.au/quote/household",
+                "household_quote_url": "https://removalquotes.backloading-services.com.au/quote/household",
+                "vehicle_quote_url": "https://removalquotes.backloading-services.com.au/quote/vehicle",
+                "booking_url": "https://removalquotes.backloading-services.com.au/booking/create",
+                "contact_url": "https://removalquotes.backloading-services.com.au/contact"
+            },
+            "contact": {
+                "public_email": "removals@moveroo.com.au"
+            },
+            "analytics": {
+                "status": "linked",
+                "runtime_context_key": "removalquotes.backloading-services.com.au",
+                "property_slug": "backloading-services-com-au",
+                "site_key": "backloading-services",
+                "journey_type": "mixed_quote",
+                "ga4": {
+                    "measurement_id": "G-BACKLOADIN"
+                },
+                "event_contract": {
+                    "key": "backloading-services-com-au-full-funnel-v1",
+                    "version": "v1",
+                    "rollout_status": "instrumented"
+                }
+            },
+            "provenance": {
+                "approved_by": "domain-monitor",
+                "approved_at": "2026-05-19T18:47:00+10:00",
+                "source": "domain_monitor",
+                "change_ref": "domain-monitor#217",
+                "source_marketing_url": "https://backloading-services.com.au"
+            }
+        },
+        {
+            "hostname": "moving.allianceremovals.com.au",
+            "property_slug": "allianceremovals-com-au",
+            "surface_slug": "allianceremovals-moving-v1",
+            "status": "published",
+            "surface_type": "quote",
+            "canonical_role": "primary",
+            "updated_at": "2026-05-19T18:47:00+10:00",
+            "canonical_hostname": "moving.allianceremovals.com.au",
+            "linked_hostnames": [
+                "moving.allianceremovals.com.au"
+            ],
+            "owning_marketing_domain": "allianceremovals.com.au",
+            "controller_owner": "domain-monitor",
+            "controller_repo": "_wp-house",
+            "ownership": {
+                "published_truth_owner": "Domain Monitor",
+                "runtime_renderer_owner": "MoverooCombined",
+                "site_repo_owner": "_wp-house",
+                "portfolio_routing_owner": "Bossman"
+            },
+            "brand": {
+                "display_name": "Alliance Removals",
+                "brand_key": "allianceremovals",
+                "tagline": "Moving and backloading quotes",
+                "mark_text": "AR"
+            },
+            "copy": {
+                "eyebrow": "Alliance Removals Quotes",
+                "headline": "Get your Alliance Removals quote",
+                "subheading": "Use the current Alliance Removals app-served host for this controlled third-pilot surface.",
+                "primary_cta_label": "Start your quote",
+                "secondary_cta_label": "Contact us",
+                "footer_blurb": "Alliance Removals is published as a controlled third-pilot brand surface."
+            },
+            "theme": {
+                "theme_key": "allianceremovals",
+                "mode": "auto",
+                "fonts": {
+                    "body_family": "Inter",
+                    "heading_family": "Inter"
+                },
+                "colors": {
+                    "accent": "#2563eb",
+                    "accent_strong": "#1d4ed8",
+                    "background": "#eff6ff",
+                    "text": "#111827",
+                    "muted_text": "#4b5563",
+                    "surface": "#ffffff",
+                    "border": "#dbeafe"
+                },
+                "radius_scale": "rounded",
+                "shadow_style": "soft",
+                "exact_tokens": []
+            },
+            "navigation": {
+                "show_household_quote_link": true,
+                "show_vehicle_quote_link": true,
+                "show_booking_link": true,
+                "show_contact_link": true,
+                "show_customer_portal_link": false,
+                "show_customer_portal_in_header": false,
+                "show_provider_login_link": false,
+                "show_admin_link": false
+            },
+            "behavior": {
+                "show_phone_publicly": true,
+                "show_email_publicly": true,
+                "prefer_contact_page_over_direct_contact": false,
+                "allow_customer_portal_links": true,
+                "allow_provider_login_links": false,
+                "allow_admin_links": false
+            },
+            "links": {
+                "primary_cta_route": "household.quote",
+                "primary_cta_url": "https://moving.allianceremovals.com.au/quote/household",
+                "household_quote_url": "https://moving.allianceremovals.com.au/quote/household",
+                "vehicle_quote_url": "https://moving.allianceremovals.com.au/quote/vehicle",
+                "booking_url": "https://moving.allianceremovals.com.au/booking/create",
+                "contact_url": "https://moving.allianceremovals.com.au/contact"
+            },
+            "contact": {
+                "public_email": "removals@moveroo.com.au"
+            },
+            "analytics": {
+                "status": "linked",
+                "runtime_context_key": "moving.allianceremovals.com.au",
+                "property_slug": "allianceremovals-com-au",
+                "site_key": "allianceremovals",
+                "journey_type": "mixed_quote",
+                "ga4": {
+                    "measurement_id": "G-ALLIANCERE"
+                },
+                "event_contract": {
+                    "key": "allianceremovals-com-au-full-funnel-v1",
+                    "version": "v1",
+                    "rollout_status": "instrumented"
+                }
+            },
+            "provenance": {
+                "approved_by": "domain-monitor",
+                "approved_at": "2026-05-19T18:47:00+10:00",
+                "source": "domain_monitor",
+                "change_ref": "domain-monitor#217",
+                "source_marketing_url": "https://allianceremovals.com.au"
+            }
+        }
+    ],
+    "classified_not_published": [
+        {
+            "hostname": "cartransport.movingagain.com.au",
+            "classification": "marketing_website",
+            "reason": "Fleet website candidate; not confirmed as a MoverooCombined app-served runtime surface for this pilot."
+        },
+        {
+            "hostname": "perth.moveroo.com.au",
+            "classification": "retired_superseded",
+            "reason": "Superseded by quoting.perthinterstateremovalists.com.au."
+        },
+        {
+            "hostname": "quotes.interstateremovalists.net.au",
+            "classification": "retired_decommissioned",
+            "reason": "Runtime override records this hostname as retired and expected-miss."
+        },
+        {
+            "hostname": "quoting.mover.com.au",
+            "classification": "retired_superseded",
+            "reason": "Superseded by quoteandbook.mover.com.au and intentionally excluded from the MoverooCombined pilot feed."
+        },
+        {
+            "hostname": "quoting.vehicle.net.au",
+            "classification": "legacy_vehicle_quoting",
+            "reason": "Prior MoverooCombined work treats this as legacy rather than the active vehicle pilot."
+        },
+        {
+            "hostname": "removalist.backloadingremovals.com.au",
+            "classification": "legacy_expected_miss",
+            "reason": "Runtime override records this as a legacy portal host expected to miss."
+        },
+        {
+            "hostname": "interstate-removals.moveroo.com.au",
+            "classification": "legacy_moveroo_subdomain",
+            "reason": "Not confirmed as a current app-served brand surface for this controlled batch."
+        }
+    ]
+}
