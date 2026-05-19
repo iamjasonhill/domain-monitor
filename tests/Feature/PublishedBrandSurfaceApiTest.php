@@ -23,6 +23,9 @@ class PublishedBrandSurfaceApiTest extends TestCase
         config()->set('domain_monitor.published_brand_surfaces.pilot_host_allowlist', [
             'quotes.moveroo.com.au',
             'mymoveportal.discountbackloading.com.au',
+            'quotes.interstate-removals.com.au',
+            'quoting.movingcars.com.au',
+            'portal.supercheapcartransport.com.au',
         ]);
 
         $this->createPilotSurface(
@@ -56,6 +59,45 @@ class PublishedBrandSurfaceApiTest extends TestCase
             createConversionSurface: false,
         );
 
+        $this->createPilotSurface(
+            propertySlug: 'interstate-removals-com-au',
+            propertyName: 'interstate-removals.com.au',
+            siteKey: 'interstate-removals',
+            primaryDomainName: 'interstate-removals.com.au',
+            hostname: 'quotes.interstate-removals.com.au',
+            journeyType: 'mixed_quote',
+            repoName: '_wp-house',
+            measurementId: 'G-INTERSTATE01',
+            eventContractKey: 'interstate-removals-full-funnel-v1',
+            createConversionSurface: false,
+        );
+
+        $this->createPilotSurface(
+            propertySlug: 'movingcars-com-au',
+            propertyName: 'movingcars.com.au',
+            siteKey: 'movingcars',
+            primaryDomainName: 'movingcars.com.au',
+            hostname: 'quoting.movingcars.com.au',
+            journeyType: 'vehicle_quote',
+            repoName: 'MM-movingcars.com.au',
+            measurementId: 'G-MOVINGCARS01',
+            eventContractKey: 'movingcars-full-funnel-v1',
+            createConversionSurface: false,
+        );
+
+        $this->createPilotSurface(
+            propertySlug: 'supercheapcartransport-com-au',
+            propertyName: 'supercheapcartransport.com.au',
+            siteKey: 'supercheapcartransport',
+            primaryDomainName: 'supercheapcartransport.com.au',
+            hostname: 'portal.supercheapcartransport.com.au',
+            journeyType: 'vehicle_quote',
+            repoName: 'MM-supercheapcartransport',
+            measurementId: 'G-SUPERCHEAP01',
+            eventContractKey: 'supercheapcartransport-full-funnel-v1',
+            createConversionSurface: false,
+        );
+
         $this->withHeaders([
             'Authorization' => 'Bearer moveroo-runtime-token',
         ])->getJson('/api/published-brand-surfaces')
@@ -65,6 +107,9 @@ class PublishedBrandSurfaceApiTest extends TestCase
             ->assertJsonPath('generated_by', 'domain-monitor.published-brand-surfaces')
             ->assertJsonPath('pilot.host_allowlist.0', 'quotes.moveroo.com.au')
             ->assertJsonPath('pilot.host_allowlist.1', 'mymoveportal.discountbackloading.com.au')
+            ->assertJsonPath('pilot.host_allowlist.2', 'quotes.interstate-removals.com.au')
+            ->assertJsonPath('pilot.host_allowlist.3', 'quoting.movingcars.com.au')
+            ->assertJsonPath('pilot.host_allowlist.4', 'portal.supercheapcartransport.com.au')
             ->assertJsonPath('surfaces.0.hostname', 'quotes.moveroo.com.au')
             ->assertJsonPath('surfaces.0.property_slug', 'moveroo-com-au')
             ->assertJsonPath('surfaces.0.surface_slug', 'moveroo-quotes-household-v1')
@@ -97,7 +142,20 @@ class PublishedBrandSurfaceApiTest extends TestCase
             ->assertJsonPath('surfaces.1.links.booking_url', 'https://mymoveportal.discountbackloading.com.au/booking/create')
             ->assertJsonPath('surfaces.1.links.contact_url', 'https://mymoveportal.discountbackloading.com.au/contact')
             ->assertJsonMissingPath('surfaces.1.links.customer_portal_url')
-            ->assertJsonCount(2, 'surfaces');
+            ->assertJsonPath('surfaces.2.hostname', 'quotes.interstate-removals.com.au')
+            ->assertJsonPath('surfaces.2.property_slug', 'interstate-removals-com-au')
+            ->assertJsonPath('surfaces.2.links.household_quote_url', 'https://quotes.interstate-removals.com.au/quote/household')
+            ->assertJsonPath('surfaces.2.links.vehicle_quote_url', 'https://quotes.interstate-removals.com.au/quote/vehicle')
+            ->assertJsonPath('surfaces.2.analytics.status', 'linked')
+            ->assertJsonPath('surfaces.3.hostname', 'quoting.movingcars.com.au')
+            ->assertJsonPath('surfaces.3.property_slug', 'movingcars-com-au')
+            ->assertJsonPath('surfaces.3.navigation.show_vehicle_quote_link', true)
+            ->assertJsonPath('surfaces.3.navigation.show_household_quote_link', false)
+            ->assertJsonPath('surfaces.3.links.vehicle_quote_url', 'https://quoting.movingcars.com.au/quote/vehicle')
+            ->assertJsonPath('surfaces.4.hostname', 'portal.supercheapcartransport.com.au')
+            ->assertJsonPath('surfaces.4.property_slug', 'supercheapcartransport-com-au')
+            ->assertJsonPath('surfaces.4.links.vehicle_quote_url', 'https://portal.supercheapcartransport.com.au/quote/vehicle')
+            ->assertJsonCount(5, 'surfaces');
     }
 
     public function test_published_brand_surface_feed_is_constrained_to_the_pilot_allowlist(): void
@@ -150,6 +208,7 @@ class PublishedBrandSurfaceApiTest extends TestCase
         foreach ([
             base_path('docs/fixtures/published-brand-surfaces/household-quote.json'),
             base_path('docs/fixtures/published-brand-surfaces/discountbackloading-quote.json'),
+            base_path('docs/fixtures/published-brand-surfaces/second-pilot-batch.json'),
         ] as $fixturePath) {
             $payload = json_decode((string) file_get_contents($fixturePath), true);
 
@@ -157,30 +216,31 @@ class PublishedBrandSurfaceApiTest extends TestCase
             $this->assertSame('domain-monitor-published-brand-surfaces', $payload['source_system'] ?? null);
             $this->assertSame(1, $payload['contract_version'] ?? null);
             $this->assertIsArray($payload['pilot']['host_allowlist'] ?? null);
-            $this->assertIsArray($payload['surfaces'][0] ?? null);
+            $this->assertIsArray($payload['surfaces'] ?? null);
+            $this->assertNotEmpty($payload['surfaces']);
 
-            $surface = $payload['surfaces'][0];
-
-            foreach ([
-                'hostname',
-                'property_slug',
-                'surface_slug',
-                'status',
-                'surface_type',
-                'canonical_role',
-                'canonical_hostname',
-                'brand',
-                'copy',
-                'theme',
-                'navigation',
-                'behavior',
-                'links',
-                'contact',
-                'analytics',
-                'ownership',
-                'provenance',
-            ] as $requiredField) {
-                $this->assertArrayHasKey($requiredField, $surface, "{$requiredField} missing from {$fixturePath}");
+            foreach ($payload['surfaces'] as $surface) {
+                foreach ([
+                    'hostname',
+                    'property_slug',
+                    'surface_slug',
+                    'status',
+                    'surface_type',
+                    'canonical_role',
+                    'canonical_hostname',
+                    'brand',
+                    'copy',
+                    'theme',
+                    'navigation',
+                    'behavior',
+                    'links',
+                    'contact',
+                    'analytics',
+                    'ownership',
+                    'provenance',
+                ] as $requiredField) {
+                    $this->assertArrayHasKey($requiredField, $surface, "{$requiredField} missing from {$fixturePath}");
+                }
             }
         }
     }
