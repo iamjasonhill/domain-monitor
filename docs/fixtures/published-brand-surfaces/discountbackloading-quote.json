@@ -1,0 +1,96 @@
+{
+  "source_system": "domain-monitor-published-brand-surfaces",
+  "contract_version": 1,
+  "snapshot_id": "pbs-fixture-discountbackloading-2026-05-19T065300Z",
+  "published_at": "2026-05-19T16:53:00+10:00",
+  "generated_by": "domain-monitor.published-brand-surfaces",
+  "pilot": {
+    "host_allowlist": ["mymoveportal.discountbackloading.com.au"],
+    "scope": "moveroo_v1_pilot"
+  },
+  "surfaces": [
+    {
+      "hostname": "mymoveportal.discountbackloading.com.au",
+      "property_slug": "discountbackloading-com-au",
+      "surface_slug": "discountbackloading-mymoveportal-quote-v1",
+      "status": "published",
+      "surface_type": "quote",
+      "canonical_role": "primary",
+      "updated_at": "2026-05-19T16:53:00+10:00",
+      "canonical_hostname": "mymoveportal.discountbackloading.com.au",
+      "linked_hostnames": ["mymoveportal.discountbackloading.com.au"],
+      "owning_marketing_domain": "discountbackloading.com.au",
+      "controller_owner": "domain-monitor",
+      "controller_repo": "MM-discountbackloading.com.au",
+      "ownership": {
+        "published_truth_owner": "Domain Monitor",
+        "runtime_renderer_owner": "MoverooCombined",
+        "site_repo_owner": "MM-discountbackloading.com.au",
+        "portfolio_routing_owner": "Bossman"
+      },
+      "brand": {
+        "display_name": "Discount Backloading",
+        "brand_key": "discountbackloading",
+        "tagline": "Backloading and moving quotes",
+        "mark_text": "DB"
+      },
+      "copy": {
+        "eyebrow": "Discount Backloading Quotes",
+        "headline": "Get your Discount Backloading quote",
+        "subheading": "Use the current Discount Backloading quote portal for household and vehicle quote paths.",
+        "primary_cta_label": "Start your quote",
+        "secondary_cta_label": "Contact us"
+      },
+      "theme": {
+        "theme_key": "discountbackloading",
+        "mode": "auto",
+        "fonts": {"body_family": "Inter", "heading_family": "Inter"},
+        "colors": {"accent": "#f97316", "accent_strong": "#c2410c", "background": "#fff7ed", "text": "#1f1308"},
+        "exact_tokens": {}
+      },
+      "navigation": {
+        "show_household_quote_link": true,
+        "show_vehicle_quote_link": true,
+        "show_booking_link": true,
+        "show_contact_link": true,
+        "show_customer_portal_link": false,
+        "show_customer_portal_in_header": false,
+        "show_provider_login_link": false,
+        "show_admin_link": false
+      },
+      "behavior": {
+        "show_phone_publicly": true,
+        "show_email_publicly": true,
+        "prefer_contact_page_over_direct_contact": false,
+        "allow_customer_portal_links": true,
+        "allow_provider_login_links": false,
+        "allow_admin_links": false
+      },
+      "links": {
+        "primary_cta_route": "household.quote",
+        "primary_cta_url": "https://mymoveportal.discountbackloading.com.au/quote/household",
+        "household_quote_url": "https://mymoveportal.discountbackloading.com.au/quote/household",
+        "vehicle_quote_url": "https://mymoveportal.discountbackloading.com.au/quote/vehicle",
+        "booking_url": "https://mymoveportal.discountbackloading.com.au/booking/create",
+        "contact_url": "https://mymoveportal.discountbackloading.com.au/contact"
+      },
+      "contact": {"public_email": "removals@moveroo.com.au"},
+      "analytics": {
+        "status": "linked",
+        "runtime_context_key": "mymoveportal.discountbackloading.com.au",
+        "property_slug": "discountbackloading-com-au",
+        "site_key": "discountbackloading",
+        "journey_type": "mixed_quote",
+        "ga4": {"measurement_id": "G-DISCOUNT01"},
+        "event_contract": {"key": "discountbackloading-full-funnel-v1", "version": "v1", "rollout_status": "instrumented"}
+      },
+      "provenance": {
+        "approved_by": "domain-monitor",
+        "approved_at": "2026-05-19T16:53:00+10:00",
+        "source": "domain_monitor",
+        "change_ref": "domain-monitor#213",
+        "source_marketing_url": "https://discountbackloading.com.au"
+      }
+    }
+  ]
+}

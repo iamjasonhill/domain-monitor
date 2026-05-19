@@ -95,8 +95,27 @@ class PublishedBrandSurfaceFeedBuilder
             ->get()
             ->keyBy(fn (WebPropertyConversionSurface $surface): string => (string) $this->normalizeHostname($surface->hostname));
 
+        $targetProperties = WebProperty::query()
+            ->where('status', 'active')
+            ->whereNotNull('target_moveroo_subdomain_url')
+            ->with([
+                'primaryDomain',
+                'propertyDomains.domain',
+                'repositories',
+                'analyticsSources',
+                'eventContractAssignments.eventContract',
+            ])
+            ->orderBy('slug')
+            ->get()
+            ->mapWithKeys(function (WebProperty $property): array {
+                $hostname = $this->normalizeHostname($property->target_moveroo_subdomain_url);
+
+                return $hostname === null ? [] : [$hostname => $property];
+            });
+
         return collect($hostnames)
-            ->map(fn (string $hostname): ?array => $this->surfaceRecord($hostname, $surfaces->get($hostname)))
+            ->map(fn (string $hostname): ?array => $this->surfaceRecord($hostname, $surfaces->get($hostname))
+                ?? $this->targetPropertyRecord($hostname, $targetProperties->get($hostname)))
             ->filter()
             ->values()
             ->all();
@@ -122,6 +141,7 @@ class PublishedBrandSurfaceFeedBuilder
         $eventAssignment = $this->eventAssignment($property, $surface);
         $canonicalHostname = $this->canonicalHostname($hostname, $metadata);
         $updatedAt = $surface->verified_at ?? $property->updated_at ?? now();
+        $journeyType = $surface->journey_type;
 
         return [
             'hostname' => $hostname,
@@ -138,13 +158,56 @@ class PublishedBrandSurfaceFeedBuilder
             'controller_repo' => $repository?->repo_name,
             'ownership' => $this->ownership($repository),
             'brand' => $this->brand($property, $metadata),
-            'copy' => $this->copy($property, $surface, $metadata),
+            'copy' => $this->copy($property, $journeyType, $metadata),
             'theme' => $this->theme($property, $metadata),
-            'navigation' => $this->navigation($surface, $metadata),
+            'navigation' => $this->navigation($journeyType, $metadata),
             'behavior' => $this->behavior(),
-            'links' => $this->links($property, $surface, $metadata),
+            'links' => $this->links($property, $journeyType, $metadata),
             'contact' => $this->contact($metadata),
-            'analytics' => $this->analytics($property, $surface, $analyticsSource, $eventAssignment),
+            'analytics' => $this->analytics($property, $hostname, $journeyType, $analyticsSource, $eventAssignment),
+            'provenance' => $this->provenance($metadata),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function targetPropertyRecord(string $hostname, ?WebProperty $property): ?array
+    {
+        if (! $property instanceof WebProperty || $property->status !== 'active') {
+            return null;
+        }
+
+        $metadata = $this->metadataForHostname($hostname);
+        $repository = $property->controllerRepository();
+        $analyticsSource = $property->primaryAnalyticsSource('ga4');
+        $eventAssignment = $property->primaryEventContractAssignment();
+        $canonicalHostname = $this->canonicalHostname($hostname, $metadata);
+        $updatedAt = $property->updated_at ?? now();
+        $journeyType = 'mixed_quote';
+
+        return [
+            'hostname' => $hostname,
+            'property_slug' => $property->slug,
+            'surface_slug' => $metadata['surface_slug'] ?? $this->defaultSurfaceSlug($property, $hostname),
+            'status' => 'published',
+            'surface_type' => $metadata['surface_type'] ?? 'quote',
+            'canonical_role' => $metadata['canonical_role'] ?? 'primary',
+            'updated_at' => $updatedAt->toIso8601String(),
+            'canonical_hostname' => $canonicalHostname,
+            'linked_hostnames' => $this->linkedHostnames($hostname, $canonicalHostname),
+            'owning_marketing_domain' => $metadata['owning_marketing_domain'] ?? $property->primaryDomainName(),
+            'controller_owner' => 'domain-monitor',
+            'controller_repo' => $repository?->repo_name,
+            'ownership' => $this->ownership($repository),
+            'brand' => $this->brand($property, $metadata),
+            'copy' => $this->copy($property, $journeyType, $metadata),
+            'theme' => $this->theme($property, $metadata),
+            'navigation' => $this->navigation($journeyType, $metadata),
+            'behavior' => $this->behavior(),
+            'links' => $this->links($property, $journeyType, $metadata),
+            'contact' => $this->contact($metadata),
+            'analytics' => $this->analytics($property, $hostname, $journeyType, $analyticsSource, $eventAssignment),
             'provenance' => $this->provenance($metadata),
         ];
     }
@@ -251,11 +314,11 @@ class PublishedBrandSurfaceFeedBuilder
      * @param  array<string, mixed>  $metadata
      * @return array<string, mixed>
      */
-    private function copy(WebProperty $property, WebPropertyConversionSurface $surface, array $metadata): array
+    private function copy(WebProperty $property, ?string $journeyType, array $metadata): array
     {
         $copy = $metadata['copy'] ?? [];
         $displayName = (string) ($metadata['brand']['display_name'] ?? $property->site_identity_site_name ?? $property->name);
-        $isVehicle = $surface->journey_type === 'vehicle_quote';
+        $isVehicle = $journeyType === 'vehicle_quote';
 
         return [
             'eyebrow' => $copy['eyebrow'] ?? ($isVehicle ? 'Vehicle Quote' : 'Moving Quote'),
@@ -301,10 +364,10 @@ class PublishedBrandSurfaceFeedBuilder
      * @param  array<string, mixed>  $metadata
      * @return array<string, bool>
      */
-    private function navigation(WebPropertyConversionSurface $surface, array $metadata): array
+    private function navigation(?string $journeyType, array $metadata): array
     {
         $navigation = $metadata['navigation'] ?? [];
-        $isVehicle = $surface->journey_type === 'vehicle_quote';
+        $isVehicle = $journeyType === 'vehicle_quote';
 
         return array_replace([
             'show_household_quote_link' => ! $isVehicle,
@@ -337,10 +400,10 @@ class PublishedBrandSurfaceFeedBuilder
      * @param  array<string, mixed>  $metadata
      * @return array<string, string|null>
      */
-    private function links(WebProperty $property, WebPropertyConversionSurface $surface, array $metadata): array
+    private function links(WebProperty $property, ?string $journeyType, array $metadata): array
     {
         $links = $metadata['links'] ?? [];
-        $isVehicle = $surface->journey_type === 'vehicle_quote';
+        $isVehicle = $journeyType === 'vehicle_quote';
 
         return array_filter(array_replace([
             'primary_cta_route' => $isVehicle ? 'vehicle.quote' : 'household.quote',
@@ -375,7 +438,8 @@ class PublishedBrandSurfaceFeedBuilder
      */
     private function analytics(
         WebProperty $property,
-        WebPropertyConversionSurface $surface,
+        string $hostname,
+        ?string $journeyType,
         ?PropertyAnalyticsSource $analyticsSource,
         ?WebPropertyEventContract $eventAssignment
     ): array {
@@ -384,10 +448,10 @@ class PublishedBrandSurfaceFeedBuilder
 
         return [
             'status' => $analyticsSource instanceof PropertyAnalyticsSource ? 'linked' : 'missing',
-            'runtime_context_key' => $surface->hostname,
+            'runtime_context_key' => $hostname,
             'property_slug' => $property->slug,
             'site_key' => $property->siteKey(),
-            'journey_type' => $surface->journey_type,
+            'journey_type' => $journeyType,
             'ga4' => [
                 'measurement_id' => is_array($analyticsConfig) ? ($analyticsConfig['measurement_id'] ?? null) : null,
             ],
