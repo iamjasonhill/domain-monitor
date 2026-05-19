@@ -121,8 +121,29 @@ class RuntimeAnalyticsContextFeedBuilder
                     'provenance' => 'hostname_link_policy',
                     'role' => $hostnamePolicy['role'] ?? null,
                     'property_kind' => $hostnamePolicy['property_kind'] ?? null,
+                    'exports_runtime_context' => $classification['decision'] === 'exported',
+                    'missing_host_warning_policy' => $classification['decision'] === 'exported' ? 'warn' : 'suppress',
                 ],
             ];
+        }
+
+        foreach ($this->hostOverridesForProperty($property->slug) as $hostOverride) {
+            $hostname = $this->normalizeHostname($hostOverride['hostname'] ?? null);
+
+            if ($hostname === null || isset($includedHostnames[$hostname])) {
+                continue;
+            }
+
+            $includedHostnames[$hostname] = true;
+
+            $contexts[] = $this->hostOverrideContextRecord(
+                property: $property,
+                hostOverride: $hostOverride,
+                hostname: $hostname,
+                defaultRuntime: $defaultRuntime,
+                fallbackAnalyticsSource: $propertyAnalyticsSource,
+                fallbackEventAssignment: $propertyEventAssignment
+            );
         }
 
         return $contexts;
@@ -172,6 +193,58 @@ class RuntimeAnalyticsContextFeedBuilder
                     ? 'customer_portal_hostname'
                     : 'quote_or_app_hostname',
                 'property_kind' => 'quote_conversion_surface',
+                'exports_runtime_context' => true,
+                'missing_host_warning_policy' => 'warn',
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $hostOverride
+     * @param  array{driver: string|null, label: string|null, path: string|null}  $defaultRuntime
+     * @return array<string, mixed>
+     */
+    private function hostOverrideContextRecord(
+        WebProperty $property,
+        array $hostOverride,
+        string $hostname,
+        array $defaultRuntime,
+        ?PropertyAnalyticsSource $fallbackAnalyticsSource,
+        ?WebPropertyEventContract $fallbackEventAssignment
+    ): array {
+        $decision = $this->normalizeText($hostOverride['decision'] ?? null) ?? 'expected_miss';
+        $exportsRuntimeContext = $decision === 'exported';
+
+        return [
+            'hostname' => $hostname,
+            'property_slug' => $property->slug,
+            'site_key' => $property->siteKey(),
+            'journey_type' => $exportsRuntimeContext
+                ? $this->normalizeText($hostOverride['journey_type'] ?? null)
+                : null,
+            'runtime' => $exportsRuntimeContext
+                ? $defaultRuntime
+                : $this->emptyRuntimeSummary(),
+            'ga4' => $exportsRuntimeContext
+                ? $this->ga4Summary($fallbackAnalyticsSource)
+                : $this->emptyGa4Summary(),
+            'event_contract' => $exportsRuntimeContext
+                ? $this->eventContractSummary($fallbackEventAssignment)
+                : $this->emptyEventContractSummary(),
+            'conversion_surface' => [
+                'rollout_status' => null,
+                'verified_at' => null,
+            ],
+            'host_classification' => [
+                'class' => $this->normalizeText($hostOverride['class'] ?? null) ?? 'unknown',
+                'decision' => $decision,
+                'reason' => $this->normalizeText($hostOverride['reason'] ?? null) ?? 'runtime_host_override',
+                'provenance' => 'runtime_host_override',
+                'role' => $this->normalizeText($hostOverride['role'] ?? null),
+                'property_kind' => $this->normalizeText($hostOverride['property_kind'] ?? null),
+                'exports_runtime_context' => $exportsRuntimeContext,
+                'missing_host_warning_policy' => $this->normalizeText($hostOverride['warning_policy'] ?? null)
+                    ?? ($exportsRuntimeContext ? 'warn' : 'suppress'),
             ],
         ];
     }
@@ -252,10 +325,20 @@ class RuntimeAnalyticsContextFeedBuilder
             ?? $property->conversionSurfaces->first();
 
         if (! $surface instanceof WebPropertyConversionSurface) {
+            $defaultRuntime = config('domain_monitor.conversion_surfaces.default_quote_surface');
+
+            if (! is_array($defaultRuntime)) {
+                return [
+                    'driver' => null,
+                    'label' => null,
+                    'path' => null,
+                ];
+            }
+
             return [
-                'driver' => null,
-                'label' => null,
-                'path' => null,
+                'driver' => $this->normalizeText($defaultRuntime['runtime_driver'] ?? null),
+                'label' => $this->normalizeText($defaultRuntime['runtime_label'] ?? null),
+                'path' => $this->normalizeText($defaultRuntime['runtime_path'] ?? null),
             ];
         }
 
@@ -289,6 +372,26 @@ class RuntimeAnalyticsContextFeedBuilder
     }
 
     /**
+     * @return array{
+     *   provider: null,
+     *   property_id: null,
+     *   stream_id: null,
+     *   measurement_id: null,
+     *   bigquery_project: null
+     * }
+     */
+    private function emptyGa4Summary(): array
+    {
+        return [
+            'provider' => null,
+            'property_id' => null,
+            'stream_id' => null,
+            'measurement_id' => null,
+            'bigquery_project' => null,
+        ];
+    }
+
+    /**
      * @return array{key: string|null, version: string|null, rollout_status: string|null}
      */
     private function eventContractSummary(?WebPropertyEventContract $assignment): array
@@ -299,6 +402,30 @@ class RuntimeAnalyticsContextFeedBuilder
             'key' => $contract?->key,
             'version' => $contract?->version,
             'rollout_status' => $assignment?->rollout_status,
+        ];
+    }
+
+    /**
+     * @return array{key: null, version: null, rollout_status: null}
+     */
+    private function emptyEventContractSummary(): array
+    {
+        return [
+            'key' => null,
+            'version' => null,
+            'rollout_status' => null,
+        ];
+    }
+
+    /**
+     * @return array{driver: null, label: null, path: null}
+     */
+    private function emptyRuntimeSummary(): array
+    {
+        return [
+            'driver' => null,
+            'label' => null,
+            'path' => null,
         ];
     }
 
@@ -325,6 +452,39 @@ class RuntimeAnalyticsContextFeedBuilder
     }
 
     private function normalizeSiteKey(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $normalized = trim($value);
+
+        return $normalized !== '' ? $normalized : null;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function hostOverridesForProperty(string $propertySlug): array
+    {
+        $overrides = config('domain_monitor.runtime_analytics.host_overrides', []);
+
+        if (! is_array($overrides)) {
+            return [];
+        }
+
+        return collect($overrides)
+            ->filter(fn (mixed $override): bool => is_array($override))
+            ->filter(function (array $override) use ($propertySlug): bool {
+                $overrideSlug = $this->normalizeText($override['property_slug'] ?? null);
+
+                return $overrideSlug === $propertySlug;
+            })
+            ->values()
+            ->all();
+    }
+
+    private function normalizeText(mixed $value): ?string
     {
         if (! is_string($value)) {
             return null;

@@ -84,6 +84,95 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Runtime Analytics Host Overrides
+    |--------------------------------------------------------------------------
+    |
+    | Explicit runtime hostname classifications for known active hosts that
+    | are not yet represented as first-class conversion surfaces or direct
+    | property target URLs.
+    |
+    */
+    'runtime_analytics' => [
+        'host_overrides' => [
+            [
+                'hostname' => 'quotes.interstateremovalists.net.au',
+                'property_slug' => 'interstateremovalists-net-au',
+                'class' => 'retired',
+                'decision' => 'expected_miss',
+                'reason' => 'decommissioned_subdomain',
+                'warning_policy' => 'suppress',
+            ],
+            [
+                'hostname' => 'discountbackloading.moveroo.com.au',
+                'property_slug' => 'discountbackloading-com-au',
+                'class' => 'retired',
+                'decision' => 'expected_miss',
+                'reason' => 'superseded_moveroo_subdomain',
+                'warning_policy' => 'suppress',
+            ],
+            [
+                'hostname' => 'perth.moveroo.com.au',
+                'property_slug' => 'perthinterstateremovalists-com-au',
+                'class' => 'retired',
+                'decision' => 'expected_miss',
+                'reason' => 'superseded_by_quoting_perthinterstateremovalists',
+                'warning_policy' => 'suppress',
+            ],
+            [
+                'hostname' => 'backloadingremovals.moveroo.com.au',
+                'property_slug' => 'backloadingremovals-com-au',
+                'class' => 'retired',
+                'decision' => 'expected_miss',
+                'reason' => 'superseded_moveroo_subdomain',
+                'warning_policy' => 'suppress',
+            ],
+            [
+                'hostname' => 'removalist.backloadingremovals.com.au',
+                'property_slug' => 'backloadingremovals-com-au',
+                'class' => 'login_customer_provider_app_shell_host',
+                'decision' => 'expected_miss',
+                'reason' => 'legacy_portal_host_without_runtime_attribution',
+                'warning_policy' => 'suppress',
+            ],
+            [
+                'hostname' => 'quoting.mover.com.au',
+                'property_slug' => 'mover-com-au',
+                'class' => 'retired',
+                'decision' => 'expected_miss',
+                'reason' => 'superseded_by_quoteandbook_mover_com_au',
+                'warning_policy' => 'suppress',
+            ],
+            [
+                'hostname' => 'wemove.moveroo.com.au',
+                'property_slug' => 'wemove-com-au',
+                'class' => 'login_customer_provider_app_shell_host',
+                'decision' => 'expected_miss',
+                'reason' => 'portal_host_without_runtime_attribution',
+                'warning_policy' => 'suppress',
+            ],
+            [
+                'hostname' => 'quotes.interstate-removals.com.au',
+                'property_slug' => 'interstate-removals-com-au',
+                'class' => 'conversion_host',
+                'decision' => 'exported',
+                'reason' => 'moveroocombined_conversion_host_override',
+                'journey_type' => 'mixed_quote',
+                'warning_policy' => 'warn',
+            ],
+            [
+                'hostname' => 'removalquotes.backloading-services.com.au',
+                'property_slug' => 'backloading-services-com-au',
+                'class' => 'conversion_host',
+                'decision' => 'exported',
+                'reason' => 'moveroocombined_conversion_host_override',
+                'journey_type' => 'mixed_quote',
+                'warning_policy' => 'warn',
+            ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Domain Monitor UI Windows
     |--------------------------------------------------------------------------
     |
