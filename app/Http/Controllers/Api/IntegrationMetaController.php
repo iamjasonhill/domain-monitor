@@ -45,6 +45,15 @@ class IntegrationMetaController extends Controller
                     ],
                 ],
                 [
+                    'path' => '/api/published-brand-surface-drafts',
+                    'source_system' => 'domain-monitor-brand-style-drafts',
+                    'contract_version' => 1,
+                    'purpose' => 'draft, review, and approval evidence for marketing-domain-derived brand-style surfaces',
+                    'query_parameters' => [
+                        'hostname' => 'optional hostname filter for one proposed app-served surface',
+                    ],
+                ],
+                [
                     'path' => '/api/issues',
                     'source_system' => 'domain-monitor-issues',
                     'contract_version' => 2,
