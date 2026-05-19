@@ -116,6 +116,321 @@ return [
             'removalportal.interstate-removals.com.au',
             'removalquotes.backloading-services.com.au',
             'moving.allianceremovals.com.au',
+            'quoteandbook.mover.com.au',
+        ],
+        'classified_runtime_hostnames' => [
+            'acraustralia.com' => [
+                'classification' => 'non_moveroocombined',
+                'reason' => 'Legacy/non-MoverooCombined runtime analytics host; not a current app-served brand surface.',
+            ],
+            'again.com.au' => [
+                'classification' => 'operations_apex',
+                'reason' => 'Operations/control-plane apex; not a customer quote or booking brand surface.',
+            ],
+            'allianceremovals.com.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surface is moving.allianceremovals.com.au.',
+            ],
+            'backload.net.au' => [
+                'classification' => 'legacy_alias',
+                'reason' => 'Legacy/alias domain only; no confirmed current MoverooCombined app-served surface.',
+            ],
+            'backloading-au.com.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surface is quoting.backloading-au.com.au.',
+            ],
+            'backloading-services.com.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surfaces are mymovehub.backloading-services.com.au and removalquotes.backloading-services.com.au.',
+            ],
+            'backloading.net.au' => [
+                'classification' => 'legacy_alias',
+                'reason' => 'Legacy/alias domain only; no confirmed current MoverooCombined app-served surface.',
+            ],
+            'backloadingremovalist.com.au' => [
+                'classification' => 'legacy_alias',
+                'reason' => 'Legacy/alias domain only; no confirmed current MoverooCombined app-served surface.',
+            ],
+            'backloadingremovals.com' => [
+                'classification' => 'legacy_alias',
+                'reason' => 'Legacy/alias domain only; no confirmed current MoverooCombined app-served surface.',
+            ],
+            'backloadingremovals.com.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surface is mymovehub.backloadingremovals.com.au.',
+            ],
+            'backloadingremovals.moveroo.com.au' => [
+                'classification' => 'retired',
+                'reason' => 'Runtime override marks this Moveroo subdomain as retired and superseded.',
+            ],
+            'backloads.net.au' => [
+                'classification' => 'legacy_alias',
+                'reason' => 'Legacy/alias domain only; no confirmed current MoverooCombined app-served surface.',
+            ],
+            'beauy.com.au' => [
+                'classification' => 'non_moveroocombined',
+                'reason' => 'Non-MoverooCombined website/brand; not safe for MoverooCombined runtime brand resolution.',
+            ],
+            'bestinterstateremovals.com.au' => [
+                'classification' => 'legacy_marketing',
+                'reason' => 'Legacy marketing/analytics host; no current app-served MoverooCombined surface confirmed.',
+            ],
+            'car-carrying.com.au' => [
+                'classification' => 'legacy_marketing',
+                'reason' => 'Legacy vehicle marketing/analytics host; no current app-served MoverooCombined surface confirmed.',
+            ],
+            'cartransport.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surface is quoting.cartransport.au.',
+            ],
+            'cartransport.movingagain.com.au' => [
+                'classification' => 'marketing_website',
+                'reason' => 'Fleet website candidate; not confirmed as a MoverooCombined app-served runtime surface.',
+            ],
+            'cartransport.net.au' => [
+                'classification' => 'legacy_alias',
+                'reason' => 'Legacy/alias domain only; no confirmed current MoverooCombined app-served surface.',
+            ],
+            'cartransportaus.com.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surface is quoting.cartransportaus.com.au.',
+            ],
+            'cartransportwithpersonalitems.com.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surface is quoting.cartransportwithpersonalitems.com.au.',
+            ],
+            'deftly.com.au' => [
+                'classification' => 'non_moveroocombined',
+                'reason' => 'Non-MoverooCombined/personal or portfolio host; not a runtime brand surface.',
+            ],
+            'discountbackloading.com' => [
+                'classification' => 'legacy_alias',
+                'reason' => 'Legacy alias; current published surface uses discountbackloading.com.au and mymoveportal.discountbackloading.com.au.',
+            ],
+            'discountbackloading.com.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surface is mymoveportal.discountbackloading.com.au.',
+            ],
+            'discountbackloading.moveroo.com.au' => [
+                'classification' => 'retired',
+                'reason' => 'Runtime override marks this Moveroo subdomain as retired and superseded.',
+            ],
+            'furnitureremovalist.com' => [
+                'classification' => 'legacy_marketing',
+                'reason' => 'Legacy marketing/analytics host; no current app-served MoverooCombined surface confirmed.',
+            ],
+            'interstate-car-transport.com.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surface is quoting.interstate-car-transport.com.au.',
+            ],
+            'interstate-removalists.net.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing/brand apex; no current app-served MoverooCombined surface confirmed.',
+            ],
+            'interstate-removals.com.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surfaces are quotes.interstate-removals.com.au and removalportal.interstate-removals.com.au.',
+            ],
+            'interstate-removals.moveroo.com.au' => [
+                'classification' => 'legacy_moveroo_subdomain',
+                'reason' => 'Legacy Moveroo subdomain; not confirmed as current app-served for this feed.',
+            ],
+            'interstatecarcarriers.com.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surface is quoting.interstatecarcarriers.com.au.',
+            ],
+            'interstateremovalists.au' => [
+                'classification' => 'marketing_alias',
+                'reason' => 'Marketing/alias apex; no current app-served MoverooCombined surface confirmed.',
+            ],
+            'interstateremovalists.net.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing/brand apex; retired quote subdomain is quotes.interstateremovalists.net.au.',
+            ],
+            'jasonhill.com.au' => [
+                'classification' => 'personal_non_business',
+                'reason' => 'Personal/non-business host; not a MoverooCombined customer runtime surface.',
+            ],
+            'jhmh.com.au' => [
+                'classification' => 'personal_non_business',
+                'reason' => 'Personal/family host; not a MoverooCombined customer runtime surface.',
+            ],
+            'konradhill.com' => [
+                'classification' => 'personal_non_business',
+                'reason' => 'Personal/non-business host; not a MoverooCombined customer runtime surface.',
+            ],
+            'mandyhill.com.au' => [
+                'classification' => 'personal_non_business',
+                'reason' => 'Personal/non-business host; not a MoverooCombined customer runtime surface.',
+            ],
+            'movemycar.com.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surface is portal.movemycar.com.au.',
+            ],
+            'mover.com.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surface is quoteandbook.mover.com.au.',
+            ],
+            'moveroo.au' => [
+                'classification' => 'brand_alias',
+                'reason' => 'Moveroo brand TLD sibling/alias; not an app-served quote or booking surface.',
+            ],
+            'moveroo.click' => [
+                'classification' => 'parked_or_campaign_alias',
+                'reason' => 'Parked/campaign-style Moveroo alias; not an app-served quote or booking surface.',
+            ],
+            'moveroo.com.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surface is quotes.moveroo.com.au.',
+            ],
+            'moving.au' => [
+                'classification' => 'brand_alias',
+                'reason' => 'Brand/alias domain; no current app-served MoverooCombined surface confirmed.',
+            ],
+            'moving.com.au' => [
+                'classification' => 'brand_alias',
+                'reason' => 'Brand/alias domain; no current app-served MoverooCombined surface confirmed.',
+            ],
+            'movingagain.com' => [
+                'classification' => 'legacy_alias',
+                'reason' => 'Legacy alias for Moving Again; current marketing apex is movingagain.com.au.',
+            ],
+            'movingagain.com.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surface is removalistquotes.movingagain.com.au.',
+            ],
+            'movingagain.net' => [
+                'classification' => 'legacy_alias',
+                'reason' => 'Legacy alias; no current app-served MoverooCombined surface confirmed.',
+            ],
+            'movingagain.net.au' => [
+                'classification' => 'legacy_alias',
+                'reason' => 'Legacy alias; no current app-served MoverooCombined surface confirmed.',
+            ],
+            'movingcars.com.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surface is quoting.movingcars.com.au.',
+            ],
+            'movingcars.net.au' => [
+                'classification' => 'legacy_alias',
+                'reason' => 'Legacy alias; no current app-served MoverooCombined surface confirmed.',
+            ],
+            'movingcartons.com.au' => [
+                'classification' => 'non_app_marketing',
+                'reason' => 'Cartons/marketing host; not a MoverooCombined quote or booking runtime surface.',
+            ],
+            'movinghome.com.au' => [
+                'classification' => 'legacy_marketing',
+                'reason' => 'Legacy marketing/analytics host; no current app-served MoverooCombined surface confirmed.',
+            ],
+            'movinginsurance.com.au' => [
+                'classification' => 'non_moveroocombined_product',
+                'reason' => 'Insurance marketing/product site; not a MoverooCombined quote or booking runtime surface.',
+            ],
+            'movinginterstate.com.au' => [
+                'classification' => 'legacy_marketing',
+                'reason' => 'Legacy marketing/analytics host; no current app-served MoverooCombined surface confirmed.',
+            ],
+            'movingreviews.com.au' => [
+                'classification' => 'content_marketing',
+                'reason' => 'Reviews/content host; not a MoverooCombined quote or booking runtime surface.',
+            ],
+            'nfgseo.com.au' => [
+                'classification' => 'non_moveroocombined',
+                'reason' => 'Non-MoverooCombined/internal SEO host; not a runtime brand surface.',
+            ],
+            'olliehill.com.au' => [
+                'classification' => 'personal_non_business',
+                'reason' => 'Personal/non-business host; not a MoverooCombined customer runtime surface.',
+            ],
+            'perth.moveroo.com.au' => [
+                'classification' => 'retired',
+                'reason' => 'Retired and superseded by quoting.perthinterstateremovalists.com.au.',
+            ],
+            'perthinterstateremovalists.com.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surface is quoting.perthinterstateremovalists.com.au.',
+            ],
+            'pngchambers.com' => [
+                'classification' => 'non_moveroocombined',
+                'reason' => 'Non-MoverooCombined host; not a runtime brand surface.',
+            ],
+            'prepack.com.au' => [
+                'classification' => 'non_app_marketing',
+                'reason' => 'Packing/cartons style host; not a MoverooCombined quote or booking runtime surface.',
+            ],
+            'quotes.interstateremovalists.net.au' => [
+                'classification' => 'retired',
+                'reason' => 'Runtime override marks this quote subdomain as retired/decommissioned.',
+            ],
+            'quoting.mover.com.au' => [
+                'classification' => 'retired',
+                'reason' => 'Retired and superseded by quoteandbook.mover.com.au.',
+            ],
+            'quoting.vehicle.net.au' => [
+                'classification' => 'legacy_vehicle_quoting',
+                'reason' => 'Legacy vehicle quoting attached to the older vehicle runtime, not the active MoverooCombined pilot.',
+            ],
+            'redirection.com.au' => [
+                'classification' => 'non_app_redirect_utility',
+                'reason' => 'Redirect/utility domain; not a MoverooCombined quote or booking runtime surface.',
+            ],
+            'removalist.backloadingremovals.com.au' => [
+                'classification' => 'legacy_expected_miss',
+                'reason' => 'Runtime override records this as a legacy portal host expected to miss.',
+            ],
+            'removalist.net' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing/brand apex; no current app-served MoverooCombined surface confirmed.',
+            ],
+            'removals.au' => [
+                'classification' => 'brand_alias',
+                'reason' => 'Brand/alias domain; no current app-served MoverooCombined surface confirmed.',
+            ],
+            'removals.com.au' => [
+                'classification' => 'brand_alias',
+                'reason' => 'Brand/alias domain; no current app-served MoverooCombined surface confirmed.',
+            ],
+            'removalsinterstate.com.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surface is quoting.removalsinterstate.com.au.',
+            ],
+            'rollover.com.au' => [
+                'classification' => 'non_app_redirect_utility',
+                'reason' => 'Redirect/utility domain; not a MoverooCombined quote or booking runtime surface.',
+            ],
+            'supercheapcartransport.com.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surface is portal.supercheapcartransport.com.au.',
+            ],
+            'supercheapcartransport.net.au' => [
+                'classification' => 'legacy_alias',
+                'reason' => 'Legacy alias; no current app-served MoverooCombined surface confirmed.',
+            ],
+            'synonymous.com.au' => [
+                'classification' => 'non_moveroocombined',
+                'reason' => 'Non-MoverooCombined host; not a runtime brand surface.',
+            ],
+            'tinyurl.com.au' => [
+                'classification' => 'non_app_redirect_utility',
+                'reason' => 'Short-link/redirect-style host; not a MoverooCombined quote or booking runtime surface.',
+            ],
+            'transportnondrivablecars.com.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surface is quoting.transportnondrivablecars.com.au.',
+            ],
+            'vehicle.net.au' => [
+                'classification' => 'legacy_vehicle_runtime',
+                'reason' => 'Legacy vehicle apex associated with older vehicle quoting; not a current MoverooCombined brand surface.',
+            ],
+            'wemove.com.au' => [
+                'classification' => 'marketing_apex',
+                'reason' => 'Marketing apex; app-served quote surface is quotes.wemove.com.au.',
+            ],
+            'wemove.moveroo.com.au' => [
+                'classification' => 'legacy_expected_miss',
+                'reason' => 'Runtime override records this as a portal host without runtime attribution and expected to miss.',
+            ],
         ],
         'hostnames' => [
             'quotes.moveroo.com.au' => [
@@ -1691,6 +2006,77 @@ return [
                     'source' => 'domain_monitor',
                     'change_ref' => 'domain-monitor#217',
                     'source_marketing_url' => 'https://allianceremovals.com.au',
+                ],
+            ],
+            'quoteandbook.mover.com.au' => [
+                'property_slug' => 'mover-com-au',
+                'surface_slug' => 'mover-quoteandbook-v1',
+                'surface_type' => 'quote',
+                'journey_type' => 'mixed_quote',
+                'canonical_role' => 'primary',
+                'owning_marketing_domain' => 'mover.com.au',
+                'brand' => [
+                    'display_name' => 'Mover',
+                    'brand_key' => 'mover',
+                    'tagline' => 'Moving quotes and bookings',
+                    'mark_text' => 'M',
+                ],
+                'copy' => [
+                    'eyebrow' => 'Mover Quotes',
+                    'headline' => 'Get your Mover quote and booking started',
+                    'subheading' => 'Use the current Mover app-served quote and booking host for household and vehicle quote paths.',
+                    'primary_cta_label' => 'Start your quote',
+                    'secondary_cta_label' => 'Contact us',
+                    'footer_blurb' => 'Mover is published as the final confirmed app-served runtime brand surface from the remaining MoverooCombined list.',
+                ],
+                'theme' => [
+                    'theme_key' => 'mover',
+                    'mode' => 'auto',
+                    'fonts' => [
+                        'body_family' => 'Inter',
+                        'heading_family' => 'Inter',
+                    ],
+                    'colors' => [
+                        'accent' => '#2563eb',
+                        'accent_strong' => '#1d4ed8',
+                        'background' => '#eff6ff',
+                        'text' => '#111827',
+                        'muted_text' => '#4b5563',
+                        'surface' => '#ffffff',
+                        'border' => '#dbeafe',
+                    ],
+                    'radius_scale' => 'rounded',
+                    'shadow_style' => 'soft',
+                    'exact_tokens' => [],
+                ],
+                'navigation' => [
+                    'show_household_quote_link' => true,
+                    'show_vehicle_quote_link' => true,
+                    'show_booking_link' => true,
+                    'show_contact_link' => true,
+                    'show_customer_portal_link' => false,
+                    'show_customer_portal_in_header' => false,
+                    'show_provider_login_link' => false,
+                    'show_admin_link' => false,
+                ],
+                'links' => [
+                    'primary_cta_route' => 'household.quote',
+                    'primary_cta_url' => 'https://quoteandbook.mover.com.au/quote/household',
+                    'household_quote_url' => 'https://quoteandbook.mover.com.au/quote/household',
+                    'vehicle_quote_url' => 'https://quoteandbook.mover.com.au/quote/vehicle',
+                    'booking_url' => 'https://quoteandbook.mover.com.au/booking/create',
+                    'contact_url' => 'https://quoteandbook.mover.com.au/contact',
+                    'customer_portal_url' => null,
+                ],
+                'contact' => [
+                    'public_email' => 'removals@moveroo.com.au',
+                ],
+                'provenance' => [
+                    'approved_by' => 'domain-monitor',
+                    'approved_at' => '2026-05-19T19:20:00+10:00',
+                    'source' => 'domain_monitor',
+                    'change_ref' => 'domain-monitor#219',
+                    'source_marketing_url' => 'https://mover.com.au',
                 ],
             ],
         ],
