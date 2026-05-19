@@ -128,6 +128,95 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
         $this->assertNotEmpty($result->evidence['skipped_urls']);
     }
 
+    public function test_legacy_route_mapping_stays_unknown_when_no_manifest_is_configured(): void
+    {
+        $property = $this->makeProperty('no-legacy-manifest-site', 'no-legacy-manifest.example');
+        $this->fakeHealthySite('https://no-legacy-manifest.example');
+
+        $this->assertSame(0, Artisan::call('monitoring:run-fleet-technical-seo-audit', [
+            '--property' => $property->slug,
+            '--url-cap' => 10,
+        ]));
+
+        $result = FleetTechnicalSeoAuditResult::query()
+            ->where('check_id', 'redirects.legacy_routes_mapped')
+            ->firstOrFail();
+
+        $this->assertSame(FleetTechnicalSeoAuditResult::STATUS_UNKNOWN, $result->result_status);
+        $this->assertSame(FleetTechnicalSeoAuditResult::CONFIDENCE_LOW, $result->evidence_confidence);
+        $this->assertSame('No legacy route manifest is wired into the deterministic runner yet.', $result->evidence['reason']);
+        $this->assertDatabaseCount('monitoring_findings', 0);
+    }
+
+    public function test_legacy_route_mapping_passes_when_manifest_redirects_match(): void
+    {
+        $property = $this->makeProperty('legacy-pass-site', 'legacy-pass.example');
+        config()->set('domain_monitor.fleet_technical_seo.legacy_route_manifests.properties.legacy-pass-site', [
+            [
+                'legacy_path' => '/old-removals',
+                'expected_url' => 'https://legacy-pass.example/removals',
+                'expected_statuses' => [301],
+                'notes' => 'Pilot legacy removals route.',
+            ],
+        ]);
+        $this->fakeHealthySite('https://legacy-pass.example', [
+            'extra_responses' => [
+                'https://legacy-pass.example/old-removals' => Http::response('', 301, ['Location' => '/removals']),
+            ],
+        ]);
+
+        $this->assertSame(0, Artisan::call('monitoring:run-fleet-technical-seo-audit', [
+            '--property' => $property->slug,
+            '--url-cap' => 10,
+        ]));
+
+        $result = FleetTechnicalSeoAuditResult::query()
+            ->where('check_id', 'redirects.legacy_routes_mapped')
+            ->firstOrFail();
+
+        $this->assertSame(FleetTechnicalSeoAuditResult::STATUS_PASS, $result->result_status);
+        $this->assertSame(FleetTechnicalSeoAuditResult::CONFIDENCE_HIGH, $result->evidence_confidence);
+        $this->assertSame(1, $result->evidence['checked_route_count']);
+        $this->assertSame(0, $result->evidence['failed_route_count']);
+        $this->assertSame('https://legacy-pass.example/removals', $result->evidence['checked_routes'][0]['actual_location']);
+        $this->assertDatabaseCount('monitoring_findings', 0);
+    }
+
+    public function test_legacy_route_mapping_fails_when_manifest_redirects_do_not_match(): void
+    {
+        $property = $this->makeProperty('legacy-fail-site', 'legacy-fail.example');
+        config()->set('domain_monitor.fleet_technical_seo.legacy_route_manifests.properties.legacy-fail-site', [
+            [
+                'legacy_path' => '/old-removals',
+                'expected_url' => 'https://legacy-fail.example/removals',
+                'expected_statuses' => [301, 302],
+            ],
+        ]);
+        $this->fakeHealthySite('https://legacy-fail.example', [
+            'extra_responses' => [
+                'https://legacy-fail.example/old-removals' => Http::response('', 302, ['Location' => '/wrong-page']),
+            ],
+        ]);
+
+        $this->assertSame(0, Artisan::call('monitoring:run-fleet-technical-seo-audit', [
+            '--property' => $property->slug,
+            '--url-cap' => 10,
+        ]));
+
+        $result = FleetTechnicalSeoAuditResult::query()
+            ->where('check_id', 'redirects.legacy_routes_mapped')
+            ->firstOrFail();
+        $finding = MonitoringFinding::query()
+            ->where('finding_type', 'fleet_technical_seo.redirects.legacy_routes_mapped')
+            ->firstOrFail();
+
+        $this->assertSame(FleetTechnicalSeoAuditResult::STATUS_FAIL, $result->result_status);
+        $this->assertSame(FleetTechnicalSeoAuditResult::CONFIDENCE_HIGH, $result->evidence_confidence);
+        $this->assertSame(1, $result->evidence['failed_route_count']);
+        $this->assertFalse($result->evidence['failed_routes'][0]['target_matches']);
+        $this->assertSame($finding->id, $result->monitoring_finding_id);
+    }
+
     public function test_browser_render_mode_records_bounded_rendered_dom_evidence(): void
     {
         $property = $this->makeProperty('rendered-site', 'rendered.example');
@@ -382,7 +471,8 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
     /**
      * @param  array{
      *   robots_status?: int,
-     *   sitemap_urls?: array<int, string>
+     *   sitemap_urls?: array<int, string>,
+     *   extra_responses?: array<string, \GuzzleHttp\Promise\PromiseInterface>
      * }  $options
      */
     private function fakeHealthySite(string $baseUrl, array $options = []): void
@@ -397,7 +487,7 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
             ->implode('').'</urlset>';
         $html = $this->healthyHtml($baseUrl);
 
-        Http::fake([
+        Http::fake(array_merge([
             $baseUrl.'/' => Http::response($html, 200, ['Content-Type' => 'text/html']),
             $baseUrl.'/robots.txt' => Http::response("User-agent: *\nAllow: /\nSitemap: {$baseUrl}/sitemap.xml\n", $robotsStatus),
             $baseUrl.'/sitemap.xml' => Http::response($sitemapXml, 200, ['Content-Type' => 'application/xml']),
@@ -406,7 +496,7 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
             $baseUrl.'/about' => Http::response($html, 200, ['Content-Type' => 'text/html']),
             $baseUrl.'/services' => Http::response($html, 200, ['Content-Type' => 'text/html']),
             $baseUrl.'/quote' => Http::response($html, 200, ['Content-Type' => 'text/html']),
-        ]);
+        ], $options['extra_responses'] ?? []));
     }
 
     private function healthyHtml(string $baseUrl): string

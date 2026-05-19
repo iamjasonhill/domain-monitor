@@ -84,6 +84,31 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Fleet Technical SEO
+    |--------------------------------------------------------------------------
+    |
+    | Repo-owned audit inputs for deterministic Fleet SEO checks. Keep legacy
+    | route manifests narrow and explicit; these only describe expected checks,
+    | they do not change website redirects.
+    |
+    */
+    'fleet_technical_seo' => [
+        'legacy_route_manifests' => [
+            'properties' => [
+                // 'example-property-slug' => [
+                //     [
+                //         'legacy_path' => '/old-page',
+                //         'expected_url' => 'https://example.com/current-page',
+                //         'expected_statuses' => [301, 302, 307, 308],
+                //         'notes' => 'Optional reviewer context.',
+                //     ],
+                // ],
+            ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Published Brand Surfaces
     |--------------------------------------------------------------------------
     |
