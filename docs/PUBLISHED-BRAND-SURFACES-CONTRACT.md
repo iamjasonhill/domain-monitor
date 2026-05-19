@@ -1,8 +1,8 @@
 # Published Brand Surfaces Contract
 
 Status: v1 pilot publisher
-Issue: #208
-Consumer: MoverooCombined issue #2083
+Issue: #208, updated by #213
+Consumer: MoverooCombined issues #2083 and #2084
 
 Domain Monitor publishes the read-only `domain-monitor-published-brand-surfaces` feed for MoverooCombined runtime consumption. The feed is pilot scoped and must not be treated as permission to import or render the full estate.
 
@@ -35,9 +35,16 @@ The publisher only emits hostnames listed in `domain_monitor.published_brand_sur
 Current pilot hostnames:
 
 - Household quote: `quotes.moveroo.com.au`
-- Vehicle quote candidate: `quoting.vehicle.net.au`
+- Discount Backloading quote portal: `mymoveportal.discountbackloading.com.au`
 
-The vehicle hostname is represented in Domain Monitor config as a current vehicle quote surface candidate, but the upstream MoverooCombined contract still says the final vehicle pilot hostname needs production confirmation before broad rollout.
+`quoting.vehicle.net.au` is legacy quoting and is not the active #2084 pilot test host. Discount Backloading is the selected pilot because Domain Monitor production records the current property-specific quote portal and target links:
+
+- production URL: `https://discountbackloading.com.au`
+- target quote subdomain: `https://mymoveportal.discountbackloading.com.au/`
+- household quote target: `https://mymoveportal.discountbackloading.com.au/quote/household`
+- vehicle quote target: `https://mymoveportal.discountbackloading.com.au/quote/vehicle`
+- booking target: `https://mymoveportal.discountbackloading.com.au/booking/create`
+- contact target: `https://mymoveportal.discountbackloading.com.au/contact`
 
 ## Surface Shape
 
@@ -66,4 +73,4 @@ Each surface includes:
 Example payload fixtures live in:
 
 - `docs/fixtures/published-brand-surfaces/household-quote.json`
-- `docs/fixtures/published-brand-surfaces/vehicle-quote.json`
+- `docs/fixtures/published-brand-surfaces/discountbackloading-quote.json`

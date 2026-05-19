@@ -22,7 +22,7 @@ class PublishedBrandSurfaceApiTest extends TestCase
         config()->set('services.domain_monitor.moveroo_removals_api_key', 'moveroo-runtime-token');
         config()->set('domain_monitor.published_brand_surfaces.pilot_host_allowlist', [
             'quotes.moveroo.com.au',
-            'quoting.vehicle.net.au',
+            'mymoveportal.discountbackloading.com.au',
         ]);
 
         $this->createPilotSurface(
@@ -38,15 +38,22 @@ class PublishedBrandSurfaceApiTest extends TestCase
         );
 
         $this->createPilotSurface(
-            propertySlug: 'vehicle-net-au',
-            propertyName: 'vehicle.net.au',
-            siteKey: 'vehicle-net-au',
-            primaryDomainName: 'vehicle.net.au',
-            hostname: 'quoting.vehicle.net.au',
-            journeyType: 'vehicle_quote',
-            repoName: 'laravel',
-            measurementId: 'G-VEHICLE01',
-            eventContractKey: 'vehicle-full-funnel-v1',
+            propertySlug: 'discountbackloading-com-au',
+            propertyName: 'discountbackloading.com.au',
+            siteKey: 'discountbackloading',
+            primaryDomainName: 'discountbackloading.com.au',
+            hostname: 'mymoveportal.discountbackloading.com.au',
+            journeyType: 'mixed_quote',
+            repoName: 'MM-discountbackloading.com.au',
+            measurementId: 'G-DISCOUNT01',
+            eventContractKey: 'discountbackloading-full-funnel-v1',
+            productionUrl: 'https://discountbackloading.com.au',
+            targetMoverooSubdomainUrl: 'https://mymoveportal.discountbackloading.com.au/',
+            targetHouseholdQuoteUrl: 'https://mymoveportal.discountbackloading.com.au/quote/household',
+            targetVehicleQuoteUrl: 'https://mymoveportal.discountbackloading.com.au/quote/vehicle',
+            targetHouseholdBookingUrl: 'https://mymoveportal.discountbackloading.com.au/booking/create',
+            targetContactUsPageUrl: 'https://mymoveportal.discountbackloading.com.au/contact',
+            createConversionSurface: false,
         );
 
         $this->withHeaders([
@@ -57,7 +64,7 @@ class PublishedBrandSurfaceApiTest extends TestCase
             ->assertJsonPath('contract_version', 1)
             ->assertJsonPath('generated_by', 'domain-monitor.published-brand-surfaces')
             ->assertJsonPath('pilot.host_allowlist.0', 'quotes.moveroo.com.au')
-            ->assertJsonPath('pilot.host_allowlist.1', 'quoting.vehicle.net.au')
+            ->assertJsonPath('pilot.host_allowlist.1', 'mymoveportal.discountbackloading.com.au')
             ->assertJsonPath('surfaces.0.hostname', 'quotes.moveroo.com.au')
             ->assertJsonPath('surfaces.0.property_slug', 'moveroo-com-au')
             ->assertJsonPath('surfaces.0.surface_slug', 'moveroo-quotes-household-v1')
@@ -79,9 +86,17 @@ class PublishedBrandSurfaceApiTest extends TestCase
             ->assertJsonPath('surfaces.0.ownership.site_repo_owner', 'MM-moveroo.com.au')
             ->assertJsonPath('surfaces.0.ownership.portfolio_routing_owner', 'Bossman')
             ->assertJsonPath('surfaces.0.provenance.change_ref', 'domain-monitor#208')
-            ->assertJsonPath('surfaces.1.hostname', 'quoting.vehicle.net.au')
+            ->assertJsonPath('surfaces.1.hostname', 'mymoveportal.discountbackloading.com.au')
+            ->assertJsonPath('surfaces.1.property_slug', 'discountbackloading-com-au')
+            ->assertJsonPath('surfaces.1.brand.display_name', 'Discount Backloading')
             ->assertJsonPath('surfaces.1.navigation.show_vehicle_quote_link', true)
-            ->assertJsonPath('surfaces.1.links.primary_cta_route', 'vehicle.quote')
+            ->assertJsonPath('surfaces.1.navigation.show_customer_portal_link', false)
+            ->assertJsonPath('surfaces.1.links.primary_cta_route', 'household.quote')
+            ->assertJsonPath('surfaces.1.links.household_quote_url', 'https://mymoveportal.discountbackloading.com.au/quote/household')
+            ->assertJsonPath('surfaces.1.links.vehicle_quote_url', 'https://mymoveportal.discountbackloading.com.au/quote/vehicle')
+            ->assertJsonPath('surfaces.1.links.booking_url', 'https://mymoveportal.discountbackloading.com.au/booking/create')
+            ->assertJsonPath('surfaces.1.links.contact_url', 'https://mymoveportal.discountbackloading.com.au/contact')
+            ->assertJsonMissingPath('surfaces.1.links.customer_portal_url')
             ->assertJsonCount(2, 'surfaces');
     }
 
@@ -134,7 +149,7 @@ class PublishedBrandSurfaceApiTest extends TestCase
     {
         foreach ([
             base_path('docs/fixtures/published-brand-surfaces/household-quote.json'),
-            base_path('docs/fixtures/published-brand-surfaces/vehicle-quote.json'),
+            base_path('docs/fixtures/published-brand-surfaces/discountbackloading-quote.json'),
         ] as $fixturePath) {
             $payload = json_decode((string) file_get_contents($fixturePath), true);
 
@@ -180,14 +195,16 @@ class PublishedBrandSurfaceApiTest extends TestCase
         string $repoName,
         string $measurementId,
         string $eventContractKey,
+        ?string $productionUrl = null,
+        ?string $targetMoverooSubdomainUrl = null,
+        ?string $targetHouseholdQuoteUrl = null,
+        ?string $targetVehicleQuoteUrl = null,
+        ?string $targetHouseholdBookingUrl = null,
+        ?string $targetContactUsPageUrl = null,
+        bool $createConversionSurface = true,
     ): void {
         $primaryDomain = Domain::factory()->create([
             'domain' => $primaryDomainName,
-            'is_active' => true,
-        ]);
-
-        $surfaceDomain = Domain::factory()->create([
-            'domain' => $hostname,
             'is_active' => true,
         ]);
 
@@ -198,7 +215,12 @@ class PublishedBrandSurfaceApiTest extends TestCase
             'status' => 'active',
             'property_type' => 'website',
             'primary_domain_id' => $primaryDomain->id,
-            'target_contact_us_page_url' => '/contact',
+            'production_url' => $productionUrl,
+            'target_moveroo_subdomain_url' => $targetMoverooSubdomainUrl,
+            'target_household_quote_url' => $targetHouseholdQuoteUrl,
+            'target_vehicle_quote_url' => $targetVehicleQuoteUrl,
+            'target_household_booking_url' => $targetHouseholdBookingUrl,
+            'target_contact_us_page_url' => $targetContactUsPageUrl ?? '/contact',
         ]);
 
         WebPropertyDomain::create([
@@ -243,6 +265,15 @@ class PublishedBrandSurfaceApiTest extends TestCase
             'analytics_event_contract_id' => $eventContract->id,
             'is_primary' => true,
             'rollout_status' => 'instrumented',
+        ]);
+
+        if (! $createConversionSurface) {
+            return;
+        }
+
+        $surfaceDomain = Domain::factory()->create([
+            'domain' => $hostname,
+            'is_active' => true,
         ]);
 
         WebPropertyConversionSurface::create([
