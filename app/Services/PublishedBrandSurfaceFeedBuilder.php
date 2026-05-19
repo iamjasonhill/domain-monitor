@@ -113,9 +113,12 @@ class PublishedBrandSurfaceFeedBuilder
                 return $hostname === null ? [] : [$hostname => $property];
             });
 
+        $configuredProperties = $this->configuredPropertySlugsForHostnames($hostnames);
+
         return collect($hostnames)
             ->map(fn (string $hostname): ?array => $this->surfaceRecord($hostname, $surfaces->get($hostname))
-                ?? $this->targetPropertyRecord($hostname, $targetProperties->get($hostname)))
+                ?? $this->targetPropertyRecord($hostname, $targetProperties->get($hostname))
+                ?? $this->configuredPropertyRecord($hostname, $configuredProperties->get($hostname)))
             ->filter()
             ->values()
             ->all();
@@ -185,6 +188,87 @@ class PublishedBrandSurfaceFeedBuilder
         $canonicalHostname = $this->canonicalHostname($hostname, $metadata);
         $updatedAt = $property->updated_at ?? now();
         $journeyType = 'mixed_quote';
+
+        return [
+            'hostname' => $hostname,
+            'property_slug' => $property->slug,
+            'surface_slug' => $metadata['surface_slug'] ?? $this->defaultSurfaceSlug($property, $hostname),
+            'status' => 'published',
+            'surface_type' => $metadata['surface_type'] ?? 'quote',
+            'canonical_role' => $metadata['canonical_role'] ?? 'primary',
+            'updated_at' => $updatedAt->toIso8601String(),
+            'canonical_hostname' => $canonicalHostname,
+            'linked_hostnames' => $this->linkedHostnames($hostname, $canonicalHostname),
+            'owning_marketing_domain' => $metadata['owning_marketing_domain'] ?? $property->primaryDomainName(),
+            'controller_owner' => 'domain-monitor',
+            'controller_repo' => $repository?->repo_name,
+            'ownership' => $this->ownership($repository),
+            'brand' => $this->brand($property, $metadata),
+            'copy' => $this->copy($property, $journeyType, $metadata),
+            'theme' => $this->theme($property, $metadata),
+            'navigation' => $this->navigation($journeyType, $metadata),
+            'behavior' => $this->behavior(),
+            'links' => $this->links($property, $journeyType, $metadata),
+            'contact' => $this->contact($metadata),
+            'analytics' => $this->analytics($property, $hostname, $journeyType, $analyticsSource, $eventAssignment),
+            'provenance' => $this->provenance($metadata),
+        ];
+    }
+
+    /**
+     * @param  array<int, string>  $hostnames
+     * @return \Illuminate\Support\Collection<string, WebProperty>
+     */
+    private function configuredPropertySlugsForHostnames(array $hostnames): \Illuminate\Support\Collection
+    {
+        $metadataByHostname = collect($hostnames)
+            ->mapWithKeys(function (string $hostname): array {
+                $metadata = $this->metadataForHostname($hostname);
+                $propertySlug = $metadata['property_slug'] ?? null;
+
+                return is_string($propertySlug) && trim($propertySlug) !== ''
+                    ? [$hostname => trim($propertySlug)]
+                    : [];
+            });
+
+        if ($metadataByHostname->isEmpty()) {
+            return collect();
+        }
+
+        $properties = WebProperty::query()
+            ->where('status', 'active')
+            ->whereIn('slug', $metadataByHostname->values()->unique()->all())
+            ->with([
+                'primaryDomain',
+                'propertyDomains.domain',
+                'repositories',
+                'analyticsSources',
+                'eventContractAssignments.eventContract',
+            ])
+            ->get()
+            ->keyBy('slug');
+
+        return $metadataByHostname
+            ->map(fn (string $propertySlug): ?WebProperty => $properties->get($propertySlug))
+            ->filter();
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function configuredPropertyRecord(string $hostname, ?WebProperty $property): ?array
+    {
+        if (! $property instanceof WebProperty || $property->status !== 'active') {
+            return null;
+        }
+
+        $metadata = $this->metadataForHostname($hostname);
+        $repository = $property->controllerRepository();
+        $analyticsSource = $property->primaryAnalyticsSource('ga4');
+        $eventAssignment = $property->primaryEventContractAssignment();
+        $canonicalHostname = $this->canonicalHostname($hostname, $metadata);
+        $updatedAt = $property->updated_at ?? now();
+        $journeyType = is_string($metadata['journey_type'] ?? null) ? $metadata['journey_type'] : null;
 
         return [
             'hostname' => $hostname,
