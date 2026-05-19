@@ -109,7 +109,9 @@ class RuntimeAnalyticsContextApiTest extends TestCase
             ->assertJsonPath('runtime_contexts.0.conversion_surface.rollout_status', 'instrumented')
             ->assertJsonPath('runtime_contexts.0.host_classification.class', 'conversion_host')
             ->assertJsonPath('runtime_contexts.0.host_classification.decision', 'exported')
-            ->assertJsonPath('runtime_contexts.0.host_classification.provenance', 'conversion_surface');
+            ->assertJsonPath('runtime_contexts.0.host_classification.provenance', 'conversion_surface')
+            ->assertJsonPath('runtime_contexts.0.host_classification.exports_runtime_context', true)
+            ->assertJsonPath('runtime_contexts.0.host_classification.missing_host_warning_policy', 'warn');
     }
 
     public function test_runtime_analytics_context_feed_exports_non_conversion_operational_hostname_with_classification(): void
@@ -204,7 +206,9 @@ class RuntimeAnalyticsContextApiTest extends TestCase
             ->assertJsonPath('runtime_contexts.0.conversion_surface.rollout_status', null)
             ->assertJsonPath('runtime_contexts.0.host_classification.class', 'login_customer_provider_app_shell_host')
             ->assertJsonPath('runtime_contexts.0.host_classification.decision', 'exported')
-            ->assertJsonPath('runtime_contexts.0.host_classification.provenance', 'hostname_link_policy');
+            ->assertJsonPath('runtime_contexts.0.host_classification.provenance', 'hostname_link_policy')
+            ->assertJsonPath('runtime_contexts.0.host_classification.exports_runtime_context', true)
+            ->assertJsonPath('runtime_contexts.0.host_classification.missing_host_warning_policy', 'warn');
     }
 
     public function test_runtime_analytics_context_feed_exports_configured_runtime_host_override(): void
@@ -286,6 +290,75 @@ class RuntimeAnalyticsContextApiTest extends TestCase
             ->assertJsonPath('runtime_contexts.0.host_classification.decision', 'exported')
             ->assertJsonPath('runtime_contexts.0.host_classification.reason', 'moveroocombined_runtime_host_override')
             ->assertJsonPath('runtime_contexts.0.host_classification.provenance', 'runtime_host_override')
+            ->assertJsonPath('runtime_contexts.0.host_classification.exports_runtime_context', true)
+            ->assertJsonPath('runtime_contexts.0.host_classification.missing_host_warning_policy', 'warn')
             ->assertJsonPath('runtime_contexts.0.runtime.path', '/Users/jasonhill/Projects/laravel-projects/Moveroo Removals 2026');
+    }
+
+    public function test_runtime_analytics_context_feed_classifies_retired_runtime_host_override_as_expected_miss(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+        config()->set('domain_monitor.runtime_analytics.host_overrides', [
+            [
+                'hostname' => 'quotes.interstateremovalists.net.au',
+                'property_slug' => 'interstateremovalists-net-au',
+                'class' => 'retired',
+                'decision' => 'expected_miss',
+                'reason' => 'decommissioned_subdomain',
+                'warning_policy' => 'suppress',
+            ],
+        ]);
+
+        $primaryDomain = Domain::factory()->create([
+            'domain' => 'interstateremovalists.net.au',
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => 'interstateremovalists-net-au',
+            'name' => 'Interstate Removalists',
+            'site_key' => 'interstateremovalists',
+            'status' => 'active',
+            'primary_domain_id' => $primaryDomain->id,
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $primaryDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyAnalyticsSource::create([
+            'web_property_id' => $property->id,
+            'provider' => 'ga4',
+            'external_id' => 'G-INTERSTATE01',
+            'external_name' => 'Interstate Removalists GA4',
+            'provider_config' => [
+                'site_key' => 'interstateremovalists',
+                'property_id' => '123456789',
+                'stream_id' => '22334455',
+                'measurement_id' => 'G-INTERSTATE01',
+                'bigquery_project' => 'mm-interstate-analytics',
+            ],
+            'is_primary' => true,
+            'status' => 'active',
+        ]);
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/runtime/analytics-contexts?hostname=quotes.interstateremovalists.net.au')
+            ->assertOk()
+            ->assertJsonPath('runtime_contexts.0.hostname', 'quotes.interstateremovalists.net.au')
+            ->assertJsonPath('runtime_contexts.0.property_slug', 'interstateremovalists-net-au')
+            ->assertJsonPath('runtime_contexts.0.ga4.measurement_id', null)
+            ->assertJsonPath('runtime_contexts.0.runtime.path', null)
+            ->assertJsonPath('runtime_contexts.0.event_contract.key', null)
+            ->assertJsonPath('runtime_contexts.0.host_classification.class', 'retired')
+            ->assertJsonPath('runtime_contexts.0.host_classification.decision', 'expected_miss')
+            ->assertJsonPath('runtime_contexts.0.host_classification.reason', 'decommissioned_subdomain')
+            ->assertJsonPath('runtime_contexts.0.host_classification.provenance', 'runtime_host_override')
+            ->assertJsonPath('runtime_contexts.0.host_classification.exports_runtime_context', false)
+            ->assertJsonPath('runtime_contexts.0.host_classification.missing_host_warning_policy', 'suppress');
     }
 }
