@@ -204,9 +204,16 @@ class FleetTechnicalSeoAuditRunner
         $canonical = $this->canonicalUrl($homepageHtml, $baseUrl.'/');
         $brokenInternalLinks = $this->brokenInternalLinks($context['internal_links']);
         $declaredUrls = $this->declaredUrlsForProperty($property);
-        $visibleLinks = $context['internal_links'];
+        $visibleHomepageLinks = collect([...$context['internal_links'], ...$context['external_links']])
+            ->unique()
+            ->values()
+            ->all();
+        $matchedDeclaredUrls = collect($declaredUrls)
+            ->filter(fn (string $url): bool => in_array($url, $visibleHomepageLinks, true))
+            ->values()
+            ->all();
         $missingDeclaredUrls = collect($declaredUrls)
-            ->reject(fn (string $url): bool => in_array($url, $visibleLinks, true))
+            ->reject(fn (string $url): bool => in_array($url, $visibleHomepageLinks, true))
             ->values()
             ->all();
 
@@ -232,7 +239,12 @@ class FleetTechnicalSeoAuditRunner
         $results['redirects.no_key_route_chains_or_loops'] = $this->result($this->isSuccessful($homepage) ? 'pass' : 'unknown', $this->isSuccessful($homepage) ? 'high' : 'low', ['homepage' => Arr::except($homepage, ['body'])], $baseUrl.'/');
         $results['links.internal_key_links_resolve'] = $this->result($brokenInternalLinks === [] ? 'pass' : 'fail', 'high', ['broken_internal_links' => $brokenInternalLinks, 'checked_internal_link_count' => count($context['internal_links'])]);
         $results['links.external_inventory_classified'] = $this->result('manual_review', 'medium', ['external_links' => array_slice($context['external_links'], 0, 25), 'external_link_count' => count($context['external_links'])]);
-        $results['links.quote_contact_targets_current'] = $this->result($declaredUrls === [] ? 'not_applicable' : ($missingDeclaredUrls === [] ? 'pass' : 'fail'), 'high', ['declared_urls' => $declaredUrls, 'missing_declared_urls' => $missingDeclaredUrls]);
+        $results['links.quote_contact_targets_current'] = $this->result($declaredUrls === [] ? 'not_applicable' : ($missingDeclaredUrls === [] ? 'pass' : 'fail'), 'high', [
+            'declared_urls' => $declaredUrls,
+            'matched_declared_urls' => $matchedDeclaredUrls,
+            'missing_declared_urls' => $missingDeclaredUrls,
+            'homepage_link_count' => count($visibleHomepageLinks),
+        ]);
         $results['images.alt_text_meaningful'] = $this->imageResult($context['pages'], 'alt');
         $results['images.dimensions_declared_for_fixed_assets'] = $this->imageResult($context['pages'], 'dimensions');
         $results['mobile.usability_basic_rendering'] = $this->mobileRenderedResult($context['browser_render'] ?? []);
