@@ -1,0 +1,94 @@
+{
+  "source_system": "domain-monitor-published-brand-surfaces",
+  "contract_version": 1,
+  "snapshot_id": "pbs-fixture-vehicle-2026-05-19T000000Z",
+  "published_at": "2026-05-19T00:00:00+10:00",
+  "generated_by": "domain-monitor.published-brand-surfaces",
+  "pilot": {
+    "host_allowlist": ["quoting.vehicle.net.au"],
+    "scope": "moveroo_v1_pilot"
+  },
+  "surfaces": [
+    {
+      "hostname": "quoting.vehicle.net.au",
+      "property_slug": "vehicle-net-au",
+      "surface_slug": "vehicle-net-au-quotes-vehicle-v1",
+      "status": "published",
+      "surface_type": "quote",
+      "canonical_role": "primary",
+      "updated_at": "2026-05-19T00:00:00+10:00",
+      "canonical_hostname": "quoting.vehicle.net.au",
+      "linked_hostnames": ["quoting.vehicle.net.au"],
+      "owning_marketing_domain": "vehicle.net.au",
+      "controller_owner": "domain-monitor",
+      "controller_repo": "laravel",
+      "ownership": {
+        "published_truth_owner": "Domain Monitor",
+        "runtime_renderer_owner": "MoverooCombined",
+        "site_repo_owner": "laravel",
+        "portfolio_routing_owner": "Bossman"
+      },
+      "brand": {
+        "display_name": "Vehicle.net.au",
+        "brand_key": "vehicle-net-au",
+        "tagline": "Vehicle transport quotes",
+        "mark_text": "V"
+      },
+      "copy": {
+        "eyebrow": "Vehicle Transport Quotes",
+        "headline": "Get your vehicle transport quote",
+        "subheading": "Share the vehicle and route details so the transport team can prepare the next step.",
+        "primary_cta_label": "Start your vehicle quote",
+        "secondary_cta_label": "Contact us"
+      },
+      "theme": {
+        "theme_key": "vehicle-net-au",
+        "mode": "auto",
+        "fonts": {"body_family": "Inter", "heading_family": "Inter"},
+        "colors": {"accent": "#0f766e", "accent_strong": "#115e59", "background": "#f8fffd", "text": "#10201f"},
+        "exact_tokens": {}
+      },
+      "navigation": {
+        "show_household_quote_link": false,
+        "show_vehicle_quote_link": true,
+        "show_booking_link": false,
+        "show_contact_link": true,
+        "show_customer_portal_link": false,
+        "show_customer_portal_in_header": false,
+        "show_provider_login_link": false,
+        "show_admin_link": false
+      },
+      "behavior": {
+        "show_phone_publicly": true,
+        "show_email_publicly": true,
+        "prefer_contact_page_over_direct_contact": false,
+        "allow_customer_portal_links": true,
+        "allow_provider_login_links": false,
+        "allow_admin_links": false
+      },
+      "links": {
+        "primary_cta_route": "vehicle.quote",
+        "primary_cta_url": "/quote/vehicle",
+        "vehicle_quote_url": "/quote/vehicle",
+        "contact_url": "/contact"
+      },
+      "contact": {"public_email": "cars@moveroo.com.au"},
+      "analytics": {
+        "status": "linked",
+        "runtime_context_key": "quoting.vehicle.net.au",
+        "property_slug": "vehicle-net-au",
+        "site_key": "vehicle-net-au",
+        "journey_type": "vehicle_quote",
+        "ga4": {"measurement_id": "G-VEHICLE01"},
+        "event_contract": {"key": "vehicle-full-funnel-v1", "version": "v1", "rollout_status": "instrumented"}
+      },
+      "provenance": {
+        "approved_by": "domain-monitor",
+        "approved_at": "2026-05-19T00:00:00+10:00",
+        "source": "domain_monitor",
+        "change_ref": "domain-monitor#208",
+        "source_marketing_url": "https://vehicle.net.au"
+      }
+    }
+  ]
+}

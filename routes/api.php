@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\DetectedIssueController;
 use App\Http\Controllers\Api\DetectedIssueVerificationController;
 use App\Http\Controllers\Api\DomainController;
 use App\Http\Controllers\Api\IntegrationMetaController;
+use App\Http\Controllers\Api\PublishedBrandSurfaceController;
 use App\Http\Controllers\Api\RuntimeAnalyticsContextController;
 use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\WebPropertyAstroCutoverController;
@@ -38,6 +39,7 @@ Route::middleware(['api-key'])->group(function () {
     // Web properties
     Route::get('/web-properties', [WebPropertyController::class, 'index']);
     Route::get('/web-properties-summary', [WebPropertyController::class, 'summary']);
+    Route::get('/published-brand-surfaces', PublishedBrandSurfaceController::class);
     Route::get('/runtime/analytics-contexts', RuntimeAnalyticsContextController::class);
     Route::get('/web-properties/{slug}', [WebPropertyController::class, 'show']);
     Route::post('/web-properties/{slug}/astro-cutover', WebPropertyAstroCutoverController::class)

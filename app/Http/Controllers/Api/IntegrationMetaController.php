@@ -36,6 +36,15 @@ class IntegrationMetaController extends Controller
                     'purpose' => 'lightweight hostname-to-analytics runtime resolution feed',
                 ],
                 [
+                    'path' => '/api/published-brand-surfaces',
+                    'source_system' => 'domain-monitor-published-brand-surfaces',
+                    'contract_version' => 1,
+                    'purpose' => 'pilot allowlisted brand-surface payloads for MoverooCombined runtime fallback-first import',
+                    'query_parameters' => [
+                        'hostname' => 'optional hostname filter; still constrained by the pilot host allowlist',
+                    ],
+                ],
+                [
                     'path' => '/api/issues',
                     'source_system' => 'domain-monitor-issues',
                     'contract_version' => 2,
