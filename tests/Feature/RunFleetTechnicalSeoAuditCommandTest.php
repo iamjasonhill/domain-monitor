@@ -6,6 +6,8 @@ use App\Models\Domain;
 use App\Models\FleetTechnicalSeoAuditResult;
 use App\Models\FleetTechnicalSeoAuditRun;
 use App\Models\MonitoringFinding;
+use App\Models\PropertyAnalyticsSource;
+use App\Models\SearchConsoleCoverageStatus;
 use App\Models\WebProperty;
 use App\Models\WebPropertyDomain;
 use App\Services\FleetTechnicalSeoBrowserRenderer;
@@ -169,6 +171,71 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
         ], $result->evidence['matched_declared_urls']);
         $this->assertSame([], $result->evidence['missing_declared_urls']);
         $this->assertGreaterThanOrEqual(6, $result->evidence['homepage_link_count']);
+        $this->assertDatabaseCount('monitoring_findings', 0);
+    }
+
+    public function test_mm_google_analytics_evidence_passes_when_active_primary_ga4_source_is_imported(): void
+    {
+        $property = $this->makeProperty('mm-google-covered-site', 'mm-google-covered.example');
+        $source = PropertyAnalyticsSource::create([
+            'web_property_id' => $property->id,
+            'provider' => 'ga4',
+            'external_id' => 'G-EXAMPLE123',
+            'external_name' => 'MM Google Covered',
+            'workspace_path' => '/Users/jasonhill/Projects/Business/operations/MM-Google',
+            'is_primary' => true,
+            'status' => 'active',
+        ]);
+        SearchConsoleCoverageStatus::create([
+            'web_property_id' => $property->id,
+            'property_analytics_source_id' => $source->id,
+            'source_provider' => 'mm_google',
+            'matomo_site_id' => 'mm-google-covered-example',
+            'mapping_state' => 'domain_property',
+            'property_uri' => 'sc-domain:mm-google-covered.example',
+            'property_type' => 'domain',
+            'latest_completed_job_type' => 'mm_google_export',
+            'latest_completed_job_at' => now()->subDay(),
+            'latest_metric_date' => now()->toDateString(),
+            'checked_at' => now(),
+        ]);
+        $this->fakeHealthySite('https://mm-google-covered.example');
+
+        $this->assertSame(0, Artisan::call('monitoring:run-fleet-technical-seo-audit', [
+            '--property' => $property->slug,
+            '--url-cap' => 10,
+        ]));
+
+        $result = FleetTechnicalSeoAuditResult::query()
+            ->where('check_id', 'analytics.google_evidence_owned_by_mm_google')
+            ->firstOrFail();
+
+        $this->assertSame(FleetTechnicalSeoAuditResult::STATUS_PASS, $result->result_status);
+        $this->assertSame(FleetTechnicalSeoAuditResult::CONFIDENCE_HIGH, $result->evidence_confidence);
+        $this->assertSame('MM-Google', $result->evidence['owner_system']);
+        $this->assertSame('G-EXAMPLE123', $result->evidence['external_id']);
+        $this->assertSame('MM-Google', $result->evidence['source_workspace']);
+        $this->assertSame('domain_property', $result->evidence['search_console']['mapping_state']);
+        $this->assertDatabaseCount('monitoring_findings', 0);
+    }
+
+    public function test_mm_google_analytics_evidence_stays_unknown_when_no_imported_source_exists(): void
+    {
+        $property = $this->makeProperty('no-mm-google-source-site', 'no-mm-google-source.example');
+        $this->fakeHealthySite('https://no-mm-google-source.example');
+
+        $this->assertSame(0, Artisan::call('monitoring:run-fleet-technical-seo-audit', [
+            '--property' => $property->slug,
+            '--url-cap' => 10,
+        ]));
+
+        $result = FleetTechnicalSeoAuditResult::query()
+            ->where('check_id', 'analytics.google_evidence_owned_by_mm_google')
+            ->firstOrFail();
+
+        $this->assertSame(FleetTechnicalSeoAuditResult::STATUS_UNKNOWN, $result->result_status);
+        $this->assertSame(FleetTechnicalSeoAuditResult::CONFIDENCE_LOW, $result->evidence_confidence);
+        $this->assertSame('No imported MM-Google evidence attached to this deterministic run.', $result->evidence['reason']);
         $this->assertDatabaseCount('monitoring_findings', 0);
     }
 

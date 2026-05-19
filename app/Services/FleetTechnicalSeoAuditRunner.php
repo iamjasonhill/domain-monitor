@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\FleetTechnicalSeoAuditResult;
 use App\Models\FleetTechnicalSeoAuditRun;
 use App\Models\MonitoringFinding;
+use App\Models\PropertyAnalyticsSource;
+use App\Models\SearchConsoleCoverageStatus;
 use App\Models\WebProperty;
 use DOMDocument;
 use Illuminate\Http\Client\Response;
@@ -61,7 +63,7 @@ class FleetTechnicalSeoAuditRunner
 
     public function run(WebProperty $property, int $urlCap = 25, string $triggerType = 'manual'): FleetTechnicalSeoAuditRun
     {
-        $property->loadMissing(['primaryDomain', 'primaryDomain.tags', 'propertyDomains.domain', 'conversionSurfaces']);
+        $property->loadMissing(['primaryDomain', 'primaryDomain.tags', 'propertyDomains.domain', 'conversionSurfaces', 'analyticsSources.latestSearchConsoleCoverage']);
         $urlCap = max(1, $urlCap);
         $startedAt = now();
         $modes = collect(self::CHECKS)->pluck('mode')->unique()->values()->all();
@@ -256,7 +258,7 @@ class FleetTechnicalSeoAuditRunner
         $results['accessibility.semantic_baseline'] = $this->accessibilityRenderedResult($context['browser_render'] ?? []);
         $results['social.open_graph_baseline'] = $this->socialResult($homepageHtml);
         $results['ai.llms_txt_expected'] = $this->result($this->isSuccessful($context['llms']) ? 'pass' : 'manual_review', 'medium', ['llms' => Arr::except($context['llms'], ['body'])], $baseUrl.'/llms.txt');
-        $results['analytics.google_evidence_owned_by_mm_google'] = $this->result('unknown', 'low', ['owner_system' => 'MM-Google', 'reason' => 'No imported MM-Google evidence attached to this deterministic run.']);
+        $results['analytics.google_evidence_owned_by_mm_google'] = $this->mmGoogleAnalyticsEvidenceResult($property);
 
         return $results;
     }
@@ -654,6 +656,73 @@ class FleetTechnicalSeoAuditRunner
             'checked_route_count' => count($checkedRoutes),
             'failed_route_count' => count($failedRoutes),
         ]);
+    }
+
+    /**
+     * @return array{status: string, confidence: string, evidence: array<string, mixed>}
+     */
+    private function mmGoogleAnalyticsEvidenceResult(WebProperty $property): array
+    {
+        $ga4Source = $property->primaryAnalyticsSource('ga4');
+
+        if (! $ga4Source instanceof PropertyAnalyticsSource || ! $this->isMmGoogleAnalyticsSource($ga4Source)) {
+            return $this->result('unknown', 'low', [
+                'owner_system' => 'MM-Google',
+                'reason' => 'No imported MM-Google evidence attached to this deterministic run.',
+            ]);
+        }
+
+        $coverage = $ga4Source->relationLoaded('latestSearchConsoleCoverage')
+            ? $ga4Source->latestSearchConsoleCoverage
+            : $ga4Source->latestSearchConsoleCoverage()->first();
+        $evidence = [
+            'owner_system' => 'MM-Google',
+            'provider' => $ga4Source->provider,
+            'external_id' => $ga4Source->external_id,
+            'external_name' => $ga4Source->external_name,
+            'source_workspace' => 'MM-Google',
+            'is_primary' => $ga4Source->is_primary,
+            'source_status' => $ga4Source->status,
+            'source_updated_at' => $ga4Source->updated_at?->toIso8601String(),
+            'search_console' => $coverage instanceof SearchConsoleCoverageStatus
+                ? $this->searchConsoleCoverageEvidence($coverage)
+                : null,
+        ];
+
+        if ($ga4Source->is_primary && $ga4Source->status === 'active') {
+            return $this->result('pass', 'high', [
+                ...$evidence,
+                'reason' => 'Imported MM-Google GA4 evidence is active and primary for this property.',
+            ]);
+        }
+
+        return $this->result('manual_review', 'medium', [
+            ...$evidence,
+            'reason' => 'Imported MM-Google GA4 evidence exists but is not active primary evidence.',
+        ]);
+    }
+
+    private function isMmGoogleAnalyticsSource(PropertyAnalyticsSource $source): bool
+    {
+        return is_string($source->workspace_path) && str_contains($source->workspace_path, 'MM-Google');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function searchConsoleCoverageEvidence(SearchConsoleCoverageStatus $coverage): array
+    {
+        return [
+            'source_provider' => $coverage->source_provider,
+            'mapping_state' => $coverage->mapping_state,
+            'property_uri' => $coverage->property_uri,
+            'property_type' => $coverage->property_type,
+            'latest_completed_job_type' => $coverage->latest_completed_job_type,
+            'latest_completed_job_at' => $coverage->latest_completed_job_at?->toIso8601String(),
+            'latest_metric_date' => $coverage->latest_metric_date?->toDateString(),
+            'checked_at' => $coverage->checked_at->toIso8601String(),
+            'freshness_state' => $coverage->freshnessState(),
+        ];
     }
 
     /**
