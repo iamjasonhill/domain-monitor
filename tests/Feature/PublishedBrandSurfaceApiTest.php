@@ -280,6 +280,141 @@ class PublishedBrandSurfaceApiTest extends TestCase
         }
     }
 
+    public function test_published_brand_surface_feed_returns_final_runtime_closeout_host_and_classifies_the_rest(): void
+    {
+        config()->set('services.domain_monitor.moveroo_removals_api_key', 'moveroo-runtime-token');
+        config()->set('domain_monitor.published_brand_surfaces.pilot_host_allowlist', [
+            'quoteandbook.mover.com.au',
+        ]);
+
+        $metadataByHostname = config('domain_monitor.published_brand_surfaces.hostnames');
+        $this->assertIsArray($metadataByHostname);
+        $this->assertArrayHasKey('quoteandbook.mover.com.au', $metadataByHostname);
+
+        $metadata = $metadataByHostname['quoteandbook.mover.com.au'];
+        $this->createConfiguredProperty(
+            propertySlug: (string) $metadata['property_slug'],
+            propertyName: (string) $metadata['owning_marketing_domain'],
+            siteKey: (string) $metadata['brand']['brand_key'],
+            primaryDomainName: (string) $metadata['owning_marketing_domain'],
+            repoName: '_wp-house',
+            measurementId: 'G-MOVERFINAL',
+            eventContractKey: $metadata['property_slug'].'-full-funnel-v1',
+        );
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer moveroo-runtime-token',
+        ])->getJson('/api/published-brand-surfaces')
+            ->assertOk()
+            ->assertJsonCount(1, 'surfaces')
+            ->assertJsonPath('surfaces.0.hostname', 'quoteandbook.mover.com.au')
+            ->assertJsonPath('surfaces.0.property_slug', 'mover-com-au')
+            ->assertJsonPath('surfaces.0.navigation.show_household_quote_link', true)
+            ->assertJsonPath('surfaces.0.navigation.show_vehicle_quote_link', true)
+            ->assertJsonPath('surfaces.0.links.household_quote_url', 'https://quoteandbook.mover.com.au/quote/household')
+            ->assertJsonPath('surfaces.0.links.vehicle_quote_url', 'https://quoteandbook.mover.com.au/quote/vehicle')
+            ->assertJsonPath('surfaces.0.links.booking_url', 'https://quoteandbook.mover.com.au/booking/create')
+            ->assertJsonPath('surfaces.0.analytics.status', 'linked');
+
+        $remainingRuntimeHostnames = [
+            'acraustralia.com',
+            'again.com.au',
+            'allianceremovals.com.au',
+            'backload.net.au',
+            'backloading-au.com.au',
+            'backloading-services.com.au',
+            'backloading.net.au',
+            'backloadingremovalist.com.au',
+            'backloadingremovals.com',
+            'backloadingremovals.com.au',
+            'backloadingremovals.moveroo.com.au',
+            'backloads.net.au',
+            'beauy.com.au',
+            'bestinterstateremovals.com.au',
+            'car-carrying.com.au',
+            'cartransport.au',
+            'cartransport.movingagain.com.au',
+            'cartransport.net.au',
+            'cartransportaus.com.au',
+            'cartransportwithpersonalitems.com.au',
+            'deftly.com.au',
+            'discountbackloading.com',
+            'discountbackloading.com.au',
+            'discountbackloading.moveroo.com.au',
+            'furnitureremovalist.com',
+            'interstate-car-transport.com.au',
+            'interstate-removalists.net.au',
+            'interstate-removals.com.au',
+            'interstate-removals.moveroo.com.au',
+            'interstatecarcarriers.com.au',
+            'interstateremovalists.au',
+            'interstateremovalists.net.au',
+            'jasonhill.com.au',
+            'jhmh.com.au',
+            'konradhill.com',
+            'mandyhill.com.au',
+            'movemycar.com.au',
+            'mover.com.au',
+            'moveroo.au',
+            'moveroo.click',
+            'moveroo.com.au',
+            'moving.au',
+            'moving.com.au',
+            'movingagain.com',
+            'movingagain.com.au',
+            'movingagain.net',
+            'movingagain.net.au',
+            'movingcars.com.au',
+            'movingcars.net.au',
+            'movingcartons.com.au',
+            'movinghome.com.au',
+            'movinginsurance.com.au',
+            'movinginterstate.com.au',
+            'movingreviews.com.au',
+            'nfgseo.com.au',
+            'olliehill.com.au',
+            'perth.moveroo.com.au',
+            'perthinterstateremovalists.com.au',
+            'pngchambers.com',
+            'prepack.com.au',
+            'quoteandbook.mover.com.au',
+            'quotes.interstateremovalists.net.au',
+            'quoting.mover.com.au',
+            'quoting.vehicle.net.au',
+            'redirection.com.au',
+            'removalist.backloadingremovals.com.au',
+            'removalist.net',
+            'removals.au',
+            'removals.com.au',
+            'removalsinterstate.com.au',
+            'rollover.com.au',
+            'supercheapcartransport.com.au',
+            'supercheapcartransport.net.au',
+            'synonymous.com.au',
+            'tinyurl.com.au',
+            'transportnondrivablecars.com.au',
+            'vehicle.net.au',
+            'wemove.com.au',
+            'wemove.moveroo.com.au',
+        ];
+
+        $classifiedRuntimeHostnames = config('domain_monitor.published_brand_surfaces.classified_runtime_hostnames');
+        $this->assertIsArray($classifiedRuntimeHostnames);
+        $this->assertCount(78, $classifiedRuntimeHostnames);
+
+        foreach ($remainingRuntimeHostnames as $hostname) {
+            if ($hostname === 'quoteandbook.mover.com.au') {
+                $this->assertContains($hostname, config('domain_monitor.published_brand_surfaces.pilot_host_allowlist'));
+
+                continue;
+            }
+
+            $this->assertArrayHasKey($hostname, $classifiedRuntimeHostnames, "{$hostname} is not classified");
+            $this->assertNotEmpty($classifiedRuntimeHostnames[$hostname]['classification']);
+            $this->assertNotEmpty($classifiedRuntimeHostnames[$hostname]['reason']);
+        }
+    }
+
     public function test_published_brand_surface_fixtures_match_the_contract_shape(): void
     {
         foreach ([
@@ -287,6 +422,7 @@ class PublishedBrandSurfaceApiTest extends TestCase
             base_path('docs/fixtures/published-brand-surfaces/discountbackloading-quote.json'),
             base_path('docs/fixtures/published-brand-surfaces/second-pilot-batch.json'),
             base_path('docs/fixtures/published-brand-surfaces/third-pilot-batch.json'),
+            base_path('docs/fixtures/published-brand-surfaces/final-runtime-closeout.json'),
         ] as $fixturePath) {
             $payload = json_decode((string) file_get_contents($fixturePath), true);
 

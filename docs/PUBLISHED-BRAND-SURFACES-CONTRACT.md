@@ -1,7 +1,7 @@
 # Published Brand Surfaces Contract
 
 Status: v1 pilot publisher
-Issue: #208, updated by #213, #215, and #217
+Issue: #208, updated by #213, #215, #217, and #219
 Consumer: MoverooCombined issues #2083 and #2084
 
 Domain Monitor publishes the read-only `domain-monitor-published-brand-surfaces` feed for MoverooCombined runtime consumption. The feed is pilot scoped and must not be treated as permission to import or render the full estate.
@@ -57,6 +57,7 @@ Current pilot hostnames:
 - Interstate Removals removal portal: `removalportal.interstate-removals.com.au`
 - Backloading Services removal quotes host: `removalquotes.backloading-services.com.au`
 - Alliance Removals moving quote host: `moving.allianceremovals.com.au`
+- Mover quote and booking host: `quoteandbook.mover.com.au`
 
 Second-pilot host classifications:
 
@@ -93,6 +94,13 @@ Third-pilot host classifications:
 - `quoting.vehicle.net.au`: legacy vehicle quoting, not the active vehicle pilot.
 - `removalist.backloadingremovals.com.au`: legacy portal host recorded as an expected miss.
 - `interstate-removals.moveroo.com.au`: legacy Moveroo subdomain, not confirmed as a current app-served brand surface for this controlled batch.
+
+Final runtime closeout classification:
+
+- `quoteandbook.mover.com.au`: app-served mixed quote surface and published.
+- The remaining 78 runtime-only hostnames from issue #219 are intentionally classified out in `domain_monitor.published_brand_surfaces.classified_runtime_hostnames` and mirrored in `docs/fixtures/published-brand-surfaces/final-runtime-closeout.json`.
+- Classifications cover marketing apexes, aliases, retired Moveroo subdomains, legacy vehicle/runtime hosts, personal/non-business hosts, redirect utilities, and non-MoverooCombined hosts.
+- This closes the Domain Monitor publisher side of the runtime-only list without changing MoverooCombined code, live websites, DNS, redirects, cron, secrets, or deployment settings.
 
 `quoting.vehicle.net.au` is legacy quoting and is not the active #2084 pilot test host. Discount Backloading is the selected pilot because Domain Monitor production records the current property-specific quote portal and target links:
 
@@ -133,3 +141,4 @@ Example payload fixtures live in:
 - `docs/fixtures/published-brand-surfaces/discountbackloading-quote.json`
 - `docs/fixtures/published-brand-surfaces/second-pilot-batch.json`
 - `docs/fixtures/published-brand-surfaces/third-pilot-batch.json`
+- `docs/fixtures/published-brand-surfaces/final-runtime-closeout.json`
