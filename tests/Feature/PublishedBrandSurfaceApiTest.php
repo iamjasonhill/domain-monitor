@@ -1,0 +1,266 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\AnalyticsEventContract;
+use App\Models\Domain;
+use App\Models\PropertyAnalyticsSource;
+use App\Models\PropertyRepository;
+use App\Models\WebProperty;
+use App\Models\WebPropertyConversionSurface;
+use App\Models\WebPropertyDomain;
+use App\Models\WebPropertyEventContract;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class PublishedBrandSurfaceApiTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_published_brand_surface_feed_returns_v1_pilot_payload_shape(): void
+    {
+        config()->set('services.domain_monitor.moveroo_removals_api_key', 'moveroo-runtime-token');
+        config()->set('domain_monitor.published_brand_surfaces.pilot_host_allowlist', [
+            'quotes.moveroo.com.au',
+            'quoting.vehicle.net.au',
+        ]);
+
+        $this->createPilotSurface(
+            propertySlug: 'moveroo-com-au',
+            propertyName: 'Moveroo Website',
+            siteKey: 'moveroo',
+            primaryDomainName: 'moveroo.com.au',
+            hostname: 'quotes.moveroo.com.au',
+            journeyType: 'household_quote',
+            repoName: 'MM-moveroo.com.au',
+            measurementId: 'G-9F3Y80LEQL',
+            eventContractKey: 'moveroo-full-funnel-v1',
+        );
+
+        $this->createPilotSurface(
+            propertySlug: 'vehicle-net-au',
+            propertyName: 'vehicle.net.au',
+            siteKey: 'vehicle-net-au',
+            primaryDomainName: 'vehicle.net.au',
+            hostname: 'quoting.vehicle.net.au',
+            journeyType: 'vehicle_quote',
+            repoName: 'laravel',
+            measurementId: 'G-VEHICLE01',
+            eventContractKey: 'vehicle-full-funnel-v1',
+        );
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer moveroo-runtime-token',
+        ])->getJson('/api/published-brand-surfaces')
+            ->assertOk()
+            ->assertJsonPath('source_system', 'domain-monitor-published-brand-surfaces')
+            ->assertJsonPath('contract_version', 1)
+            ->assertJsonPath('generated_by', 'domain-monitor.published-brand-surfaces')
+            ->assertJsonPath('pilot.host_allowlist.0', 'quotes.moveroo.com.au')
+            ->assertJsonPath('pilot.host_allowlist.1', 'quoting.vehicle.net.au')
+            ->assertJsonPath('surfaces.0.hostname', 'quotes.moveroo.com.au')
+            ->assertJsonPath('surfaces.0.property_slug', 'moveroo-com-au')
+            ->assertJsonPath('surfaces.0.surface_slug', 'moveroo-quotes-household-v1')
+            ->assertJsonPath('surfaces.0.status', 'published')
+            ->assertJsonPath('surfaces.0.surface_type', 'quote')
+            ->assertJsonPath('surfaces.0.canonical_hostname', 'quotes.moveroo.com.au')
+            ->assertJsonPath('surfaces.0.brand.display_name', 'Moveroo')
+            ->assertJsonPath('surfaces.0.theme.colors.accent', '#2563eb')
+            ->assertJsonPath('surfaces.0.navigation.show_household_quote_link', true)
+            ->assertJsonPath('surfaces.0.behavior.allow_admin_links', false)
+            ->assertJsonPath('surfaces.0.links.primary_cta_route', 'household.quote')
+            ->assertJsonPath('surfaces.0.contact.public_email', 'removals@moveroo.com.au')
+            ->assertJsonPath('surfaces.0.analytics.status', 'linked')
+            ->assertJsonPath('surfaces.0.analytics.runtime_context_key', 'quotes.moveroo.com.au')
+            ->assertJsonPath('surfaces.0.analytics.ga4.measurement_id', 'G-9F3Y80LEQL')
+            ->assertJsonPath('surfaces.0.analytics.event_contract.key', 'moveroo-full-funnel-v1')
+            ->assertJsonPath('surfaces.0.ownership.published_truth_owner', 'Domain Monitor')
+            ->assertJsonPath('surfaces.0.ownership.runtime_renderer_owner', 'MoverooCombined')
+            ->assertJsonPath('surfaces.0.ownership.site_repo_owner', 'MM-moveroo.com.au')
+            ->assertJsonPath('surfaces.0.ownership.portfolio_routing_owner', 'Bossman')
+            ->assertJsonPath('surfaces.0.provenance.change_ref', 'domain-monitor#208')
+            ->assertJsonPath('surfaces.1.hostname', 'quoting.vehicle.net.au')
+            ->assertJsonPath('surfaces.1.navigation.show_vehicle_quote_link', true)
+            ->assertJsonPath('surfaces.1.links.primary_cta_route', 'vehicle.quote')
+            ->assertJsonCount(2, 'surfaces');
+    }
+
+    public function test_published_brand_surface_feed_is_constrained_to_the_pilot_allowlist(): void
+    {
+        config()->set('services.domain_monitor.moveroo_removals_api_key', 'moveroo-runtime-token');
+        config()->set('domain_monitor.published_brand_surfaces.pilot_host_allowlist', [
+            'quotes.moveroo.com.au',
+        ]);
+
+        $this->createPilotSurface(
+            propertySlug: 'moveroo-com-au',
+            propertyName: 'Moveroo Website',
+            siteKey: 'moveroo',
+            primaryDomainName: 'moveroo.com.au',
+            hostname: 'quotes.moveroo.com.au',
+            journeyType: 'household_quote',
+            repoName: 'MM-moveroo.com.au',
+            measurementId: 'G-9F3Y80LEQL',
+            eventContractKey: 'moveroo-full-funnel-v1',
+        );
+
+        $this->createPilotSurface(
+            propertySlug: 'full-estate-com-au',
+            propertyName: 'Full Estate Website',
+            siteKey: 'fullestate',
+            primaryDomainName: 'full-estate.com.au',
+            hostname: 'quotes.full-estate.com.au',
+            journeyType: 'household_quote',
+            repoName: 'MM-full-estate',
+            measurementId: 'G-FULLESTATE',
+            eventContractKey: 'full-estate-full-funnel-v1',
+        );
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer moveroo-runtime-token',
+        ])->getJson('/api/published-brand-surfaces')
+            ->assertOk()
+            ->assertJsonCount(1, 'surfaces')
+            ->assertJsonPath('surfaces.0.hostname', 'quotes.moveroo.com.au');
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer moveroo-runtime-token',
+        ])->getJson('/api/published-brand-surfaces?hostname=quotes.full-estate.com.au')
+            ->assertOk()
+            ->assertJsonCount(0, 'surfaces');
+    }
+
+    public function test_published_brand_surface_fixtures_match_the_contract_shape(): void
+    {
+        foreach ([
+            base_path('docs/fixtures/published-brand-surfaces/household-quote.json'),
+            base_path('docs/fixtures/published-brand-surfaces/vehicle-quote.json'),
+        ] as $fixturePath) {
+            $payload = json_decode((string) file_get_contents($fixturePath), true);
+
+            $this->assertIsArray($payload);
+            $this->assertSame('domain-monitor-published-brand-surfaces', $payload['source_system'] ?? null);
+            $this->assertSame(1, $payload['contract_version'] ?? null);
+            $this->assertIsArray($payload['pilot']['host_allowlist'] ?? null);
+            $this->assertIsArray($payload['surfaces'][0] ?? null);
+
+            $surface = $payload['surfaces'][0];
+
+            foreach ([
+                'hostname',
+                'property_slug',
+                'surface_slug',
+                'status',
+                'surface_type',
+                'canonical_role',
+                'canonical_hostname',
+                'brand',
+                'copy',
+                'theme',
+                'navigation',
+                'behavior',
+                'links',
+                'contact',
+                'analytics',
+                'ownership',
+                'provenance',
+            ] as $requiredField) {
+                $this->assertArrayHasKey($requiredField, $surface, "{$requiredField} missing from {$fixturePath}");
+            }
+        }
+    }
+
+    private function createPilotSurface(
+        string $propertySlug,
+        string $propertyName,
+        string $siteKey,
+        string $primaryDomainName,
+        string $hostname,
+        string $journeyType,
+        string $repoName,
+        string $measurementId,
+        string $eventContractKey,
+    ): void {
+        $primaryDomain = Domain::factory()->create([
+            'domain' => $primaryDomainName,
+            'is_active' => true,
+        ]);
+
+        $surfaceDomain = Domain::factory()->create([
+            'domain' => $hostname,
+            'is_active' => true,
+        ]);
+
+        $property = WebProperty::factory()->create([
+            'slug' => $propertySlug,
+            'name' => $propertyName,
+            'site_key' => $siteKey,
+            'status' => 'active',
+            'property_type' => 'website',
+            'primary_domain_id' => $primaryDomain->id,
+            'target_contact_us_page_url' => '/contact',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $primaryDomain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        PropertyRepository::create([
+            'web_property_id' => $property->id,
+            'repo_name' => $repoName,
+            'repo_provider' => 'github',
+            'framework' => 'Laravel',
+            'is_primary' => true,
+            'is_controller' => true,
+        ]);
+
+        $analyticsSource = PropertyAnalyticsSource::create([
+            'web_property_id' => $property->id,
+            'provider' => 'ga4',
+            'external_id' => $measurementId,
+            'external_name' => $propertyName.' GA4',
+            'provider_config' => [
+                'site_key' => $siteKey,
+                'measurement_id' => $measurementId,
+            ],
+            'is_primary' => true,
+            'status' => 'active',
+        ]);
+
+        $eventContract = AnalyticsEventContract::create([
+            'key' => $eventContractKey,
+            'name' => $propertyName.' Full Funnel',
+            'version' => 'v1',
+            'contract_type' => 'ga4_web_and_backend',
+            'status' => 'active',
+        ]);
+
+        $eventAssignment = WebPropertyEventContract::create([
+            'web_property_id' => $property->id,
+            'analytics_event_contract_id' => $eventContract->id,
+            'is_primary' => true,
+            'rollout_status' => 'instrumented',
+        ]);
+
+        WebPropertyConversionSurface::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $surfaceDomain->id,
+            'hostname' => $hostname,
+            'surface_type' => 'quote_subdomain',
+            'journey_type' => $journeyType,
+            'runtime_driver' => 'Laravel',
+            'runtime_label' => $journeyType === 'vehicle_quote' ? 'Moveroo Cars 2026' : 'Moveroo Removals 2026',
+            'runtime_path' => $journeyType === 'vehicle_quote'
+                ? '/Users/jasonhill/Projects/laravel-projects/Moveroo-Cars-2026'
+                : '/Users/jasonhill/Projects/laravel-projects/Moveroo Removals 2026',
+            'analytics_binding_mode' => 'inherits_property',
+            'event_contract_binding_mode' => 'inherits_property',
+            'rollout_status' => 'instrumented',
+            'property_analytics_source_id' => $analyticsSource->id,
+            'web_property_event_contract_id' => $eventAssignment->id,
+        ]);
+    }
+}

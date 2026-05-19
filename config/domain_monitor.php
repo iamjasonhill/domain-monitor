@@ -84,6 +84,138 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Published Brand Surfaces
+    |--------------------------------------------------------------------------
+    |
+    | Versioned, read-only runtime surface payloads for MoverooCombined.
+    | Keep this pilot allowlist narrow until Bossman records a wider rollout.
+    |
+    */
+    'published_brand_surfaces' => [
+        'pilot_host_allowlist' => [
+            'quotes.moveroo.com.au',
+            'quoting.vehicle.net.au',
+        ],
+        'hostnames' => [
+            'quotes.moveroo.com.au' => [
+                'surface_slug' => 'moveroo-quotes-household-v1',
+                'surface_type' => 'quote',
+                'canonical_role' => 'primary',
+                'owning_marketing_domain' => 'moveroo.com.au',
+                'brand' => [
+                    'display_name' => 'Moveroo',
+                    'brand_key' => 'moveroo',
+                    'tagline' => 'Move with confidence',
+                    'mark_text' => 'M',
+                ],
+                'copy' => [
+                    'eyebrow' => 'Moveroo Household Quotes',
+                    'headline' => 'Get your moving quote',
+                    'subheading' => 'Tell us about your move and we will prepare the next step.',
+                    'primary_cta_label' => 'Start your quote',
+                    'secondary_cta_label' => 'Contact us',
+                    'footer_blurb' => 'Moveroo helps Australians plan household moves with clearer quote and booking paths.',
+                ],
+                'theme' => [
+                    'theme_key' => 'moveroo',
+                    'mode' => 'auto',
+                    'fonts' => [
+                        'body_family' => 'Inter',
+                        'heading_family' => 'Inter',
+                    ],
+                    'colors' => [
+                        'accent' => '#2563eb',
+                        'accent_strong' => '#1d4ed8',
+                        'background' => '#ffffff',
+                        'text' => '#111827',
+                        'muted_text' => '#4b5563',
+                        'surface' => '#f8fafc',
+                        'border' => '#dbeafe',
+                    ],
+                    'radius_scale' => 'rounded',
+                    'shadow_style' => 'soft',
+                    'exact_tokens' => [],
+                ],
+                'links' => [
+                    'primary_cta_route' => 'household.quote',
+                    'primary_cta_url' => '/quote/household',
+                    'household_quote_url' => '/quote/household',
+                    'booking_url' => '/booking/create',
+                    'contact_url' => '/contact',
+                    'customer_portal_url' => '/customer/login',
+                ],
+                'contact' => [
+                    'public_email' => 'removals@moveroo.com.au',
+                ],
+                'provenance' => [
+                    'approved_by' => 'domain-monitor',
+                    'approved_at' => '2026-05-19T00:00:00+10:00',
+                    'source' => 'domain_monitor',
+                    'change_ref' => 'domain-monitor#208',
+                    'source_marketing_url' => 'https://moveroo.com.au',
+                ],
+            ],
+            'quoting.vehicle.net.au' => [
+                'surface_slug' => 'vehicle-net-au-quotes-vehicle-v1',
+                'surface_type' => 'quote',
+                'canonical_role' => 'primary',
+                'owning_marketing_domain' => 'vehicle.net.au',
+                'brand' => [
+                    'display_name' => 'Vehicle.net.au',
+                    'brand_key' => 'vehicle-net-au',
+                    'tagline' => 'Vehicle transport quotes',
+                    'mark_text' => 'V',
+                ],
+                'copy' => [
+                    'eyebrow' => 'Vehicle Transport Quotes',
+                    'headline' => 'Get your vehicle transport quote',
+                    'subheading' => 'Share the vehicle and route details so the transport team can prepare the next step.',
+                    'primary_cta_label' => 'Start your vehicle quote',
+                    'secondary_cta_label' => 'Contact us',
+                    'footer_blurb' => 'Vehicle.net.au connects vehicle transport enquiries to the current quoting runtime.',
+                ],
+                'theme' => [
+                    'theme_key' => 'vehicle-net-au',
+                    'mode' => 'auto',
+                    'fonts' => [
+                        'body_family' => 'Inter',
+                        'heading_family' => 'Inter',
+                    ],
+                    'colors' => [
+                        'accent' => '#0f766e',
+                        'accent_strong' => '#115e59',
+                        'background' => '#f8fffd',
+                        'text' => '#10201f',
+                        'muted_text' => '#49635f',
+                        'surface' => '#ffffff',
+                        'border' => '#ccfbf1',
+                    ],
+                    'radius_scale' => 'rounded',
+                    'shadow_style' => 'soft',
+                    'exact_tokens' => [],
+                ],
+                'links' => [
+                    'primary_cta_route' => 'vehicle.quote',
+                    'primary_cta_url' => '/quote/vehicle',
+                    'vehicle_quote_url' => '/quote/vehicle',
+                    'contact_url' => '/contact',
+                ],
+                'contact' => [
+                    'public_email' => 'cars@moveroo.com.au',
+                ],
+                'provenance' => [
+                    'approved_by' => 'domain-monitor',
+                    'approved_at' => '2026-05-19T00:00:00+10:00',
+                    'source' => 'domain_monitor',
+                    'change_ref' => 'domain-monitor#208',
+                    'source_marketing_url' => 'https://vehicle.net.au',
+                ],
+            ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Runtime Analytics Host Overrides
     |--------------------------------------------------------------------------
     |
