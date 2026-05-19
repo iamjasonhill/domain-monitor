@@ -128,6 +128,50 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
         $this->assertNotEmpty($result->evidence['skipped_urls']);
     }
 
+    public function test_quote_contact_targets_match_declared_app_host_links_on_homepage(): void
+    {
+        $property = $this->makeProperty('app-host-links-site', 'app-host-links.example', [
+            'target_household_quote_url' => 'https://quoting.app-host-links.example/quote/household',
+            'target_household_booking_url' => 'https://quoting.app-host-links.example/booking/create',
+            'target_vehicle_quote_url' => 'https://quoting.app-host-links.example/quote/vehicle',
+            'target_contact_us_page_url' => 'https://quoting.app-host-links.example/contact',
+        ]);
+        $this->fakeHealthySite('https://app-host-links.example', [
+            'homepage_links' => [
+                'https://quoting.app-host-links.example/quote/household' => 'Get a quote',
+                'https://quoting.app-host-links.example/booking/create' => 'Book now',
+                'https://quoting.app-host-links.example/quote/vehicle' => 'Vehicle quote',
+                'https://quoting.app-host-links.example/contact' => 'Contact',
+            ],
+            'extra_responses' => [
+                'https://quoting.app-host-links.example/quote/household' => Http::response('<html><body>Household quote</body></html>', 200, ['Content-Type' => 'text/html']),
+                'https://quoting.app-host-links.example/booking/create' => Http::response('<html><body>Booking</body></html>', 200, ['Content-Type' => 'text/html']),
+                'https://quoting.app-host-links.example/quote/vehicle' => Http::response('<html><body>Vehicle quote</body></html>', 200, ['Content-Type' => 'text/html']),
+                'https://quoting.app-host-links.example/contact' => Http::response('<html><body>Contact</body></html>', 200, ['Content-Type' => 'text/html']),
+            ],
+        ]);
+
+        $this->assertSame(0, Artisan::call('monitoring:run-fleet-technical-seo-audit', [
+            '--property' => $property->slug,
+            '--url-cap' => 10,
+        ]));
+
+        $result = FleetTechnicalSeoAuditResult::query()
+            ->where('check_id', 'links.quote_contact_targets_current')
+            ->firstOrFail();
+
+        $this->assertSame(FleetTechnicalSeoAuditResult::STATUS_PASS, $result->result_status);
+        $this->assertSame([
+            'https://quoting.app-host-links.example/quote/household',
+            'https://quoting.app-host-links.example/booking/create',
+            'https://quoting.app-host-links.example/quote/vehicle',
+            'https://quoting.app-host-links.example/contact',
+        ], $result->evidence['matched_declared_urls']);
+        $this->assertSame([], $result->evidence['missing_declared_urls']);
+        $this->assertGreaterThanOrEqual(6, $result->evidence['homepage_link_count']);
+        $this->assertDatabaseCount('monitoring_findings', 0);
+    }
+
     public function test_legacy_route_mapping_stays_unknown_when_no_manifest_is_configured(): void
     {
         $property = $this->makeProperty('no-legacy-manifest-site', 'no-legacy-manifest.example');
@@ -472,6 +516,7 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
      * @param  array{
      *   robots_status?: int,
      *   sitemap_urls?: array<int, string>,
+     *   homepage_links?: array<string, string>,
      *   extra_responses?: array<string, \GuzzleHttp\Promise\PromiseInterface>
      * }  $options
      */
@@ -485,7 +530,7 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
         $sitemapXml = '<urlset>'.collect($sitemapUrls)
             ->map(fn (string $url): string => '<url><loc>'.$url.'</loc></url>')
             ->implode('').'</urlset>';
-        $html = $this->healthyHtml($baseUrl);
+        $html = $this->healthyHtml($baseUrl, $options['homepage_links'] ?? []);
 
         Http::fake(array_merge([
             $baseUrl.'/' => Http::response($html, 200, ['Content-Type' => 'text/html']),
@@ -499,8 +544,15 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
         ], $options['extra_responses'] ?? []));
     }
 
-    private function healthyHtml(string $baseUrl): string
+    /**
+     * @param  array<string, string>  $extraLinks
+     */
+    private function healthyHtml(string $baseUrl, array $extraLinks = []): string
     {
+        $extraLinkHtml = collect($extraLinks)
+            ->map(fn (string $label, string $url): string => '<a href="'.$url.'">'.$label.'</a>')
+            ->implode("\n");
+
         return <<<HTML
             <!doctype html>
             <html lang="en">
@@ -517,6 +569,7 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
                 <h1>Example Site</h1>
                 <a href="{$baseUrl}/about">About</a>
                 <a href="{$baseUrl}/quote">Quote</a>
+                {$extraLinkHtml}
                 <img src="{$baseUrl}/logo.png" alt="Example logo" width="120" height="60">
             </body>
             </html>
