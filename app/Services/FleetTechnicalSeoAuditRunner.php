@@ -145,7 +145,8 @@ class FleetTechnicalSeoAuditRunner
      *   browser_render?: array<string, array<string, mixed>>,
      *   lighthouse_lab?: array<string, array<string, mixed>>,
      *   internal_links: array<int, string>,
-     *   external_links: array<int, string>
+     *   external_links: array<int, string>,
+     *   legacy_route_manifest: array<int, array<string, mixed>>
      * }
      */
     private function collectContext(WebProperty $property, int $urlCap): array
@@ -184,6 +185,7 @@ class FleetTechnicalSeoAuditRunner
             'pages' => $pages,
             'internal_links' => $homepageLinks['internal'],
             'external_links' => $homepageLinks['external'],
+            'legacy_route_manifest' => $this->legacyRouteManifestForProperty($property, $baseUrl),
         ];
     }
 
@@ -226,7 +228,7 @@ class FleetTechnicalSeoAuditRunner
         $results['headings.h1_present_and_single_intent'] = $this->h1Result($context['pages']);
         $results['canonical.production_origin_expected'] = $this->result($canonical !== null && $this->urlMatchesOrigin($canonical, $expectedOrigin) ? 'pass' : 'fail', 'high', ['canonical_url' => $canonical, 'expected_origin' => $expectedOrigin], $baseUrl.'/');
         $results['indexability.no_unexpected_noindex'] = $this->result($this->hasNoindex($homepageHtml, $homepage['headers'] ?? []) ? 'fail' : 'pass', 'high', ['has_noindex' => $this->hasNoindex($homepageHtml, $homepage['headers'] ?? [])], $baseUrl.'/');
-        $results['redirects.legacy_routes_mapped'] = $this->result('unknown', 'low', ['reason' => 'No legacy route manifest is wired into the deterministic runner yet.']);
+        $results['redirects.legacy_routes_mapped'] = $this->legacyRoutesMappedResult($context['legacy_route_manifest']);
         $results['redirects.no_key_route_chains_or_loops'] = $this->result($this->isSuccessful($homepage) ? 'pass' : 'unknown', $this->isSuccessful($homepage) ? 'high' : 'low', ['homepage' => Arr::except($homepage, ['body'])], $baseUrl.'/');
         $results['links.internal_key_links_resolve'] = $this->result($brokenInternalLinks === [] ? 'pass' : 'fail', 'high', ['broken_internal_links' => $brokenInternalLinks, 'checked_internal_link_count' => count($context['internal_links'])]);
         $results['links.external_inventory_classified'] = $this->result('manual_review', 'medium', ['external_links' => array_slice($context['external_links'], 0, 25), 'external_link_count' => count($context['external_links'])]);
@@ -583,6 +585,66 @@ class FleetTechnicalSeoAuditRunner
     }
 
     /**
+     * @param  array<int, array<string, mixed>>  $manifestRoutes
+     * @return array{status: string, confidence: string, evidence: array<string, mixed>}
+     */
+    private function legacyRoutesMappedResult(array $manifestRoutes): array
+    {
+        if ($manifestRoutes === []) {
+            return $this->result('unknown', 'low', ['reason' => 'No legacy route manifest is wired into the deterministic runner yet.']);
+        }
+
+        $checkedRoutes = [];
+        $failedRoutes = [];
+
+        foreach ($manifestRoutes as $route) {
+            $legacyUrl = $this->stringValue($route['legacy_url'] ?? null);
+            $expectedUrl = $this->stringValue($route['expected_url'] ?? null);
+            $expectedStatuses = $this->expectedLegacyRouteStatuses($route['expected_statuses'] ?? null);
+
+            if ($legacyUrl === null || $expectedUrl === null) {
+                $failedRoutes[] = [
+                    'legacy_url' => $legacyUrl,
+                    'expected_url' => $expectedUrl,
+                    'reason' => 'Manifest route is missing legacy_url or expected_url.',
+                ];
+
+                continue;
+            }
+
+            $response = $this->fetchRedirectProbe($legacyUrl);
+            $status = (int) ($response['status'] ?? 0);
+            $location = $this->redirectLocation($response, $legacyUrl);
+            $statusMatches = in_array($status, $expectedStatuses, true);
+            $targetMatches = $location !== null && $this->urlsEquivalent($location, $expectedUrl);
+            $checkedRoute = [
+                'legacy_url' => $legacyUrl,
+                'expected_url' => $expectedUrl,
+                'expected_statuses' => $expectedStatuses,
+                'actual_status' => $status,
+                'actual_location' => $location,
+                'notes' => $this->stringValue($route['notes'] ?? null),
+            ];
+
+            $checkedRoutes[] = $checkedRoute;
+
+            if (! $statusMatches || ! $targetMatches) {
+                $checkedRoute['status_matches'] = $statusMatches;
+                $checkedRoute['target_matches'] = $targetMatches;
+                $failedRoutes[] = $checkedRoute;
+            }
+        }
+
+        return $this->result($failedRoutes === [] ? 'pass' : 'fail', 'high', [
+            'manifest_source' => 'config/domain_monitor.php:fleet_technical_seo.legacy_route_manifests',
+            'checked_routes' => $checkedRoutes,
+            'failed_routes' => $failedRoutes,
+            'checked_route_count' => count($checkedRoutes),
+            'failed_route_count' => count($failedRoutes),
+        ]);
+    }
+
+    /**
      * @param  array<string, mixed>  $evidence
      * @return array{status: string, confidence: string, evidence: array<string, mixed>, target_url?: string|null}
      */
@@ -816,6 +878,7 @@ class FleetTechnicalSeoAuditRunner
             'indexability.no_unexpected_noindex' => 'Fleet full technical SEO audit found a noindex directive on an indexable page.',
             'links.internal_key_links_resolve' => sprintf('Fleet full technical SEO audit found %d broken internal link(s).', count($evidence['broken_internal_links'] ?? [])),
             'links.quote_contact_targets_current' => 'Fleet full technical SEO audit could not find all declared quote/contact target links on the homepage.',
+            'redirects.legacy_routes_mapped' => sprintf('Fleet full technical SEO audit found %d legacy route mapping failure(s).', (int) ($evidence['failed_route_count'] ?? 0)),
             'security.https_valid_and_canonical' => 'Fleet full technical SEO audit found HTTPS or canonical homepage evidence failing.',
             default => 'Fleet full technical SEO audit found a high-confidence failure.',
         };
@@ -868,6 +931,37 @@ class FleetTechnicalSeoAuditRunner
                 'successful' => $response->successful(),
                 'headers' => $response->headers(),
                 'body' => $response->body(),
+            ];
+        } catch (\Throwable $exception) {
+            return [
+                'url' => $url,
+                'status' => 0,
+                'successful' => false,
+                'headers' => [],
+                'body' => '',
+                'error' => $exception->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function fetchRedirectProbe(string $url): array
+    {
+        try {
+            /** @var Response $response */
+            $response = Http::timeout(10)
+                ->withoutRedirecting()
+                ->withHeaders(['User-Agent' => 'DomainMonitor/1.0 FleetTechnicalSeoAudit'])
+                ->get($url);
+
+            return [
+                'url' => $url,
+                'status' => $response->status(),
+                'successful' => $response->successful(),
+                'headers' => $response->headers(),
+                'body' => '',
             ];
         } catch (\Throwable $exception) {
             return [
@@ -966,6 +1060,106 @@ class FleetTechnicalSeoAuditRunner
             ->map(fn (string $url): string => trim($url))
             ->values()
             ->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function legacyRouteManifestForProperty(WebProperty $property, string $baseUrl): array
+    {
+        $manifests = config('domain_monitor.fleet_technical_seo.legacy_route_manifests.properties', []);
+        if (! is_array($manifests)) {
+            return [];
+        }
+
+        $routes = $manifests[$property->slug] ?? $manifests[Str::lower((string) $property->primaryDomainName())] ?? [];
+        if (! is_array($routes)) {
+            return [];
+        }
+
+        return collect($routes)
+            ->filter(fn (mixed $route): bool => is_array($route))
+            ->map(function (array $route) use ($baseUrl): array {
+                $legacyUrl = $this->stringValue($route['legacy_url'] ?? null);
+                $legacyPath = $this->stringValue($route['legacy_path'] ?? null);
+
+                if ($legacyUrl === null && $legacyPath !== null) {
+                    $legacyUrl = $this->normalizeUrl($legacyPath, $baseUrl.'/');
+                }
+
+                return [
+                    'legacy_url' => $legacyUrl,
+                    'expected_url' => $this->normalizeUrl((string) ($route['expected_url'] ?? ''), $baseUrl.'/'),
+                    'expected_statuses' => $route['expected_statuses'] ?? null,
+                    'notes' => $this->stringValue($route['notes'] ?? null),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function expectedLegacyRouteStatuses(mixed $statuses): array
+    {
+        if (! is_array($statuses)) {
+            return [301, 302, 307, 308];
+        }
+
+        $normalized = collect($statuses)
+            ->map(fn (mixed $status): int => (int) $status)
+            ->filter(fn (int $status): bool => $status >= 100 && $status <= 599)
+            ->unique()
+            ->values()
+            ->all();
+
+        return $normalized !== [] ? $normalized : [301, 302, 307, 308];
+    }
+
+    /**
+     * @param  array<string, mixed>  $response
+     */
+    private function redirectLocation(array $response, string $requestUrl): ?string
+    {
+        $headers = is_array($response['headers'] ?? null) ? $response['headers'] : [];
+        $location = null;
+
+        foreach ($headers as $name => $values) {
+            if (Str::lower((string) $name) !== 'location') {
+                continue;
+            }
+
+            if (is_array($values)) {
+                $location = $this->stringValue($values[0] ?? null);
+            } else {
+                $location = $this->stringValue($values);
+            }
+
+            break;
+        }
+
+        if ($location === null) {
+            return null;
+        }
+
+        return $this->normalizeUrl($location, $requestUrl);
+    }
+
+    private function urlsEquivalent(string $actualUrl, string $expectedUrl): bool
+    {
+        return rtrim($actualUrl, '/') === rtrim($expectedUrl, '/');
+    }
+
+    private function stringValue(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        return $trimmed !== '' ? $trimmed : null;
     }
 
     /**
