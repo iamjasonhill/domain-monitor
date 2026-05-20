@@ -1,0 +1,57 @@
+{
+  "hostname": "mymoveportal.discountbackloading.com.au",
+  "source_marketing_domain": "discountbackloading.com.au",
+  "property_slug": "discountbackloading-com-au",
+  "surface_slug": "discountbackloading-mymoveportal-quote-v1",
+  "journey_type": "mixed_quote",
+  "proposal_status": "draft_review_required",
+  "approval_status": "needs_review",
+  "review_reason": "Marketing-site style extraction requires review before it can annotate the published surface.",
+  "candidate": {
+    "brand": {
+      "display_name": "Discount Backloading",
+      "brand_key": "discountbackloading",
+      "tagline": "Backloading and moving quotes",
+      "mark_text": "DB"
+    },
+    "theme": {
+      "theme_key": "discountbackloading",
+      "mode": "auto",
+      "fonts": {
+        "body_family": "Montserrat",
+        "heading_family": "Montserrat"
+      },
+      "colors": {
+        "accent": "#f97316",
+        "accent_strong": "#7c2d12"
+      },
+      "exact_tokens": []
+    },
+    "copy": {
+      "headline": "Save on your interstate move",
+      "subheading": "Affordable backloading quotes across Australia."
+    }
+  },
+  "evidence": [
+    {
+      "field": "brand.display_name",
+      "value": "Discount Backloading",
+      "source_url": "https://discountbackloading.com.au",
+      "source_type": "marketing_site_extraction",
+      "confidence": "medium",
+      "captured_at": "2026-05-20T00:00:00+10:00"
+    },
+    {
+      "field": "theme.colors.accent",
+      "value": "#f97316",
+      "source_url": "https://discountbackloading.com.au",
+      "source_type": "marketing_site_extraction",
+      "confidence": "medium",
+      "captured_at": "2026-05-20T00:00:00+10:00"
+    }
+  ],
+  "publish_gate": {
+    "can_publish": false,
+    "reason": "draft_requires_human_or_trusted_review"
+  }
+}

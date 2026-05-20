@@ -737,8 +737,10 @@ return [
                 ],
             ],
             'mymoveportal.discountbackloading.com.au' => [
+                'property_slug' => 'discountbackloading-com-au',
                 'surface_slug' => 'discountbackloading-mymoveportal-quote-v1',
                 'surface_type' => 'quote',
+                'journey_type' => 'mixed_quote',
                 'canonical_role' => 'primary',
                 'owning_marketing_domain' => 'discountbackloading.com.au',
                 'brand' => [
