@@ -91,6 +91,73 @@ class BrandStyleSurfaceExtractionCommandTest extends TestCase
             ->assertJsonCount(0, 'surfaces');
     }
 
+    public function test_it_extracts_prominent_brand_tokens_from_same_origin_stylesheets(): void
+    {
+        Http::fake([
+            'https://supercheapcartransport.com.au' => Http::response(<<<'HTML'
+                <html>
+                    <head>
+                        <title>Super Cheap Car Transport</title>
+                        <meta name="theme-color" content="#c43211">
+                        <meta name="description" content="Cheap interstate car transport across Australia.">
+                        <link rel="stylesheet" href="/assets/site.css">
+                    </head>
+                    <body class="scct-theme-body">
+                        <h1>Super cheap car transport across Australia.</h1>
+                    </body>
+                </html>
+                HTML, 200, ['Content-Type' => 'text/html']),
+            'https://supercheapcartransport.com.au/assets/site.css' => Http::response(<<<'CSS'
+                .scct-theme-body {
+                    --scct-bg: #f6f0e6;
+                    --scct-paper: #fffaf2;
+                    --scct-ink: #1e2426;
+                    --scct-soft: rgba(30, 36, 38, .72);
+                    --scct-red: #c43211;
+                    --scct-red-deep: #a6290c;
+                    --scct-charcoal: #20282d;
+                    --scct-line: rgba(30, 36, 38, .12);
+                    font-family: "Manrope Variable", Manrope, sans-serif;
+                    color: var(--scct-ink);
+                    background: linear-gradient(180deg, #fbf7f0, var(--scct-bg));
+                }
+                .scct-primary {
+                    background: linear-gradient(180deg, #e0522c, var(--scct-red));
+                    color: #fff;
+                }
+                .scct-secondary {
+                    background: var(--scct-charcoal);
+                    color: #fff;
+                }
+                .scct-card {
+                    background: var(--scct-paper);
+                    border: 1px solid var(--scct-line);
+                }
+                CSS, 200, ['Content-Type' => 'text/css']),
+        ]);
+
+        $this->assertSame(0, Artisan::call('brand-surfaces:extract-style-draft', [
+            'hostname' => 'portal.supercheapcartransport.com.au',
+        ]));
+
+        $draft = json_decode(Artisan::output(), true, 512, JSON_THROW_ON_ERROR);
+
+        $this->assertSame('#c43211', data_get($draft, 'candidate.theme.colors.accent'));
+        $this->assertSame('#a6290c', data_get($draft, 'candidate.theme.colors.accent_strong'));
+        $this->assertSame('#f6f0e6', data_get($draft, 'candidate.theme.colors.background'));
+        $this->assertSame('#fffaf2', data_get($draft, 'candidate.theme.colors.surface'));
+        $this->assertSame('#1e2426', data_get($draft, 'candidate.theme.colors.text'));
+        $this->assertSame('rgba(30, 36, 38, .72)', data_get($draft, 'candidate.theme.colors.muted_text'));
+        $this->assertSame('Manrope', data_get($draft, 'candidate.theme.fonts.body_family'));
+        $this->assertSame('#c43211', data_get($draft, 'candidate.theme.exact_tokens.primary_cta.background'));
+        $this->assertSame('#ffffff', data_get($draft, 'candidate.theme.exact_tokens.primary_cta.text'));
+        $this->assertSame('#20282d', data_get($draft, 'candidate.theme.exact_tokens.secondary_cta.background'));
+        $this->assertSame('#20282d', data_get($draft, 'candidate.visual_identity.colors.primary'));
+        $this->assertSame('bold_budget_vehicle', data_get($draft, 'candidate.visual_identity.style.visual_profile'));
+        $this->assertSame('marketing_site_stylesheet_extraction', data_get($draft, 'evidence.0.source_type'));
+        $this->assertContains('theme.colors.surface', collect(data_get($draft, 'evidence'))->pluck('field')->all());
+    }
+
     public function test_extraction_requires_a_known_published_app_hostname(): void
     {
         $this->assertSame(1, Artisan::call('brand-surfaces:extract-style-draft', [
