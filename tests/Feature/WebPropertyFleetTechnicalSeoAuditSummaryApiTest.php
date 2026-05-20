@@ -114,6 +114,7 @@ class WebPropertyFleetTechnicalSeoAuditSummaryApiTest extends TestCase
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
 
         $property = $this->makeProperty('pre-migration-site', 'pre-migration.example');
+        Schema::dropIfExists('fleet_technical_seo_unknown_triage_candidates');
         Schema::dropIfExists('fleet_technical_seo_audit_results');
         Schema::dropIfExists('fleet_technical_seo_audit_runs');
         Schema::dropIfExists('web_property_conversion_surfaces');
