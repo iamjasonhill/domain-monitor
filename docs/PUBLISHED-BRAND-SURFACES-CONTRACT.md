@@ -149,7 +149,7 @@ Each surface includes:
 
 ## Visual Identity Profiles
 
-`visual_identity` is an optional publisher-side profile for improving visual fidelity across MoverooCombined-rendered public quote, booking, and contact hostnames. It is intentionally narrower than CSS.
+`visual_identity` is an optional publisher-side profile for improving visual fidelity across MoverooCombined-rendered public quote, booking, and contact hostnames. It carries approved brand primitives and evidence, and is intentionally narrower than CSS.
 
 Domain Monitor may publish `visual_identity` only when all of the following are true:
 
@@ -167,10 +167,32 @@ Allowed visual identity fields:
 - `approved_by`, `approved_at`: non-sensitive approval metadata
 - `font_pairing.heading`, `font_pairing.body`, `font_pairing.fallback`: approved font keys, not arbitrary CSS imports
 - `colors`: bounded brand color tokens such as `primary`, `accent`, `background`, `surface`, `text`, `muted_text`, and `hero_text`
-- `style`: renderer-safe hints such as `visual_profile`, `hero_treatment`, `button_treatment`, `secondary_button_treatment`, `card_treatment`, and `logo_treatment`
+- `style`: renderer-safe brand-profile hints such as `visual_profile`, `hero_treatment`, `button_treatment`, `secondary_button_treatment`, `card_treatment`, and `logo_treatment`
 - `evidence`: field-level source URL, source type, confidence, and capture timestamp
 
-Forbidden visual identity content:
+## Surface Design Profiles
+
+`surface_design` is an optional publisher-side profile for approved renderer-safe composition intent. It is separate from `visual_identity`: `visual_identity` supplies brand primitives, while `surface_design` tells a runtime consumer which bounded local composition preset to use.
+
+Domain Monitor may publish `surface_design` only when all of the following are true:
+
+- the hostname is inside `pilot.host_allowlist`
+- the profile has `status: approved`
+- the profile is configured as bounded renderer-safe intent
+- the profile includes source/review evidence
+
+Allowed v1 surface design fields:
+
+- `status`: currently only `approved` may be published
+- `preferred_mode`: currently only `light` is approved for the first pilot composition
+- `composition_profile`: bounded local renderer preset name; the first supported value is `budget_vehicle_quote`
+- `surface_density`: bounded spacing rhythm such as `compact` or `standard`
+- `compatible_visual_profiles`: explicit approved visual profiles this design may compose with
+- `evidence`: field-level source URL, source type, confidence, and capture timestamp
+
+`composition_profile` is the v1 composition gate. Future design knobs such as hero layout, accent structure, brand-mark treatment, and CTA cluster must be added as bounded fields only after the renderer has local allowlisted templates for them.
+
+Forbidden visual identity and surface design content:
 
 - arbitrary CSS
 - HTML fragments
@@ -188,7 +210,7 @@ Discount Backloading is the first approved pilot profile:
 
 Second visual identity pilot batch:
 
-- `portal.supercheapcartransport.com.au`: sourced from `supercheapcartransport.com.au`, Manrope headings/body, black/white/red tokens, and `bold_budget_vehicle` / `high_contrast_clean` renderer hints.
+- `portal.supercheapcartransport.com.au`: sourced from `supercheapcartransport.com.au`, Manrope headings/body, black/white/red tokens, `bold_budget_vehicle` / `high_contrast_clean` renderer hints, and the first approved `budget_vehicle_quote` surface design profile.
 - `quoting.interstatecarcarriers.com.au`: sourced from `interstatecarcarriers.com.au`, Barlow Condensed headings, Inter body, dark industrial blue-accent tokens, and `industrial_vehicle` / `dark_industrial` renderer hints.
 
 ## Guardrails

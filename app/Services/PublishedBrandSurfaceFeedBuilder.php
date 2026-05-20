@@ -576,10 +576,14 @@ class PublishedBrandSurfaceFeedBuilder
     {
         return $this->withBrandStyleSource(
             $hostname,
-            $this->withVisualIdentity(
+            $this->withSurfaceDesign(
                 $hostname,
                 $metadata,
-                $this->withAuthority($hostname, $metadata, $surface),
+                $this->withVisualIdentity(
+                    $hostname,
+                    $metadata,
+                    $this->withAuthority($hostname, $metadata, $surface),
+                ),
             ),
         );
     }
@@ -622,6 +626,47 @@ class PublishedBrandSurfaceFeedBuilder
 
         return array_merge($surface, [
             'visual_identity' => $visualIdentity,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
+     * @return array<string, mixed>|null
+     */
+    private function surfaceDesign(string $hostname, array $metadata): ?array
+    {
+        $surfaceDesign = $metadata['surface_design'] ?? null;
+
+        if (! is_array($surfaceDesign)) {
+            return null;
+        }
+
+        if (($surfaceDesign['status'] ?? null) !== 'approved') {
+            return null;
+        }
+
+        if (! in_array($hostname, $this->pilotHostAllowlist(), true)) {
+            return null;
+        }
+
+        return $surfaceDesign;
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
+     * @param  array<string, mixed>  $surface
+     * @return array<string, mixed>
+     */
+    private function withSurfaceDesign(string $hostname, array $metadata, array $surface): array
+    {
+        $surfaceDesign = $this->surfaceDesign($hostname, $metadata);
+
+        if ($surfaceDesign === null || ! isset($surface['visual_identity'])) {
+            return $surface;
+        }
+
+        return array_merge($surface, [
+            'surface_design' => $surfaceDesign,
         ]);
     }
 
