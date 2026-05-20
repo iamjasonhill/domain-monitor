@@ -61,7 +61,7 @@ class FleetTechnicalSeoAuditRunner
         private readonly FleetTechnicalSeoLighthouseRunner $lighthouseRunner,
     ) {}
 
-    public function run(WebProperty $property, int $urlCap = 25, string $triggerType = 'manual'): FleetTechnicalSeoAuditRun
+    public function run(WebProperty $property, int $urlCap = 25, string $triggerType = 'manual', bool $promoteFindings = false): FleetTechnicalSeoAuditRun
     {
         $property->loadMissing(['primaryDomain', 'primaryDomain.tags', 'propertyDomains.domain', 'conversionSurfaces', 'analyticsSources.latestSearchConsoleCoverage']);
         $urlCap = max(1, $urlCap);
@@ -85,7 +85,7 @@ class FleetTechnicalSeoAuditRunner
                 $this->storeResult($run, $property, $checkId, FleetTechnicalSeoAuditResult::STATUS_NOT_APPLICABLE, 'high', [
                     'reason' => $eligibility['reason'],
                     'property_slug' => $property->slug,
-                ], null);
+                ], null, $promoteFindings);
             }
 
             return $this->finishRun($run, [
@@ -111,7 +111,8 @@ class FleetTechnicalSeoAuditRunner
                 status: $result['status'],
                 confidence: $result['confidence'],
                 evidence: $result['evidence'],
-                targetUrl: $result['target_url'] ?? null
+                targetUrl: $result['target_url'] ?? null,
+                promoteFindings: $promoteFindings
             );
         }
 
@@ -862,13 +863,13 @@ class FleetTechnicalSeoAuditRunner
     /**
      * @param  array<string, mixed>  $evidence
      */
-    private function storeResult(FleetTechnicalSeoAuditRun $run, WebProperty $property, string $checkId, string $status, string $confidence, array $evidence, ?string $targetUrl): void
+    private function storeResult(FleetTechnicalSeoAuditRun $run, WebProperty $property, string $checkId, string $status, string $confidence, array $evidence, ?string $targetUrl, bool $promoteFindings): void
     {
         $definition = self::CHECKS[$checkId];
         $findingId = null;
         $evidence = $this->evidenceWithReviewWorkflow($property, $checkId, $status, $definition, $evidence);
 
-        if ($definition['signal'] === 'failure' && $confidence === FleetTechnicalSeoAuditResult::CONFIDENCE_HIGH) {
+        if ($promoteFindings && $definition['signal'] === 'failure' && $confidence === FleetTechnicalSeoAuditResult::CONFIDENCE_HIGH) {
             $findingType = 'fleet_technical_seo.'.$checkId;
             $primaryDomain = $property->primaryDomainModel();
 

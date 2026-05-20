@@ -30,6 +30,7 @@ class RunFleetTechnicalSeoEstateAuditCommand extends Command
                             {--domain=* : Domain selector(s) to resolve to web properties}
                             {--limit=5 : Conservative maximum number of eligible properties to audit}
                             {--url-cap= : Maximum URLs to include in each bounded per-property audit}
+                            {--promote-findings : Promote qualifying failures/recoveries into MonitoringFinding records}
                             {--dry-run : List selected properties without creating audit runs}
                             {--continue-on-failure : Continue auditing remaining properties after one property fails}';
 
@@ -47,6 +48,7 @@ class RunFleetTechnicalSeoEstateAuditCommand extends Command
 
         $limit = max(1, (int) $this->option('limit'));
         $urlCap = $this->urlCap($profile);
+        $promoteFindings = (bool) $this->option('promote-findings');
         $dryRun = (bool) $this->option('dry-run');
         $continueOnFailure = (bool) $this->option('continue-on-failure');
         $properties = $this->selectedProperties($limit, $profile);
@@ -67,11 +69,12 @@ class RunFleetTechnicalSeoEstateAuditCommand extends Command
         if ($dryRun) {
             foreach ($properties as $property) {
                 $this->line(sprintf(
-                    '[dry-run] %s (%s) profile=%s url_cap=%d',
+                    '[dry-run] %s (%s) profile=%s url_cap=%d promote_findings=%s',
                     $property->slug,
                     $property->primaryDomainName() ?? 'no-domain',
                     $profile ?? 'operator_requested_estate',
-                    $urlCap
+                    $urlCap,
+                    $promoteFindings ? 'yes' : 'no'
                 ));
             }
 
@@ -84,7 +87,7 @@ class RunFleetTechnicalSeoEstateAuditCommand extends Command
             $this->line(sprintf('Running Fleet technical SEO audit for [%s]...', $property->slug));
 
             try {
-                $run = $runner->run($property, $urlCap, $profile ?? 'operator_requested_estate');
+                $run = $runner->run($property, $urlCap, $profile ?? 'operator_requested_estate', $promoteFindings);
                 $counts = $run->summary_counts ?? [];
 
                 $this->info(sprintf(
