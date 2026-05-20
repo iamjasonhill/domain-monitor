@@ -80,7 +80,7 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
         $this->assertDatabaseCount('monitoring_findings', 0);
     }
 
-    public function test_high_confidence_failure_creates_attention_finding_and_links_result(): void
+    public function test_high_confidence_failure_stores_evidence_without_finding_by_default(): void
     {
         $property = $this->makeProperty('robots-fail-site', 'robots-fail.example');
         $this->fakeHealthySite('https://robots-fail.example', [
@@ -90,6 +90,28 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
         $this->assertSame(0, Artisan::call('monitoring:run-fleet-technical-seo-audit', [
             '--property' => $property->slug,
             '--url-cap' => 10,
+        ]));
+
+        $result = FleetTechnicalSeoAuditResult::query()
+            ->where('check_id', 'robots.present_and_fetchable')
+            ->firstOrFail();
+
+        $this->assertSame(FleetTechnicalSeoAuditResult::STATUS_FAIL, $result->result_status);
+        $this->assertNull($result->monitoring_finding_id);
+        $this->assertDatabaseCount('monitoring_findings', 0);
+    }
+
+    public function test_promote_findings_option_creates_attention_finding_and_links_result(): void
+    {
+        $property = $this->makeProperty('robots-promoted-site', 'robots-promoted.example');
+        $this->fakeHealthySite('https://robots-promoted.example', [
+            'robots_status' => 404,
+        ]);
+
+        $this->assertSame(0, Artisan::call('monitoring:run-fleet-technical-seo-audit', [
+            '--property' => $property->slug,
+            '--url-cap' => 10,
+            '--promote-findings' => true,
         ]));
 
         $finding = MonitoringFinding::query()
@@ -337,6 +359,7 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
         $this->assertSame(0, Artisan::call('monitoring:run-fleet-technical-seo-audit', [
             '--property' => $property->slug,
             '--url-cap' => 10,
+            '--promote-findings' => true,
         ]));
 
         $result = FleetTechnicalSeoAuditResult::query()

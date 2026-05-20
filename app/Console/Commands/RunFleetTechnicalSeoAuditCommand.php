@@ -12,7 +12,8 @@ class RunFleetTechnicalSeoAuditCommand extends Command
     protected $signature = 'monitoring:run-fleet-technical-seo-audit
                             {--property= : Web property slug to audit}
                             {--domain= : Domain selector to resolve to a web property}
-                            {--url-cap=25 : Maximum URLs to include in the bounded deterministic crawl}';
+                            {--url-cap=25 : Maximum URLs to include in the bounded deterministic crawl}
+                            {--promote-findings : Promote qualifying failures/recoveries into MonitoringFinding records}';
 
     protected $description = 'Run the deterministic Fleet technical SEO audit slice for one web property.';
 
@@ -55,8 +56,9 @@ class RunFleetTechnicalSeoAuditCommand extends Command
         }
 
         $urlCap = max(1, (int) $this->option('url-cap'));
+        $promoteFindings = (bool) $this->option('promote-findings');
         $property = $properties->firstOrFail();
-        $run = $runner->run($property, $urlCap, 'operator_requested');
+        $run = $runner->run($property, $urlCap, 'operator_requested', $promoteFindings);
         $counts = $run->summary_counts ?? [];
 
         $this->info(sprintf(

@@ -52,7 +52,7 @@ class RunFleetTechnicalSeoEstateAuditCommandTest extends TestCase
         $this->assertStringContainsString('Running Fleet technical SEO audit for [eligible-site]', $output);
         $this->assertStringNotContainsString('domain-asset-site', $output);
         $this->assertSame([
-            ['slug' => $eligible->slug, 'url_cap' => 7, 'trigger_type' => 'operator_requested_estate'],
+            ['slug' => $eligible->slug, 'url_cap' => 7, 'trigger_type' => 'operator_requested_estate', 'promote_findings' => false],
         ], $runner->calls);
         $this->assertDatabaseCount('fleet_technical_seo_audit_runs', 1);
     }
@@ -72,7 +72,7 @@ class RunFleetTechnicalSeoEstateAuditCommandTest extends TestCase
         $this->assertSame(0, $exitCode);
         $this->assertStringContainsString('profile [fleet_technical_seo_smoke]', $output);
         $this->assertSame([
-            ['slug' => $property->slug, 'url_cap' => 3, 'trigger_type' => 'fleet_technical_seo_smoke'],
+            ['slug' => $property->slug, 'url_cap' => 3, 'trigger_type' => 'fleet_technical_seo_smoke', 'promote_findings' => false],
         ], $runner->calls);
     }
 
@@ -90,7 +90,24 @@ class RunFleetTechnicalSeoEstateAuditCommandTest extends TestCase
 
         $this->assertSame(0, $exitCode);
         $this->assertSame([
-            ['slug' => $property->slug, 'url_cap' => 9, 'trigger_type' => 'fleet_technical_seo_deep'],
+            ['slug' => $property->slug, 'url_cap' => 9, 'trigger_type' => 'fleet_technical_seo_deep', 'promote_findings' => false],
+        ], $runner->calls);
+    }
+
+    public function test_promote_findings_option_is_passed_to_estate_runner(): void
+    {
+        $property = $this->makeProperty('promoted-site', 'promoted.example');
+        $runner = new FleetTechnicalSeoEstateAuditRunnerFake;
+        $this->app->instance(FleetTechnicalSeoAuditRunner::class, $runner);
+
+        $exitCode = Artisan::call('monitoring:run-fleet-technical-seo-estate-audit', [
+            '--property' => [$property->slug],
+            '--promote-findings' => true,
+        ]);
+
+        $this->assertSame(0, $exitCode);
+        $this->assertSame([
+            ['slug' => $property->slug, 'url_cap' => 25, 'trigger_type' => 'operator_requested_estate', 'promote_findings' => true],
         ], $runner->calls);
     }
 
@@ -130,9 +147,9 @@ class RunFleetTechnicalSeoEstateAuditCommandTest extends TestCase
 
         $this->assertSame(0, $exitCode);
         $this->assertSame([
-            ['slug' => $neverAudited->slug, 'url_cap' => 3, 'trigger_type' => 'fleet_technical_seo_smoke'],
-            ['slug' => $otherProfileOnly->slug, 'url_cap' => 3, 'trigger_type' => 'fleet_technical_seo_smoke'],
-            ['slug' => $stale->slug, 'url_cap' => 3, 'trigger_type' => 'fleet_technical_seo_smoke'],
+            ['slug' => $neverAudited->slug, 'url_cap' => 3, 'trigger_type' => 'fleet_technical_seo_smoke', 'promote_findings' => false],
+            ['slug' => $otherProfileOnly->slug, 'url_cap' => 3, 'trigger_type' => 'fleet_technical_seo_smoke', 'promote_findings' => false],
+            ['slug' => $stale->slug, 'url_cap' => 3, 'trigger_type' => 'fleet_technical_seo_smoke', 'promote_findings' => false],
         ], $runner->calls);
     }
 
@@ -159,8 +176,8 @@ class RunFleetTechnicalSeoEstateAuditCommandTest extends TestCase
 
         $this->assertSame(0, $exitCode);
         $this->assertSame([
-            ['slug' => $stale->slug, 'url_cap' => 3, 'trigger_type' => 'fleet_technical_seo_smoke'],
-            ['slug' => $target->slug, 'url_cap' => 3, 'trigger_type' => 'fleet_technical_seo_smoke'],
+            ['slug' => $stale->slug, 'url_cap' => 3, 'trigger_type' => 'fleet_technical_seo_smoke', 'promote_findings' => false],
+            ['slug' => $target->slug, 'url_cap' => 3, 'trigger_type' => 'fleet_technical_seo_smoke', 'promote_findings' => false],
         ], $runner->calls);
     }
 
@@ -194,7 +211,7 @@ class RunFleetTechnicalSeoEstateAuditCommandTest extends TestCase
         $this->assertSame(0, $exitCode);
         $this->assertStringContainsString('target-site', Artisan::output());
         $this->assertSame([
-            ['slug' => $target->slug, 'url_cap' => 25, 'trigger_type' => 'operator_requested_estate'],
+            ['slug' => $target->slug, 'url_cap' => 25, 'trigger_type' => 'operator_requested_estate', 'promote_findings' => false],
         ], $runner->calls);
         $this->assertDatabaseCount('fleet_technical_seo_audit_runs', 1);
     }
@@ -217,8 +234,8 @@ class RunFleetTechnicalSeoEstateAuditCommandTest extends TestCase
         $this->assertStringContainsString('Failed [first-site]: fixture failure', $output);
         $this->assertStringContainsString('Completed [second-site]', $output);
         $this->assertSame([
-            ['slug' => $first->slug, 'url_cap' => 25, 'trigger_type' => 'operator_requested_estate'],
-            ['slug' => $second->slug, 'url_cap' => 25, 'trigger_type' => 'operator_requested_estate'],
+            ['slug' => $first->slug, 'url_cap' => 25, 'trigger_type' => 'operator_requested_estate', 'promote_findings' => false],
+            ['slug' => $second->slug, 'url_cap' => 25, 'trigger_type' => 'operator_requested_estate', 'promote_findings' => false],
         ], $runner->calls);
         $this->assertDatabaseCount('fleet_technical_seo_audit_runs', 1);
     }
@@ -257,7 +274,7 @@ class RunFleetTechnicalSeoEstateAuditCommandTest extends TestCase
 class FleetTechnicalSeoEstateAuditRunnerFake extends FleetTechnicalSeoAuditRunner
 {
     /**
-     * @var list<array{slug: string, url_cap: int, trigger_type: string}>
+     * @var list<array{slug: string, url_cap: int, trigger_type: string, promote_findings: bool}>
      */
     public array $calls = [];
 
@@ -268,12 +285,13 @@ class FleetTechnicalSeoEstateAuditRunnerFake extends FleetTechnicalSeoAuditRunne
 
     public function __construct() {}
 
-    public function run(WebProperty $property, int $urlCap = 25, string $triggerType = 'manual'): FleetTechnicalSeoAuditRun
+    public function run(WebProperty $property, int $urlCap = 25, string $triggerType = 'manual', bool $promoteFindings = false): FleetTechnicalSeoAuditRun
     {
         $this->calls[] = [
             'slug' => $property->slug,
             'url_cap' => $urlCap,
             'trigger_type' => $triggerType,
+            'promote_findings' => $promoteFindings,
         ];
 
         if (isset($this->failures[$property->slug])) {
