@@ -32,11 +32,14 @@ Required fields:
 - `published_at`: ISO-8601 publication timestamp
 - `generated_by`: publisher identity
 - `pilot.host_allowlist`: explicit pilot hostname allowlist
+- `authoritative.host_allowlist`: explicit subset of pilot hosts Domain Monitor is prepared to be authoritative for
 - `surfaces`: published surface objects
 
 ## Pilot Scope
 
 The publisher only emits hostnames listed in `domain_monitor.published_brand_surfaces.pilot_host_allowlist`.
+
+The publisher may also mark a smaller authoritative subset in `domain_monitor.published_brand_surfaces.authoritative_host_allowlist`. Authoritative hostnames must also be present in the pilot allowlist; this field is a consumer signal only and does not widen the export.
 
 Current pilot hostnames:
 
@@ -108,6 +111,10 @@ Final runtime closeout classification:
 - Classifications cover marketing apexes, aliases, retired Moveroo subdomains, legacy vehicle/runtime hosts, personal/non-business hosts, redirect utilities, and non-MoverooCombined hosts.
 - This closes the Domain Monitor publisher side of the runtime-only list without changing MoverooCombined code, live websites, DNS, redirects, cron, secrets, or deployment settings.
 
+Authoritative seed:
+
+- `mymoveportal.discountbackloading.com.au`: first authoritative app-served surface for the `discountbackloading.com.au` marketing domain. Domain Monitor publishes the concrete quote, booking, contact, brand, theme, ownership, and analytics metadata before MoverooCombined treats the host as authoritative.
+
 `quoting.vehicle.net.au` is legacy quoting and is not the active #2084 pilot test host. Discount Backloading is the selected pilot because Domain Monitor production records the current property-specific quote portal and target links:
 
 - production URL: `https://discountbackloading.com.au`
@@ -128,6 +135,7 @@ Each surface includes:
 - public contact links: `contact`
 - parent/canonical relationship: `owning_marketing_domain`, `controller_owner`, `controller_repo`
 - ownership metadata: `ownership.published_truth_owner`, `ownership.runtime_renderer_owner`, `ownership.site_repo_owner`, `ownership.portfolio_routing_owner`
+- authority metadata: optional `authority` is present only for the current authoritative subset
 - telemetry linkage: `analytics.status`, `analytics.runtime_context_key`, `analytics.property_slug`, `analytics.site_key`, `analytics.journey_type`, optional GA4 and event-contract mirrors
 - approved brand-style source metadata: optional `brand_style_source` is present only when a draft proposal has been explicitly approved
 - non-sensitive provenance: `provenance.approved_by`, `provenance.approved_at`, `provenance.source`, `provenance.change_ref`
@@ -139,7 +147,8 @@ Each surface includes:
 - No redirect policy decisions from #210.
 - Hostnames outside the pilot allowlist are intentionally omitted, even when present in Domain Monitor data.
 - Brand-style drafts are never published merely because extraction or reviewed metadata exists; only `approval_status=approved` proposals can annotate the published feed.
-- Consumers must validate again before rendering and keep local fallback behavior during the pilot.
+- Consumers must validate again before rendering; local fallback behavior remains for non-authoritative pilot hostnames.
+- Consumers must not treat authoritative hostnames as permission to broaden beyond the listed hostnames or owning marketing domains.
 
 ## Fixtures
 

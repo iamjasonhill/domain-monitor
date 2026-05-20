@@ -8,6 +8,11 @@
     "host_allowlist": ["mymoveportal.discountbackloading.com.au"],
     "scope": "moveroo_v1_pilot"
   },
+  "authoritative": {
+    "host_allowlist": ["mymoveportal.discountbackloading.com.au"],
+    "owning_marketing_domains": ["discountbackloading.com.au"],
+    "scope": "moveroo_v1_authoritative_seed"
+  },
   "surfaces": [
     {
       "hostname": "mymoveportal.discountbackloading.com.au",
@@ -83,6 +88,12 @@
         "journey_type": "mixed_quote",
         "ga4": {"measurement_id": "G-DISCOUNT01"},
         "event_contract": {"key": "discountbackloading-full-funnel-v1", "version": "v1", "rollout_status": "instrumented"}
+      },
+      "authority": {
+        "mode": "authoritative",
+        "owning_marketing_domain": "discountbackloading.com.au",
+        "runtime_renderer_owner": "MoverooCombined",
+        "fallback_policy": "strict_no_local_brand_fallback"
       },
       "provenance": {
         "approved_by": "domain-monitor",
