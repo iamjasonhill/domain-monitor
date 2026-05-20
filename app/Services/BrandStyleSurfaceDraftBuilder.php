@@ -151,6 +151,7 @@ class BrandStyleSurfaceDraftBuilder
             'brand' => $candidate['brand'] ?? ($proposal['brand'] ?? ($publishedMetadata['brand'] ?? [])),
             'theme' => $candidate['theme'] ?? ($proposal['theme'] ?? ($publishedMetadata['theme'] ?? [])),
             'copy' => $candidate['copy'] ?? ($proposal['copy'] ?? ($publishedMetadata['copy'] ?? [])),
+            'visual_identity' => $candidate['visual_identity'] ?? ($proposal['visual_identity'] ?? ($publishedMetadata['visual_identity'] ?? [])),
             'contact' => $candidate['contact'] ?? ($proposal['contact'] ?? ($publishedMetadata['contact'] ?? [])),
             'links' => $candidate['links'] ?? ($proposal['links'] ?? ($publishedMetadata['links'] ?? [])),
         ];
