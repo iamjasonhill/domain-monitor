@@ -186,6 +186,11 @@ Discount Backloading is the first approved pilot profile:
 - font pairing: Fraunces headings and Manrope body
 - style hints: `editorial_service`, `image_overlay`, `solid_orange_pill`, `soft_cream`
 
+Second visual identity pilot batch:
+
+- `portal.supercheapcartransport.com.au`: sourced from `supercheapcartransport.com.au`, Manrope headings/body, black/white/red tokens, and `bold_budget_vehicle` / `high_contrast_clean` renderer hints.
+- `quoting.interstatecarcarriers.com.au`: sourced from `interstatecarcarriers.com.au`, Barlow Condensed headings, Inter body, dark industrial blue-accent tokens, and `industrial_vehicle` / `dark_industrial` renderer hints.
+
 ## Guardrails
 
 - Read-only export only.
