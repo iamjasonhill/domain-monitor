@@ -1021,20 +1021,75 @@
                 "mode": "auto",
                 "fonts": {
                     "body_family": "Inter",
-                    "heading_family": "Inter"
+                    "heading_family": "Barlow Condensed"
                 },
                 "colors": {
-                    "accent": "#0891b2",
-                    "accent_strong": "#0e7490",
-                    "background": "#ecfeff",
-                    "text": "#102a31",
-                    "muted_text": "#4b5563",
-                    "surface": "#ffffff",
-                    "border": "#dbeafe"
+                    "accent": "#3b8fd6",
+                    "accent_strong": "#2b73b1",
+                    "background": "#0a0d10",
+                    "text": "#e8eef5",
+                    "muted_text": "#9aa7b5",
+                    "surface": "#111827",
+                    "border": "#334155"
                 },
-                "radius_scale": "rounded",
-                "shadow_style": "soft",
+                "radius_scale": "square",
+                "shadow_style": "hard",
                 "exact_tokens": []
+            },
+            "visual_identity": {
+                "status": "approved",
+                "source_hostname": "interstatecarcarriers.com.au",
+                "approved_by": "domain-monitor",
+                "approved_at": "2026-05-20T18:30:00+10:00",
+                "font_pairing": {
+                    "heading": "barlow_condensed",
+                    "body": "inter",
+                    "fallback": "condensed_industrial_sans"
+                },
+                "colors": {
+                    "primary": "#0a0d10",
+                    "accent": "#3b8fd6",
+                    "accent_strong": "#2b73b1",
+                    "background": "#0a0d10",
+                    "surface": "#111827",
+                    "text": "#e8eef5",
+                    "muted_text": "#9aa7b5",
+                    "hero_text": "#e8eef5"
+                },
+                "style": {
+                    "visual_profile": "industrial_vehicle",
+                    "hero_treatment": "dark_industrial",
+                    "button_treatment": "square_blue_solid",
+                    "secondary_button_treatment": "square_blue_outline",
+                    "card_treatment": "dark_panel",
+                    "logo_treatment": "source_logo_preferred"
+                },
+                "evidence": [
+                    {
+                        "field": "font_pairing",
+                        "value": "barlow_condensed/inter",
+                        "source_url": "https://interstatecarcarriers.com.au/",
+                        "source_type": "playwright_visual_review",
+                        "confidence": "high",
+                        "captured_at": "2026-05-20T18:30:00+10:00"
+                    },
+                    {
+                        "field": "colors.accent",
+                        "value": "#3b8fd6",
+                        "source_url": "https://interstatecarcarriers.com.au/",
+                        "source_type": "playwright_visual_review",
+                        "confidence": "high",
+                        "captured_at": "2026-05-20T18:30:00+10:00"
+                    },
+                    {
+                        "field": "style.visual_profile",
+                        "value": "industrial_vehicle",
+                        "source_url": "https://interstatecarcarriers.com.au/",
+                        "source_type": "playwright_visual_review",
+                        "confidence": "medium",
+                        "captured_at": "2026-05-20T18:30:00+10:00"
+                    }
+                ]
             },
             "navigation": {
                 "show_household_quote_link": false,

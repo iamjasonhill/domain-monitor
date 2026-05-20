@@ -171,6 +171,11 @@ class PublishedBrandSurfaceApiTest extends TestCase
             ->assertJsonPath('surfaces.4.hostname', 'portal.supercheapcartransport.com.au')
             ->assertJsonPath('surfaces.4.property_slug', 'supercheapcartransport-com-au')
             ->assertJsonPath('surfaces.4.links.vehicle_quote_url', 'https://portal.supercheapcartransport.com.au/quote/vehicle')
+            ->assertJsonPath('surfaces.4.visual_identity.status', 'approved')
+            ->assertJsonPath('surfaces.4.visual_identity.source_hostname', 'supercheapcartransport.com.au')
+            ->assertJsonPath('surfaces.4.visual_identity.font_pairing.heading', 'manrope')
+            ->assertJsonPath('surfaces.4.visual_identity.style.visual_profile', 'bold_budget_vehicle')
+            ->assertJsonPath('surfaces.4.visual_identity.style.hero_treatment', 'high_contrast_clean')
             ->assertJsonCount(5, 'surfaces');
     }
 
@@ -337,6 +342,15 @@ class PublishedBrandSurfaceApiTest extends TestCase
             ->assertJsonPath('surfaces.17.links.booking_url', 'https://moving.allianceremovals.com.au/booking/create');
 
         $publishedHostnames = collect($response->json('surfaces'))->pluck('hostname')->all();
+        $surfacesByHostname = collect($response->json('surfaces'))->keyBy('hostname');
+
+        $interstateCarCarriers = $surfacesByHostname->get('quoting.interstatecarcarriers.com.au');
+        $this->assertIsArray($interstateCarCarriers);
+        $this->assertSame('approved', data_get($interstateCarCarriers, 'visual_identity.status'));
+        $this->assertSame('interstatecarcarriers.com.au', data_get($interstateCarCarriers, 'visual_identity.source_hostname'));
+        $this->assertSame('barlow_condensed', data_get($interstateCarCarriers, 'visual_identity.font_pairing.heading'));
+        $this->assertSame('industrial_vehicle', data_get($interstateCarCarriers, 'visual_identity.style.visual_profile'));
+        $this->assertSame('dark_industrial', data_get($interstateCarCarriers, 'visual_identity.style.hero_treatment'));
 
         foreach ([
             'cartransport.movingagain.com.au',
@@ -615,6 +629,18 @@ class PublishedBrandSurfaceApiTest extends TestCase
                     $this->assertSame('fraunces', $surface['visual_identity']['font_pairing']['heading'] ?? null);
                     $this->assertSame('manrope', $surface['visual_identity']['font_pairing']['body'] ?? null);
                     $this->assertSame('solid_orange_pill', $surface['visual_identity']['style']['button_treatment'] ?? null);
+                }
+
+                if (($surface['hostname'] ?? null) === 'portal.supercheapcartransport.com.au') {
+                    $this->assertSame('approved', $surface['visual_identity']['status'] ?? null);
+                    $this->assertSame('manrope', $surface['visual_identity']['font_pairing']['heading'] ?? null);
+                    $this->assertSame('bold_budget_vehicle', $surface['visual_identity']['style']['visual_profile'] ?? null);
+                }
+
+                if (($surface['hostname'] ?? null) === 'quoting.interstatecarcarriers.com.au') {
+                    $this->assertSame('approved', $surface['visual_identity']['status'] ?? null);
+                    $this->assertSame('barlow_condensed', $surface['visual_identity']['font_pairing']['heading'] ?? null);
+                    $this->assertSame('industrial_vehicle', $surface['visual_identity']['style']['visual_profile'] ?? null);
                 }
             }
         }
