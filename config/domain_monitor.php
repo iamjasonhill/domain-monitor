@@ -164,6 +164,9 @@ return [
             'moving.allianceremovals.com.au',
             'quoteandbook.mover.com.au',
         ],
+        'authoritative_host_allowlist' => [
+            'mymoveportal.discountbackloading.com.au',
+        ],
         'classified_runtime_hostnames' => [
             'acraustralia.com' => [
                 'classification' => 'non_moveroocombined',

@@ -110,6 +110,9 @@ class PublishedBrandSurfaceApiTest extends TestCase
             ->assertJsonPath('pilot.host_allowlist.2', 'quotes.interstate-removals.com.au')
             ->assertJsonPath('pilot.host_allowlist.3', 'quoting.movingcars.com.au')
             ->assertJsonPath('pilot.host_allowlist.4', 'portal.supercheapcartransport.com.au')
+            ->assertJsonPath('authoritative.scope', 'moveroo_v1_authoritative_seed')
+            ->assertJsonPath('authoritative.host_allowlist.0', 'mymoveportal.discountbackloading.com.au')
+            ->assertJsonPath('authoritative.owning_marketing_domains.0', 'discountbackloading.com.au')
             ->assertJsonPath('surfaces.0.hostname', 'quotes.moveroo.com.au')
             ->assertJsonPath('surfaces.0.property_slug', 'moveroo-com-au')
             ->assertJsonPath('surfaces.0.surface_slug', 'moveroo-quotes-household-v1')
@@ -141,6 +144,10 @@ class PublishedBrandSurfaceApiTest extends TestCase
             ->assertJsonPath('surfaces.1.links.vehicle_quote_url', 'https://mymoveportal.discountbackloading.com.au/quote/vehicle')
             ->assertJsonPath('surfaces.1.links.booking_url', 'https://mymoveportal.discountbackloading.com.au/booking/create')
             ->assertJsonPath('surfaces.1.links.contact_url', 'https://mymoveportal.discountbackloading.com.au/contact')
+            ->assertJsonPath('surfaces.1.authority.mode', 'authoritative')
+            ->assertJsonPath('surfaces.1.authority.owning_marketing_domain', 'discountbackloading.com.au')
+            ->assertJsonPath('surfaces.1.authority.runtime_renderer_owner', 'MoverooCombined')
+            ->assertJsonPath('surfaces.1.authority.fallback_policy', 'strict_no_local_brand_fallback')
             ->assertJsonMissingPath('surfaces.1.links.customer_portal_url')
             ->assertJsonPath('surfaces.2.hostname', 'quotes.interstate-removals.com.au')
             ->assertJsonPath('surfaces.2.property_slug', 'interstate-removals-com-au')
@@ -163,6 +170,10 @@ class PublishedBrandSurfaceApiTest extends TestCase
         config()->set('services.domain_monitor.moveroo_removals_api_key', 'moveroo-runtime-token');
         config()->set('domain_monitor.published_brand_surfaces.pilot_host_allowlist', [
             'quotes.moveroo.com.au',
+        ]);
+        config()->set('domain_monitor.published_brand_surfaces.authoritative_host_allowlist', [
+            'mymoveportal.discountbackloading.com.au',
+            'quotes.full-estate.com.au',
         ]);
 
         $this->createPilotSurface(
@@ -193,6 +204,8 @@ class PublishedBrandSurfaceApiTest extends TestCase
             'Authorization' => 'Bearer moveroo-runtime-token',
         ])->getJson('/api/published-brand-surfaces')
             ->assertOk()
+            ->assertJsonCount(0, 'authoritative.host_allowlist')
+            ->assertJsonCount(0, 'authoritative.owning_marketing_domains')
             ->assertJsonCount(1, 'surfaces')
             ->assertJsonPath('surfaces.0.hostname', 'quotes.moveroo.com.au');
 

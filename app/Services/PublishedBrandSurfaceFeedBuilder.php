@@ -22,6 +22,7 @@ class PublishedBrandSurfaceFeedBuilder
      *   generated_by: string,
      *   notes: array<int, string>,
      *   pilot: array{host_allowlist: array<int, string>, scope: string},
+     *   authoritative: array{host_allowlist: array<int, string>, owning_marketing_domains: array<int, string>, scope: string},
      *   surfaces: array<int, array<string, mixed>>
      * }
      */
@@ -29,6 +30,7 @@ class PublishedBrandSurfaceFeedBuilder
     {
         $publishedAt = now();
         $allowlist = $this->pilotHostAllowlist();
+        $authoritativeHostnames = $this->authoritativeHostAllowlist($allowlist);
         $requestedHostname = $this->normalizeHostname($hostname);
         $hostnames = $requestedHostname === null
             ? $allowlist
@@ -48,6 +50,11 @@ class PublishedBrandSurfaceFeedBuilder
                 'host_allowlist' => $allowlist,
                 'scope' => 'moveroo_v1_pilot',
             ],
+            'authoritative' => [
+                'host_allowlist' => $authoritativeHostnames,
+                'owning_marketing_domains' => $this->authoritativeMarketingDomains($authoritativeHostnames),
+                'scope' => 'moveroo_v1_authoritative_seed',
+            ],
             'surfaces' => $this->surfacesForHostnames($hostnames),
         ];
     }
@@ -65,6 +72,45 @@ class PublishedBrandSurfaceFeedBuilder
 
         return collect($allowlist)
             ->map(fn (mixed $hostname): ?string => $this->normalizeHostname($hostname))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, string>  $pilotHostnames
+     * @return array<int, string>
+     */
+    private function authoritativeHostAllowlist(array $pilotHostnames): array
+    {
+        $authoritativeHostnames = config('domain_monitor.published_brand_surfaces.authoritative_host_allowlist', []);
+
+        if (! is_array($authoritativeHostnames)) {
+            return [];
+        }
+
+        return collect($authoritativeHostnames)
+            ->map(fn (mixed $hostname): ?string => $this->normalizeHostname($hostname))
+            ->filter()
+            ->filter(fn (string $hostname): bool => in_array($hostname, $pilotHostnames, true))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, string>  $authoritativeHostnames
+     * @return array<int, string>
+     */
+    private function authoritativeMarketingDomains(array $authoritativeHostnames): array
+    {
+        return collect($authoritativeHostnames)
+            ->map(function (string $hostname): ?string {
+                $marketingDomain = $this->metadataForHostname($hostname)['owning_marketing_domain'] ?? null;
+
+                return $this->normalizeHostname($marketingDomain);
+            })
             ->filter()
             ->unique()
             ->values()
@@ -148,7 +194,7 @@ class PublishedBrandSurfaceFeedBuilder
         $updatedAt = $surface->verified_at ?? $property->updated_at ?? now();
         $journeyType = $surface->journey_type;
 
-        return $this->withBrandStyleSource($hostname, [
+        return $this->withBrandStyleSource($hostname, $this->withAuthority($hostname, $metadata, [
             'hostname' => $hostname,
             'property_slug' => $property->slug,
             'surface_slug' => $metadata['surface_slug'] ?? $this->defaultSurfaceSlug($property, $hostname),
@@ -171,7 +217,7 @@ class PublishedBrandSurfaceFeedBuilder
             'contact' => $this->contact($metadata),
             'analytics' => $this->analytics($property, $hostname, $journeyType, $analyticsSource, $eventAssignment),
             'provenance' => $this->provenance($metadata),
-        ]);
+        ]));
     }
 
     /**
@@ -191,7 +237,7 @@ class PublishedBrandSurfaceFeedBuilder
         $updatedAt = $property->updated_at ?? now();
         $journeyType = 'mixed_quote';
 
-        return $this->withBrandStyleSource($hostname, [
+        return $this->withBrandStyleSource($hostname, $this->withAuthority($hostname, $metadata, [
             'hostname' => $hostname,
             'property_slug' => $property->slug,
             'surface_slug' => $metadata['surface_slug'] ?? $this->defaultSurfaceSlug($property, $hostname),
@@ -214,7 +260,7 @@ class PublishedBrandSurfaceFeedBuilder
             'contact' => $this->contact($metadata),
             'analytics' => $this->analytics($property, $hostname, $journeyType, $analyticsSource, $eventAssignment),
             'provenance' => $this->provenance($metadata),
-        ]);
+        ]));
     }
 
     /**
@@ -272,7 +318,7 @@ class PublishedBrandSurfaceFeedBuilder
         $updatedAt = $property->updated_at ?? now();
         $journeyType = is_string($metadata['journey_type'] ?? null) ? $metadata['journey_type'] : null;
 
-        return $this->withBrandStyleSource($hostname, [
+        return $this->withBrandStyleSource($hostname, $this->withAuthority($hostname, $metadata, [
             'hostname' => $hostname,
             'property_slug' => $property->slug,
             'surface_slug' => $metadata['surface_slug'] ?? $this->defaultSurfaceSlug($property, $hostname),
@@ -295,7 +341,7 @@ class PublishedBrandSurfaceFeedBuilder
             'contact' => $this->contact($metadata),
             'analytics' => $this->analytics($property, $hostname, $journeyType, $analyticsSource, $eventAssignment),
             'provenance' => $this->provenance($metadata),
-        ]);
+        ]));
     }
 
     /**
@@ -480,6 +526,42 @@ class PublishedBrandSurfaceFeedBuilder
             'allow_provider_login_links' => false,
             'allow_admin_links' => false,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
+     * @return array<string, string>|null
+     */
+    private function authority(string $hostname, array $metadata): ?array
+    {
+        if (! in_array($hostname, $this->authoritativeHostAllowlist($this->pilotHostAllowlist()), true)) {
+            return null;
+        }
+
+        return [
+            'mode' => 'authoritative',
+            'owning_marketing_domain' => (string) ($metadata['owning_marketing_domain'] ?? ''),
+            'runtime_renderer_owner' => 'MoverooCombined',
+            'fallback_policy' => 'strict_no_local_brand_fallback',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
+     * @param  array<string, mixed>  $surface
+     * @return array<string, mixed>
+     */
+    private function withAuthority(string $hostname, array $metadata, array $surface): array
+    {
+        $authority = $this->authority($hostname, $metadata);
+
+        if ($authority === null) {
+            return $surface;
+        }
+
+        return array_merge($surface, [
+            'authority' => $authority,
+        ]);
     }
 
     /**
