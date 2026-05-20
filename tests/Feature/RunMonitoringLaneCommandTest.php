@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Domain;
 use App\Models\DomainTag;
+use App\Models\FleetTechnicalSeoAuditResult;
+use App\Models\FleetTechnicalSeoAuditRun;
 use App\Models\MonitoringFinding;
 use App\Models\PropertyAnalyticsSource;
 use App\Models\PropertyRepository;
@@ -820,22 +822,43 @@ class RunMonitoringLaneCommandTest extends TestCase
         $nonFleetAstroProperty = $this->makeProperty('non-fleet-astro.example.au', 'Non Fleet Astro');
         $this->attachControllerRepository($nonFleetAstroProperty, 'non-fleet-astro', 'Astro');
 
-        Http::fake([
-            'https://fleet-astro.example.au/' => Http::response(
-                $this->homepageHtml(metaRobots: 'noindex,follow'),
-                200
-            ),
-            'https://fleet-astro.example.au/robots.txt' => Http::response("User-agent: *\nAllow: /\n", 200),
-            'http://fleet-astro.example.au/' => Http::response(
-                'ok',
-                200,
-                ['X-Guzzle-Redirect-History' => [], 'X-Guzzle-Redirect-Status-History' => []]
-            ),
-            'https://www.fleet-astro.example.au/' => Http::response(
-                'ok',
-                200,
-                ['X-Guzzle-Redirect-History' => [], 'X-Guzzle-Redirect-Status-History' => []]
-            ),
+        $this->createFleetTechnicalSeoAuditRun($fleetAstroProperty, [
+            [
+                'check_id' => 'robots.present_and_fetchable',
+                'result_status' => FleetTechnicalSeoAuditResult::STATUS_FAIL,
+                'evidence_confidence' => FleetTechnicalSeoAuditResult::CONFIDENCE_HIGH,
+                'owner_system' => 'domain-monitor',
+                'evidence' => ['status' => 404],
+            ],
+            [
+                'check_id' => 'canonical.production_origin_expected',
+                'result_status' => FleetTechnicalSeoAuditResult::STATUS_FAIL,
+                'evidence_confidence' => FleetTechnicalSeoAuditResult::CONFIDENCE_HIGH,
+                'owner_system' => 'domain-monitor',
+                'evidence' => ['canonical_url' => 'https://wrong.example.au/'],
+            ],
+            [
+                'check_id' => 'title.present_unique_and_relevant',
+                'result_status' => FleetTechnicalSeoAuditResult::STATUS_MANUAL_REVIEW,
+                'evidence_confidence' => FleetTechnicalSeoAuditResult::CONFIDENCE_MEDIUM,
+                'owner_system' => 'site-repo',
+            ],
+        ]);
+        $this->createFleetTechnicalSeoAuditRun($fleetWordpressProperty, [
+            [
+                'check_id' => 'robots.present_and_fetchable',
+                'result_status' => FleetTechnicalSeoAuditResult::STATUS_FAIL,
+                'evidence_confidence' => FleetTechnicalSeoAuditResult::CONFIDENCE_HIGH,
+                'owner_system' => 'domain-monitor',
+            ],
+        ]);
+        $this->createFleetTechnicalSeoAuditRun($nonFleetAstroProperty, [
+            [
+                'check_id' => 'robots.present_and_fetchable',
+                'result_status' => FleetTechnicalSeoAuditResult::STATUS_FAIL,
+                'evidence_confidence' => FleetTechnicalSeoAuditResult::CONFIDENCE_HIGH,
+                'owner_system' => 'domain-monitor',
+            ],
         ]);
 
         $brain = Mockery::mock(BrainEventClient::class);
@@ -845,8 +868,8 @@ class RunMonitoringLaneCommandTest extends TestCase
         $fleetTechnicalSeoExpectation->twice()->withArgs(function (string $eventType, array $payload): bool {
             $this->assertSame('domain_monitor.finding.opened', $eventType);
             $this->assertContains($payload['finding_type'], [
-                'fleet_technical_seo.indexability',
-                'fleet_technical_seo.redirect_policy',
+                'fleet_technical_seo.robots.present_and_fetchable',
+                'fleet_technical_seo.canonical.production_origin_expected',
             ]);
             $this->assertSame('cleanup', $payload['issue_type']);
 
@@ -859,15 +882,19 @@ class RunMonitoringLaneCommandTest extends TestCase
 
         $this->assertDatabaseHas('monitoring_findings', [
             'web_property_id' => $fleetAstroProperty->id,
-            'finding_type' => 'fleet_technical_seo.indexability',
+            'finding_type' => 'fleet_technical_seo.robots.present_and_fetchable',
             'issue_type' => 'cleanup',
             'status' => MonitoringFinding::STATUS_OPEN,
         ]);
         $this->assertDatabaseHas('monitoring_findings', [
             'web_property_id' => $fleetAstroProperty->id,
-            'finding_type' => 'fleet_technical_seo.redirect_policy',
+            'finding_type' => 'fleet_technical_seo.canonical.production_origin_expected',
             'issue_type' => 'cleanup',
             'status' => MonitoringFinding::STATUS_OPEN,
+        ]);
+        $this->assertDatabaseMissing('monitoring_findings', [
+            'web_property_id' => $fleetAstroProperty->id,
+            'finding_type' => 'fleet_technical_seo.title.present_unique_and_relevant',
         ]);
         $this->assertDatabaseMissing('monitoring_findings', [
             'web_property_id' => $fleetWordpressProperty->id,
@@ -886,12 +913,88 @@ class RunMonitoringLaneCommandTest extends TestCase
 
         $this->assertIsArray($issues);
         /** @var array<int, array<string, mixed>> $issues */
-        $matchingIssue = collect($issues)->firstWhere('issue_class', 'fleet_technical_seo.indexability');
+        $matchingIssue = collect($issues)->firstWhere('issue_class', 'fleet_technical_seo.robots.present_and_fetchable');
 
         $this->assertIsArray($matchingIssue);
         $this->assertSame('should_fix', $matchingIssue['severity']);
         $this->assertSame('monitoring_lane', $matchingIssue['execution_surface']);
         $this->assertSame('fleet_astro_technical_seo', data_get($matchingIssue, 'evidence.lane'));
+    }
+
+    public function test_fleet_astro_technical_seo_lane_recovers_when_latest_audit_evidence_no_longer_qualifies(): void
+    {
+        config()->set('services.brain.base_url', 'https://brain.example.test');
+        config()->set('services.brain.api_key', 'test-key');
+        config()->set('domain_monitor.fleet_focus.tag_name', 'fleet.live');
+
+        $property = $this->makeProperty('fleet-recovered.example.au', 'Fleet Recovered');
+        $this->attachFleetFocusTag($property);
+        $this->attachControllerRepository($property, 'fleet-recovered', 'Astro');
+
+        $findingType = 'fleet_technical_seo.robots.present_and_fetchable';
+        $issueId = app(\App\Services\DetectedIssueIdentityService::class)->makeIssueId(
+            (string) $property->primary_domain_id,
+            $property->slug,
+            $findingType
+        );
+
+        $openFinding = MonitoringFinding::factory()->create([
+            'issue_id' => $issueId,
+            'web_property_id' => $property->id,
+            'domain_id' => $property->primary_domain_id,
+            'lane' => 'fleet_astro_technical_seo',
+            'finding_type' => $findingType,
+            'issue_type' => 'cleanup',
+            'status' => MonitoringFinding::STATUS_OPEN,
+        ]);
+
+        $this->createFleetTechnicalSeoAuditRun($property, [
+            [
+                'check_id' => 'robots.present_and_fetchable',
+                'result_status' => FleetTechnicalSeoAuditResult::STATUS_PASS,
+                'evidence_confidence' => FleetTechnicalSeoAuditResult::CONFIDENCE_HIGH,
+                'owner_system' => 'domain-monitor',
+            ],
+            [
+                'check_id' => 'sitemap.canonical_endpoint_fetchable',
+                'result_status' => FleetTechnicalSeoAuditResult::STATUS_FAIL,
+                'evidence_confidence' => FleetTechnicalSeoAuditResult::CONFIDENCE_LOW,
+                'owner_system' => 'domain-monitor',
+            ],
+            [
+                'check_id' => 'title.present_unique_and_relevant',
+                'result_status' => FleetTechnicalSeoAuditResult::STATUS_MANUAL_REVIEW,
+                'evidence_confidence' => FleetTechnicalSeoAuditResult::CONFIDENCE_MEDIUM,
+                'owner_system' => 'site-repo',
+            ],
+        ]);
+
+        $brain = Mockery::mock(BrainEventClient::class);
+        $this->instance(BrainEventClient::class, $brain);
+        /** @var Mockery\Expectation $recoveredExpectation */
+        $recoveredExpectation = $brain->shouldReceive('sendAsync');
+        $recoveredExpectation->once()->withArgs(function (string $eventType, array $payload) use ($openFinding): bool {
+            $this->assertSame('domain_monitor.finding.recovered', $eventType);
+            $this->assertSame($openFinding->issue_id, $payload['issue_id']);
+
+            return true;
+        });
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'fleet_astro_technical_seo',
+        ]));
+
+        $this->assertSame(MonitoringFinding::STATUS_RECOVERED, $openFinding->refresh()->status);
+        $this->assertDatabaseMissing('monitoring_findings', [
+            'web_property_id' => $property->id,
+            'finding_type' => 'fleet_technical_seo.sitemap.canonical_endpoint_fetchable',
+            'status' => MonitoringFinding::STATUS_OPEN,
+        ]);
+        $this->assertDatabaseMissing('monitoring_findings', [
+            'web_property_id' => $property->id,
+            'finding_type' => 'fleet_technical_seo.title.present_unique_and_relevant',
+            'status' => MonitoringFinding::STATUS_OPEN,
+        ]);
     }
 
     public function test_critical_live_lane_reports_redirect_policy_mismatches(): void
@@ -1994,6 +2097,38 @@ class RunMonitoringLaneCommandTest extends TestCase
         ]);
 
         return $property;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $results
+     */
+    private function createFleetTechnicalSeoAuditRun(WebProperty $property, array $results): FleetTechnicalSeoAuditRun
+    {
+        $run = FleetTechnicalSeoAuditRun::factory()->create([
+            'web_property_id' => $property->id,
+            'trigger_type' => 'fleet_technical_seo_deep',
+            'started_at' => now(),
+            'finished_at' => now(),
+            'summary_counts' => [
+                'pass' => collect($results)->where('result_status', FleetTechnicalSeoAuditResult::STATUS_PASS)->count(),
+                'fail' => collect($results)->where('result_status', FleetTechnicalSeoAuditResult::STATUS_FAIL)->count(),
+                'manual_review' => collect($results)->where('result_status', FleetTechnicalSeoAuditResult::STATUS_MANUAL_REVIEW)->count(),
+                'unknown' => collect($results)->where('result_status', FleetTechnicalSeoAuditResult::STATUS_UNKNOWN)->count(),
+                'not_applicable' => collect($results)->where('result_status', FleetTechnicalSeoAuditResult::STATUS_NOT_APPLICABLE)->count(),
+            ],
+        ]);
+
+        foreach ($results as $result) {
+            FleetTechnicalSeoAuditResult::factory()->create(array_merge([
+                'fleet_technical_seo_audit_run_id' => $run->id,
+                'target_type' => 'web_property',
+                'target_url' => null,
+                'evidence' => [],
+                'owner_system' => 'domain-monitor',
+            ], $result));
+        }
+
+        return $run;
     }
 
     private function attachGa4Source(WebProperty $property, string $measurementId): void

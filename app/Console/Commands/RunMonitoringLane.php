@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Models\FleetTechnicalSeoAuditResult;
+use App\Models\FleetTechnicalSeoAuditRun;
 use App\Models\PropertyAnalyticsSource;
 use App\Models\WebProperty;
 use App\Services\ControllerMetadataDriftScanner;
@@ -111,9 +113,7 @@ class RunMonitoringLane extends Command
                     ],
                 ],
                 'fleet_astro_technical_seo' => $this->fleetAstroTechnicalSeoAudits(
-                    property: $property,
-                    siteScanner: $siteScanner,
-                    timeout: $timeout
+                    property: $property
                 ),
                 'controller_metadata' => [
                     'controller_metadata_drift' => [
@@ -328,23 +328,73 @@ class RunMonitoringLane extends Command
     /**
      * @return array<string, array{title: string, issue_type: string, audit: array<string, mixed>}>
      */
-    private function fleetAstroTechnicalSeoAudits(
-        WebProperty $property,
-        PropertySiteSignalScanner $siteScanner,
-        int $timeout
-    ): array {
-        return [
-            'fleet_technical_seo.indexability' => [
-                'title' => 'Fleet Astro technical SEO indexability drift detected',
-                'issue_type' => 'cleanup',
-                'audit' => $siteScanner->auditIndexability($property, $timeout),
-            ],
-            'fleet_technical_seo.redirect_policy' => [
-                'title' => 'Fleet Astro preferred-root redirect drift detected',
-                'issue_type' => 'cleanup',
-                'audit' => $siteScanner->auditRedirectPolicy($property, $timeout),
-            ],
-        ];
+    private function fleetAstroTechnicalSeoAudits(WebProperty $property): array
+    {
+        $latestRun = $property->fleetTechnicalSeoAuditRuns()
+            ->with('results')
+            ->whereNotNull('finished_at')
+            ->orderByDesc('started_at')
+            ->orderByDesc('created_at')
+            ->first();
+
+        if (! $latestRun instanceof FleetTechnicalSeoAuditRun) {
+            return [];
+        }
+
+        /** @var Collection<int, FleetTechnicalSeoAuditResult> $results */
+        $results = $latestRun->results;
+
+        return $results
+            ->mapWithKeys(function (FleetTechnicalSeoAuditResult $result) use ($latestRun): array {
+                $findingType = 'fleet_technical_seo.'.$result->check_id;
+                $qualifiesForAttention = $this->fleetTechnicalSeoResultQualifiesForAttention($result);
+
+                return [
+                    $findingType => [
+                        'title' => 'Fleet technical SEO audit evidence requires attention',
+                        'issue_type' => 'cleanup',
+                        'audit' => [
+                            'status' => $qualifiesForAttention ? 'fail' : 'pass',
+                            'verdict' => $qualifiesForAttention ? 'qualified_failure' : 'evidence_only',
+                            'summary' => $qualifiesForAttention
+                                ? $this->fleetTechnicalSeoFailureSummary($result)
+                                : 'Latest Fleet technical SEO audit evidence does not qualify for Attention.',
+                            'evidence' => [
+                                'lane' => 'fleet_astro_technical_seo',
+                                'source' => 'fleet_technical_seo_audit_result',
+                                'audit_run_id' => $latestRun->id,
+                                'audit_result_id' => $result->id,
+                                'trigger_type' => $latestRun->trigger_type,
+                                'check_id' => $result->check_id,
+                                'target_type' => $result->target_type,
+                                'target_url' => $result->target_url,
+                                'result_status' => $result->result_status,
+                                'evidence_confidence' => $result->evidence_confidence,
+                                'owner_system' => $result->owner_system,
+                                'collector_evidence' => is_array($result->evidence) ? $result->evidence : [],
+                            ],
+                        ],
+                    ],
+                ];
+            })
+            ->all();
+    }
+
+    private function fleetTechnicalSeoResultQualifiesForAttention(FleetTechnicalSeoAuditResult $result): bool
+    {
+        return $result->result_status === FleetTechnicalSeoAuditResult::STATUS_FAIL
+            && $result->evidence_confidence === FleetTechnicalSeoAuditResult::CONFIDENCE_HIGH
+            && is_string($result->owner_system)
+            && trim($result->owner_system) !== '';
+    }
+
+    private function fleetTechnicalSeoFailureSummary(FleetTechnicalSeoAuditResult $result): string
+    {
+        return sprintf(
+            'Latest Fleet technical SEO audit found high-confidence failure [%s]%s.',
+            $result->check_id,
+            is_string($result->target_url) && $result->target_url !== '' ? ' on '.$result->target_url : ''
+        );
     }
 
     /**
