@@ -1,7 +1,7 @@
 # Published Brand Surfaces Contract
 
 Status: v1 pilot publisher
-Issue: #208, updated by #213, #215, #217, and #219
+Issue: #208, updated by #213, #215, #217, #219, and #250
 Consumer: MoverooCombined issues #2083 and #2084
 
 Domain Monitor publishes the read-only `domain-monitor-published-brand-surfaces` feed for MoverooCombined runtime consumption. The feed is pilot scoped and must not be treated as permission to import or render the full estate.
@@ -138,6 +138,7 @@ Each surface includes:
 - brand identity: `brand.display_name`, `brand.brand_key`, legal/tagline/mark/logo fields when available
 - runtime copy and shell metadata: `copy`, `navigation`, `behavior`, `links`
 - theme tokens: `theme.theme_key`, `theme.mode`, `theme.fonts`, `theme.colors`, `theme.exact_tokens`
+- approved visual identity profile: optional `visual_identity` is present only when Domain Monitor has explicitly approved renderer-safe visual tokens for the app-served hostname
 - public contact links: `contact`
 - parent/canonical relationship: `owning_marketing_domain`, `controller_owner`, `controller_repo`
 - ownership metadata: `ownership.published_truth_owner`, `ownership.runtime_renderer_owner`, `ownership.site_repo_owner`, `ownership.portfolio_routing_owner`
@@ -145,6 +146,45 @@ Each surface includes:
 - telemetry linkage: `analytics.status`, `analytics.runtime_context_key`, `analytics.property_slug`, `analytics.site_key`, `analytics.journey_type`, optional GA4 and event-contract mirrors
 - approved brand-style source metadata: optional `brand_style_source` is present only when a draft proposal has been explicitly approved
 - non-sensitive provenance: `provenance.approved_by`, `provenance.approved_at`, `provenance.source`, `provenance.change_ref`
+
+## Visual Identity Profiles
+
+`visual_identity` is an optional publisher-side profile for improving visual fidelity across MoverooCombined-rendered public quote, booking, and contact hostnames. It is intentionally narrower than CSS.
+
+Domain Monitor may publish `visual_identity` only when all of the following are true:
+
+- the hostname is inside `pilot.host_allowlist`
+- the profile has `status: approved`
+- the profile is configured as bounded renderer-safe tokens
+- the profile includes source/review evidence
+
+Consumers must ignore missing, draft, `needs_review`, blocked, or structurally invalid visual identity data.
+
+Allowed visual identity fields:
+
+- `status`: currently only `approved` may be published
+- `source_hostname`: marketing hostname used as visual evidence
+- `approved_by`, `approved_at`: non-sensitive approval metadata
+- `font_pairing.heading`, `font_pairing.body`, `font_pairing.fallback`: approved font keys, not arbitrary CSS imports
+- `colors`: bounded brand color tokens such as `primary`, `accent`, `background`, `surface`, `text`, `muted_text`, and `hero_text`
+- `style`: renderer-safe hints such as `visual_profile`, `hero_treatment`, `button_treatment`, `secondary_button_treatment`, `card_treatment`, and `logo_treatment`
+- `evidence`: field-level source URL, source type, confidence, and capture timestamp
+
+Forbidden visual identity content:
+
+- arbitrary CSS
+- HTML fragments
+- Tailwind or framework class strings
+- JavaScript
+- remote layout instructions
+- instructions that require DNS, website, cron, secret, billing, or access changes
+
+Discount Backloading is the first approved pilot profile:
+
+- app hostname: `mymoveportal.discountbackloading.com.au`
+- source hostname: `discountbackloading.com.au`
+- font pairing: Fraunces headings and Manrope body
+- style hints: `editorial_service`, `image_overlay`, `solid_orange_pill`, `soft_cream`
 
 ## Guardrails
 
