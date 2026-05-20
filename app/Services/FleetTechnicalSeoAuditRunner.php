@@ -148,7 +148,8 @@ class FleetTechnicalSeoAuditRunner
      *   lighthouse_lab?: array<string, array<string, mixed>>,
      *   internal_links: array<int, string>,
      *   external_links: array<int, string>,
-     *   legacy_route_manifest: array<int, array<string, mixed>>
+     *   legacy_route_manifest: array<int, array<string, mixed>>,
+     *   legacy_route_stance: array<string, mixed>
      * }
      */
     private function collectContext(WebProperty $property, int $urlCap): array
@@ -188,6 +189,7 @@ class FleetTechnicalSeoAuditRunner
             'internal_links' => $homepageLinks['internal'],
             'external_links' => $homepageLinks['external'],
             'legacy_route_manifest' => $this->legacyRouteManifestForProperty($property, $baseUrl),
+            'legacy_route_stance' => $this->legacyRouteStanceForProperty($property),
         ];
     }
 
@@ -237,7 +239,7 @@ class FleetTechnicalSeoAuditRunner
         $results['headings.h1_present_and_single_intent'] = $this->h1Result($context['pages']);
         $results['canonical.production_origin_expected'] = $this->result($canonical !== null && $this->urlMatchesOrigin($canonical, $expectedOrigin) ? 'pass' : 'fail', 'high', ['canonical_url' => $canonical, 'expected_origin' => $expectedOrigin], $baseUrl.'/');
         $results['indexability.no_unexpected_noindex'] = $this->result($this->hasNoindex($homepageHtml, $homepage['headers'] ?? []) ? 'fail' : 'pass', 'high', ['has_noindex' => $this->hasNoindex($homepageHtml, $homepage['headers'] ?? [])], $baseUrl.'/');
-        $results['redirects.legacy_routes_mapped'] = $this->legacyRoutesMappedResult($context['legacy_route_manifest']);
+        $results['redirects.legacy_routes_mapped'] = $this->legacyRoutesMappedResult($context['legacy_route_manifest'], $context['legacy_route_stance']);
         $results['redirects.no_key_route_chains_or_loops'] = $this->result($this->isSuccessful($homepage) ? 'pass' : 'unknown', $this->isSuccessful($homepage) ? 'high' : 'low', ['homepage' => Arr::except($homepage, ['body'])], $baseUrl.'/');
         $results['links.internal_key_links_resolve'] = $this->result($brokenInternalLinks === [] ? 'pass' : 'fail', 'high', ['broken_internal_links' => $brokenInternalLinks, 'checked_internal_link_count' => count($context['internal_links'])]);
         $results['links.external_inventory_classified'] = $this->result('manual_review', 'medium', ['external_links' => array_slice($context['external_links'], 0, 25), 'external_link_count' => count($context['external_links'])]);
@@ -600,11 +602,20 @@ class FleetTechnicalSeoAuditRunner
 
     /**
      * @param  array<int, array<string, mixed>>  $manifestRoutes
+     * @param  array<string, mixed>  $stance
      * @return array{status: string, confidence: string, evidence: array<string, mixed>}
      */
-    private function legacyRoutesMappedResult(array $manifestRoutes): array
+    private function legacyRoutesMappedResult(array $manifestRoutes, array $stance): array
     {
         if ($manifestRoutes === []) {
+            if (($stance['stance'] ?? null) === 'not_applicable') {
+                return $this->result('not_applicable', 'high', [
+                    'stance' => 'not_applicable',
+                    'stance_source' => 'config/domain_monitor.php:fleet_technical_seo.legacy_route_manifests',
+                    'reason' => $this->stringValue($stance['reason'] ?? null) ?? 'No legacy routes declared for this property.',
+                ]);
+            }
+
             return $this->result('unknown', 'low', ['reason' => 'No legacy route manifest is wired into the deterministic runner yet.']);
         }
 
@@ -1148,18 +1159,15 @@ class FleetTechnicalSeoAuditRunner
      */
     private function legacyRouteManifestForProperty(WebProperty $property, string $baseUrl): array
     {
-        $manifests = config('domain_monitor.fleet_technical_seo.legacy_route_manifests.properties', []);
-        if (! is_array($manifests)) {
+        $config = $this->legacyRouteConfigForProperty($property);
+        if ($config === []) {
             return [];
         }
 
-        $routes = $manifests[$property->slug] ?? $manifests[Str::lower((string) $property->primaryDomainName())] ?? [];
-        if (! is_array($routes)) {
-            return [];
-        }
+        $routes = is_array($config['routes'] ?? null) ? $config['routes'] : $config;
 
         return collect($routes)
-            ->filter(fn (mixed $route): bool => is_array($route))
+            ->filter(fn (mixed $route, mixed $key): bool => is_int($key) && is_array($route))
             ->map(function (array $route) use ($baseUrl): array {
                 $legacyUrl = $this->stringValue($route['legacy_url'] ?? null);
                 $legacyPath = $this->stringValue($route['legacy_path'] ?? null);
@@ -1177,6 +1185,42 @@ class FleetTechnicalSeoAuditRunner
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function legacyRouteStanceForProperty(WebProperty $property): array
+    {
+        $config = $this->legacyRouteConfigForProperty($property);
+        if ($config === []) {
+            return [];
+        }
+
+        $stance = $this->stringValue($config['stance'] ?? null);
+        if ($stance === null) {
+            return [];
+        }
+
+        return [
+            'stance' => $stance,
+            'reason' => $this->stringValue($config['reason'] ?? null),
+        ];
+    }
+
+    /**
+     * @return array<string|int, mixed>
+     */
+    private function legacyRouteConfigForProperty(WebProperty $property): array
+    {
+        $manifests = config('domain_monitor.fleet_technical_seo.legacy_route_manifests.properties', []);
+        if (! is_array($manifests)) {
+            return [];
+        }
+
+        $config = $manifests[$property->slug] ?? $manifests[Str::lower((string) $property->primaryDomainName())] ?? [];
+
+        return is_array($config) ? $config : [];
     }
 
     /**
