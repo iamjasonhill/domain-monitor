@@ -813,6 +813,23 @@ Schedule::command('monitoring:run-lane fleet_astro_technical_seo')
     ->at('09:10')
     ->timezone('UTC');
 
+// Fleet technical SEO estate audits are collectors: they store audit evidence
+// only. Control Attention publication remains owned by monitoring finding
+// publisher/reconciler paths, not by these scheduled collection batches.
+Schedule::command('monitoring:run-fleet-technical-seo-estate-audit --profile=fleet_technical_seo_smoke --limit=5 --continue-on-failure')
+    ->daily()
+    ->at('10:05')
+    ->timezone('UTC')
+    ->withoutOverlapping();
+
+// Deep collector coverage is freshness-rotated and spread across daily batches
+// so every eligible Fleet site can refresh weekly without one large sweep.
+Schedule::command('monitoring:run-fleet-technical-seo-estate-audit --profile=fleet_technical_seo_deep --limit=5 --continue-on-failure')
+    ->daily()
+    ->at('10:35')
+    ->timezone('UTC')
+    ->withoutOverlapping();
+
 // Refresh fleet automation coverage after active GA4/Search Console evidence has had time to settle.
 Schedule::command('analytics:refresh-automation-coverage')
     ->daily()
