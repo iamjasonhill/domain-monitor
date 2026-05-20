@@ -184,6 +184,14 @@ class PublishedBrandSurfaceApiTest extends TestCase
             ->assertJsonPath('surfaces.4.visual_identity.colors.primary', '#20282d')
             ->assertJsonPath('surfaces.4.visual_identity.style.visual_profile', 'bold_budget_vehicle')
             ->assertJsonPath('surfaces.4.visual_identity.style.hero_treatment', 'marketing_site_prominent_surface')
+            ->assertJsonPath('surfaces.4.copy.eyebrow', 'Vehicle transport quotes')
+            ->assertJsonPath('surfaces.4.copy.subheading', 'Fast, practical car transport quotes across Australia.')
+            ->assertJsonPath('surfaces.4.copy.primary_cta_label', 'Start car transport quote')
+            ->assertJsonPath('surfaces.4.surface_design.status', 'approved')
+            ->assertJsonPath('surfaces.4.surface_design.preferred_mode', 'light')
+            ->assertJsonPath('surfaces.4.surface_design.composition_profile', 'budget_vehicle_quote')
+            ->assertJsonPath('surfaces.4.surface_design.surface_density', 'compact')
+            ->assertJsonPath('surfaces.4.surface_design.compatible_visual_profiles.0', 'bold_budget_vehicle')
             ->assertJsonCount(5, 'surfaces');
     }
 
@@ -645,6 +653,9 @@ class PublishedBrandSurfaceApiTest extends TestCase
                     $this->assertSame('approved', $surface['visual_identity']['status'] ?? null);
                     $this->assertSame('manrope', $surface['visual_identity']['font_pairing']['heading'] ?? null);
                     $this->assertSame('bold_budget_vehicle', $surface['visual_identity']['style']['visual_profile'] ?? null);
+                    $this->assertSame('approved', $surface['surface_design']['status'] ?? null);
+                    $this->assertSame('budget_vehicle_quote', $surface['surface_design']['composition_profile'] ?? null);
+                    $this->assertSame(['bold_budget_vehicle'], $surface['surface_design']['compatible_visual_profiles'] ?? null);
                 }
 
                 if (($surface['hostname'] ?? null) === 'quoting.interstatecarcarriers.com.au') {
