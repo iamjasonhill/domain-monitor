@@ -123,6 +123,7 @@ class PublishedBrandSurfaceApiTest extends TestCase
             ->assertJsonPath('surfaces.0.theme.colors.accent', '#2563eb')
             ->assertJsonPath('surfaces.0.navigation.show_household_quote_link', true)
             ->assertJsonPath('surfaces.0.behavior.allow_admin_links', false)
+            ->assertJsonPath('surfaces.0.behavior.show_email_publicly', false)
             ->assertJsonPath('surfaces.0.links.primary_cta_route', 'household.quote')
             ->assertJsonPath('surfaces.0.contact.public_email', 'removals@moveroo.com.au')
             ->assertJsonPath('surfaces.0.analytics.status', 'linked')
@@ -139,6 +140,7 @@ class PublishedBrandSurfaceApiTest extends TestCase
             ->assertJsonPath('surfaces.1.brand.display_name', 'Discount Backloading')
             ->assertJsonPath('surfaces.1.navigation.show_vehicle_quote_link', true)
             ->assertJsonPath('surfaces.1.navigation.show_customer_portal_link', false)
+            ->assertJsonPath('surfaces.1.behavior.show_email_publicly', false)
             ->assertJsonPath('surfaces.1.links.primary_cta_route', 'household.quote')
             ->assertJsonPath('surfaces.1.links.household_quote_url', 'https://mymoveportal.discountbackloading.com.au/quote/household')
             ->assertJsonPath('surfaces.1.links.vehicle_quote_url', 'https://mymoveportal.discountbackloading.com.au/quote/vehicle')
@@ -170,6 +172,7 @@ class PublishedBrandSurfaceApiTest extends TestCase
             ->assertJsonPath('surfaces.3.links.vehicle_quote_url', 'https://quoting.movingcars.com.au/quote/vehicle')
             ->assertJsonPath('surfaces.4.hostname', 'portal.supercheapcartransport.com.au')
             ->assertJsonPath('surfaces.4.property_slug', 'supercheapcartransport-com-au')
+            ->assertJsonPath('surfaces.4.behavior.show_email_publicly', false)
             ->assertJsonPath('surfaces.4.links.vehicle_quote_url', 'https://portal.supercheapcartransport.com.au/quote/vehicle')
             ->assertJsonPath('surfaces.4.visual_identity.status', 'approved')
             ->assertJsonPath('surfaces.4.visual_identity.source_hostname', 'supercheapcartransport.com.au')
@@ -623,6 +626,8 @@ class PublishedBrandSurfaceApiTest extends TestCase
                 ] as $requiredField) {
                     $this->assertArrayHasKey($requiredField, $surface, "{$requiredField} missing from {$fixturePath}");
                 }
+
+                $this->assertFalse($surface['behavior']['show_email_publicly'] ?? null, "Footer email visibility should be disabled in {$fixturePath}");
 
                 if (($surface['hostname'] ?? null) === 'mymoveportal.discountbackloading.com.au') {
                     $this->assertSame('approved', $surface['visual_identity']['status'] ?? null);
