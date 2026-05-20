@@ -22,6 +22,12 @@ Draft/review endpoint:
 
 This read-only feed exposes app-host to source-marketing-domain proposals, candidate brand/style facts, evidence, confidence, and approval status. Draft or `needs_review` proposals are review evidence only and must not be treated as published MoverooCombined runtime truth.
 
+Draft extraction command:
+
+`php artisan brand-surfaces:extract-style-draft {hostname} --write`
+
+This command resolves an app-served hostname to its configured owning marketing domain, fetches the marketing site HTML, extracts only bounded candidate fields, and writes a review-only JSON draft under `storage/app/private/brand-style-drafts`. The draft endpoint reads those stored draft artifacts, but the published endpoint only annotates surfaces after `approval_status=approved`.
+
 ## Envelope
 
 Required fields:
@@ -159,3 +165,4 @@ Example payload fixtures live in:
 - `docs/fixtures/published-brand-surfaces/second-pilot-batch.json`
 - `docs/fixtures/published-brand-surfaces/third-pilot-batch.json`
 - `docs/fixtures/published-brand-surfaces/final-runtime-closeout.json`
+- `docs/fixtures/published-brand-surfaces/discountbackloading-style-draft.json`

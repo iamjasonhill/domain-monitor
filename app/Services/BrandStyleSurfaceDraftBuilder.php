@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class BrandStyleSurfaceDraftBuilder
@@ -58,15 +59,38 @@ class BrandStyleSurfaceDraftBuilder
     private function proposals(): array
     {
         $configuredProposals = config('domain_monitor.published_brand_surfaces.brand_style_proposals', []);
+        $storedProposals = $this->storedProposals();
 
         if (! is_array($configuredProposals)) {
-            return [];
+            $configuredProposals = [];
         }
 
-        return collect($configuredProposals)
+        return collect($storedProposals)
+            ->merge($configuredProposals)
             ->map(fn (mixed $proposal, mixed $hostname): ?array => $this->proposalRecord($hostname, $proposal))
             ->filter()
             ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function storedProposals(): array
+    {
+        return collect(Storage::disk('local')->files('brand-style-drafts'))
+            ->filter(fn (string $path): bool => Str::endsWith($path, '.json'))
+            ->mapWithKeys(function (string $path): array {
+                $proposal = json_decode((string) Storage::disk('local')->get($path), true);
+
+                if (! is_array($proposal)) {
+                    return [];
+                }
+
+                $hostname = $this->normalizeHostname($proposal['hostname'] ?? null);
+
+                return $hostname === null ? [] : [$hostname => $proposal];
+            })
             ->all();
     }
 
@@ -103,13 +127,7 @@ class BrandStyleSurfaceDraftBuilder
             'approved_by' => $approvalStatus === 'approved' ? ($proposal['approved_by'] ?? null) : null,
             'approved_at' => $approvalStatus === 'approved' ? ($proposal['approved_at'] ?? null) : null,
             'review_reason' => $proposal['review_reason'] ?? null,
-            'candidate' => [
-                'brand' => $proposal['brand'] ?? ($publishedMetadata['brand'] ?? []),
-                'theme' => $proposal['theme'] ?? ($publishedMetadata['theme'] ?? []),
-                'copy' => $proposal['copy'] ?? ($publishedMetadata['copy'] ?? []),
-                'contact' => $proposal['contact'] ?? ($publishedMetadata['contact'] ?? []),
-                'links' => $proposal['links'] ?? ($publishedMetadata['links'] ?? []),
-            ],
+            'candidate' => $this->candidate($proposal, $publishedMetadata),
             'evidence' => $this->evidence($proposal, $sourceDomain),
             'publish_gate' => [
                 'can_publish' => $approvalStatus === 'approved',
@@ -117,6 +135,24 @@ class BrandStyleSurfaceDraftBuilder
                     ? 'approved_brand_style_surface'
                     : 'draft_requires_human_or_trusted_review',
             ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $proposal
+     * @param  array<string, mixed>  $publishedMetadata
+     * @return array<string, mixed>
+     */
+    private function candidate(array $proposal, array $publishedMetadata): array
+    {
+        $candidate = is_array($proposal['candidate'] ?? null) ? $proposal['candidate'] : [];
+
+        return [
+            'brand' => $candidate['brand'] ?? ($proposal['brand'] ?? ($publishedMetadata['brand'] ?? [])),
+            'theme' => $candidate['theme'] ?? ($proposal['theme'] ?? ($publishedMetadata['theme'] ?? [])),
+            'copy' => $candidate['copy'] ?? ($proposal['copy'] ?? ($publishedMetadata['copy'] ?? [])),
+            'contact' => $candidate['contact'] ?? ($proposal['contact'] ?? ($publishedMetadata['contact'] ?? [])),
+            'links' => $candidate['links'] ?? ($proposal['links'] ?? ($publishedMetadata['links'] ?? [])),
         ];
     }
 
