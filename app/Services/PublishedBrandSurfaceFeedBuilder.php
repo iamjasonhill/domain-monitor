@@ -212,7 +212,7 @@ class PublishedBrandSurfaceFeedBuilder
             'copy' => $this->copy($property, $journeyType, $metadata),
             'theme' => $this->theme($property, $metadata),
             'navigation' => $this->navigation($journeyType, $metadata),
-            'behavior' => $this->behavior(),
+            'behavior' => $this->behavior($metadata),
             'links' => $this->links($property, $journeyType, $metadata),
             'contact' => $this->contact($metadata),
             'analytics' => $this->analytics($property, $hostname, $journeyType, $analyticsSource, $eventAssignment),
@@ -255,7 +255,7 @@ class PublishedBrandSurfaceFeedBuilder
             'copy' => $this->copy($property, $journeyType, $metadata),
             'theme' => $this->theme($property, $metadata),
             'navigation' => $this->navigation($journeyType, $metadata),
-            'behavior' => $this->behavior(),
+            'behavior' => $this->behavior($metadata),
             'links' => $this->links($property, $journeyType, $metadata),
             'contact' => $this->contact($metadata),
             'analytics' => $this->analytics($property, $hostname, $journeyType, $analyticsSource, $eventAssignment),
@@ -336,7 +336,7 @@ class PublishedBrandSurfaceFeedBuilder
             'copy' => $this->copy($property, $journeyType, $metadata),
             'theme' => $this->theme($property, $metadata),
             'navigation' => $this->navigation($journeyType, $metadata),
-            'behavior' => $this->behavior(),
+            'behavior' => $this->behavior($metadata),
             'links' => $this->links($property, $journeyType, $metadata),
             'contact' => $this->contact($metadata),
             'analytics' => $this->analytics($property, $hostname, $journeyType, $analyticsSource, $eventAssignment),
@@ -514,18 +514,21 @@ class PublishedBrandSurfaceFeedBuilder
     }
 
     /**
+     * @param  array<string, mixed>  $metadata
      * @return array<string, bool>
      */
-    private function behavior(): array
+    private function behavior(array $metadata): array
     {
-        return [
+        $behavior = $metadata['behavior'] ?? [];
+
+        return array_replace([
             'show_phone_publicly' => true,
-            'show_email_publicly' => true,
+            'show_email_publicly' => false,
             'prefer_contact_page_over_direct_contact' => false,
             'allow_customer_portal_links' => true,
             'allow_provider_login_links' => false,
             'allow_admin_links' => false,
-        ];
+        ], is_array($behavior) ? $behavior : []);
     }
 
     /**

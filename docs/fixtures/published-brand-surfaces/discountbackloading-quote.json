@@ -120,7 +120,7 @@
       },
       "behavior": {
         "show_phone_publicly": true,
-        "show_email_publicly": true,
+        "show_email_publicly": false,
         "prefer_contact_page_over_direct_contact": false,
         "allow_customer_portal_links": true,
         "allow_provider_login_links": false,
