@@ -177,8 +177,13 @@ class PublishedBrandSurfaceApiTest extends TestCase
             ->assertJsonPath('surfaces.4.visual_identity.status', 'approved')
             ->assertJsonPath('surfaces.4.visual_identity.source_hostname', 'supercheapcartransport.com.au')
             ->assertJsonPath('surfaces.4.visual_identity.font_pairing.heading', 'manrope')
+            ->assertJsonPath('surfaces.4.theme.colors.background', '#f6f0e6')
+            ->assertJsonPath('surfaces.4.theme.colors.surface', '#fffaf2')
+            ->assertJsonPath('surfaces.4.theme.exact_tokens.primary_cta.background', '#c43211')
+            ->assertJsonPath('surfaces.4.theme.exact_tokens.secondary_cta.background', '#20282d')
+            ->assertJsonPath('surfaces.4.visual_identity.colors.primary', '#20282d')
             ->assertJsonPath('surfaces.4.visual_identity.style.visual_profile', 'bold_budget_vehicle')
-            ->assertJsonPath('surfaces.4.visual_identity.style.hero_treatment', 'high_contrast_clean')
+            ->assertJsonPath('surfaces.4.visual_identity.style.hero_treatment', 'marketing_site_prominent_surface')
             ->assertJsonCount(5, 'surfaces');
     }
 
