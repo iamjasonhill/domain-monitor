@@ -148,6 +148,15 @@ class PublishedBrandSurfaceApiTest extends TestCase
             ->assertJsonPath('surfaces.1.authority.owning_marketing_domain', 'discountbackloading.com.au')
             ->assertJsonPath('surfaces.1.authority.runtime_renderer_owner', 'MoverooCombined')
             ->assertJsonPath('surfaces.1.authority.fallback_policy', 'strict_no_local_brand_fallback')
+            ->assertJsonPath('surfaces.1.visual_identity.status', 'approved')
+            ->assertJsonPath('surfaces.1.visual_identity.source_hostname', 'discountbackloading.com.au')
+            ->assertJsonPath('surfaces.1.visual_identity.font_pairing.heading', 'fraunces')
+            ->assertJsonPath('surfaces.1.visual_identity.font_pairing.body', 'manrope')
+            ->assertJsonPath('surfaces.1.visual_identity.colors.primary', '#12284d')
+            ->assertJsonPath('surfaces.1.visual_identity.colors.accent', '#f97316')
+            ->assertJsonPath('surfaces.1.visual_identity.style.hero_treatment', 'image_overlay')
+            ->assertJsonPath('surfaces.1.visual_identity.style.button_treatment', 'solid_orange_pill')
+            ->assertJsonPath('surfaces.1.visual_identity.evidence.0.source_type', 'chrome_visual_review')
             ->assertJsonMissingPath('surfaces.1.links.customer_portal_url')
             ->assertJsonPath('surfaces.2.hostname', 'quotes.interstate-removals.com.au')
             ->assertJsonPath('surfaces.2.property_slug', 'interstate-removals-com-au')
@@ -214,6 +223,55 @@ class PublishedBrandSurfaceApiTest extends TestCase
         ])->getJson('/api/published-brand-surfaces?hostname=quotes.full-estate.com.au')
             ->assertOk()
             ->assertJsonCount(0, 'surfaces');
+    }
+
+    public function test_unapproved_visual_identity_is_not_published(): void
+    {
+        config()->set('services.domain_monitor.moveroo_removals_api_key', 'moveroo-runtime-token');
+        config()->set('domain_monitor.published_brand_surfaces.pilot_host_allowlist', [
+            'quotes.moveroo.com.au',
+        ]);
+
+        $hostnames = config('domain_monitor.published_brand_surfaces.hostnames');
+        $this->assertIsArray($hostnames);
+        $this->assertIsArray($hostnames['quotes.moveroo.com.au'] ?? null);
+
+        $hostnames['quotes.moveroo.com.au']['visual_identity'] = [
+            'status' => 'needs_review',
+            'source_hostname' => 'moveroo.com.au',
+            'font_pairing' => [
+                'heading' => 'inter',
+                'body' => 'inter',
+            ],
+            'colors' => [
+                'primary' => '#2563eb',
+                'accent' => '#2563eb',
+            ],
+            'style' => [
+                'visual_profile' => 'utility_service',
+            ],
+        ];
+
+        config()->set('domain_monitor.published_brand_surfaces.hostnames', $hostnames);
+
+        $this->createPilotSurface(
+            propertySlug: 'moveroo-com-au',
+            propertyName: 'Moveroo Website',
+            siteKey: 'moveroo',
+            primaryDomainName: 'moveroo.com.au',
+            hostname: 'quotes.moveroo.com.au',
+            journeyType: 'household_quote',
+            repoName: 'MM-moveroo.com.au',
+            measurementId: 'G-9F3Y80LEQL',
+            eventContractKey: 'moveroo-full-funnel-v1',
+        );
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer moveroo-runtime-token',
+        ])->getJson('/api/published-brand-surfaces?hostname=quotes.moveroo.com.au')
+            ->assertOk()
+            ->assertJsonCount(1, 'surfaces')
+            ->assertJsonMissingPath('surfaces.0.visual_identity');
     }
 
     public function test_published_brand_surface_feed_returns_configured_third_batch_hosts(): void
@@ -550,6 +608,13 @@ class PublishedBrandSurfaceApiTest extends TestCase
                     'provenance',
                 ] as $requiredField) {
                     $this->assertArrayHasKey($requiredField, $surface, "{$requiredField} missing from {$fixturePath}");
+                }
+
+                if (($surface['hostname'] ?? null) === 'mymoveportal.discountbackloading.com.au') {
+                    $this->assertSame('approved', $surface['visual_identity']['status'] ?? null);
+                    $this->assertSame('fraunces', $surface['visual_identity']['font_pairing']['heading'] ?? null);
+                    $this->assertSame('manrope', $surface['visual_identity']['font_pairing']['body'] ?? null);
+                    $this->assertSame('solid_orange_pill', $surface['visual_identity']['style']['button_treatment'] ?? null);
                 }
             }
         }

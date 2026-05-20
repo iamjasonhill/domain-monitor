@@ -194,7 +194,7 @@ class PublishedBrandSurfaceFeedBuilder
         $updatedAt = $surface->verified_at ?? $property->updated_at ?? now();
         $journeyType = $surface->journey_type;
 
-        return $this->withBrandStyleSource($hostname, $this->withAuthority($hostname, $metadata, [
+        return $this->withPublishedAnnotations($hostname, $metadata, [
             'hostname' => $hostname,
             'property_slug' => $property->slug,
             'surface_slug' => $metadata['surface_slug'] ?? $this->defaultSurfaceSlug($property, $hostname),
@@ -217,7 +217,7 @@ class PublishedBrandSurfaceFeedBuilder
             'contact' => $this->contact($metadata),
             'analytics' => $this->analytics($property, $hostname, $journeyType, $analyticsSource, $eventAssignment),
             'provenance' => $this->provenance($metadata),
-        ]));
+        ]);
     }
 
     /**
@@ -237,7 +237,7 @@ class PublishedBrandSurfaceFeedBuilder
         $updatedAt = $property->updated_at ?? now();
         $journeyType = 'mixed_quote';
 
-        return $this->withBrandStyleSource($hostname, $this->withAuthority($hostname, $metadata, [
+        return $this->withPublishedAnnotations($hostname, $metadata, [
             'hostname' => $hostname,
             'property_slug' => $property->slug,
             'surface_slug' => $metadata['surface_slug'] ?? $this->defaultSurfaceSlug($property, $hostname),
@@ -260,7 +260,7 @@ class PublishedBrandSurfaceFeedBuilder
             'contact' => $this->contact($metadata),
             'analytics' => $this->analytics($property, $hostname, $journeyType, $analyticsSource, $eventAssignment),
             'provenance' => $this->provenance($metadata),
-        ]));
+        ]);
     }
 
     /**
@@ -318,7 +318,7 @@ class PublishedBrandSurfaceFeedBuilder
         $updatedAt = $property->updated_at ?? now();
         $journeyType = is_string($metadata['journey_type'] ?? null) ? $metadata['journey_type'] : null;
 
-        return $this->withBrandStyleSource($hostname, $this->withAuthority($hostname, $metadata, [
+        return $this->withPublishedAnnotations($hostname, $metadata, [
             'hostname' => $hostname,
             'property_slug' => $property->slug,
             'surface_slug' => $metadata['surface_slug'] ?? $this->defaultSurfaceSlug($property, $hostname),
@@ -341,7 +341,7 @@ class PublishedBrandSurfaceFeedBuilder
             'contact' => $this->contact($metadata),
             'analytics' => $this->analytics($property, $hostname, $journeyType, $analyticsSource, $eventAssignment),
             'provenance' => $this->provenance($metadata),
-        ]));
+        ]);
     }
 
     /**
@@ -561,6 +561,64 @@ class PublishedBrandSurfaceFeedBuilder
 
         return array_merge($surface, [
             'authority' => $authority,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
+     * @param  array<string, mixed>  $surface
+     * @return array<string, mixed>
+     */
+    private function withPublishedAnnotations(string $hostname, array $metadata, array $surface): array
+    {
+        return $this->withBrandStyleSource(
+            $hostname,
+            $this->withVisualIdentity(
+                $hostname,
+                $metadata,
+                $this->withAuthority($hostname, $metadata, $surface),
+            ),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
+     * @return array<string, mixed>|null
+     */
+    private function visualIdentity(string $hostname, array $metadata): ?array
+    {
+        $visualIdentity = $metadata['visual_identity'] ?? null;
+
+        if (! is_array($visualIdentity)) {
+            return null;
+        }
+
+        if (($visualIdentity['status'] ?? null) !== 'approved') {
+            return null;
+        }
+
+        if (! in_array($hostname, $this->pilotHostAllowlist(), true)) {
+            return null;
+        }
+
+        return $visualIdentity;
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
+     * @param  array<string, mixed>  $surface
+     * @return array<string, mixed>
+     */
+    private function withVisualIdentity(string $hostname, array $metadata, array $surface): array
+    {
+        $visualIdentity = $this->visualIdentity($hostname, $metadata);
+
+        if ($visualIdentity === null) {
+            return $surface;
+        }
+
+        return array_merge($surface, [
+            'visual_identity' => $visualIdentity,
         ]);
     }
 
