@@ -15,6 +15,11 @@ It should provide the recurring live verification layer that proves whether
 Fleet-managed public sites are still meeting that standard after launch or
 during rollout.
 
+The audit rationalisation goal is to reduce duplicate operator noise and unclear
+ownership first. Runtime load still matters, but the primary design test is
+whether operators can tell which system owns the evidence, which system owns the
+fix, and which findings deserve Control Attention.
+
 ## Upstream Standard Sources
 
 This plan should stay aligned to the existing Fleet-owned documents:
@@ -121,6 +126,16 @@ confidence, weak crawler signals, flaky external dependencies, and ambiguous
 evidence should be stored as audit evidence or `unknown`, not promoted to
 Attention automatically.
 
+Only `MonitoringFinding` records are allowed to create or update Control
+Attention. Health checks, Fleet technical SEO audit runs, and estate audit
+batches are evidence collectors. They may update stored evidence and summaries,
+but they should reach Control only by being promoted into a
+`MonitoringFinding` under explicit promotion rules, normally:
+
+- `result_status = fail`
+- `evidence_confidence = high`
+- a clear owning property, owner system, and remediation route exist
+
 The full runtime audit is a bounded crawl, not a homepage-only check. The
 default URL set for an eligible `WebProperty` should include:
 
@@ -168,11 +183,155 @@ per-property URL cap, include dry-run support, and only use browser/Lighthouse
 evidence when the repo-owned commands are configured. A deliberate full-estate
 mode can come later once runtime duration, evidence quality, and Attention noise
 are trusted.
+
+The scheduled runtime model should use two estate audit cadences:
+
+- a daily low-cap smoke/regression pass over Fleet-focus properties
+- a weekly deeper evidence refresh over the same eligible Fleet-focus scope
+
+Name these scheduled Fleet runtime profiles explicitly:
+
+- `fleet_technical_seo_smoke`: daily, low-cap, freshness-rotated, intended to
+  detect obvious regressions quickly. Initial URL cap: 3.
+- `fleet_technical_seo_deep`: weekly coverage, freshness-rotated and spread
+  across batches, intended to refresh broader crawl/render evidence for every
+  eligible site. Initial URL cap: 25.
+
+The existing `monitoring:run-lane fleet_astro_technical_seo` lane should remain
+in place for the first rationalisation slice, but its domain role is publisher
+or reconciler rather than primary evidence collector. The
+`fleet_technical_seo_smoke` and `fleet_technical_seo_deep` profiles collect
+catalog evidence into audit runs and results. The monitoring lane promotes
+qualified evidence into `MonitoringFinding` records for Control Attention.
+
+Scheduled `fleet_technical_seo_smoke` and `fleet_technical_seo_deep` runs should
+not promote findings directly. They are collectors. Promotion should be deferred
+to the `fleet_astro_technical_seo` monitoring lane, which reads latest
+qualifying evidence and updates `MonitoringFinding` records under the explicit
+promotion rules. This keeps Control Attention deterministic and avoids duplicate
+promotion paths.
+
+Manual or operator-requested Fleet technical SEO runs should collect evidence
+immediately. They should not update Control Attention unless promotion is
+explicitly requested, for example with a `--promote-findings` style option.
+This preserves the fix-verification workflow while keeping scheduled collector
+runs quiet by default.
+
+Every eligible site should be checked for every applicable audit at least once
+per week. Weekly coverage does not require one large sweep: the work may be
+spread across multiple scheduled batches so production load stays predictable.
+The invariant is complete weekly coverage, not a single weekly command
+execution.
+
+Scheduled estate batches should use freshness-aware rotation. Each batch should
+select the most stale eligible `WebProperty` records for the requested audit
+profile, based on latest completed successful audit evidence for that property
+and profile. A scheduler must not repeatedly audit the same first N properties
+by database order while leaving other eligible properties stale.
+
+Use these canonical audit profiles when reasoning about coverage:
+
+- `Domain Health Profile`: DNS, HTTP, SSL, uptime, email security, security
+  headers, SEO fundamentals, broken links, and external links.
+- `Monitoring Lane Profile`: durable finding publisher lanes such as
+  `critical_live`, `marketing_integrity`, `seo_agent_readiness`, and
+  `deep_audit`.
+- `Fleet Technical SEO Runtime Profile`: Fleet catalog checks, rendered/mobile
+  evidence, quote/contact target checks, legacy route stance, and imported
+  MM-Google evidence consumption as used by the runtime catalog.
+- `Imported Evidence Profile`: MM-Google, Search Console, GA4 imports, API
+  enrichment, and live rechecks.
+
+Coverage units differ by profile:
+
+- `Domain Health Profile` is `Domain` scoped.
+- `Monitoring Lane Profile` is `WebProperty` scoped.
+- `Fleet Technical SEO Runtime Profile` is `WebProperty` scoped.
+- `Imported Evidence Profile` is source-entity scoped and mapped back to
+  `WebProperty`, such as a `PropertyAnalyticsSource`, Search Console property,
+  or GA4 binding.
+
+Weekly coverage has two metrics:
+
+- `attempted_coverage`: the scheduler attempted the applicable audit for the
+  unit during the coverage window.
+- `complete_coverage`: the audit reached a usable status during the coverage
+  window.
+
+Statuses that count as complete coverage:
+
+- `pass`
+- `fail`
+- `not_applicable`
+- `manual_review`
+
+Statuses that do not count as complete coverage:
+
+- `unknown`
+- command failure
+- timeout
+- skipped due to crawl or scheduler cap
+
+`unknown` still counts as attempted coverage so the scheduler does not hammer
+the same property repeatedly in a single day. Durable unknowns must not be left
+to circle forever: when an unknown cannot be resolved by retry, fallback
+evidence, or current docs/code, Domain Monitor should create or route a
+deduped GitHub investigation issue.
+
+Route durable unknown investigation issues by source of ambiguity:
+
+- Domain Monitor issue: crawler, audit, evidence extraction, classification, or
+  stored-evidence ambiguity.
+- Fleet issue: missing or unclear Fleet standard, site implementation
+  ambiguity, or site repo evidence needed.
+- MM-Google issue: missing, stale, or inconsistent GA4, Search Console, or
+  Google-side exported evidence.
+- Bossman or Control issue: ownership cannot be determined after Domain Monitor
+  has classified the unknown as an ownership-routing problem.
+
+Each unknown investigation issue should include the audit profile, coverage
+unit, check ID, affected property or domain, latest evidence, retry count, owner
+classification, and dedupe key.
+
+Scheduled audits should not create GitHub issues directly for every unknown.
+They should write an investigation candidate, such as `owner_issue_candidate`,
+with enough evidence and a stable dedupe key. A separate unknown-triage command
+or operator review queue should create GitHub issues only when the unknown is
+still unresolved after a threshold, such as two attempts or 24 hours, and owner
+classification is confident.
+
+When this cadence is first enabled, run the initial weekly deeper pass within
+the next 12 hours so Control and Fleet start from fresh evidence rather than
+waiting for the next normal weekly window.
+
+The initial `fleet_technical_seo_deep` catch-up should run as spread batches,
+not one large sweep. It should use the weekly deep profile, `url-cap=25`,
+continue-on-failure behavior, and evidence-only collection by default. After
+the catch-up batches finish, run the publisher or reconciler lane once so
+Control Attention reflects only qualified findings from the fresh evidence.
+
+Implement this rationalisation in narrow slices. The first implementation slice
+should be the scheduling and rotation foundation:
+
+- add named audit profiles `fleet_technical_seo_smoke` and
+  `fleet_technical_seo_deep`
+- add freshness-aware property selection for scheduled estate batches
+- add evidence-only scheduled collector mode
+- add schedule entries for the collector profiles
+- support the initial catch-up path without automatic promotion
+
+Do not include automatic durable-unknown GitHub issue creation in the first
+slice. Build unknown triage as a later slice after scheduled coverage and
+collector/publisher boundaries are stable.
+
 The repo-owned conservative command is
 `php artisan monitoring:run-fleet-technical-seo-estate-audit`. It defaults to a
-limit of five eligible properties, supports `--dry-run`, `--limit`, `--url-cap`,
-`--property`, `--domain`, and `--continue-on-failure`, and still creates one
-audit run per selected `WebProperty`.
+limit of five eligible properties, supports `--profile`, `--dry-run`,
+`--limit`, `--url-cap`, `--property`, `--domain`, and
+`--continue-on-failure`, and still creates one audit run per selected
+`WebProperty`. When `--profile` is provided, unscoped batches use
+freshness-aware rotation for that profile instead of selecting the first N
+properties by slug.
 
 Only `fail` should open or update a runtime finding for Control Attention by
 default. `unknown` should create an owning-repo GitHub issue when the evidence
