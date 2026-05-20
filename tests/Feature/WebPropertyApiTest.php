@@ -577,6 +577,97 @@ class WebPropertyApiTest extends TestCase
         $this->assertSame('suppressed', data_get($bookingPolicy, 'expected_links.household_quote.status'));
     }
 
+    public function test_monitoring_summary_exports_bounded_broken_link_evidence_and_owner_linkage(): void
+    {
+        config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
+
+        $domain = Domain::factory()->create([
+            'domain' => 'backloading-au.com.au',
+            'platform' => 'Astro',
+        ]);
+        $property = WebProperty::factory()->create([
+            'slug' => 'backloading-au-com-au',
+            'name' => 'Backloading AU',
+            'status' => 'active',
+            'property_type' => 'marketing_site',
+            'primary_domain_id' => $domain->id,
+            'production_url' => 'https://backloading-au.com.au',
+        ]);
+
+        WebPropertyDomain::create([
+            'web_property_id' => $property->id,
+            'domain_id' => $domain->id,
+            'usage_type' => 'primary',
+            'is_canonical' => true,
+        ]);
+
+        $links = collect(range(1, 6))
+            ->map(fn (int $index): array => [
+                'url' => 'https://backloading-au.com.au/missing-'.$index,
+                'status' => 404,
+                'relationship' => 'internal',
+                'found_on' => 'https://backloading-au.com.au/services/',
+                'classification' => 'internal',
+            ])
+            ->all();
+
+        $finding = MonitoringFinding::factory()->create([
+            'issue_id' => 'dm:backloading-au-com-au:seo-broken-links',
+            'lane' => 'deep_audit',
+            'finding_type' => 'seo.broken_links',
+            'issue_type' => 'cleanup',
+            'scope_type' => 'web_property',
+            'domain_id' => $domain->id,
+            'web_property_id' => $property->id,
+            'status' => MonitoringFinding::STATUS_OPEN,
+            'title' => 'Broken links found during deep audit crawl',
+            'summary' => 'Deep audit crawl found 6 broken link(s).',
+            'last_detected_at' => Carbon::parse('2026-05-20T10:15:00+10:00'),
+            'evidence' => [
+                'verdict' => 'broken_links_detected',
+                'pages_scanned' => 3,
+                'broken_links_count' => 6,
+                'broken_links' => $links,
+                'owner_issue' => [
+                    'url' => 'https://github.com/iamjasonhill/MM-fleet-program/issues/44',
+                    'repo' => 'iamjasonhill/MM-fleet-program',
+                    'number' => 44,
+                    'state' => 'closed',
+                    'issue_class' => 'cleanup.external_links_inventory',
+                ],
+            ],
+        ]);
+
+        $summaryResponse = $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/web-properties-summary')
+            ->assertOk()
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings.0.issue_id', $finding->issue_id)
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings.0.finding_identity.issue_class', 'seo.broken_links')
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings.0.actionable_evidence.type', 'broken_links')
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings.0.actionable_evidence.total_count', 6)
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings.0.actionable_evidence.truncated', true)
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings.0.actionable_evidence.links.0.source_page_url', 'https://backloading-au.com.au/services/')
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings.0.actionable_evidence.links.0.link_href', 'https://backloading-au.com.au/missing-1')
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings.0.actionable_evidence.links.0.http_status', 404)
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings.0.actionable_evidence.links.0.classification', 'internal')
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings.0.owner_issue_linkage.state', 'stale_or_different_finding_owner_issue')
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings.0.owner_issue_linkage.active_owner_issue', null)
+            ->assertJsonPath('web_properties.0.monitoring_summary.open_findings.0.owner_issue_linkage.related_owner_issues.0.number', 44);
+
+        $this->assertCount(
+            5,
+            $summaryResponse->json('web_properties.0.monitoring_summary.open_findings.0.actionable_evidence.links')
+        );
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer test-api-key',
+        ])->getJson('/api/web-properties/'.$property->slug)
+            ->assertOk()
+            ->assertJsonPath('data.monitoring_summary.open_findings.0.actionable_evidence.links.0.final_url', 'https://backloading-au.com.au/missing-1')
+            ->assertJsonPath('data.monitoring_summary.open_findings.0.owner_issue_linkage.state', 'stale_or_different_finding_owner_issue');
+    }
+
     public function test_web_properties_summary_represents_operational_app_shell_apex_without_marketing_handoffs(): void
     {
         config()->set('services.domain_monitor.brain_api_key', 'test-api-key');
@@ -1253,7 +1344,7 @@ class WebPropertyApiTest extends TestCase
             'last_detected_at' => $detectedAt,
         ]);
 
-        $expected = $detectedAt->toIso8601String();
+        $expected = Carbon::parse($detectedAt->format('Y-m-d H:i:s'), 'Australia/Brisbane')->toIso8601String();
 
         $this->withHeaders(['Authorization' => 'Bearer test-api-key'])
             ->getJson('/api/web-properties-summary')
@@ -1315,7 +1406,7 @@ class WebPropertyApiTest extends TestCase
             ]);
         });
 
-        $expected = $finishedAt->toIso8601String();
+        $expected = Carbon::parse($finishedAt->format('Y-m-d H:i:s'), 'Australia/Brisbane')->toIso8601String();
 
         $this->withHeaders(['Authorization' => 'Bearer test-api-key'])
             ->getJson('/api/web-properties-summary')

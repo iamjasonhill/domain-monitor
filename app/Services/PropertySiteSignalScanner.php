@@ -561,6 +561,14 @@ class PropertySiteSignalScanner
         $brokenLinksCount = is_numeric($payload['broken_links_count'] ?? null)
             ? (int) $payload['broken_links_count']
             : count($brokenLinks);
+        $classifiedBrokenLinks = $this->classifiedBrokenLinks($brokenLinks, $primaryDomain->domain, $property);
+        $actionableBrokenLinks = $classifiedBrokenLinks
+            ->reject(fn (array $link): bool => (bool) ($link['suppressed'] ?? false))
+            ->values();
+        $suppressedBrokenLinks = $classifiedBrokenLinks
+            ->filter(fn (array $link): bool => (bool) ($link['suppressed'] ?? false))
+            ->values();
+        $actionableBrokenLinksCount = $actionableBrokenLinks->count();
         $pagesScanned = is_numeric($payload['pages_scanned'] ?? null)
             ? (int) $payload['pages_scanned']
             : 0;
@@ -580,29 +588,48 @@ class PropertySiteSignalScanner
             ];
         }
 
-        if ($brokenLinksCount === 0) {
+        if (($brokenLinksCount === 0 && $classifiedBrokenLinks->isEmpty()) || $actionableBrokenLinksCount === 0) {
+            $verdict = $suppressedBrokenLinks->isNotEmpty()
+                ? 'broken_links_clear_with_accepted_handoffs'
+                : 'broken_links_clear';
+
             return [
                 'status' => 'ok',
-                'verdict' => 'broken_links_clear',
+                'verdict' => $verdict,
                 'summary' => 'Deep audit crawl did not find broken links.',
                 'evidence' => [
-                    'verdict' => 'broken_links_clear',
+                    'verdict' => $verdict,
                     'pages_scanned' => $pagesScanned,
                     'broken_links_count' => 0,
                     'broken_links' => [],
+                    'suppressed_links_count' => $suppressedBrokenLinks->count(),
+                    'suppressed_links' => $suppressedBrokenLinks->all(),
                 ],
             ];
         }
 
+        $acceptedHandoffFailures = $actionableBrokenLinks
+            ->filter(fn (array $link): bool => ($link['classification'] ?? null) === 'accepted_app_handoff')
+            ->values();
+        $verdict = $acceptedHandoffFailures->isNotEmpty()
+            ? 'accepted_app_handoff_failed'
+            : 'broken_links_detected';
+        $summary = $acceptedHandoffFailures->isNotEmpty()
+            ? sprintf('Deep audit crawl found %d failed accepted app handoff link(s).', $acceptedHandoffFailures->count())
+            : sprintf('Deep audit crawl found %d broken link(s).', $actionableBrokenLinksCount);
+
         return [
             'status' => 'fail',
-            'verdict' => 'broken_links_detected',
-            'summary' => sprintf('Deep audit crawl found %d broken link(s).', $brokenLinksCount),
+            'verdict' => $verdict,
+            'summary' => $summary,
             'evidence' => [
-                'verdict' => 'broken_links_detected',
+                'verdict' => $verdict,
                 'pages_scanned' => $pagesScanned,
-                'broken_links_count' => $brokenLinksCount,
-                'broken_links' => $brokenLinks,
+                'broken_links_count' => $actionableBrokenLinksCount,
+                'raw_broken_links_count' => $brokenLinksCount,
+                'broken_links' => $actionableBrokenLinks->all(),
+                'suppressed_links_count' => $suppressedBrokenLinks->count(),
+                'suppressed_links' => $suppressedBrokenLinks->all(),
             ],
         ];
     }
@@ -665,8 +692,8 @@ class PropertySiteSignalScanner
                     ->filter(fn (mixed $page): bool => is_string($page) && $page !== '')
                     ->values()
                     ->all();
-                $policy = app(ExternalReferencePolicy::class)->classify(
-                    is_string($item['host'] ?? null) ? $item['host'] : null,
+                $policy = app(ExternalReferencePolicy::class)->classifyUrl(
+                    is_string($item['url'] ?? null) ? $item['url'] : null,
                     $primaryDomain->domain,
                     $property
                 );
@@ -790,6 +817,38 @@ class PropertySiteSignalScanner
         }
 
         return $counts;
+    }
+
+    /**
+     * @param  array<int, mixed>  $brokenLinks
+     * @return Collection<int, non-empty-array<string, mixed>>
+     */
+    private function classifiedBrokenLinks(array $brokenLinks, string $sourceHost, WebProperty $property): Collection
+    {
+        return collect($brokenLinks)
+            ->filter(fn (mixed $item): bool => is_array($item))
+            ->map(function (array $item) use ($sourceHost, $property): array {
+                $url = is_string($item['url'] ?? null) ? $item['url'] : null;
+                $policy = app(ExternalReferencePolicy::class)->classifyUrl($url, $sourceHost, $property);
+                $status = is_numeric($item['status'] ?? null) ? (int) $item['status'] : null;
+                $isReachable = $status !== null && $status < 400;
+                $isAcceptedHandoff = $policy['classification'] === 'accepted_app_handoff';
+
+                /** @var non-empty-array<string, mixed> $classified */
+                $classified = array_merge($item, [
+                    'classification' => $policy['classification'],
+                    'policy_action' => $policy['action'],
+                    'policy_approved' => $policy['approved'],
+                    'policy_reason' => $policy['reason'],
+                    'suppressed' => $isAcceptedHandoff && $isReachable,
+                    'suppression_reason' => $isAcceptedHandoff && $isReachable
+                        ? 'Accepted app handoff URL was reachable during crawl.'
+                        : null,
+                ]);
+
+                return $classified;
+            })
+            ->values();
     }
 
     /**
