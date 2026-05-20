@@ -95,7 +95,28 @@ return [
     'fleet_technical_seo' => [
         'legacy_route_manifests' => [
             'properties' => [
+                'allianceremovals-com-au' => [
+                    'stance' => 'not_applicable',
+                    'reason' => 'No approved legacy redirect inventory is declared for this pilot property.',
+                ],
+                'backloading-au-com-au' => [
+                    'stance' => 'not_applicable',
+                    'reason' => 'No approved legacy redirect inventory is declared for this pilot property.',
+                ],
+                'backloading-services-com-au' => [
+                    'stance' => 'not_applicable',
+                    'reason' => 'No approved legacy redirect inventory is declared for this pilot property.',
+                ],
+                'backloadingremovals-com-au' => [
+                    'stance' => 'not_applicable',
+                    'reason' => 'No approved legacy redirect inventory is declared for this pilot property.',
+                ],
+                'beauy-com-au' => [
+                    'stance' => 'not_applicable',
+                    'reason' => 'No approved legacy redirect inventory is declared for this pilot property.',
+                ],
                 // 'example-property-slug' => [
+                //     'stance' => 'manifest',
                 //     [
                 //         'legacy_path' => '/old-page',
                 //         'expected_url' => 'https://example.com/current-page',

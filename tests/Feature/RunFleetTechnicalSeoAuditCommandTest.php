@@ -259,6 +259,31 @@ class RunFleetTechnicalSeoAuditCommandTest extends TestCase
         $this->assertDatabaseCount('monitoring_findings', 0);
     }
 
+    public function test_legacy_route_mapping_is_not_applicable_when_property_declares_no_legacy_routes(): void
+    {
+        $property = $this->makeProperty('no-legacy-routes-site', 'no-legacy-routes.example');
+        config()->set('domain_monitor.fleet_technical_seo.legacy_route_manifests.properties.no-legacy-routes-site', [
+            'stance' => 'not_applicable',
+            'reason' => 'No approved legacy redirect inventory is declared for this pilot property.',
+        ]);
+        $this->fakeHealthySite('https://no-legacy-routes.example');
+
+        $this->assertSame(0, Artisan::call('monitoring:run-fleet-technical-seo-audit', [
+            '--property' => $property->slug,
+            '--url-cap' => 10,
+        ]));
+
+        $result = FleetTechnicalSeoAuditResult::query()
+            ->where('check_id', 'redirects.legacy_routes_mapped')
+            ->firstOrFail();
+
+        $this->assertSame(FleetTechnicalSeoAuditResult::STATUS_NOT_APPLICABLE, $result->result_status);
+        $this->assertSame(FleetTechnicalSeoAuditResult::CONFIDENCE_HIGH, $result->evidence_confidence);
+        $this->assertSame('not_applicable', $result->evidence['stance']);
+        $this->assertSame('No approved legacy redirect inventory is declared for this pilot property.', $result->evidence['reason']);
+        $this->assertDatabaseCount('monitoring_findings', 0);
+    }
+
     public function test_legacy_route_mapping_passes_when_manifest_redirects_match(): void
     {
         $property = $this->makeProperty('legacy-pass-site', 'legacy-pass.example');
