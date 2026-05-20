@@ -1221,6 +1221,199 @@ class RunMonitoringLaneCommandTest extends TestCase
         $this->assertSame(2, data_get($brokenLinksIssue, 'evidence.broken_links_count'));
     }
 
+    public function test_deep_audit_lane_suppresses_reachable_accepted_quote_handoffs(): void
+    {
+        $property = $this->makeProperty('backloading-au.com.au', 'Backloading AU');
+        $property->forceFill([
+            'target_household_quote_url' => 'https://quoting.backloading-au.com.au/quote/household',
+            'target_household_booking_url' => 'https://quoting.backloading-au.com.au/booking/create',
+            'target_vehicle_quote_url' => 'https://quoting.backloading-au.com.au/quote/vehicle',
+            'target_contact_us_page_url' => 'https://quoting.backloading-au.com.au/contact',
+        ])->save();
+
+        $brokenLinkHealthCheck = Mockery::mock(BrokenLinkHealthCheck::class);
+        /** @var Mockery\Expectation $brokenLinksExpectation */
+        $brokenLinksExpectation = $brokenLinkHealthCheck->shouldReceive('check');
+        $brokenLinksExpectation->once()->andReturn([
+            'is_valid' => true,
+            'verified' => true,
+            'broken_links_count' => 1,
+            'pages_scanned' => 4,
+            'broken_links' => [
+                [
+                    'url' => 'https://quoting.backloading-au.com.au/quote/household',
+                    'status' => 200,
+                    'relationship' => 'external',
+                    'found_on' => 'https://backloading-au.com.au/',
+                ],
+            ],
+            'error_message' => null,
+            'payload' => [
+                'broken_links_count' => 1,
+                'pages_scanned' => 4,
+                'broken_links' => [
+                    [
+                        'url' => 'https://quoting.backloading-au.com.au/quote/household',
+                        'status' => 200,
+                        'relationship' => 'external',
+                        'found_on' => 'https://backloading-au.com.au/',
+                    ],
+                ],
+                'duration_ms' => 11,
+            ],
+        ]);
+        $this->instance(BrokenLinkHealthCheck::class, $brokenLinkHealthCheck);
+
+        $externalLinkInventoryHealthCheck = Mockery::mock(ExternalLinkInventoryHealthCheck::class);
+        /** @var Mockery\Expectation $externalLinksExpectation */
+        $externalLinksExpectation = $externalLinkInventoryHealthCheck->shouldReceive('check');
+        $externalLinksExpectation->once()->andReturn([
+            'is_valid' => true,
+            'verified' => true,
+            'external_links_count' => 1,
+            'pages_scanned' => 4,
+            'external_links' => [
+                [
+                    'url' => 'https://quoting.backloading-au.com.au/quote/household',
+                    'host' => 'quoting.backloading-au.com.au',
+                    'relationship' => 'external',
+                    'found_on' => 'https://backloading-au.com.au/',
+                    'found_on_pages' => ['https://backloading-au.com.au/'],
+                ],
+            ],
+            'error_message' => null,
+            'payload' => [
+                'pages_scanned' => 4,
+                'external_links_count' => 1,
+                'unique_hosts_count' => 1,
+                'page_failures_count' => 0,
+                'external_links' => [
+                    [
+                        'url' => 'https://quoting.backloading-au.com.au/quote/household',
+                        'host' => 'quoting.backloading-au.com.au',
+                        'relationship' => 'external',
+                        'found_on' => 'https://backloading-au.com.au/',
+                        'found_on_pages' => ['https://backloading-au.com.au/'],
+                    ],
+                ],
+                'duration_ms' => 12,
+            ],
+        ]);
+        $this->instance(ExternalLinkInventoryHealthCheck::class, $externalLinkInventoryHealthCheck);
+        app()->forgetInstance(\App\Services\DomainHealthCheckRunner::class);
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'deep_audit',
+            '--property' => $property->slug,
+        ]));
+
+        $this->assertDatabaseMissing('monitoring_findings', [
+            'web_property_id' => $property->id,
+            'finding_type' => 'seo.broken_links',
+            'status' => MonitoringFinding::STATUS_OPEN,
+        ]);
+        $this->assertDatabaseMissing('monitoring_findings', [
+            'web_property_id' => $property->id,
+            'finding_type' => 'cleanup.external_links_inventory',
+            'status' => MonitoringFinding::STATUS_OPEN,
+        ]);
+    }
+
+    public function test_deep_audit_lane_keeps_unreachable_accepted_quote_handoffs_actionable(): void
+    {
+        config()->set('services.brain.base_url', 'https://brain.example.test');
+        config()->set('services.brain.api_key', 'test-key');
+
+        $property = $this->makeProperty('backloading-au.com.au', 'Backloading AU');
+
+        $brokenLinkHealthCheck = Mockery::mock(BrokenLinkHealthCheck::class);
+        /** @var Mockery\Expectation $brokenLinksExpectation */
+        $brokenLinksExpectation = $brokenLinkHealthCheck->shouldReceive('check');
+        $brokenLinksExpectation->once()->andReturn([
+            'is_valid' => false,
+            'verified' => true,
+            'broken_links_count' => 1,
+            'pages_scanned' => 4,
+            'broken_links' => [
+                [
+                    'url' => 'https://quoting.backloading-au.com.au/booking/create',
+                    'status' => 503,
+                    'relationship' => 'external',
+                    'found_on' => 'https://backloading-au.com.au/',
+                ],
+            ],
+            'error_message' => null,
+            'payload' => [
+                'broken_links_count' => 1,
+                'pages_scanned' => 4,
+                'broken_links' => [
+                    [
+                        'url' => 'https://quoting.backloading-au.com.au/booking/create',
+                        'status' => 503,
+                        'relationship' => 'external',
+                        'found_on' => 'https://backloading-au.com.au/',
+                    ],
+                ],
+                'duration_ms' => 11,
+            ],
+        ]);
+        $this->instance(BrokenLinkHealthCheck::class, $brokenLinkHealthCheck);
+
+        $externalLinkInventoryHealthCheck = Mockery::mock(ExternalLinkInventoryHealthCheck::class);
+        /** @var Mockery\Expectation $externalLinksClearExpectation */
+        $externalLinksClearExpectation = $externalLinkInventoryHealthCheck->shouldReceive('check');
+        $externalLinksClearExpectation->once()->andReturn([
+            'is_valid' => true,
+            'verified' => true,
+            'external_links_count' => 0,
+            'pages_scanned' => 4,
+            'external_links' => [],
+            'error_message' => null,
+            'payload' => [
+                'pages_scanned' => 4,
+                'external_links_count' => 0,
+                'unique_hosts_count' => 0,
+                'page_failures_count' => 0,
+                'external_links' => [],
+                'duration_ms' => 12,
+            ],
+        ]);
+        $this->instance(ExternalLinkInventoryHealthCheck::class, $externalLinkInventoryHealthCheck);
+        app()->forgetInstance(\App\Services\DomainHealthCheckRunner::class);
+
+        $brain = Mockery::mock(BrainEventClient::class);
+        $this->instance(BrainEventClient::class, $brain);
+        /** @var Mockery\Expectation $deepAuditExpectation */
+        $deepAuditExpectation = $brain->shouldReceive('sendAsync');
+        $deepAuditExpectation->once()->withArgs(function (string $eventType, array $payload): bool {
+            $this->assertSame('domain_monitor.finding.opened', $eventType);
+            $this->assertSame('seo.broken_links', $payload['finding_type']);
+            $this->assertSame('accepted_app_handoff_failed', data_get($payload, 'evidence.verdict'));
+            $this->assertSame('accepted_app_handoff', data_get($payload, 'evidence.broken_links.0.classification'));
+
+            return true;
+        });
+
+        $this->assertSame(0, Artisan::call('monitoring:run-lane', [
+            'lane' => 'deep_audit',
+            '--property' => $property->slug,
+        ]));
+
+        $this->assertDatabaseHas('monitoring_findings', [
+            'web_property_id' => $property->id,
+            'finding_type' => 'seo.broken_links',
+            'status' => MonitoringFinding::STATUS_OPEN,
+        ]);
+
+        $finding = MonitoringFinding::query()
+            ->where('web_property_id', $property->id)
+            ->where('finding_type', 'seo.broken_links')
+            ->firstOrFail();
+
+        $this->assertSame('accepted_app_handoff_failed', data_get($finding->evidence, 'verdict'));
+        $this->assertSame('accepted_app_handoff', data_get($finding->evidence, 'broken_links.0.classification'));
+    }
+
     public function test_deep_audit_lane_opens_external_link_inventory_findings_for_off_host_links(): void
     {
         config()->set('services.brain.base_url', 'https://brain.example.test');

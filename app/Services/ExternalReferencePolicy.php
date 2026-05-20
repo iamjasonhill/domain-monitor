@@ -131,6 +131,37 @@ class ExternalReferencePolicy
      *   policy_reference: string|null
      * }
      */
+    public function classifyUrl(?string $url, ?string $sourceHost = null, ?WebProperty $property = null): array
+    {
+        $host = $this->hostFromUrl($url);
+
+        if ($this->isAcceptedAppHandoffUrl($url, $sourceHost, $property)) {
+            return $this->result(
+                classification: 'accepted_app_handoff',
+                action: 'approved',
+                approved: true,
+                reason: 'URL is an accepted quote, booking, contact, or app handoff for this property.',
+                category: 'app_handoff',
+                registrySource: 'property_runtime_policy',
+                scope: 'property',
+            );
+        }
+
+        return $this->classify($host, $sourceHost, $property);
+    }
+
+    /**
+     * @return array{
+     *   classification: string,
+     *   action: string,
+     *   approved: bool,
+     *   reason: string,
+     *   category: string|null,
+     *   registry_source: string|null,
+     *   scope: string|null,
+     *   policy_reference: string|null
+     * }
+     */
     private function result(
         string $classification,
         string $action,
@@ -186,6 +217,88 @@ class ExternalReferencePolicy
             : ($property->exists ? $property->conversionSurfaces()->get() : collect());
 
         return $surfaces->contains(fn (WebPropertyConversionSurface $surface): bool => $this->normalizedHost($surface->hostname) === $host);
+    }
+
+    private function isAcceptedAppHandoffUrl(mixed $url, ?string $sourceHost, ?WebProperty $property): bool
+    {
+        if (! is_string($url) || trim($url) === '') {
+            return false;
+        }
+
+        $parts = parse_url(trim($url));
+        if (! is_array($parts)) {
+            return false;
+        }
+
+        $host = $this->normalizedHost($parts['host'] ?? null);
+        if ($host === null) {
+            return false;
+        }
+
+        $path = '/'.ltrim((string) ($parts['path'] ?? '/'), '/');
+        if (! $this->isAcceptedAppHandoffPath($path)) {
+            return false;
+        }
+
+        $normalizedSourceHost = $this->normalizedHost($sourceHost);
+        if ($normalizedSourceHost !== null && $host === 'quoting.'.$normalizedSourceHost) {
+            return true;
+        }
+
+        if (! $property instanceof WebProperty) {
+            return false;
+        }
+
+        $configuredHosts = $this->configuredOperationalHosts($property);
+        if (in_array($host, $configuredHosts, true)) {
+            return true;
+        }
+
+        $surfaces = $property->relationLoaded('conversionSurfaces')
+            ? $property->conversionSurfaces
+            : ($property->exists ? $property->conversionSurfaces()->get() : collect());
+
+        return $surfaces->contains(fn (WebPropertyConversionSurface $surface): bool => $this->normalizedHost($surface->hostname) === $host);
+    }
+
+    private function isAcceptedAppHandoffPath(string $path): bool
+    {
+        $normalizedPath = '/'.ltrim(Str::lower($path), '/');
+
+        return Str::startsWith($normalizedPath, [
+            '/booking',
+            '/bookings',
+            '/contact',
+            '/quote',
+            '/customer',
+            '/login',
+            '/portal',
+        ]);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function configuredOperationalHosts(WebProperty $property): array
+    {
+        return collect([
+            $this->hostFromUrl($property->current_household_quote_url),
+            $this->hostFromUrl($property->current_household_booking_url),
+            $this->hostFromUrl($property->current_vehicle_quote_url),
+            $this->hostFromUrl($property->current_vehicle_booking_url),
+            $this->hostFromUrl($property->target_household_quote_url),
+            $this->hostFromUrl($property->target_household_booking_url),
+            $this->hostFromUrl($property->target_vehicle_quote_url),
+            $this->hostFromUrl($property->target_vehicle_booking_url),
+            $this->hostFromUrl($property->target_moveroo_subdomain_url),
+            $this->hostFromUrl($property->target_contact_us_page_url),
+            $this->hostFromUrl($property->target_legacy_bookings_replacement_url),
+            $this->hostFromUrl($property->target_legacy_payments_replacement_url),
+        ])
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private function isOwnedEstateHost(string $host): bool

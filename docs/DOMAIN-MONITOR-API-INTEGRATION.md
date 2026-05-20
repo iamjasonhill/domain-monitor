@@ -127,6 +127,62 @@ missing or drifted SPF, DKIM, DMARC, MX, return-path, bounce, or provider
 verification records. See `docs/MAIL-PLANE-DNS-TRACKING.md` for the full
 record shape and boundaries.
 
+`monitoring_summary.open_findings[]` is the Control-facing safe finding packet
+for current Domain Monitor source truth. Existing summary fields remain stable;
+new consumers may also use:
+
+- `finding_identity.issue_id`
+- `finding_identity.fingerprint`
+- `finding_identity.issue_class`
+- `finding_identity.lane`
+- `actionable_evidence`
+- `owner_issue_linkage`
+
+For `seo.broken_links` and related broken-link findings,
+`actionable_evidence` is bounded and intentionally safe for authenticated
+operator display. It includes:
+
+- `type: broken_links`
+- `crawl_mode`
+- `captured_at`
+- `detected_at`
+- `total_count`
+- `sample_limit`
+- `truncated`
+- `truncation_note`
+- `links[]`
+- `suppressed_links[]`
+
+Each exported link sample includes:
+
+- `source_page_url`
+- `link_href`
+- `final_url`
+- `http_status`
+- `failure_reason`
+- `relationship`
+- `classification`
+- `policy_reason`
+- `suppressed`
+- `suppression_reason`
+- `crawl_lane`
+
+This packet must not include raw crawler HTML, cookies, secrets, or unbounded
+crawl dumps. If `truncated` is true, Control should show the sample and route
+operators back to Domain Monitor for protected full evidence if needed.
+
+`owner_issue_linkage` tells consumers whether an owner issue is current for the
+specific finding identity. States include:
+
+- `current_owner_issue_missing`
+- `active_owner_issue_current`
+- `current_owner_issue_closed`
+- `stale_or_different_finding_owner_issue`
+
+Closed or mismatched owner issues are exported only as `related_owner_issues`,
+not as `active_owner_issue`, so Control can avoid reusing a closed issue from a
+different issue class as the current remediation owner.
+
 `hostname_link_policy` is the canonical hostname-level export for quote,
 booking, contact, and customer-portal link expectations. It is derived from the
 stored property targets plus known conversion surfaces, and uses per-slot
