@@ -452,7 +452,17 @@ class PublishedBrandSurfaceApiTest extends TestCase
         $this->assertSame('Open the Interstate Removals support portal', data_get($interstateRemovalsPortal, 'copy.headline'));
         $this->assertSame('#005a87', data_get($interstateRemovalsPortal, 'theme.colors.header_background'));
         $this->assertSame('#005a87', data_get($interstateRemovalsPortal, 'theme.exact_tokens.primary_cta.background'));
-        $this->assertSame('customer_portal', data_get($interstateRemovalsPortal, 'navigation_intent.primary_journey'));
+        $this->assertSame('mixed_quote', data_get($interstateRemovalsPortal, 'navigation_intent.primary_journey'));
+        $this->assertSame(['household_quote', 'vehicle_quote', 'booking', 'contact', 'customer_portal'], data_get($interstateRemovalsPortal, 'navigation_intent.secondary_journeys'));
+        $this->assertSame(true, data_get($interstateRemovalsPortal, 'navigation.show_household_quote_link'));
+        $this->assertSame(true, data_get($interstateRemovalsPortal, 'navigation.show_vehicle_quote_link'));
+        $this->assertSame(true, data_get($interstateRemovalsPortal, 'navigation.show_booking_link'));
+        $this->assertSame(true, data_get($interstateRemovalsPortal, 'navigation.show_customer_portal_link'));
+        $this->assertSame(true, data_get($interstateRemovalsPortal, 'navigation.show_customer_portal_in_header'));
+        $this->assertSame('https://removalportal.interstate-removals.com.au/quote/household', data_get($interstateRemovalsPortal, 'links.household_quote_url'));
+        $this->assertSame('https://removalportal.interstate-removals.com.au/quote/vehicle', data_get($interstateRemovalsPortal, 'links.vehicle_quote_url'));
+        $this->assertSame('https://removalportal.interstate-removals.com.au/booking/create', data_get($interstateRemovalsPortal, 'links.booking_url'));
+        $this->assertSame('https://removalportal.interstate-removals.com.au/customer/login', data_get($interstateRemovalsPortal, 'links.customer_portal_url'));
 
         $removalsInterstate = $surfacesByHostname->get('quoting.removalsinterstate.com.au');
         $this->assertIsArray($removalsInterstate);
