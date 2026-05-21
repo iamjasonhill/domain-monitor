@@ -325,6 +325,7 @@ class PublishedBrandSurfaceApiTest extends TestCase
 
         $thirdBatchHostnames = [
             'mymovehub.backloading-services.com.au',
+            'quotes.interstate-removals.com.au',
             'mymovehub.backloadingremovals.com.au',
             'portal.movemycar.com.au',
             'quotes.wemove.com.au',
@@ -376,10 +377,10 @@ class PublishedBrandSurfaceApiTest extends TestCase
             ->assertJsonCount(count($thirdBatchHostnames), 'surfaces')
             ->assertJsonPath('surfaces.0.hostname', 'mymovehub.backloading-services.com.au')
             ->assertJsonPath('surfaces.0.links.household_quote_url', 'https://mymovehub.backloading-services.com.au/quote/household')
-            ->assertJsonPath('surfaces.2.hostname', 'portal.movemycar.com.au')
-            ->assertJsonPath('surfaces.2.links.vehicle_quote_url', 'https://portal.movemycar.com.au/quote/vehicle')
-            ->assertJsonPath('surfaces.17.hostname', 'moving.allianceremovals.com.au')
-            ->assertJsonPath('surfaces.17.links.booking_url', 'https://moving.allianceremovals.com.au/booking/create');
+            ->assertJsonPath('surfaces.3.hostname', 'portal.movemycar.com.au')
+            ->assertJsonPath('surfaces.3.links.vehicle_quote_url', 'https://portal.movemycar.com.au/quote/vehicle')
+            ->assertJsonPath('surfaces.18.hostname', 'moving.allianceremovals.com.au')
+            ->assertJsonPath('surfaces.18.links.booking_url', 'https://moving.allianceremovals.com.au/booking/create');
 
         $publishedHostnames = collect($response->json('surfaces'))->pluck('hostname')->all();
         $surfacesByHostname = collect($response->json('surfaces'))->keyBy('hostname');
@@ -418,6 +419,50 @@ class PublishedBrandSurfaceApiTest extends TestCase
         $this->assertSame('primary', data_get($movingAgain, 'navigation_intent.link_prominence.household_quote'));
         $this->assertSame('secondary', data_get($movingAgain, 'navigation_intent.link_prominence.vehicle_quote'));
         $this->assertSame('https://removalistquotes.movingagain.com.au/quote/vehicle', data_get($movingAgain, 'links.vehicle_quote_url'));
+
+        $backloadingServices = $surfacesByHostname->get('mymovehub.backloading-services.com.au');
+        $this->assertIsArray($backloadingServices);
+        $this->assertSame('Move interstate with practical backloading', data_get($backloadingServices, 'copy.headline'));
+        $this->assertSame('"Oswald", Arial, ui-sans-serif, system-ui, sans-serif', data_get($backloadingServices, 'theme.fonts.heading_family'));
+        $this->assertSame('#bc4123', data_get($backloadingServices, 'theme.colors.accent'));
+        $this->assertSame('#253043', data_get($backloadingServices, 'theme.colors.header_background'));
+        $this->assertSame('#bc4123', data_get($backloadingServices, 'theme.colors.hero_gradient_mid'));
+        $this->assertSame('#253043', data_get($backloadingServices, 'theme.exact_tokens.dark_card.background'));
+        $this->assertSame('mixed_quote', data_get($backloadingServices, 'navigation_intent.primary_journey'));
+
+        $backloadingServicesQuotes = $surfacesByHostname->get('removalquotes.backloading-services.com.au');
+        $this->assertIsArray($backloadingServicesQuotes);
+        $this->assertSame('Move interstate with practical backloading', data_get($backloadingServicesQuotes, 'copy.headline'));
+        $this->assertSame('#253043', data_get($backloadingServicesQuotes, 'theme.colors.header_background'));
+        $this->assertSame('#bc4123', data_get($backloadingServicesQuotes, 'theme.exact_tokens.primary_cta.background'));
+        $this->assertSame('mixed_quote', data_get($backloadingServicesQuotes, 'navigation_intent.primary_journey'));
+
+        $interstateRemovals = $surfacesByHostname->get('quotes.interstate-removals.com.au');
+        $this->assertIsArray($interstateRemovals);
+        $this->assertSame('Plan your interstate move with less friction', data_get($interstateRemovals, 'copy.headline'));
+        $this->assertSame('"Poppins", Arial, ui-sans-serif, system-ui, sans-serif', data_get($interstateRemovals, 'theme.fonts.heading_family'));
+        $this->assertSame('#31cdcf', data_get($interstateRemovals, 'theme.colors.accent'));
+        $this->assertSame('#005a87', data_get($interstateRemovals, 'theme.colors.header_background'));
+        $this->assertSame('#006ba1', data_get($interstateRemovals, 'theme.colors.hero_gradient_mid'));
+        $this->assertSame('#005a87', data_get($interstateRemovals, 'theme.exact_tokens.dark_card.background'));
+        $this->assertSame('mixed_quote', data_get($interstateRemovals, 'navigation_intent.primary_journey'));
+
+        $interstateRemovalsPortal = $surfacesByHostname->get('removalportal.interstate-removals.com.au');
+        $this->assertIsArray($interstateRemovalsPortal);
+        $this->assertSame('Open the Interstate Removals support portal', data_get($interstateRemovalsPortal, 'copy.headline'));
+        $this->assertSame('#005a87', data_get($interstateRemovalsPortal, 'theme.colors.header_background'));
+        $this->assertSame('#005a87', data_get($interstateRemovalsPortal, 'theme.exact_tokens.primary_cta.background'));
+        $this->assertSame('customer_portal', data_get($interstateRemovalsPortal, 'navigation_intent.primary_journey'));
+
+        $removalsInterstate = $surfacesByHostname->get('quoting.removalsinterstate.com.au');
+        $this->assertIsArray($removalsInterstate);
+        $this->assertSame('Compare interstate removalist quotes', data_get($removalsInterstate, 'copy.headline'));
+        $this->assertSame('"Titillium Web", Arial, ui-sans-serif, system-ui, sans-serif', data_get($removalsInterstate, 'theme.fonts.heading_family'));
+        $this->assertSame('#ff3f2e', data_get($removalsInterstate, 'theme.colors.accent'));
+        $this->assertSame('#282f38', data_get($removalsInterstate, 'theme.colors.header_background'));
+        $this->assertSame('#47525f', data_get($removalsInterstate, 'theme.colors.hero_gradient_mid'));
+        $this->assertSame('#282f38', data_get($removalsInterstate, 'theme.exact_tokens.dark_card.background'));
+        $this->assertSame('mixed_quote', data_get($removalsInterstate, 'navigation_intent.primary_journey'));
 
         $backloadingRemovals = $surfacesByHostname->get('mymovehub.backloadingremovals.com.au');
         $this->assertIsArray($backloadingRemovals);
