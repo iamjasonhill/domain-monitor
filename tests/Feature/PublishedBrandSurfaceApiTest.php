@@ -150,6 +150,8 @@ class PublishedBrandSurfaceApiTest extends TestCase
             ->assertJsonPath('surfaces.1.authority.owning_marketing_domain', 'discountbackloading.com.au')
             ->assertJsonPath('surfaces.1.authority.runtime_renderer_owner', 'MoverooCombined')
             ->assertJsonPath('surfaces.1.authority.fallback_policy', 'strict_no_local_brand_fallback')
+            ->assertJsonPath('surfaces.1.navigation_intent.primary_journey', 'mixed_quote')
+            ->assertJsonPath('surfaces.1.navigation_intent.link_prominence.household_quote', 'primary')
             ->assertJsonPath('surfaces.1.visual_identity.status', 'approved')
             ->assertJsonPath('surfaces.1.visual_identity.source_hostname', 'discountbackloading.com.au')
             ->assertJsonPath('surfaces.1.visual_identity.font_pairing.heading', 'fraunces')
@@ -173,7 +175,17 @@ class PublishedBrandSurfaceApiTest extends TestCase
             ->assertJsonPath('surfaces.4.hostname', 'portal.supercheapcartransport.com.au')
             ->assertJsonPath('surfaces.4.property_slug', 'supercheapcartransport-com-au')
             ->assertJsonPath('surfaces.4.behavior.show_email_publicly', false)
+            ->assertJsonPath('surfaces.4.navigation.show_household_quote_link', true)
+            ->assertJsonPath('surfaces.4.navigation.show_booking_link', true)
+            ->assertJsonPath('surfaces.4.navigation.show_customer_portal_link', true)
+            ->assertJsonPath('surfaces.4.navigation_intent.primary_journey', 'vehicle_quote')
+            ->assertJsonPath('surfaces.4.navigation_intent.secondary_journeys.0', 'household_quote')
+            ->assertJsonPath('surfaces.4.navigation_intent.link_prominence.vehicle_quote', 'primary')
+            ->assertJsonPath('surfaces.4.navigation_intent.link_prominence.household_quote', 'secondary')
+            ->assertJsonPath('surfaces.4.links.household_quote_url', 'https://portal.supercheapcartransport.com.au/quote/household')
             ->assertJsonPath('surfaces.4.links.vehicle_quote_url', 'https://portal.supercheapcartransport.com.au/quote/vehicle')
+            ->assertJsonPath('surfaces.4.links.booking_url', 'https://portal.supercheapcartransport.com.au/booking/create')
+            ->assertJsonPath('surfaces.4.links.customer_portal_url', 'https://portal.supercheapcartransport.com.au/customer/login')
             ->assertJsonPath('surfaces.4.visual_identity.status', 'approved')
             ->assertJsonPath('surfaces.4.visual_identity.source_hostname', 'supercheapcartransport.com.au')
             ->assertJsonPath('surfaces.4.visual_identity.font_pairing.heading', 'manrope')
@@ -367,6 +379,16 @@ class PublishedBrandSurfaceApiTest extends TestCase
         $this->assertSame('barlow_condensed', data_get($interstateCarCarriers, 'visual_identity.font_pairing.heading'));
         $this->assertSame('industrial_vehicle', data_get($interstateCarCarriers, 'visual_identity.style.visual_profile'));
         $this->assertSame('dark_industrial', data_get($interstateCarCarriers, 'visual_identity.style.hero_treatment'));
+        $this->assertSame(true, data_get($interstateCarCarriers, 'navigation.show_household_quote_link'));
+        $this->assertSame(true, data_get($interstateCarCarriers, 'navigation.show_booking_link'));
+        $this->assertSame(true, data_get($interstateCarCarriers, 'navigation.show_customer_portal_link'));
+        $this->assertSame('vehicle_quote', data_get($interstateCarCarriers, 'navigation_intent.primary_journey'));
+        $this->assertSame(['household_quote', 'booking', 'contact', 'customer_portal'], data_get($interstateCarCarriers, 'navigation_intent.secondary_journeys'));
+        $this->assertSame('primary', data_get($interstateCarCarriers, 'navigation_intent.link_prominence.vehicle_quote'));
+        $this->assertSame('secondary', data_get($interstateCarCarriers, 'navigation_intent.link_prominence.household_quote'));
+        $this->assertSame('https://quoting.interstatecarcarriers.com.au/quote/household', data_get($interstateCarCarriers, 'links.household_quote_url'));
+        $this->assertSame('https://quoting.interstatecarcarriers.com.au/booking/create', data_get($interstateCarCarriers, 'links.booking_url'));
+        $this->assertSame('https://quoting.interstatecarcarriers.com.au/customer/login', data_get($interstateCarCarriers, 'links.customer_portal_url'));
 
         foreach ([
             'cartransport.movingagain.com.au',
