@@ -212,6 +212,7 @@ class PublishedBrandSurfaceFeedBuilder
             'copy' => $this->copy($property, $journeyType, $metadata),
             'theme' => $this->theme($property, $metadata),
             'navigation' => $this->navigation($journeyType, $metadata),
+            'navigation_intent' => $this->navigationIntent($journeyType, $metadata),
             'behavior' => $this->behavior($metadata),
             'links' => $this->links($property, $journeyType, $metadata),
             'contact' => $this->contact($metadata),
@@ -255,6 +256,7 @@ class PublishedBrandSurfaceFeedBuilder
             'copy' => $this->copy($property, $journeyType, $metadata),
             'theme' => $this->theme($property, $metadata),
             'navigation' => $this->navigation($journeyType, $metadata),
+            'navigation_intent' => $this->navigationIntent($journeyType, $metadata),
             'behavior' => $this->behavior($metadata),
             'links' => $this->links($property, $journeyType, $metadata),
             'contact' => $this->contact($metadata),
@@ -336,6 +338,7 @@ class PublishedBrandSurfaceFeedBuilder
             'copy' => $this->copy($property, $journeyType, $metadata),
             'theme' => $this->theme($property, $metadata),
             'navigation' => $this->navigation($journeyType, $metadata),
+            'navigation_intent' => $this->navigationIntent($journeyType, $metadata),
             'behavior' => $this->behavior($metadata),
             'links' => $this->links($property, $journeyType, $metadata),
             'contact' => $this->contact($metadata),
@@ -511,6 +514,53 @@ class PublishedBrandSurfaceFeedBuilder
             'show_provider_login_link' => false,
             'show_admin_link' => false,
         ], is_array($navigation) ? $navigation : []);
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
+     * @return array{
+     *   primary_journey: string,
+     *   secondary_journeys: array<int, string>,
+     *   link_prominence: array<string, string>
+     * }
+     */
+    private function navigationIntent(?string $journeyType, array $metadata): array
+    {
+        $configured = $metadata['navigation_intent'] ?? [];
+        $primaryJourney = is_string($configured['primary_journey'] ?? null) && trim($configured['primary_journey']) !== ''
+            ? trim($configured['primary_journey'])
+            : ($journeyType === 'vehicle_quote' ? 'vehicle_quote' : 'household_quote');
+        $secondaryJourneys = $configured['secondary_journeys'] ?? [];
+        $linkProminence = $configured['link_prominence'] ?? [];
+
+        if (! is_array($secondaryJourneys)) {
+            $secondaryJourneys = [];
+        }
+
+        if (! is_array($linkProminence)) {
+            $linkProminence = [];
+        }
+
+        $defaultSecondaryJourneys = $primaryJourney === 'vehicle_quote'
+            ? ['household_quote', 'booking', 'contact', 'customer_portal']
+            : ['vehicle_quote', 'booking', 'contact', 'customer_portal'];
+
+        return [
+            'primary_journey' => $primaryJourney,
+            'secondary_journeys' => collect($secondaryJourneys === [] ? $defaultSecondaryJourneys : $secondaryJourneys)
+                ->filter(fn (mixed $value): bool => is_string($value) && trim($value) !== '')
+                ->map(fn (string $value): string => trim($value))
+                ->unique()
+                ->values()
+                ->all(),
+            'link_prominence' => array_replace([
+                'household_quote' => $primaryJourney === 'household_quote' || $primaryJourney === 'mixed_quote' ? 'primary' : 'secondary',
+                'vehicle_quote' => $primaryJourney === 'vehicle_quote' ? 'primary' : 'secondary',
+                'booking' => 'secondary',
+                'contact' => 'secondary',
+                'customer_portal' => 'secondary',
+            ], array_filter($linkProminence, fn (mixed $value): bool => is_string($value) && trim($value) !== '')),
+        ];
     }
 
     /**
