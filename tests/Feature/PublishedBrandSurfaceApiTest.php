@@ -424,7 +424,9 @@ class PublishedBrandSurfaceApiTest extends TestCase
         $this->assertSame('Move interstate with less wasted space', data_get($backloadingRemovals, 'copy.headline'));
         $this->assertSame('"Raleway", Inter, ui-sans-serif, system-ui, sans-serif', data_get($backloadingRemovals, 'theme.fonts.heading_family'));
         $this->assertSame('#ee0007', data_get($backloadingRemovals, 'theme.colors.accent'));
-        $this->assertSame('#0b0521', data_get($backloadingRemovals, 'theme.colors.header_background'));
+        $this->assertSame('#212121', data_get($backloadingRemovals, 'theme.colors.header_background'));
+        $this->assertSame('#4a0b0d', data_get($backloadingRemovals, 'theme.colors.hero_gradient_mid'));
+        $this->assertSame('#212121', data_get($backloadingRemovals, 'theme.exact_tokens.dark_card.background'));
         $this->assertSame('#ee0007', data_get($backloadingRemovals, 'theme.exact_tokens.primary_cta.background'));
         $this->assertSame('mixed_quote', data_get($backloadingRemovals, 'navigation_intent.primary_journey'));
         $this->assertSame('secondary', data_get($backloadingRemovals, 'navigation_intent.link_prominence.vehicle_quote'));
@@ -433,7 +435,9 @@ class PublishedBrandSurfaceApiTest extends TestCase
         $this->assertIsArray($weMove);
         $this->assertSame('Move interstate without the runaround', data_get($weMove, 'copy.headline'));
         $this->assertSame('#ef0092', data_get($weMove, 'theme.colors.accent'));
-        $this->assertSame('#0b0521', data_get($weMove, 'theme.colors.header_background'));
+        $this->assertSame('#18091f', data_get($weMove, 'theme.colors.header_background'));
+        $this->assertSame('#7a0053', data_get($weMove, 'theme.colors.hero_gradient_mid'));
+        $this->assertSame('#18091f', data_get($weMove, 'theme.exact_tokens.dark_card.background'));
         $this->assertSame('#ef0092', data_get($weMove, 'theme.exact_tokens.primary_cta.background'));
         $this->assertSame(['household_quote', 'vehicle_quote', 'booking', 'contact'], data_get($weMove, 'navigation_intent.secondary_journeys'));
 
@@ -442,7 +446,9 @@ class PublishedBrandSurfaceApiTest extends TestCase
         $this->assertSame('Save money on your next move', data_get($backloadingAustralia, 'copy.headline'));
         $this->assertSame('"Oswald", Inter, ui-sans-serif, system-ui, sans-serif', data_get($backloadingAustralia, 'theme.fonts.heading_family'));
         $this->assertSame('#bc4123', data_get($backloadingAustralia, 'theme.colors.accent'));
-        $this->assertSame('#0b0521', data_get($backloadingAustralia, 'theme.colors.header_background'));
+        $this->assertSame('#273041', data_get($backloadingAustralia, 'theme.colors.header_background'));
+        $this->assertSame('#8f2f1a', data_get($backloadingAustralia, 'theme.colors.hero_gradient_mid'));
+        $this->assertSame('#273041', data_get($backloadingAustralia, 'theme.exact_tokens.dark_card.background'));
         $this->assertSame('#bc4123', data_get($backloadingAustralia, 'theme.exact_tokens.primary_cta.background'));
         $this->assertSame('primary', data_get($backloadingAustralia, 'navigation_intent.link_prominence.household_quote'));
 
