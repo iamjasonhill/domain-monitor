@@ -121,6 +121,40 @@ Authoritative seed:
 
 - `mymoveportal.discountbackloading.com.au`: first authoritative app-served surface for the `discountbackloading.com.au` marketing domain. Domain Monitor publishes the concrete quote, booking, contact, brand, theme, ownership, and analytics metadata before MoverooCombined treats the host as authoritative.
 
+Visual differentiation rollout status:
+
+The following published hostnames have had a dedicated stronger visual pass in Domain Monitor and are marked as done for this current sweep:
+
+- `mymoveportal.discountbackloading.com.au`
+- `portal.supercheapcartransport.com.au`
+- `quoting.interstatecarcarriers.com.au`
+- `quotes.moveroo.com.au`
+- `removalistquotes.movingagain.com.au`
+- `mymovehub.backloadingremovals.com.au`
+- `quotes.wemove.com.au`
+- `quoting.backloading-au.com.au`
+- `mymovehub.backloading-services.com.au`
+- `removalquotes.backloading-services.com.au`
+- `quotes.interstate-removals.com.au`
+- `removalportal.interstate-removals.com.au`
+- `quoting.removalsinterstate.com.au`
+
+The following hostnames remain published but still need a later dedicated visual pass:
+
+- `quoting.movingcars.com.au`
+- `portal.movemycar.com.au`
+- `quoting.cartransport.au`
+- `quoting.cartransportaus.com.au`
+- `quoting.cartransportwithpersonalitems.com.au`
+- `quoting.interstate-car-transport.com.au`
+- `quoting.perthinterstateremovalists.com.au`
+- `quoting.transportnondrivablecars.com.au`
+- `removalists.moveroo.com.au`
+- `moving.allianceremovals.com.au`
+- `quoteandbook.mover.com.au`
+
+This status is about visual-token quality only. It does not change whether a hostname is published, authoritative, retired, or app-served.
+
 `quoting.vehicle.net.au` is legacy quoting and is not the active #2084 pilot test host. Discount Backloading is the selected pilot because Domain Monitor production records the current property-specific quote portal and target links:
 
 - production URL: `https://discountbackloading.com.au`
