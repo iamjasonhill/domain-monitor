@@ -120,11 +120,23 @@ class PublishedBrandSurfaceApiTest extends TestCase
             ->assertJsonPath('surfaces.0.surface_type', 'quote')
             ->assertJsonPath('surfaces.0.canonical_hostname', 'quotes.moveroo.com.au')
             ->assertJsonPath('surfaces.0.brand.display_name', 'Moveroo')
-            ->assertJsonPath('surfaces.0.theme.colors.accent', '#2563eb')
+            ->assertJsonPath('surfaces.0.copy.headline', 'Start one coordinated move')
+            ->assertJsonPath('surfaces.0.copy.subheading', 'Tell us about the household move, vehicle transport, or extra freight you need and we will shape the right quote path.')
+            ->assertJsonPath('surfaces.0.theme.colors.accent', '#00bb7f')
+            ->assertJsonPath('surfaces.0.theme.colors.header_background', '#052e2b')
+            ->assertJsonPath('surfaces.0.theme.exact_tokens.primary_cta.background', '#00bb7f')
             ->assertJsonPath('surfaces.0.navigation.show_household_quote_link', true)
+            ->assertJsonPath('surfaces.0.navigation.show_vehicle_quote_link', true)
+            ->assertJsonPath('surfaces.0.navigation.show_customer_portal_link', true)
+            ->assertJsonPath('surfaces.0.navigation.show_customer_portal_in_header', true)
+            ->assertJsonPath('surfaces.0.navigation_intent.primary_journey', 'mixed_quote')
+            ->assertJsonPath('surfaces.0.navigation_intent.secondary_journeys.1', 'vehicle_quote')
+            ->assertJsonPath('surfaces.0.navigation_intent.link_prominence.household_quote', 'primary')
+            ->assertJsonPath('surfaces.0.navigation_intent.link_prominence.vehicle_quote', 'secondary')
             ->assertJsonPath('surfaces.0.behavior.allow_admin_links', false)
             ->assertJsonPath('surfaces.0.behavior.show_email_publicly', false)
             ->assertJsonPath('surfaces.0.links.primary_cta_route', 'household.quote')
+            ->assertJsonPath('surfaces.0.links.vehicle_quote_url', '/quote/vehicle')
             ->assertJsonPath('surfaces.0.contact.public_email', 'removals@moveroo.com.au')
             ->assertJsonPath('surfaces.0.analytics.status', 'linked')
             ->assertJsonPath('surfaces.0.analytics.runtime_context_key', 'quotes.moveroo.com.au')
@@ -389,6 +401,23 @@ class PublishedBrandSurfaceApiTest extends TestCase
         $this->assertSame('https://quoting.interstatecarcarriers.com.au/quote/household', data_get($interstateCarCarriers, 'links.household_quote_url'));
         $this->assertSame('https://quoting.interstatecarcarriers.com.au/booking/create', data_get($interstateCarCarriers, 'links.booking_url'));
         $this->assertSame('https://quoting.interstatecarcarriers.com.au/customer/login', data_get($interstateCarCarriers, 'links.customer_portal_url'));
+
+        $movingAgain = $surfacesByHostname->get('removalistquotes.movingagain.com.au');
+        $this->assertIsArray($movingAgain);
+        $this->assertSame('Moving Again', data_get($movingAgain, 'brand.display_name'));
+        $this->assertSame('Moving made simple since 1995', data_get($movingAgain, 'copy.headline'));
+        $this->assertSame('Get a practical interstate moving, backloading, or vehicle transport quote from the long-running Moving Again team.', data_get($movingAgain, 'copy.subheading'));
+        $this->assertSame('#d90000', data_get($movingAgain, 'theme.colors.accent'));
+        $this->assertSame('#800005', data_get($movingAgain, 'theme.colors.header_background'));
+        $this->assertSame('#d90000', data_get($movingAgain, 'theme.exact_tokens.primary_cta.background'));
+        $this->assertSame(true, data_get($movingAgain, 'navigation.show_household_quote_link'));
+        $this->assertSame(true, data_get($movingAgain, 'navigation.show_vehicle_quote_link'));
+        $this->assertSame(false, data_get($movingAgain, 'navigation.show_customer_portal_link'));
+        $this->assertSame('mixed_quote', data_get($movingAgain, 'navigation_intent.primary_journey'));
+        $this->assertSame(['household_quote', 'vehicle_quote', 'booking', 'contact'], data_get($movingAgain, 'navigation_intent.secondary_journeys'));
+        $this->assertSame('primary', data_get($movingAgain, 'navigation_intent.link_prominence.household_quote'));
+        $this->assertSame('secondary', data_get($movingAgain, 'navigation_intent.link_prominence.vehicle_quote'));
+        $this->assertSame('https://removalistquotes.movingagain.com.au/quote/vehicle', data_get($movingAgain, 'links.vehicle_quote_url'));
 
         foreach ([
             'cartransport.movingagain.com.au',
