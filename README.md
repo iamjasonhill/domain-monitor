@@ -125,6 +125,7 @@ The detailed project documentation has been moved to the `docs/` folder:
 - [Project Overview (Completed Steps)](docs/PROJECT-PLAN.md)
 - [Project Setup Guide](docs/PROJECT-SETUP-GUIDE.md)
 - [System Boundaries](docs/BOUNDARIES.md)
+- [Domain Monitor V2 Lean Rebuild Brief](docs/V2-LEAN-REBUILD-BRIEF.md)
 - [SEO Baseline Workflow](docs/SEO-BASELINE-WORKFLOW.md)
 
 ### Deployment & Ops

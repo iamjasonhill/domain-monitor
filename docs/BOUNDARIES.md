@@ -1,5 +1,7 @@
 # Domain Monitor Boundaries
 
+See also: [Domain Monitor V2 Lean Rebuild Brief](V2-LEAN-REBUILD-BRIEF.md).
+
 `domain-monitor` is the source of truth for current operational state.
 
 It should answer questions like:
@@ -32,6 +34,14 @@ It should answer questions like:
 - historical change logs
 - operator memory and decision context
 - recommendation strategy across systems
+- SEO opportunities, page-quality checks, GSC/GA4/Bing analytics evidence,
+  Lighthouse/browser-render checks, or website-standard remediation
+- cross-system draft actions, approval queues, and route-to-repo decisions
+
+Those responsibilities now belong to SEO Champion, MM-Google, Fleet, and
+Bossman depending on the issue type. Domain Monitor should expose operational
+truth that those systems can consume; it should not duplicate their decision
+loops.
 
 ## Write Rules
 
