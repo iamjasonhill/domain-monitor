@@ -35,6 +35,7 @@ Domain Monitor does not answer:
 - Which cross-system issue should be routed first.
 - Which website repo should implement a content/technical SEO fix.
 - Long-term business priority or recommendation strategy.
+- Whether an operational warning should become routed work.
 
 ## Keep In Domain Monitor V2
 
@@ -55,14 +56,26 @@ Domain Monitor does not answer:
   - web properties,
   - linked domains/subdomains,
   - canonical production URL,
+  - property type and role,
   - current platform,
   - current host/provider,
-  - controller/repository references as operational metadata.
+  - controller/repository/deployment references as operational metadata,
+  - stable external ids for related systems.
 - Basic availability:
   - DNS,
   - HTTP status,
   - SSL expiry/validity,
   - uptime/current reachability.
+- Operational findings:
+  - domain, DNS, mail-plane, SSL, HTTP availability, registrar, lifecycle, and
+    compliance findings,
+  - finding state such as detected, still present, resolved, stale, suppressed,
+    or not applicable,
+  - stable finding ids that Bossman can reference.
+- Source observations:
+  - timestamped statements from Laravel legacy, Synergy, DNS, HTTP, SSL, mail,
+    and compliance probes,
+  - separated from accepted operational truth.
 - Narrow APIs:
   - domain list/detail,
   - web property summary/detail,
@@ -90,6 +103,10 @@ Move to Fleet:
   standards, approved external-link policy, repo expectations, and remediation
   playbooks.
 
+Domain Monitor may store which repo, deployment project, or controller currently
+serves a property. Fleet owns whether that controller meets standards and what
+remediation should happen.
+
 Move to Bossman:
 
 - cross-system priority queues,
@@ -100,6 +117,11 @@ Move to Bossman:
   approvals,
   duplicate detection,
   execution history.
+
+Domain Monitor may publish operational warnings and allowed action shapes, but
+Bossman decides whether those warnings become routed actions.
+Domain Monitor may keep its own operational findings ledger for domain-owned
+checks, but not priority, approval, route-to-repo, or execution state.
 
 Archive or keep read-only until migrated:
 
@@ -121,25 +143,95 @@ Before removing anything:
 4. document the retirement,
 5. verify no production consumer still depends on it.
 
+The existing Laravel `WebProperty` concept is useful, but its current model and
+API payload have accumulated responsibilities that v2 must split apart. Preserve
+the identity and operational mapping facts; do not automatically copy analytics,
+Search Console, Fleet technical SEO, conversion-surface policy, or priority-like
+payloads into v2 just because they sit on the legacy WebProperty today.
+
+Domain Monitor V2 `Web Property` should be limited to property identity and
+operational mapping: type, status, role, canonical URL/host, linked domains,
+platform, hosting, and stable external references to owner systems. It should
+link to analytics, SEO, Fleet, and Bossman records rather than owning their
+evidence or decisions.
+
+Accepted operational truth must be separated from source observations and
+suggested fact updates. If Laravel legacy, Synergy, live DNS, or another probe
+disagree, v2 should expose the conflict instead of silently letting the newest
+source overwrite truth.
+
 ## Suggested V2 Shape
 
-The cleanest direction is a new lean implementation path rather than continuing
-to expand the current Laravel app surface.
+The cleanest direction is a new lean system rather than continuing to expand the
+current Laravel app surface.
 
 Preferred approach:
 
-- keep the current repo as the truth source during transition,
-- add a `v2` contract and narrow API layer first,
-- prove the narrowed endpoints from current data,
-- then decide whether the final v2 app stays in this Laravel repo or becomes a
-  clean new app backed by a migrated schema.
+- build Domain Monitor v2 as a clean agent-first system,
+- create v2 in a separate repo from the legacy Laravel app,
+- treat the current Laravel app as a legacy source/reference during transition,
+- mine, compare, and migrate only the domain-monitoring facts v2 still owns,
+- expose stable v2 contracts before building broad UI surfaces,
+- retire old Laravel surfaces deliberately once their useful data and consumers
+  have been accounted for.
 
-Do not perform a large destructive refactor first. Build the small v2 contract
-over known data, then retire old surfaces deliberately.
+Do not perform a large destructive refactor of the Laravel app first. Build the
+clean v2 spine beside it, prove the contracts, then retire old surfaces
+deliberately.
+
+## Greenfield Stack Direction
+
+Domain Monitor v2 should be designed as if starting fresh.
+
+Preferred stack:
+
+- Next.js App Router for the operator UI and API routes,
+- TypeScript for shared contracts and domain rules,
+- Supabase Postgres for the durable domain/property/source-of-truth schema,
+- Supabase Auth or controlled API tokens for users and agents,
+- Vercel for hosting the UI/API,
+- scheduled workers for registrar, DNS, SSL, HTTP, mail-plane, and compliance
+  probes.
+
+The current Laravel application remains useful as:
+
+- a legacy data source,
+- an implementation reference for Synergy and monitoring behavior,
+- a comparison point during migration,
+- a fallback until v2 has proven coverage.
+
+It is not the default target architecture for v2.
+
+V2 should live in a separate repo. This keeps the clean architecture boundary
+visible and avoids inheriting Laravel models, queues, UI routes, and historical
+SEO/analytics assumptions by folder proximity.
 
 ## First Slice
 
-Build and verify two read-only v2 endpoints:
+Build the clean schema and import/mirror a narrow set of legacy Laravel facts
+before adding fresh v2 probes.
+
+First import/mirror:
+
+- domains,
+- web property identity and operational mapping,
+- domain-to-property links,
+- registrar/Synergy expiry and status,
+- nameserver/DNS summary,
+- mail-plane intended use,
+- platform/hosting/controller references,
+- current operational findings that Domain Monitor still owns.
+
+Do not import/mirror:
+
+- GSC/GA4/Bing/Matomo coverage,
+- SEO opportunities,
+- Lighthouse/browser/render/page checks,
+- internal/broken/external-link checks,
+- Fleet website standards,
+- Bossman priority/routing/action state.
+
+Then verify two read-only v2 endpoints:
 
 - `GET /api/v2/domains`
 - `GET /api/v2/web-properties`
@@ -171,6 +263,10 @@ They should not return:
 
 - Agent-friendly from day one.
 - Read-only first.
+- Write access starts as reviewed proposed changes, not silent direct mutation
+  of operational truth.
+- Every important entity should expose both human-facing state and an
+  agent-facing action contract.
 - Include freshness and source timestamps.
 - Include confidence/reason fields where current truth is inferred.
 - Include explicit `not_applicable` states for parked/email-only/no-mail domains.
@@ -178,6 +274,15 @@ They should not return:
   Bossman or specialist systems.
 - Use stable source ids so Bossman, Fleet, SEO Champion, and MM-Google can link
   back without copying raw Domain Monitor data.
+- For warnings or findings, include a stable issue code, evidence, confidence,
+  freshness, owning system, allowed next actions, and whether the caller can
+  observe, suggest, draft, or execute.
+- Do not require agents to infer safe actions from raw fields alone.
+- Do not create routed actions directly from Domain Monitor; publish facts and
+  findings for Bossman to decide on.
+- Let agents submit evidence-backed suggested fact updates, such as "appears
+  parked" or "appears hosted on Vercel"; accepted updates become operational
+  truth only after review or an approved Bossman workflow.
 
 ## UI Direction
 
@@ -196,10 +301,9 @@ cross-system priority queues inside Domain Monitor.
 
 ## Open Decisions
 
-- Should final v2 remain Laravel, or should we create a clean app once the v2
-  API contract is proven?
-- Does `MonitoringFinding` remain as a local outbox/event table, or move fully
-  to Bossman?
+- What should the separate v2 repo be named and where should it live in
+  `/Users/jasonhill/Projects`?
+- Which Supabase project should host v2, or should a new one be created?
 - Do published brand/conversion surfaces remain property truth here, or move to
   Fleet/Moveroo/Fleet Control?
 - Which historical tables should be exported to SEO Champion before retirement?
@@ -207,10 +311,12 @@ cross-system priority queues inside Domain Monitor.
 
 ## Acceptance Criteria For The First Slice
 
+- v2 schema separates Domain, Web Property, Controller Reference, Operational
+  Finding, Source Observation, and Suggested Fact Update concepts.
+- legacy Laravel data is mirrored only for the approved domain-monitoring facts.
 - v2 endpoints return useful estate truth for all current monitored domains.
 - v2 endpoints omit SEO/analytics/priority bloat.
 - current v1 endpoints are untouched during the proof.
 - at least one consumer can read the v2 contract without needing legacy fields.
 - docs list moved responsibilities and their new owners.
 - no old data is deleted.
-
