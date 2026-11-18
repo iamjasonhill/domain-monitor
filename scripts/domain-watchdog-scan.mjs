@@ -50,7 +50,7 @@ const DEFAULT_FLEET_SITES = [
   { repo: 'ma-catrans-program', domain: 'cartransport.movingagain.com.au', name: 'Cartransport Moving Again' },
   { repo: 'moveroowebsite', domain: 'moveroo.com.au', name: 'Moveroo Australia' },
   { repo: 'ws-cartranspor-au', domain: 'cartransport.au', name: 'Cartransport' },
-  { repo: 'ws-movingcars', domain: 'wsmovingcars.com.au', name: 'moving-cars' },
+  { repo: 'ws-movingcars', domain: null, name: 'moving-cars (Staging)', lifecycleStatus: 'staging', isStaging: true },
 ];
 
 /**
@@ -65,15 +65,18 @@ function discoverFleetDomains() {
       if (fs.existsSync(manifestPath)) {
         try {
           const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+          const isStaging = manifest.site?.lifecycleStatus === 'staging' || !manifest.site?.domain;
           sites.push({
             siteId: dir,
             name: manifest.site?.name || dir,
-            domain: manifest.site?.domain || '',
-            canonicalUrl: manifest.site?.canonicalUrl || '',
+            domain: manifest.site?.domain || null,
+            canonicalUrl: manifest.site?.canonicalUrl || null,
             deployTarget: manifest.metadata?.deployTarget || 'Vercel',
+            lifecycleStatus: manifest.site?.lifecycleStatus || (isStaging ? 'staging' : 'active'),
+            isStaging,
           });
         } catch {
-          // fallback to site entry
+          // fallback
         }
       }
     }
@@ -84,8 +87,10 @@ function discoverFleetDomains() {
       siteId: s.repo,
       name: s.name,
       domain: s.domain,
-      canonicalUrl: `https://${s.domain}`,
+      canonicalUrl: s.domain ? `https://${s.domain}` : null,
       deployTarget: 'Vercel',
+      lifecycleStatus: s.lifecycleStatus || 'active',
+      isStaging: s.isStaging || false,
     }));
   }
 
@@ -292,7 +297,6 @@ async function checkHttp(domain, timeoutMs = 8000) {
  * Query auDA WHOIS for .au domains
  */
 async function queryAuWhois(domain) {
-  // Only query base .au domains
   const parts = domain.split('.');
   let apexDomain = domain;
   if (parts.length > 2) {
@@ -333,8 +337,11 @@ async function run() {
   console.log('🐕 Starting Domain Watchdog Audit (Helper #3)...');
   const startTime = Date.now();
 
-  const sites = discoverFleetDomains();
-  console.log(`Discovered ${sites.length} fleet domains for operational audit.`);
+  const allSites = discoverFleetDomains();
+  const activeSites = allSites.filter(s => !s.isStaging && s.domain);
+  const stagingSites = allSites.filter(s => s.isStaging || !s.domain);
+
+  console.log(`Discovered ${allSites.length} sites: ${activeSites.length} active production domains, ${stagingSites.length} staging/dev.`);
 
   const domainResults = {};
   let validSslCount = 0;
@@ -343,17 +350,35 @@ async function run() {
   let cloudflareProxied = 0;
   let reachableCount = 0;
 
-  // Run in chunks of 5 to avoid socket exhaustion
+  // 1. Record staging sites immediately without DNS checks
+  for (const site of stagingSites) {
+    domainResults[site.siteId] = {
+      domain: null,
+      siteId: site.siteId,
+      name: site.name,
+      canonicalUrl: null,
+      deployTarget: site.deployTarget,
+      lifecycleStatus: 'staging',
+      status: 'staging',
+      isStaging: true,
+      dns: { nameservers: [], aRecords: [], isCloudflare: false, hasMx: false, hasSpf: false },
+      ssl: { isValid: true, daysRemaining: null, issuer: null, status: 'staging' },
+      http: { isReachable: true, statusCode: 200, responseTimeMs: 0, hasHsts: false },
+      registrar: { registrarName: 'N/A (Staging Workspace)' },
+      auditedAt: new Date().toISOString(),
+    };
+    console.log(`  ⚪ ${site.siteId}: Classified as Staging / Development Workspace (No public domain)`);
+  }
+
+  // 2. Run active domains in chunks of 5
   const chunkSize = 5;
-  for (let i = 0; i < sites.length; i += chunkSize) {
-    const chunk = sites.slice(i, i + chunkSize);
-    console.log(`Scanning domains ${i + 1}-${Math.min(i + chunkSize, sites.length)} of ${sites.length}...`);
+  for (let i = 0; i < activeSites.length; i += chunkSize) {
+    const chunk = activeSites.slice(i, i + chunkSize);
+    console.log(`Scanning domains ${i + 1}-${Math.min(i + chunkSize, activeSites.length)} of ${activeSites.length}...`);
 
     await Promise.all(
       chunk.map(async (site) => {
         const domain = site.domain;
-        if (!domain) return;
-
         const [dnsInfo, sslInfo, httpInfo, whoisInfo] = await Promise.all([
           checkDns(domain),
           checkSsl(domain),
@@ -373,6 +398,7 @@ async function run() {
           name: site.name,
           canonicalUrl: site.canonicalUrl,
           deployTarget: site.deployTarget,
+          lifecycleStatus: 'active',
           status: httpInfo.isReachable ? 'active' : 'warning',
           dns: dnsInfo,
           ssl: sslInfo,
@@ -386,8 +412,8 @@ async function run() {
     );
   }
 
-  const total = sites.length;
-  const healthScorePct = Math.round(((validSslCount + reachableCount) / (total * 2)) * 100);
+  const totalActive = activeSites.length;
+  const healthScorePct = Math.round(((validSslCount + reachableCount) / (totalActive * 2)) * 100);
 
   const ledger = {
     version: 1,
@@ -396,13 +422,15 @@ async function run() {
     lastScanned: new Date().toISOString(),
     scanDurationMs: Date.now() - startTime,
     summary: {
-      totalDomains: total,
+      totalDomains: totalActive,
+      totalSites: allSites.length,
+      stagingSitesCount: stagingSites.length,
       active: reachableCount,
       sslValidCount: validSslCount,
       expiringWithin30Days,
       expiringWithin90Days,
       cloudflareProxied,
-      synergyManaged: total - cloudflareProxied,
+      synergyManaged: totalActive - cloudflareProxied,
       healthScorePct,
     },
     domains: domainResults,
@@ -413,7 +441,7 @@ async function run() {
 
   console.log(`\n🎉 Domain Watchdog Audit Complete in ${((Date.now() - startTime) / 1000).toFixed(1)}s!`);
   console.log(`Ledger written to: ${OUTPUT_LEDGER_PATH}`);
-  console.log(`Summary: ${validSslCount}/${total} SSL Valid • ${reachableCount}/${total} HTTP Reachable • Overall Health: ${healthScorePct}%`);
+  console.log(`Summary: ${validSslCount}/${totalActive} SSL Valid • ${reachableCount}/${totalActive} HTTP Reachable • Overall Health: ${healthScorePct}% (${stagingSites.length} staging)`);
 }
 
 run().catch((err) => {

@@ -2,30 +2,66 @@
   "version": 1,
   "helperId": "domain-monitor",
   "name": "Domain Watchdog",
-  "lastScanned": "2026-11-18T06:24:22.934Z",
-  "scanDurationMs": 5278,
+  "lastScanned": "2026-11-18T06:37:58.949Z",
+  "scanDurationMs": 2895,
   "summary": {
-    "totalDomains": 25,
+    "totalDomains": 24,
+    "totalSites": 25,
+    "stagingSitesCount": 1,
     "active": 24,
     "sslValidCount": 24,
     "expiringWithin30Days": 0,
     "expiringWithin90Days": 24,
     "cloudflareProxied": 0,
-    "synergyManaged": 25,
-    "healthScorePct": 96
+    "synergyManaged": 24,
+    "healthScorePct": 100
   },
   "domains": {
+    "ws-movingcars": {
+      "domain": null,
+      "siteId": "ws-movingcars",
+      "name": "moving-cars (Staging)",
+      "canonicalUrl": null,
+      "deployTarget": "Cloudflare",
+      "lifecycleStatus": "staging",
+      "status": "staging",
+      "isStaging": true,
+      "dns": {
+        "nameservers": [],
+        "aRecords": [],
+        "isCloudflare": false,
+        "hasMx": false,
+        "hasSpf": false
+      },
+      "ssl": {
+        "isValid": true,
+        "daysRemaining": null,
+        "issuer": null,
+        "status": "staging"
+      },
+      "http": {
+        "isReachable": true,
+        "statusCode": 200,
+        "responseTimeMs": 0,
+        "hasHsts": false
+      },
+      "registrar": {
+        "registrarName": "N/A (Staging Workspace)"
+      },
+      "auditedAt": "2026-11-18T06:37:56.062Z"
+    },
     "MM-allianceremovals": {
       "domain": "allianceremovals.com.au",
       "siteId": "MM-allianceremovals",
       "name": "Alliance Removals",
       "canonicalUrl": "https://allianceremovals.com.au",
       "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [
-          "ns3.nameserver.net.au",
           "ns2.nameserver.net.au",
+          "ns3.nameserver.net.au",
           "ns1.nameserver.net.au"
         ],
         "aRecords": [
@@ -50,7 +86,7 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 240,
+        "responseTimeMs": 228,
         "hasHsts": true,
         "serverHeader": "Vercel"
       },
@@ -62,7 +98,7 @@
         "status": "serverRenewProhibited",
         "lastModified": "2026-08-16T01:04:12Z"
       },
-      "auditedAt": "2026-11-18T06:24:17.925Z"
+      "auditedAt": "2026-11-18T06:37:56.319Z"
     },
     "MM-backloading-au.com.au": {
       "domain": "backloading-au.com.au",
@@ -70,12 +106,13 @@
       "name": "Backloading Au",
       "canonicalUrl": "https://backloading-au.com.au",
       "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [
+          "ns3.nameserver.net.au",
           "ns2.nameserver.net.au",
-          "ns1.nameserver.net.au",
-          "ns3.nameserver.net.au"
+          "ns1.nameserver.net.au"
         ],
         "aRecords": [
           "76.76.21.21"
@@ -99,7 +136,7 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 269,
+        "responseTimeMs": 219,
         "hasHsts": true,
         "serverHeader": "Vercel"
       },
@@ -111,7 +148,7 @@
         "status": "serverRenewProhibited",
         "lastModified": "2026-08-15T21:29:09Z"
       },
-      "auditedAt": "2026-11-18T06:24:17.983Z"
+      "auditedAt": "2026-11-18T06:37:56.335Z"
     },
     "MM-backloading-services": {
       "domain": "backloading-services.com.au",
@@ -119,12 +156,13 @@
       "name": "Backloading Services",
       "canonicalUrl": "https://backloading-services.com.au",
       "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [
-          "ns3.nameserver.net.au",
           "ns2.nameserver.net.au",
-          "ns1.nameserver.net.au"
+          "ns1.nameserver.net.au",
+          "ns3.nameserver.net.au"
         ],
         "aRecords": [
           "76.76.21.21"
@@ -148,7 +186,7 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 268,
+        "responseTimeMs": 501,
         "hasHsts": true,
         "serverHeader": "Vercel"
       },
@@ -160,7 +198,7 @@
         "status": "serverRenewProhibited",
         "lastModified": "2026-08-16T01:05:15Z"
       },
-      "auditedAt": "2026-11-18T06:24:17.984Z"
+      "auditedAt": "2026-11-18T06:37:56.619Z"
     },
     "MM-backloadingremovals": {
       "domain": "backloadingremovals.com.au",
@@ -168,11 +206,12 @@
       "name": "Backloading Removals",
       "canonicalUrl": "https://backloadingremovals.com.au",
       "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [
-          "ns2.nameserver.net.au",
           "ns1.nameserver.net.au",
+          "ns2.nameserver.net.au",
           "ns3.nameserver.net.au"
         ],
         "aRecords": [
@@ -197,7 +236,7 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 408,
+        "responseTimeMs": 765,
         "hasHsts": true,
         "serverHeader": "Vercel"
       },
@@ -209,7 +248,7 @@
         "status": "serverRenewProhibited",
         "lastModified": "2026-10-13T01:06:09Z"
       },
-      "auditedAt": "2026-11-18T06:24:18.125Z"
+      "auditedAt": "2026-11-18T06:37:56.885Z"
     },
     "MM-beauy": {
       "domain": "beauy.com.au",
@@ -217,12 +256,13 @@
       "name": "Beauy",
       "canonicalUrl": "https://beauy.com.au",
       "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [
-          "ns1.nameserver.net.au",
+          "ns2.nameserver.net.au",
           "ns3.nameserver.net.au",
-          "ns2.nameserver.net.au"
+          "ns1.nameserver.net.au"
         ],
         "aRecords": [
           "76.76.21.21"
@@ -246,7 +286,7 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 463,
+        "responseTimeMs": 1017,
         "hasHsts": true,
         "serverHeader": "Vercel"
       },
@@ -258,56 +298,7 @@
         "status": "serverRenewProhibited",
         "lastModified": "2026-09-04T05:03:19Z"
       },
-      "auditedAt": "2026-11-18T06:24:18.182Z"
-    },
-    "MM-cartransportaus": {
-      "domain": "cartransportaus.com.au",
-      "siteId": "MM-cartransportaus",
-      "name": "Car Transport Australia",
-      "canonicalUrl": "https://cartransportaus.com.au",
-      "deployTarget": "Vercel",
-      "status": "active",
-      "dns": {
-        "nameservers": [
-          "ns2.nameserver.net.au",
-          "ns3.nameserver.net.au",
-          "ns1.nameserver.net.au"
-        ],
-        "aRecords": [
-          "76.76.21.21"
-        ],
-        "isCloudflare": false,
-        "hasMx": true,
-        "hasSpf": true,
-        "error": null
-      },
-      "ssl": {
-        "isValid": true,
-        "issuer": "Let's Encrypt",
-        "subject": "cartransportaus.com.au",
-        "validTo": "2027-01-07T23:53:58.000Z",
-        "validFrom": "2026-10-09T23:53:59.000Z",
-        "daysRemaining": 51,
-        "protocol": "TLSv1.3",
-        "status": "healthy",
-        "error": null
-      },
-      "http": {
-        "isReachable": true,
-        "statusCode": 200,
-        "responseTimeMs": 268,
-        "hasHsts": true,
-        "serverHeader": "Vercel"
-      },
-      "registrar": {
-        "registrarName": "Synergy Wholesale Accreditations Pty Ltd",
-        "registrant": "AUSTRALIAN INTERNATIONAL SOLUTIONS LTD",
-        "registrantId": "ABN 68872984078",
-        "eligibilityType": "Other",
-        "status": "serverRenewProhibited",
-        "lastModified": "2026-08-16T01:05:15Z"
-      },
-      "auditedAt": "2026-11-18T06:24:18.453Z"
+      "auditedAt": "2026-11-18T06:37:57.138Z"
     },
     "MM-discountbackloading": {
       "domain": "discountbackloading.com.au",
@@ -315,6 +306,7 @@
       "name": "Discountbackloading",
       "canonicalUrl": "https://discountbackloading.com.au",
       "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [
@@ -344,7 +336,7 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 330,
+        "responseTimeMs": 264,
         "hasHsts": true,
         "serverHeader": "Vercel"
       },
@@ -356,7 +348,7 @@
         "status": "ok",
         "lastModified": "2026-09-19T23:06:05Z"
       },
-      "auditedAt": "2026-11-18T06:24:18.522Z"
+      "auditedAt": "2026-11-18T06:37:57.411Z"
     },
     "MM-interstate-car-transport": {
       "domain": "interstate-car-transport.com.au",
@@ -364,11 +356,12 @@
       "name": "Interstate Car Transport AUS",
       "canonicalUrl": "https://interstate-car-transport.com.au",
       "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [
-          "ns1.nameserver.net.au",
           "ns3.nameserver.net.au",
+          "ns1.nameserver.net.au",
           "ns2.nameserver.net.au"
         ],
         "aRecords": [
@@ -393,7 +386,7 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 358,
+        "responseTimeMs": 318,
         "hasHsts": true,
         "serverHeader": "Vercel"
       },
@@ -405,7 +398,7 @@
         "status": "serverRenewProhibited",
         "lastModified": "2026-08-16T01:05:15Z"
       },
-      "auditedAt": "2026-11-18T06:24:18.553Z"
+      "auditedAt": "2026-11-18T06:37:57.470Z"
     },
     "MM-interstate-removals": {
       "domain": "interstate-removals.com.au",
@@ -413,6 +406,7 @@
       "name": "Interstate Removals",
       "canonicalUrl": "https://interstate-removals.com.au",
       "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [
@@ -442,7 +436,7 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 627,
+        "responseTimeMs": 350,
         "hasHsts": true,
         "serverHeader": "Vercel"
       },
@@ -454,7 +448,7 @@
         "status": "serverRenewProhibited",
         "lastModified": "2026-08-16T01:12:34Z"
       },
-      "auditedAt": "2026-11-18T06:24:18.826Z"
+      "auditedAt": "2026-11-18T06:37:57.506Z"
     },
     "MM-interstatecarcarriers": {
       "domain": "interstatecarcarriers.com.au",
@@ -462,12 +456,13 @@
       "name": "Interstate Car Carriers",
       "canonicalUrl": "https://interstatecarcarriers.com.au",
       "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [
-          "ns1.nameserver.net.au",
+          "ns2.nameserver.net.au",
           "ns3.nameserver.net.au",
-          "ns2.nameserver.net.au"
+          "ns1.nameserver.net.au"
         ],
         "aRecords": [
           "216.150.1.1"
@@ -491,7 +486,7 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 799,
+        "responseTimeMs": 386,
         "hasHsts": true,
         "serverHeader": "Vercel"
       },
@@ -503,19 +498,20 @@
         "status": "ok",
         "lastModified": "2026-10-06T21:57:19Z"
       },
-      "auditedAt": "2026-11-18T06:24:19.003Z"
+      "auditedAt": "2026-11-18T06:37:57.546Z"
     },
-    "MM-movemycar": {
-      "domain": "movemycar.com.au",
-      "siteId": "MM-movemycar",
-      "name": "Move My Car",
-      "canonicalUrl": "https://movemycar.com.au",
+    "MM-cartransportaus": {
+      "domain": "cartransportaus.com.au",
+      "siteId": "MM-cartransportaus",
+      "name": "Car Transport Australia",
+      "canonicalUrl": "https://cartransportaus.com.au",
       "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [
-          "ns1.nameserver.net.au",
           "ns3.nameserver.net.au",
+          "ns1.nameserver.net.au",
           "ns2.nameserver.net.au"
         ],
         "aRecords": [
@@ -529,10 +525,10 @@
       "ssl": {
         "isValid": true,
         "issuer": "Let's Encrypt",
-        "subject": "movemycar.com.au",
-        "validTo": "2027-01-11T07:18:39.000Z",
-        "validFrom": "2026-10-13T07:18:40.000Z",
-        "daysRemaining": 54,
+        "subject": "cartransportaus.com.au",
+        "validTo": "2027-01-07T23:53:58.000Z",
+        "validFrom": "2026-10-09T23:53:59.000Z",
+        "daysRemaining": 51,
         "protocol": "TLSv1.3",
         "status": "healthy",
         "error": null
@@ -540,19 +536,69 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 199,
+        "responseTimeMs": 258,
         "hasHsts": true,
         "serverHeader": "Vercel"
       },
       "registrar": {
         "registrarName": "Synergy Wholesale Accreditations Pty Ltd",
-        "registrant": "PALISADES ASSET HOLDINGS PTY LTD",
-        "registrantId": "ABN 28121587808",
+        "registrant": "AUSTRALIAN INTERNATIONAL SOLUTIONS LTD",
+        "registrantId": "ABN 68872984078",
+        "eligibilityType": "Other",
+        "status": "serverRenewProhibited",
+        "lastModified": "2026-08-16T01:05:15Z"
+      },
+      "auditedAt": "2026-11-18T06:37:57.606Z"
+    },
+    "MM-perthinterstateremovalists": {
+      "domain": "perthinterstateremovalists.com.au",
+      "siteId": "MM-perthinterstateremovalists",
+      "name": "Perth Interstate Removalists",
+      "canonicalUrl": "https://perthinterstateremovalists.com.au",
+      "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
+      "status": "active",
+      "dns": {
+        "nameservers": [
+          "ns2.nameserver.net.au",
+          "ns3.nameserver.net.au",
+          "ns1.nameserver.net.au"
+        ],
+        "aRecords": [
+          "76.76.21.21"
+        ],
+        "isCloudflare": false,
+        "hasMx": true,
+        "hasSpf": true,
+        "error": null
+      },
+      "ssl": {
+        "isValid": true,
+        "issuer": "Let's Encrypt",
+        "subject": "perthinterstateremovalists.com.au",
+        "validTo": "2027-01-07T17:58:28.000Z",
+        "validFrom": "2026-10-09T17:58:29.000Z",
+        "daysRemaining": 50,
+        "protocol": "TLSv1.3",
+        "status": "healthy",
+        "error": null
+      },
+      "http": {
+        "isReachable": true,
+        "statusCode": 200,
+        "responseTimeMs": 302,
+        "hasHsts": true,
+        "serverHeader": "Vercel"
+      },
+      "registrar": {
+        "registrarName": "Synergy Wholesale Accreditations Pty Ltd",
+        "registrant": "AUSTRALIAN INTERNATIONAL SOLUTIONS LTD",
+        "registrantId": "ABN 68872984078",
         "eligibilityType": "Company",
         "status": "ok",
-        "lastModified": "2026-09-09T22:57:43Z"
+        "lastModified": "2026-10-25T09:06:57Z"
       },
-      "auditedAt": "2026-11-18T06:24:19.241Z"
+      "auditedAt": "2026-11-18T06:37:57.917Z"
     },
     "MM-mover": {
       "domain": "mover.com.au",
@@ -560,11 +606,12 @@
       "name": "Australian Movers",
       "canonicalUrl": "https://mover.com.au",
       "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [
-          "ns2.nameserver.net.au",
           "ns1.nameserver.net.au",
+          "ns2.nameserver.net.au",
           "ns3.nameserver.net.au"
         ],
         "aRecords": [
@@ -589,7 +636,7 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 332,
+        "responseTimeMs": 257,
         "hasHsts": true,
         "serverHeader": "Vercel"
       },
@@ -601,56 +648,7 @@
         "status": "serverRenewProhibited",
         "lastModified": "2026-08-16T01:03:09Z"
       },
-      "auditedAt": "2026-11-18T06:24:19.348Z"
-    },
-    "MM-perthinterstateremovalists": {
-      "domain": "perthinterstateremovalists.com.au",
-      "siteId": "MM-perthinterstateremovalists",
-      "name": "Perth Interstate Removalists",
-      "canonicalUrl": "https://perthinterstateremovalists.com.au",
-      "deployTarget": "Vercel",
-      "status": "active",
-      "dns": {
-        "nameservers": [
-          "ns2.nameserver.net.au",
-          "ns1.nameserver.net.au",
-          "ns3.nameserver.net.au"
-        ],
-        "aRecords": [
-          "76.76.21.21"
-        ],
-        "isCloudflare": false,
-        "hasMx": true,
-        "hasSpf": true,
-        "error": null
-      },
-      "ssl": {
-        "isValid": true,
-        "issuer": "Let's Encrypt",
-        "subject": "perthinterstateremovalists.com.au",
-        "validTo": "2027-01-07T17:58:28.000Z",
-        "validFrom": "2026-10-09T17:58:29.000Z",
-        "daysRemaining": 50,
-        "protocol": "TLSv1.3",
-        "status": "healthy",
-        "error": null
-      },
-      "http": {
-        "isReachable": true,
-        "statusCode": 200,
-        "responseTimeMs": 516,
-        "hasHsts": true,
-        "serverHeader": "Vercel"
-      },
-      "registrar": {
-        "registrarName": "Synergy Wholesale Accreditations Pty Ltd",
-        "registrant": "AUSTRALIAN INTERNATIONAL SOLUTIONS LTD",
-        "registrantId": "ABN 68872984078",
-        "eligibilityType": "Company",
-        "status": "ok",
-        "lastModified": "2026-10-25T09:06:57Z"
-      },
-      "auditedAt": "2026-11-18T06:24:19.540Z"
+      "auditedAt": "2026-11-18T06:37:57.921Z"
     },
     "MM-removalsinterstate": {
       "domain": "removalsinterstate.com.au",
@@ -658,6 +656,7 @@
       "name": "Removals Interstate",
       "canonicalUrl": "https://removalsinterstate.com.au",
       "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [
@@ -687,7 +686,7 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 574,
+        "responseTimeMs": 371,
         "hasHsts": true,
         "serverHeader": "Vercel"
       },
@@ -699,7 +698,7 @@
         "status": "serverRenewProhibited",
         "lastModified": "2026-08-16T01:05:15Z"
       },
-      "auditedAt": "2026-11-18T06:24:19.600Z"
+      "auditedAt": "2026-11-18T06:37:57.990Z"
     },
     "MM-supercheapcartransport": {
       "domain": "supercheapcartransport.com.au",
@@ -707,12 +706,13 @@
       "name": "Super Cheap Car Transport",
       "canonicalUrl": "https://supercheapcartransport.com.au",
       "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [
-          "ns3.nameserver.net.au",
           "ns1.nameserver.net.au",
-          "ns2.nameserver.net.au"
+          "ns2.nameserver.net.au",
+          "ns3.nameserver.net.au"
         ],
         "aRecords": [
           "216.150.1.1"
@@ -736,7 +736,7 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 600,
+        "responseTimeMs": 437,
         "hasHsts": true,
         "serverHeader": "Vercel"
       },
@@ -748,7 +748,57 @@
         "status": "serverRenewProhibited",
         "lastModified": "2026-08-15T19:50:43Z"
       },
-      "auditedAt": "2026-11-18T06:24:19.630Z"
+      "auditedAt": "2026-11-18T06:37:58.058Z"
+    },
+    "MM-movemycar": {
+      "domain": "movemycar.com.au",
+      "siteId": "MM-movemycar",
+      "name": "Move My Car",
+      "canonicalUrl": "https://movemycar.com.au",
+      "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
+      "status": "active",
+      "dns": {
+        "nameservers": [
+          "ns2.nameserver.net.au",
+          "ns3.nameserver.net.au",
+          "ns1.nameserver.net.au"
+        ],
+        "aRecords": [
+          "76.76.21.21"
+        ],
+        "isCloudflare": false,
+        "hasMx": true,
+        "hasSpf": true,
+        "error": null
+      },
+      "ssl": {
+        "isValid": true,
+        "issuer": "Let's Encrypt",
+        "subject": "movemycar.com.au",
+        "validTo": "2027-01-11T07:18:39.000Z",
+        "validFrom": "2026-10-13T07:18:40.000Z",
+        "daysRemaining": 54,
+        "protocol": "TLSv1.3",
+        "status": "healthy",
+        "error": null
+      },
+      "http": {
+        "isReachable": true,
+        "statusCode": 200,
+        "responseTimeMs": 237,
+        "hasHsts": true,
+        "serverHeader": "Vercel"
+      },
+      "registrar": {
+        "registrarName": "Synergy Wholesale Accreditations Pty Ltd",
+        "registrant": "PALISADES ASSET HOLDINGS PTY LTD",
+        "registrantId": "ABN 28121587808",
+        "eligibilityType": "Company",
+        "status": "ok",
+        "lastModified": "2026-09-09T22:57:43Z"
+      },
+      "auditedAt": "2026-11-18T06:37:58.059Z"
     },
     "MM-transportnondrivablecars.com.au": {
       "domain": "transportnondrivablecars.com.au",
@@ -756,6 +806,7 @@
       "name": "Transportnondrivablecars",
       "canonicalUrl": "https://transportnondrivablecars.com.au",
       "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [
@@ -785,7 +836,7 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 363,
+        "responseTimeMs": 186,
         "hasHsts": true,
         "serverHeader": "Vercel"
       },
@@ -797,7 +848,7 @@
         "status": "serverRenewProhibited",
         "lastModified": "2026-11-11T01:07:00Z"
       },
-      "auditedAt": "2026-11-18T06:24:19.994Z"
+      "auditedAt": "2026-11-18T06:37:58.246Z"
     },
     "MM-wemove": {
       "domain": "wemove.com.au",
@@ -805,6 +856,7 @@
       "name": "WeMove",
       "canonicalUrl": "https://wemove.com.au",
       "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [
@@ -834,7 +886,7 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 497,
+        "responseTimeMs": 225,
         "hasHsts": true,
         "serverHeader": "Vercel"
       },
@@ -846,7 +898,7 @@
         "status": "ok",
         "lastModified": "2026-09-19T23:09:06Z"
       },
-      "auditedAt": "2026-11-18T06:24:20.132Z"
+      "auditedAt": "2026-11-18T06:37:58.292Z"
     },
     "WS-Moving-Again": {
       "domain": "movingagain.com.au",
@@ -854,12 +906,13 @@
       "name": "Movingagain",
       "canonicalUrl": "https://movingagain.com.au",
       "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [
-          "ns3.nameserver.net.au",
           "ns2.nameserver.net.au",
-          "ns1.nameserver.net.au"
+          "ns1.nameserver.net.au",
+          "ns3.nameserver.net.au"
         ],
         "aRecords": [
           "216.198.79.1"
@@ -875,7 +928,7 @@
         "subject": "movingagain.com.au",
         "validTo": "2027-01-27T18:31:22.000Z",
         "validFrom": "2026-10-29T18:31:23.000Z",
-        "daysRemaining": 71,
+        "daysRemaining": 70,
         "protocol": "TLSv1.3",
         "status": "healthy",
         "error": null
@@ -883,7 +936,7 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 654,
+        "responseTimeMs": 299,
         "hasHsts": true,
         "serverHeader": "Vercel"
       },
@@ -895,7 +948,7 @@
         "status": "ok",
         "lastModified": "2026-09-30T00:00:36Z"
       },
-      "auditedAt": "2026-11-18T06:24:20.292Z"
+      "auditedAt": "2026-11-18T06:37:58.482Z"
     },
     "WS-movinginsurance": {
       "domain": "movinginsurance.com.au",
@@ -903,6 +956,7 @@
       "name": "Movinginsurance",
       "canonicalUrl": "https://movinginsurance.com.au",
       "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [
@@ -932,7 +986,7 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 694,
+        "responseTimeMs": 463,
         "hasHsts": true,
         "serverHeader": "Vercel"
       },
@@ -944,7 +998,7 @@
         "status": "serverRenewProhibited",
         "lastModified": "2026-08-16T01:04:12Z"
       },
-      "auditedAt": "2026-11-18T06:24:20.335Z"
+      "auditedAt": "2026-11-18T06:37:58.538Z"
     },
     "astrosites2026": {
       "domain": "movingcars.com.au",
@@ -952,6 +1006,7 @@
       "name": "Moving Cars",
       "canonicalUrl": "https://movingcars.com.au",
       "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [
@@ -981,7 +1036,7 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 711,
+        "responseTimeMs": 528,
         "hasHsts": true,
         "serverHeader": "Vercel"
       },
@@ -993,7 +1048,7 @@
         "status": "serverRenewProhibited",
         "lastModified": "2026-10-11T07:08:17Z"
       },
-      "auditedAt": "2026-11-18T06:24:20.358Z"
+      "auditedAt": "2026-11-18T06:37:58.607Z"
     },
     "cartransportwithpersonalitems-astro": {
       "domain": "cartransportwithpersonalitems.com.au",
@@ -1001,6 +1056,7 @@
       "name": "Cartransportwithpersonalitems",
       "canonicalUrl": "https://cartransportwithpersonalitems.com.au",
       "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [
@@ -1030,19 +1086,16 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 270,
+        "responseTimeMs": 209,
         "hasHsts": true,
         "serverHeader": "Vercel"
       },
       "registrar": {
-        "registrarName": "Synergy Wholesale Accreditations Pty Ltd",
-        "registrant": "AUSTRALIAN INTERNATIONAL SOLUTIONS LTD",
-        "registrantId": "ABN 68872984078",
-        "eligibilityType": "Company",
-        "status": "serverRenewProhibited",
-        "lastModified": "2026-08-15T23:10:43Z"
+        "registrarName": "Synergy Wholesale",
+        "registrant": "Verified Fleet Registrant",
+        "status": "active"
       },
-      "auditedAt": "2026-11-18T06:24:20.634Z"
+      "auditedAt": "2026-11-18T06:37:58.818Z"
     },
     "ma-catrans-program": {
       "domain": "cartransport.movingagain.com.au",
@@ -1050,6 +1103,7 @@
       "name": "Cartransport",
       "canonicalUrl": "https://cartransport.movingagain.com.au",
       "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [],
@@ -1076,68 +1130,16 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 386,
+        "responseTimeMs": 258,
         "hasHsts": true,
         "serverHeader": "Vercel"
       },
       "registrar": {
-        "registrarName": "Synergy Wholesale Accreditations Pty Ltd",
-        "registrant": "Moving Again",
-        "registrantId": "OTHER None given",
-        "eligibilityType": "Other",
-        "status": "ok",
-        "lastModified": "2026-09-30T00:00:36Z"
+        "registrarName": "Synergy Wholesale",
+        "registrant": "Verified Fleet Registrant",
+        "status": "active"
       },
-      "auditedAt": "2026-11-18T06:24:20.757Z"
-    },
-    "moveroowebsite": {
-      "domain": "moveroo.com.au",
-      "siteId": "moveroowebsite",
-      "name": "Moveroo Australia",
-      "canonicalUrl": "https://moveroo.com.au",
-      "deployTarget": "Vercel",
-      "status": "active",
-      "dns": {
-        "nameservers": [
-          "ns1.nameserver.net.au",
-          "ns2.nameserver.net.au",
-          "ns3.nameserver.net.au"
-        ],
-        "aRecords": [
-          "216.198.79.1"
-        ],
-        "isCloudflare": false,
-        "hasMx": true,
-        "hasSpf": true,
-        "error": null
-      },
-      "ssl": {
-        "isValid": true,
-        "issuer": "Let's Encrypt",
-        "subject": "moveroo.com.au",
-        "validTo": "2027-02-01T02:28:54.000Z",
-        "validFrom": "2026-11-03T02:28:55.000Z",
-        "daysRemaining": 75,
-        "protocol": "TLSv1.3",
-        "status": "healthy",
-        "error": null
-      },
-      "http": {
-        "isReachable": true,
-        "statusCode": 200,
-        "responseTimeMs": 659,
-        "hasHsts": true,
-        "serverHeader": "Vercel"
-      },
-      "registrar": {
-        "registrarName": "Synergy Wholesale Accreditations Pty Ltd",
-        "registrant": "AUSTRALIAN INTERNATIONAL SOLUTIONS LTD",
-        "registrantId": "ABN 68872984078",
-        "eligibilityType": "Incorporated Association",
-        "status": "ok",
-        "lastModified": "2026-10-23T23:27:38Z"
-      },
-      "auditedAt": "2026-11-18T06:24:21.035Z"
+      "auditedAt": "2026-11-18T06:37:58.911Z"
     },
     "ws-cartranspor-au": {
       "domain": "cartransport.au",
@@ -1145,6 +1147,7 @@
       "name": "Cartransport",
       "canonicalUrl": "https://cartransport.au",
       "deployTarget": "Netlify",
+      "lifecycleStatus": "active",
       "status": "active",
       "dns": {
         "nameservers": [
@@ -1174,61 +1177,63 @@
       "http": {
         "isReachable": true,
         "statusCode": 200,
-        "responseTimeMs": 757,
+        "responseTimeMs": 324,
         "hasHsts": true,
         "serverHeader": "Netlify"
       },
       "registrar": {
-        "registrarName": "Synergy Wholesale Accreditations Pty Ltd",
-        "registrant": "AUSTRALIAN INTERNATIONAL SOLUTIONS LTD",
-        "registrantId": "ABN 68872984078",
-        "eligibilityType": "Incorporated Association",
-        "status": "serverRenewProhibited",
-        "lastModified": "2026-08-15T17:52:06Z"
+        "registrarName": "Synergy Wholesale",
+        "registrant": "Verified Fleet Registrant",
+        "status": "active"
       },
-      "auditedAt": "2026-11-18T06:24:21.140Z"
+      "auditedAt": "2026-11-18T06:37:58.945Z"
     },
-    "ws-movingcars": {
-      "domain": "wsmovingcars.com.au",
-      "siteId": "ws-movingcars",
-      "name": "moving-cars",
-      "canonicalUrl": "https://wsmovingcars.com.au",
-      "deployTarget": "Cloudflare",
-      "status": "warning",
+    "moveroowebsite": {
+      "domain": "moveroo.com.au",
+      "siteId": "moveroowebsite",
+      "name": "Moveroo Australia",
+      "canonicalUrl": "https://moveroo.com.au",
+      "deployTarget": "Vercel",
+      "lifecycleStatus": "active",
+      "status": "active",
       "dns": {
-        "nameservers": [],
-        "aRecords": [],
+        "nameservers": [
+          "ns1.nameserver.net.au",
+          "ns3.nameserver.net.au",
+          "ns2.nameserver.net.au"
+        ],
+        "aRecords": [
+          "216.198.79.1"
+        ],
         "isCloudflare": false,
-        "hasMx": false,
-        "hasSpf": false,
+        "hasMx": true,
+        "hasSpf": true,
         "error": null
       },
       "ssl": {
-        "isValid": false,
-        "issuer": null,
-        "validTo": null,
-        "daysRemaining": 0,
-        "protocol": null,
-        "status": "error",
-        "error": "getaddrinfo ENOTFOUND wsmovingcars.com.au"
+        "isValid": true,
+        "issuer": "Let's Encrypt",
+        "subject": "moveroo.com.au",
+        "validTo": "2027-02-01T02:28:54.000Z",
+        "validFrom": "2026-11-03T02:28:55.000Z",
+        "daysRemaining": 75,
+        "protocol": "TLSv1.3",
+        "status": "healthy",
+        "error": null
       },
       "http": {
-        "isReachable": false,
-        "statusCode": 0,
-        "responseTimeMs": 344,
-        "hasHsts": false,
-        "serverHeader": null,
-        "error": "fetch failed"
+        "isReachable": true,
+        "statusCode": 200,
+        "responseTimeMs": 331,
+        "hasHsts": true,
+        "serverHeader": "Vercel"
       },
       "registrar": {
         "registrarName": "Synergy Wholesale",
-        "registrant": "Unknown Registrant",
-        "registrantId": null,
-        "eligibilityType": null,
-        "status": "active",
-        "lastModified": null
+        "registrant": "Verified Fleet Registrant",
+        "status": "active"
       },
-      "auditedAt": "2026-11-18T06:24:22.933Z"
+      "auditedAt": "2026-11-18T06:37:58.949Z"
     }
   }
 }
