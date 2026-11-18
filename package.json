@@ -6,6 +6,8 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
+        "watchdog:scan": "node scripts/domain-watchdog-scan.mjs",
+        "scan": "node scripts/domain-watchdog-scan.mjs",
         "fleet-seo:browser-render": "node scripts/fleet-seo-browser-render.mjs",
         "fleet-seo:lighthouse": "node scripts/fleet-seo-lighthouse.mjs",
         "test:node": "node --test tests/Node/*.test.mjs"
