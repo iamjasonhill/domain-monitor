@@ -6,8 +6,8 @@
   "scanDurationMs": 2895,
   "summary": {
     "totalDomains": 24,
-    "totalSites": 25,
-    "stagingSitesCount": 1,
+    "totalSites": 24,
+    "stagingSitesCount": 0,
     "active": 24,
     "sslValidCount": 24,
     "expiringWithin30Days": 0,
@@ -17,39 +17,6 @@
     "healthScorePct": 100
   },
   "domains": {
-    "ws-movingcars": {
-      "domain": null,
-      "siteId": "ws-movingcars",
-      "name": "moving-cars (Staging)",
-      "canonicalUrl": null,
-      "deployTarget": "Cloudflare",
-      "lifecycleStatus": "staging",
-      "status": "staging",
-      "isStaging": true,
-      "dns": {
-        "nameservers": [],
-        "aRecords": [],
-        "isCloudflare": false,
-        "hasMx": false,
-        "hasSpf": false
-      },
-      "ssl": {
-        "isValid": true,
-        "daysRemaining": null,
-        "issuer": null,
-        "status": "staging"
-      },
-      "http": {
-        "isReachable": true,
-        "statusCode": 200,
-        "responseTimeMs": 0,
-        "hasHsts": false
-      },
-      "registrar": {
-        "registrarName": "N/A (Staging Workspace)"
-      },
-      "auditedAt": "2026-11-18T06:37:56.062Z"
-    },
     "MM-allianceremovals": {
       "domain": "allianceremovals.com.au",
       "siteId": "MM-allianceremovals",

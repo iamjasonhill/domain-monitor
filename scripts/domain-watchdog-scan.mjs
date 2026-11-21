@@ -50,7 +50,6 @@ const DEFAULT_FLEET_SITES = [
   { repo: 'ma-catrans-program', domain: 'cartransport.movingagain.com.au', name: 'Cartransport Moving Again' },
   { repo: 'moveroowebsite', domain: 'moveroo.com.au', name: 'Moveroo Australia' },
   { repo: 'ws-cartranspor-au', domain: 'cartransport.au', name: 'Cartransport' },
-  { repo: 'ws-movingcars', domain: null, name: 'moving-cars (Staging)', lifecycleStatus: 'staging', isStaging: true },
 ];
 
 /**
